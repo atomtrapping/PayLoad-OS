@@ -37,7 +37,7 @@ export function Sidebar() {
         </ul>
       </nav>
       <div className="app-context" data-testid="shell-context">
-        <span><span className="label-sm">Domain product</span> {domain.label} · {domain.scope}</span>
+        <span><span className="label-sm">Product</span> {domain.label} · {domain.delivery} · {domain.scope}</span>
         <span><span className="label-sm">Data</span> Committed demonstration fixtures; local rails where enabled. Every screen says which.</span>
       </div>
     </aside>

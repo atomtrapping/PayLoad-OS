@@ -29,15 +29,28 @@ Customer evidence, customer workloads, and proprietary-capital activity remain s
 
 ## Product architecture
 
+Corrected by the founder, 2026-09-06. The earlier formulation placed Payload OS
+above the three names as a platform, which read as though the platform were the
+product. It is not. Payload OS is the internal terminal.
+
 ```
 Notation Systems
-└─ Payload OS — shared information-production system
-   ├─ Caravan — logistics, freight, cargo, supply-chain movement
-   ├─ Tradewind — markets, instruments, pricing, risk
-   └─ Landshark — parcels, zoning, entitlements, development state
+├─ Caravan   — API and MCP — logistics, freight, cargo, supply-chain movement
+├─ Tradewind — API and MCP — markets, instruments, pricing, risk
+└─ Landshark — API and MCP — parcels, zoning, entitlements, development state
+
+   Payload OS — the internal terminal: operates, monitors and navigates the
+                backend those three are produced from. Not sold.
 ```
 
-Payload OS is the shared production layer, not a fourth customer API. Caravan, Tradewind, and Landshark are the bounded domain products.
+**The three APIs are the flagship products.** Each is delivered as an HTTP feed
+and a set of MCP tools over one provenance-bearing corpus. Customers apply their
+own inference to those streams.
+
+**Payload OS is the terminal, not a product.** It is the instrument the firm runs
+the backend from: acquisition, evidence, normalization, candidates, releases,
+corrections and the coordination facilities. This repository is that terminal. It
+is not a fourth API and it is not offered to customers.
 
 ## The concise formulation
 
@@ -125,7 +138,7 @@ The [local production workflow](LOCAL_PRODUCTION_WORKFLOW.md) makes the existing
 | Evidence bound to its bytes: content digest, storage key, receipt, source truth not claimed | data-os `captureEvidence` / `verifyEvidenceCapture`; every fixture artifact's capture binding reproduced by `src/fixtures/capture.contract.test.ts`; shown in evidence detail and record provenance | Fixture bindings, reproduced under the contract |
 | The Notations Bench is the reference implementation of the shared machinery | `docs/COMPANY_MANDATE.md`; `REFERENCE_IMPLEMENTATION` on `/product`; `src/data-os` as its TypeScript counterparts | Not in this repository |
 | Tenant isolation, information barrier, release timing, non-use | `Corpus.governance`, shown on every release page and in the release manifest | Recorded as policy only |
-| Payload OS is the shared production and assurance layer; Caravan, Tradewind and Landshark are the domain products | `src/domain/domains.ts`, the domain-product control in the shell, `/product` | Caravan as fixture; the others as disabled slots |
+| Caravan, Tradewind and Landshark are the flagship products, delivered as APIs and MCP tools; Payload OS is the internal terminal over the backend | `src/domain/domains.ts`, the product control in the shell, `/product` | Caravan has a demonstration corpus, the fixture feed and the MCP tools; Tradewind and Landshark are declared and empty; the terminal is this repository |
 | A shared stable of agents and apparatuses, declaring purpose, authority, domains, contracts and capabilities | `src/coordination/types.ts`, `seed.ts`, `ledger.ts`; `/agents` | Seed definitions; local registrations in opt-in sandbox; registration does not launch a worker |
 | Synastry across apparatuses and agents through declared input/output compatibility | `connectionsFor`; the stable's directed connections and explicit missing inputs | Local prototype calculation over definitions in a common scope and domain; no execution or deployment attestation |
 | A shared message board for requests, handoffs, blockers, results and acknowledgements | `/board`, `GET` / `POST /api/coordination`; `src/coordination/store.ts` | Read-only seed board by default; append-only local event history with serialized writes in opt-in sandbox; simulated authors, no production authentication |

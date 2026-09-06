@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: '%s · Payload OS',
   },
   description:
-    'Payload OS — a fixture-only corpus product surface and optional ruling workbench over Notation Systems provenance-bearing computational corpora. It does not execute customer inference or construct production canonical state.',
+    'Payload OS — Notation Systems\u2019 internal terminal: it operates, monitors and navigates the backend behind the Caravan, Tradewind and Landshark APIs. Corpus data here is a committed demonstration; the terminal executes no customer inference and constructs no production canonical state.',
   robots: { index: false, follow: false },
   authors: [{ name: 'Notation Systems' }],
 };

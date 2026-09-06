@@ -54,6 +54,8 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
   const releases = await request.get('/api/v1/releases');
   expect(releases.status()).toBe(200);
   expect(releases.headers()['x-payload-fixture-only']).toBe('true');
+  // next.config.ts sets this for every route; a live fetch proves it for all 27.
+  expect(releases.headers()['x-content-type-options']).toBe('nosniff');
   const list = await releases.json();
   expect(list.fixture_only).toBe(true);
   expect(list.releases[0].status).toBe('CURRENT');
@@ -99,7 +101,10 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-join-key="RESOLVED_ENTITY"][data-join-state="ABSENT"]')).toContainText('matching name is not a resolution');
   await expect(page.getByTestId('cross-line-join')).toContainText('A join built per line is not a join');
   await expect(page.locator('[data-storage]')).toHaveCount(6);
-  await expect(page.locator('[data-storage][data-state="SERVICE"]')).toHaveCount(0);
+  // Exactly one class is a running service: PostgreSQL holds the corpus tables.
+  // The invariant is that a SERVICE class has a dependency behind it, not that none exists.
+  await expect(page.locator('[data-storage][data-state="SERVICE"]')).toHaveCount(1);
+  await expect(page.locator('[data-storage="records"][data-state="SERVICE"]')).toContainText('PostgreSQL, selected and wired');
   await expect(page.locator('[data-storage="embeddings"][data-state="ABSENT"]')).toContainText('Qdrant, Milvus, pgvector');
   await expect(page.getByRole('heading', { name: 'Where the corpus is stored' })).toBeVisible();
   await expect(page.locator('#pm-storage')).toContainText('candidates, not selections');

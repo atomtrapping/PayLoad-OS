@@ -44,6 +44,9 @@ export async function POST(req: NextRequest) {
     );
 
     return json({
+      // Spread first: the route's receipt is built over the loan book and the
+      // parameter set, and must win over the engine's narrower one.
+      ...result,
       schema: 'payload.frontier.insurability.collateral-shock.v1',
       evaluatedAt: new Date().toISOString(),
       asOfKnowledgeTime,
@@ -56,7 +59,6 @@ export async function POST(req: NextRequest) {
         ephemeralExecutionMode: 'IN_MEMORY_ONLY',
         accessControlEnforced: Boolean(configuredApiKey),
       },
-      ...result,
     });
   } catch (error) {
     return refusal(

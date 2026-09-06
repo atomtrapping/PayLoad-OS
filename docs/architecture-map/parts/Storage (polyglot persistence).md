@@ -1,6 +1,6 @@
 ---
 title: "Storage (polyglot persistence)"
-status: "DECLARED · NOTHING INSTALLED"
+status: "ONE STORE SELECTED · FIVE DECLARED"
 group: "Runtimes, local stores and verification"
 tags:
   - architecture-map
@@ -9,17 +9,18 @@ tags:
 
 # Storage (polyglot persistence)
 
-**State:** `DECLARED · NOTHING INSTALLED`  
+**State:** `ONE STORE SELECTED · FIVE DECLARED`  
 **Group:** Runtimes, local stores and verification  
 **Map:** [[Payload OS Architecture]]
 
-> Six classes of information ask for six kinds of store: object storage for raw artifacts, a lakehouse for records, a search index for text and facets, a graph for entities and relationships, a vector store for embeddings, a geospatial database for positions. The technologies named are candidates, not selections, and none is installed.
+> Six classes of information ask for six kinds of store. One is now selected: PostgreSQL holds the corpus tables and the adapter reads them when a database is configured, falling back to the committed demonstration when none is. The other five remain candidates.
 
 ## What it is
 
 - Recorded as data in `src/domain/storage.ts` and rendered on `/product`, in the same honest-present-state pattern as the fabrics and the projection engines.
 - Every class carries the access pattern that asks for that store kind, the candidate technologies, the fabric that owns the information, what holds it here today, the doctrine invariant the store must not break, and what has to be true before choosing one.
-- Today every class is held by local content-addressed files under operator-selected `.payload/` roots and by committed fixtures. The package manifest declares no store dependency of any kind.
+- PostgreSQL is wired for the records class. The other five classes are held by local content-addressed files under operator-selected `.payload/` roots and by committed fixtures.
+- The records store arrived before the admission authority, which the sequence said should come first. Until admission exists, nothing stops an unadmitted candidate being written into a canonical-shaped row.
 
 ## Where it lives
 
@@ -32,7 +33,7 @@ tags:
 - A candidate is not a selection: a selection would appear as a dependency and a running service, not as prose.
 - The lakehouse follows the admission authority, never the other way round; holding candidates in it would imply they were admitted.
 - An edge requires evidence, and embedding similarity is never a canonical relation.
-- A test fails if a store dependency appears while the data still says nothing is installed.
+- A test holds the declared dependencies and the stated state in step, in both directions: a store dependency without a service class fails, and so does a service class with no dependency behind it. It is what caught the corpus moving onto PostgreSQL.
 
 ## Connects to
 

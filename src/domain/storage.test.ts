@@ -23,29 +23,42 @@ describe('polyglot persistence, as data', () => {
     }
   });
 
-  it('offers candidates without choosing one', () => {
-    for (const c of STORAGE_CLASSES) {
-      expect(c.candidates.length).toBeGreaterThan(0);
-      // A selection would be recorded as a dependency and a running service, not as prose.
-      expect(c.here.state).not.toBe('SERVICE');
-    }
+  it('offers candidates, and marks a class SERVICE only where a dependency backs it', () => {
+    for (const c of STORAGE_CLASSES) expect(c.candidates.length).toBeGreaterThan(0);
+    const served = STORAGE_CLASSES.filter((c) => c.here.state === 'SERVICE').map((c) => c.kind);
+    // A selection is recorded as a dependency, not as prose: the two must agree.
+    expect(served).toEqual([...STORAGE_PRESENT_STATE.wired]);
   });
 
   /**
-   * The honest-present-state guard. If a store dependency ever appears in
-   * package.json, this fails until the class that uses it says SERVICE and the
-   * summary stops claiming nothing is installed.
+   * The honest-state guard, in both directions. A store dependency that appears
+   * without a SERVICE class fails here, and so does a SERVICE class with no
+   * dependency behind it. This is the test that caught the corpus moving onto
+   * PostgreSQL while the data still said nothing was installed.
    */
-  it('claims nothing is installed only while nothing is installed', () => {
+  it('keeps the declared dependencies and the stated state in step', () => {
     const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
       dependencies?: Record<string, string>; devDependencies?: Record<string, string>;
     };
     const declared = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies });
-    const storeLike = /^(pg|postgres|@?aws-sdk|minio|@elastic|@opensearch|neo4j|arangojs|qdrant|@qdrant|milvus|@zilliz|duckdb|@duckdb|apache-arrow|trino|delta|redis|ioredis|better-sqlite3|sqlite3|prisma|drizzle-orm|typeorm|mongoose|mongodb)/i;
-    const found = declared.filter((d) => storeLike.test(d));
-    expect(found).toEqual([]);
-    expect(STORAGE_PRESENT_STATE.dependencies).toContain('no database');
-    for (const c of STORAGE_CLASSES) expect(c.here.state).not.toBe('SERVICE');
+    const byKind: Partial<Record<string, RegExp>> = {
+      LAKEHOUSE: /^(pg|postgres|drizzle-orm|prisma|typeorm|duckdb|@duckdb|apache-arrow|trino|delta)/i,
+      OBJECT_STORE: /^(@?aws-sdk|minio)/i,
+      SEARCH_INDEX: /^(@elastic|@opensearch)/i,
+      GRAPH: /^(neo4j|arangojs|memgraph)/i,
+      VECTOR: /^(qdrant|@qdrant|milvus|@zilliz|pgvector)/i,
+      GEOSPATIAL: /^(postgis)/i,
+    };
+    for (const c of STORAGE_CLASSES) {
+      const pattern = byKind[c.kind];
+      const backing = pattern ? declared.filter((d) => pattern.test(d)) : [];
+      if (c.here.state === 'SERVICE') {
+        expect(backing, `${c.kind} is stated as a running service, so a dependency must back it`).not.toEqual([]);
+      } else {
+        expect(backing, `${c.kind} has a dependency (${backing.join(', ')}) but is not stated as a service`).toEqual([]);
+      }
+    }
+    expect(STORAGE_PRESENT_STATE.dependencies).toContain('pg and drizzle-orm');
   });
 
   it('carries a doctrine invariant and a precondition on every class', () => {

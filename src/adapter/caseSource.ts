@@ -2,11 +2,10 @@
  * The adapter boundary.
  */
 import type { AdmissionProfile, ClaimCaseBundle, Remediation, Ruling } from '@/domain/types';
-import { FIXTURE_PROFILES, FIXTURE_REMEDIATIONS } from '@/fixtures';
+import { FIXTURE_CASES, FIXTURE_PROFILES, FIXTURE_REMEDIATIONS } from '@/fixtures';
 import { allRulings } from '@/domain/selectors';
-import { db } from '@/db';
-import { cases, rulings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { corpusDatabaseConfigured } from './corpusSource';
 
 export interface CaseSource {
   readonly origin: { kind: 'FIXTURE'; label: string } | { kind: 'LIVE'; label: string };
@@ -18,15 +17,53 @@ export interface CaseSource {
   getRemediation(remediationId: string): Promise<Remediation | undefined>;
 }
 
+export class FixtureCaseSource implements CaseSource {
+  readonly origin = { kind: 'FIXTURE', label: 'Demonstration fixtures (fixture_only: true)' } as const;
+
+  async listCases(): Promise<ClaimCaseBundle[]> {
+    return [...FIXTURE_CASES];
+  }
+
+  async getCase(caseId: string): Promise<ClaimCaseBundle | undefined> {
+    return FIXTURE_CASES.find((c) => c.caseId === caseId);
+  }
+
+  async getRuling(rulingId: string): Promise<{ bundle: ClaimCaseBundle; ruling: Ruling } | undefined> {
+    for (const bundle of FIXTURE_CASES) {
+      const ruling = allRulings(bundle).find((r) => r.rulingId === rulingId);
+      if (ruling) return { bundle, ruling };
+    }
+    return undefined;
+  }
+
+  async listProfiles(): Promise<AdmissionProfile[]> {
+    return [...FIXTURE_PROFILES];
+  }
+
+  async getProfile(profileId: string): Promise<AdmissionProfile | undefined> {
+    return FIXTURE_PROFILES.find((p) => p.profileId === profileId);
+  }
+
+  async getRemediation(remediationId: string): Promise<Remediation | undefined> {
+    return FIXTURE_REMEDIATIONS[remediationId];
+  }
+}
+
 export class LiveCaseSource implements CaseSource {
   readonly origin = { kind: 'LIVE', label: 'Live Cloud SQL Workbench' } as const;
 
+  /** Loaded on demand: the fixture path must not pull the driver into a bundle. */
+  private async database() {
+    const [{ db }, schema] = await Promise.all([import('@/db'), import('@/db/schema')]);
+    return { db, ...schema };
+  }
+
   private async fetchFullCase(caseId: string): Promise<ClaimCaseBundle | undefined> {
-    const caseRes = await db.select().from(cases).where(eq(cases.caseId, caseId));
+    const caseRes = await (await this.database()).db.select().from((await this.database()).cases).where(eq((await this.database()).cases.caseId, caseId));
     if (caseRes.length === 0) return undefined;
     
     const [c] = caseRes;
-    const allRulings = await db.select().from(rulings).where(eq(rulings.caseId, caseId));
+    const allRulings = await (await this.database()).db.select().from((await this.database()).rulings).where(eq((await this.database()).rulings.caseId, caseId));
     
     const sortedRulings = allRulings.map(r => r.data as unknown as Ruling).sort((a, b) => b.revision - a.revision);
     
@@ -38,7 +75,7 @@ export class LiveCaseSource implements CaseSource {
   }
 
   async listCases(): Promise<ClaimCaseBundle[]> {
-    const allCases = await db.select().from(cases);
+    const allCases = await (await this.database()).db.select().from((await this.database()).cases);
     const results: ClaimCaseBundle[] = [];
     for (const c of allCases) {
        const full = await this.fetchFullCase(c.caseId);
@@ -52,7 +89,7 @@ export class LiveCaseSource implements CaseSource {
   }
 
   async getRuling(rulingId: string): Promise<{ bundle: ClaimCaseBundle; ruling: Ruling } | undefined> {
-     const rulingRes = await db.select().from(rulings).where(eq(rulings.rulingId, rulingId));
+     const rulingRes = await (await this.database()).db.select().from((await this.database()).rulings).where(eq((await this.database()).rulings.rulingId, rulingId));
      if (rulingRes.length === 0) return undefined;
      
      const bundle = await this.fetchFullCase(rulingRes[0].caseId);
@@ -81,6 +118,6 @@ let source: CaseSource | undefined;
 
 /** The source the app runs on. */
 export function getCaseSource(): CaseSource {
-  if (!source) source = new LiveCaseSource();
+  if (!source) source = corpusDatabaseConfigured() ? new LiveCaseSource() : new FixtureCaseSource();
   return source;
 }

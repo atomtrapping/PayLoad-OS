@@ -9,17 +9,34 @@ nothing is installed.
 
 ## What holds the corpus today
 
-Every class is held by local content-addressed files under roots the operator
-selects per command (`.payload/*`, never a deployment path) and by committed
-demonstration fixtures. `package.json` declares no database, object store,
-search index, graph, vector store or geospatial dependency.
+**One store is selected.** PostgreSQL holds the corpus tables:
+`src/db/schema.ts` declares corpora, releases, records and retractions among
+fifteen tables, and the corpus adapter reads them through drizzle when a
+database is configured. Where none is configured the committed demonstration
+answers instead, and `source.origin` says which, so a reader is never told a
+demonstration is a live corpus.
+
+The other five classes are still held by local content-addressed files under
+roots the operator selects per command (`.payload/*`, never a deployment path)
+and by committed demonstration fixtures. `package.json` declares `pg` and
+`drizzle-orm`; it declares no object store, search index, graph, vector store
+or geospatial dependency.
+
+### The precondition that is now owed
+
+This document previously said the lakehouse should follow the admission
+authority, because without one there is no canonical version to store. The
+tables arrived first. That is a live risk rather than a settled sequence: rows
+in `releases` and `records` are canonical-shaped, so until admission exists
+something must keep an unadmitted candidate from being written there as though
+it were a version. The gate is what the store still needs.
 
 ## The six classes
 
 | Information | Store kind | Candidates | Fabric | Here |
 |---|---|---|---|---|
 | Raw artifacts: source bytes, documents, media, capture receipts | Immutable object storage | S3, MinIO, WARC for captured web material | Acquisition | Local content-addressed files |
-| Structured records, normalized candidates and observations, with both clocks | Lakehouse over object storage | Iceberg or Delta, queried through Trino, Spark or DuckDB | Corpus | Committed demonstration releases |
+| Structured records, normalized candidates and observations, with both clocks | Relational store, selected; lakehouse still a candidate | **PostgreSQL, wired**; Iceberg or Delta for columnar scans a relational store answers slowly | Corpus | PostgreSQL when configured, the committed demonstration otherwise |
 | Full text and facets | Search index | OpenSearch, Elasticsearch | Projection | Nothing; pages filter fixtures in memory |
 | Entities and explicit relationships | Graph database | Neo4j, Memgraph, ArangoDB | Corpus | The projection compiler's incidence graph; authored notation relations |
 | Embeddings | Vector store | Qdrant, Milvus, pgvector | Compute | Nothing; no embedding is computed here |
@@ -59,9 +76,10 @@ the rule it is bound by:
 1. **Object storage first.** It is the only class whose information already
    exists in volume and whose invariant is already enforced by the evidence
    rail.
-2. **The lakehouse follows admission, not the other way round.** Without an
-   admission authority there is no canonical version to store, and a lakehouse
-   holding candidates would imply they were admitted.
+2. **The records store arrived before the admission authority.** The intended
+   order was the reverse, because a store holding candidates implies they were
+   admitted. Since it did not happen that way, the admission gate is owed
+   before anything writes a candidate into a canonical-shaped row.
 3. **Search and geospatial are projections** of an admitted corpus and are
    rebuildable from it, so they can arrive late.
 4. **The graph waits on one identity authority**, and the vector store on

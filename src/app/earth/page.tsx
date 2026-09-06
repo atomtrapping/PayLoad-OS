@@ -12,7 +12,9 @@ export const metadata: Metadata = { title: 'Earth Twin' };
 export const dynamic = 'force-dynamic';
 
 export default async function EarthPage() {
-  const corpus = await getCorpusSource().getCorpus('COR-CAR-2026.09.01');
+  // 'COR-CAR-2026.09.01' is a release-shaped identifier; the corpus is named
+  // 'caravan.specialty-cargo', so this asked for a corpus that never existed.
+  const corpus = await getCorpusSource().getCorpus('caravan.specialty-cargo');
   if (!corpus) return notFound();
   
   const release = [...corpus.releases].sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1))[0];

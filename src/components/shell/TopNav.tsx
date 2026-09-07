@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { CommandPalette } from './CommandPalette';
 import { VerticalContext } from './VerticalContext';
 import { locate } from './nav';
 
@@ -33,6 +34,7 @@ export function TopNav() {
           </>
         ) : <span className="label-sm">Payload OS</span>}
       </div>
+      <CommandPalette />
       <VerticalContext />
     </header>
   );

@@ -59,6 +59,25 @@ Every status, check result and assurance value is read from the bundle. The mani
 
 One shell (`src/components/shell/AppShell.tsx`): a 48 px top bar that says where you are (area · page) with the product control (`Caravan` active; `Tradewind` and `Landshark` are declared and empty in `src/domain/domains.ts`), and one primary navigation declared as data in `src/components/shell/nav.ts` and rendered once by `Sidebar.tsx`: a left rail from 1024 px, a horizontal strip beneath the top bar below that. Six activity areas, led by the products because the products are what the firm sells: **Products** (`Products`, `API`, `Stream`, `Releases`, `Retractions`, `Operating model`), **Acquisition** (`Acquisitions` → the acquisition section of the rail page, `Evidence`), **Corpus** (`Production`, `Candidates`), **Notations** (`Notations`), **Inquiry** (`Cases`, `Rulings`, `Replay`, `Profiles`, `Earth Twin`, `Spatial Inquiry`, `Observations`), and **Coordination** (`Stable`, `Board`). Each area states the activity it serves; the rail also carries the context that never changes on a screen (which product's corpus, what the data is). `/` opens the releases. Coordination is shared by Payload OS: its participants declare their own domains and the screens show the coordination scope.
 
+### Getting between them
+
+Twenty-six destinations across six areas is a good map and a slow journey, so the rail is now something to move around in rather than something to get past. Three things were measured before any of it was written.
+
+| | Before | After |
+| --- | --- | --- |
+| Tab stops before the page content | 32 | 6 |
+| Rail tab stops | 26 | 1 |
+| Current tab visible on a 412 px viewport | no — strip 2336 px wide, `scrollLeft` 0, current tab 2113 px off-screen | yes, centred on arrival and after every navigation |
+| Direct jump to a named page | none | `⌘K` / `Ctrl+K`, or the **Jump to…** button |
+
+- **One tab stop, then the arrows.** A roving tabindex leaves exactly one link tabbable — the page you are on, or the first destination when the path is not on the rail — so Tab enters the rail and Tab leaves it. Inside it, <kbd>↑</kbd><kbd>↓</kbd> and <kbd>←</kbd><kbd>→</kbd> both move through the whole list, because the same list is a column at 1024 px and a strip below it and the reader should not have to know which they are in. <kbd>Home</kbd> and <kbd>End</kbd> reach the ends; movement crosses area boundaries and wraps.
+- **The current tab is put in view.** The rail sets its own `scrollLeft`/`scrollTop` rather than calling `scrollIntoView`, which walks up the ancestors and would move the page as well as the rail. Arrival is instant (assigning a scroll offset obeys the rail's `scroll-behavior: smooth`, which left it mid-animation at roughly zero); arrow-key movement keeps the animation, because there the motion is the feedback. Vertically it only moves when the item is actually out of frame, so a column does not jump under the reader on every navigation.
+- **`Alt`+<kbd>←</kbd>/<kbd>→</kbd> steps** to the next or previous destination in rail order, from anywhere on the page, wrapping at both ends — the rail is a ring of places rather than a list with an end. Text fields keep their own arrow keys.
+- **The palette** (`CommandPalette.tsx`) searches the same list and no other, so it is a shortcut rather than a second navigation to keep in sync. Ranked in four tiers — exact label, prefix, word start, then path and area — with ties keeping rail order so equally good matches do not reshuffle. Reachable by button as well as by shortcut: a keyboard-only affordance is invisible to anyone who has not been told it exists, and unusable on a touch screen. Escape returns focus where it came from.
+- **The keys are stated where the rail is** (`nav-keys`), on the wide layout only, because a shortcut nobody is told about is a shortcut nobody has.
+
+Soft navigation between pages measured 73–185 ms; `/earth` is 1080 ms, which is CesiumJS starting. Speed was not the problem and was left alone.
+
 ### Design system
 
 The design language, the inspector pattern, the two slices built on it (notations, candidate production) and the verification receipt are in [Workspace design](WORKSPACE_DESIGN.md).

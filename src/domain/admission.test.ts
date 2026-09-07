@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADMISSION_LOSS, ADMISSION_METHOD, CHECK_MEANING, admit, admitInto, releaseLeaks, type AdmissionCandidate } from './admission';
+import { ADMISSION_LOSS, ADMISSION_METHOD, ADMITTED_PROVENANCE, CHECK_MEANING, RECORD_PROVENANCE, admit, admitInto, admittedRow, crossedTheGate, releaseLeaks, type AdmissionCandidate } from './admission';
 
 const AUTHORITY = 'role:corpus-steward';
 const RULED_AT = '2026-09-07T12:00:00Z';
@@ -13,6 +13,8 @@ function candidate(over: Partial<AdmissionCandidate> = {}): AdmissionCandidate {
     origin: 'MEASURED',
     evidenceClass: { claimStrength: 'reported', productionClass: 'measured', interest: 'unknown' },
     provenance: { artifactDigest: 'a'.repeat(64), capturedAt: '2026-09-07T06:00:00Z' },
+    provenanceClass: 'LIVE_CAPTURE',
+    sourceTime: '2026-09-07T05:30:00Z',
     validFrom: '2026-09-07T06:00:00Z',
     knownAt: '2026-09-07T09:00:00Z',
     rightsDecision: 'PERMITTED',
@@ -25,7 +27,7 @@ describe('the admission authority: the gate the store says it is owed', () => {
     const ruling = admit(candidate(), AUTHORITY, RULED_AT);
     expect(ruling.outcome).toBe('ADMITTED');
     expect(ruling.failed).toEqual([]);
-    expect(ruling.passed).toHaveLength(7);
+    expect(ruling.passed).toHaveLength(9);
     expect(ruling.authority).toBe(AUTHORITY);
     expect(ruling.because).toMatch(/does not say the claim is true/);
     expect(ADMISSION_LOSS.join(' ')).toMatch(/no number of passed checks makes it true/);
@@ -93,6 +95,74 @@ describe('the admission authority: the gate the store says it is owed', () => {
     // A refusal is a record too: it names why, and nothing is hidden.
     expect(rulings[1].failed).not.toEqual([]);
     expect(ADMISSION_LOSS.join(' ')).toMatch(/A refusal is a record too/);
+  });
+
+  it('requires provenance to be declared, and infers it from nothing', () => {
+    // Inferred provenance is a guess about testimony, one waterline below
+    // testimony. A wide gap between the clocks is not evidence of backfill.
+    const undeclared = admit(candidate({ provenanceClass: null }), AUTHORITY, RULED_AT);
+    expect(undeclared.outcome).toBe('REFUSED');
+    expect(undeclared.failed.find((f) => f.check === 'PROVENANCE_DECLARED')!.because).toMatch(/nothing here infers it from the clocks/);
+    // Declared backfill with a seven-year gap admits; the gap decides nothing.
+    const old = admit(candidate({ provenanceClass: 'BACKFILLED', sourceTime: '2019-06-02T00:00:00Z', validFrom: '2019-06-01T00:00:00Z' }), AUTHORITY, RULED_AT);
+    expect(old.outcome).toBe('ADMITTED');
+    expect(CHECK_MEANING.PROVENANCE_DECLARED).toMatch(/one waterline below testimony itself/);
+  });
+
+  it('refuses a record obtained before its source published it', () => {
+    const impossible = admit(candidate({ sourceTime: '2026-09-07T07:00:00Z' }), AUTHORITY, RULED_AT);
+    expect(impossible.failed.find((f) => f.check === 'SOURCE_CLOCK_COHERENT')!.because).toMatch(/did not arrive the way it claims to have arrived/);
+    expect(admit(candidate({ sourceTime: null }), AUTHORITY, RULED_AT).failed.map((f) => f.check)).toContain('SOURCE_CLOCK_COHERENT');
+  });
+
+  it('yields a writable row only from an admission, stamped at entry', () => {
+    const proposed = candidate();
+    const ruling = admit(proposed, AUTHORITY, RULED_AT);
+    const { row, because } = admittedRow(proposed, ruling);
+    expect(row).toMatchObject({
+      recordId: 'REC-1',
+      sourceTime: '2026-09-07T05:30:00Z',
+      acquisitionTime: '2026-09-07T06:00:00Z',
+      provenance: 'LIVE_CAPTURE',
+      admittedBy: AUTHORITY,
+      ruledAt: RULED_AT,
+    });
+    expect(because).toMatch(/fixed at the moment of admission rather than worked out afterwards/);
+
+    // A refusal never yields a row: there is no partial write.
+    const refusedCandidate = candidate({ rightsDecision: 'UNDECIDED' });
+    const refused = admittedRow(refusedCandidate, admit(refusedCandidate, AUTHORITY, RULED_AT));
+    expect(refused.row).toBeNull();
+    expect(refused.because).toMatch(/was refused, so there is no row/);
+
+    // And a ruling does not travel between candidates.
+    const mismatched = admittedRow(candidate({ candidateId: 'cand-other' }), ruling);
+    expect(mismatched.row).toBeNull();
+    expect(mismatched.because).toMatch(/A ruling does not travel between candidates/);
+    expect(ADMISSION_LOSS.join(' ')).toMatch(/The entry stamp is not reconstructable/);
+  });
+
+  it('cannot stamp a demonstration row, and a demonstration row is not admitted state', () => {
+    // The seeder writes committed fixtures into the canonical records table
+    // so the pages have something to show. The column is what keeps them from
+    // reading as admitted state, and the two writers are disjoint by type.
+    expect(RECORD_PROVENANCE).toEqual(['LIVE_CAPTURE', 'BACKFILLED', 'DEMONSTRATION']);
+    expect(ADMITTED_PROVENANCE).toEqual(['LIVE_CAPTURE', 'BACKFILLED']);
+    expect(ADMITTED_PROVENANCE).not.toContain('DEMONSTRATION');
+    expect(crossedTheGate('DEMONSTRATION')).toBe(false);
+    expect(crossedTheGate('LIVE_CAPTURE')).toBe(true);
+    expect(crossedTheGate('BACKFILLED')).toBe(true);
+
+    // A candidate cannot declare itself a demonstration into the gate: the
+    // provenance check accepts only the two the gate may stamp.
+    const posing = admit(candidate({ provenanceClass: 'DEMONSTRATION' as never }), AUTHORITY, RULED_AT);
+    expect(posing.outcome).toBe('REFUSED');
+    expect(posing.failed.map((f) => f.check)).toContain('PROVENANCE_DECLARED');
+
+    // And every row the gate does produce crossed it.
+    const proposed = candidate();
+    const { row } = admittedRow(proposed, admit(proposed, AUTHORITY, RULED_AT));
+    expect(crossedTheGate(row!.provenance)).toBe(true);
   });
 
   it('checks rule 2 rather than asserting it: no rail identifier reaches the release', () => {

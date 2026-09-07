@@ -39,7 +39,9 @@ export type AdmissionCheck =
   | 'BOTH_CLOCKS'
   | 'SUBJECT_IDENTIFIED'
   | 'RIGHTS_DECIDED'
-  | 'AUTHORITY_IS_NOT_THE_PROCESS';
+  | 'AUTHORITY_IS_NOT_THE_PROCESS'
+  | 'PROVENANCE_DECLARED'
+  | 'SOURCE_CLOCK_COHERENT';
 
 export const CHECK_MEANING: Record<AdmissionCheck, string> = {
   EVIDENCE_ARTIFACT_BOUND: 'The candidate names the retained artifact it was extracted from, by content digest. A candidate that cannot point at bytes is an assertion, not an extraction.',
@@ -49,6 +51,8 @@ export const CHECK_MEANING: Record<AdmissionCheck, string> = {
   SUBJECT_IDENTIFIED: 'The subject carries a canonical identity, so the record joins on identity rather than on a name.',
   RIGHTS_DECIDED: 'A rights decision exists for the operation this admission performs. An undecided right is a refusal, never a default permission.',
   AUTHORITY_IS_NOT_THE_PROCESS: 'The ruling names an authority, and the authority is not this method. Promotion is an act; a process admitting on its own behalf is a write wearing a ruling’s clothes.',
+  PROVENANCE_DECLARED: 'The candidate declares how it arrived — live capture or backfill — rather than leaving it to be worked out later. Provenance inferred from a clock gap is a guess about testimony, one waterline below testimony itself.',
+  SOURCE_CLOCK_COHERENT: 'The source’s own publication time is present and not later than the moment this system obtained it. A record acquired before its source published it did not arrive the way it claims to have arrived, whatever it is labelled.',
 };
 
 /** Origins that may never become evidence, from the engine boundary mapping. */
@@ -64,6 +68,15 @@ export interface AdmissionCandidate {
   origin: string | null;
   evidenceClass: { claimStrength: string | null; productionClass: string | null; interest: string | null } | null;
   provenance: { artifactDigest: string | null; capturedAt: string | null };
+  /**
+   * How the record arrived, declared by the candidate. Never inferred: no
+   * threshold here decides that a gap between the clocks makes something
+   * backfill, because inferred provenance is a guess about testimony rather
+   * than testimony.
+   */
+  provenanceClass: 'LIVE_CAPTURE' | 'BACKFILLED' | null;
+  /** When the source published it. Distinct from when this system obtained it. */
+  sourceTime: string | null;
   validFrom: string | null;
   knownAt: string | null;
   rightsDecision: 'PERMITTED' | 'PROHIBITED' | 'UNDECIDED' | null;
@@ -130,6 +143,14 @@ function evaluate(candidate: AdmissionCandidate, authority: string): Array<{ che
     fail('RIGHTS_DECIDED', `The rights decision is ${candidate.rightsDecision ?? 'absent'}. Only PERMITTED admits; undecided is a refusal and never a default permission.`);
   }
 
+  if (candidate.provenanceClass !== 'LIVE_CAPTURE' && candidate.provenanceClass !== 'BACKFILLED') {
+    fail('PROVENANCE_DECLARED', `Provenance is ${candidate.provenanceClass ?? 'undeclared'}. It is declared at entry or the candidate is refused; nothing here infers it from the clocks.`);
+  }
+
+  const sourced = instant(candidate.sourceTime);
+  if (sourced === null) fail('SOURCE_CLOCK_COHERENT', 'No readable source time, so nothing says when the source published this.');
+  else if (captured !== null && sourced > captured) fail('SOURCE_CLOCK_COHERENT', 'Obtained before the source published it. Whatever the label says, this did not arrive the way it claims to have arrived.');
+
   if (!readable(authority) || authority.trim() === ADMISSION_METHOD) {
     fail('AUTHORITY_IS_NOT_THE_PROCESS', 'A ruling names an authority, and that authority is not this method. Nothing admits on its own behalf.');
   }
@@ -140,6 +161,7 @@ function evaluate(candidate: AdmissionCandidate, authority: string): Array<{ che
 const ALL_CHECKS: readonly AdmissionCheck[] = [
   'EVIDENCE_ARTIFACT_BOUND', 'EVIDENCE_CLASS_COMPLETE', 'ORIGIN_ADMISSIBLE',
   'BOTH_CLOCKS', 'SUBJECT_IDENTIFIED', 'RIGHTS_DECIDED', 'AUTHORITY_IS_NOT_THE_PROCESS',
+  'PROVENANCE_DECLARED', 'SOURCE_CLOCK_COHERENT',
 ];
 
 /** Rule on one candidate. Refusal is the default and every failure is named. */
@@ -200,5 +222,87 @@ export const ADMISSION_LOSS = [
   'Refusal is the default. A check that cannot be evaluated fails, because an undeclared axis is not a weak one and an undecided right is not a quiet permission.',
   'Nothing admits on its own behalf. A ruling names an authority that is not this method, because a process promoting its own output is a write wearing a ruling’s clothes.',
   'The ancestry ledger is not part of the release. A correction reaches the build through the ledger, and the release carries no candidate, build or run identifier — which releaseLeaks checks rather than the comment claiming it.',
+  'The entry stamp is not reconstructable. Source time, acquisition time and declared provenance are fixed by the admission that produced the row, because a record\u2019s honesty is decided when it enters and cannot be worked out about it later.',
+  'Provenance is declared and never inferred. No threshold here reads a gap between the clocks as backfill, because provenance inferred from metadata is a guess about testimony rather than testimony.',
   'A refusal is a record too. A candidate refused here has not been deleted, hidden or made unavailable; it stays on the rail with the reasons it failed.',
 ] as const;
+
+/**
+ * What the provenance column may say. The first two are stamped by this gate
+ * and mean the row crossed it. `DEMONSTRATION` means it did not: committed
+ * fixtures are seeded so the pages have something to show, and the column is
+ * what stops them reading as admitted state. This gate cannot emit
+ * `DEMONSTRATION`, and the seeder cannot emit the other two — the two
+ * writers are disjoint by type, not by convention.
+ */
+export const RECORD_PROVENANCE = ['LIVE_CAPTURE', 'BACKFILLED', 'DEMONSTRATION'] as const;
+export type RecordProvenance = (typeof RECORD_PROVENANCE)[number];
+
+/** Provenance values a passed admission may stamp. Deliberately not all of them. */
+export const ADMITTED_PROVENANCE: readonly RecordProvenance[] = ['LIVE_CAPTURE', 'BACKFILLED'];
+
+/** Did this row cross the gate? The column answers, and nothing else has to. */
+export function crossedTheGate(provenance: RecordProvenance): boolean {
+  return (ADMITTED_PROVENANCE as readonly string[]).includes(provenance);
+}
+
+/* ── The entry stamp: the only shape a writer may accept ── */
+
+/**
+ * A row the records table may take. Its honesty is decided here, at the
+ * moment of entry, and not reconstructed later: the three clocks and the
+ * declared provenance are stamped by the admission that produced it, and
+ * there is no constructor for this type that does not begin with an
+ * ADMITTED ruling.
+ *
+ * That is the whole point of the shape. A writer that accepts only this
+ * cannot be handed an unadmitted candidate, which is the gate `storage.ts`
+ * says the store still needs.
+ */
+export interface AdmittedRow {
+  recordId: string;
+  subjectCanonicalId: string;
+  validFrom: string;
+  validTo: string | null;
+  knownAt: string;
+  /** When the source published it. */
+  sourceTime: string;
+  /** When this system obtained it. */
+  acquisitionTime: string;
+  /** Declared by the candidate, never inferred here. */
+  provenance: 'LIVE_CAPTURE' | 'BACKFILLED';
+  admittedBy: string;
+  ruledAt: string;
+}
+
+/**
+ * The writable row for an admitted candidate, or null with the reason it is
+ * not one. A refusal never yields a row: there is no partial write, and no
+ * caller can obtain a row by ignoring an outcome it did not like.
+ */
+export function admittedRow(
+  candidate: AdmissionCandidate,
+  ruling: AdmissionRuling,
+): { row: AdmittedRow | null; because: string } {
+  if (ruling.candidateId !== candidate.candidateId) {
+    return { row: null, because: `The ruling is for ${ruling.candidateId} and the candidate is ${candidate.candidateId}. A ruling does not travel between candidates.` };
+  }
+  if (ruling.outcome !== 'ADMITTED') {
+    return { row: null, because: `${ruling.candidateId} was refused, so there is no row. ${ruling.because}` };
+  }
+  return {
+    row: {
+      recordId: candidate.recordId,
+      subjectCanonicalId: candidate.subjectCanonicalId!,
+      validFrom: candidate.validFrom!,
+      validTo: null,
+      knownAt: candidate.knownAt!,
+      sourceTime: candidate.sourceTime!,
+      acquisitionTime: candidate.provenance.capturedAt!,
+      provenance: candidate.provenanceClass!,
+      admittedBy: ruling.authority,
+      ruledAt: ruling.ruledAt,
+    },
+    because: `Stamped at entry by ${ruling.authority}: three clocks and a declared provenance, fixed at the moment of admission rather than worked out afterwards.`,
+  };
+}

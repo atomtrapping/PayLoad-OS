@@ -35,6 +35,14 @@ async function seed() {
         validFrom: record.validFrom,
         validTo: record.validTo || null,
         knownAt: record.knownAt,
+        // These fixtures never crossed the admission gate, and the entry
+        // stamp says so rather than inventing one. Source time and
+        // acquisition time are the record's own knowledge time because
+        // nothing acquired them: they were committed. A row seeded here is
+        // a demonstration, and no query may read it as admitted state.
+        sourceTime: record.knownAt,
+        acquisitionTime: record.knownAt,
+        provenance: 'DEMONSTRATION',
         data: record as unknown as Record<string, unknown>,
       }).onConflictDoNothing();
     }

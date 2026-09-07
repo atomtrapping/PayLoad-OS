@@ -191,3 +191,38 @@ Reproduced v1 at `efeb70a` on a fresh Linux x86_64 clone (Node 22.22.2, Rust 1.9
 
 This is a local reproduction receipt on one more platform, not independent attestation. No source was contacted; no fixture, geometry, identity, release digest or kernel command changed.
 
+## What the twin opens on, and what it folds
+
+Three things measured on the built page, then fixed.
+
+**It landed empty.** The default selection was the first deliverable record — a
+sample's moisture, whose subject the release does not position — so a reader
+arrived at a globe with nothing on it under a red `GEOMETRY_NOT_AVAILABLE`. True
+about that record, and a poor first question to have asked on the reader's
+behalf. `earthRecordChoices` now marks each choice with `positionDeclared`, and
+the twin opens on the first record whose subject the release positions.
+
+That flag is a hint and nothing more: it says a position record exists for the
+subject, not that the compiler will place this record. The compiler still
+decides, on the exact version, at the asked-for clocks, under the viewer's
+rights — and where the release positions nothing, the twin falls back to the
+first record and the refusal is the honest landing state. A link that names a
+record still wins over both.
+
+**Two sections were most of the column.** The layer list and the twenty-one
+source registry ran to about three and a half thousand pixels between them, so
+reaching *what is on the globe* meant scrolling past everything the globe is
+not. Both are folded now. The counts stay in the summaries — the registry still
+reads "21 named, 0 integrated" shut — so folding hides the lists and not the
+facts. Visible text on the page fell from 10,885 characters to 7,949, and the
+document from 4,380 pixels to 2,514.
+
+**The globe sat in the stage rather than filling it.** At 26,000 km the Earth
+subtends about 11° of a 60° field and occupied roughly a third of the frame.
+`GLOBAL_VIEW` is now 12,000 km: about 20°, so the disc spans two thirds, with
+margin for the terminator and for a placement flying in from an edge.
+
+The e2e that covered this had pinned the old landing — it asserted
+`data-outcome: UNAVAILABLE` and `0 placed` on arrival. The refusal is still
+tested, one selection away rather than as the state a reader meets: selecting a
+sample's moisture draws nothing and says why.

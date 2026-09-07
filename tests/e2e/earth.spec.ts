@@ -34,13 +34,18 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await expect(page.locator('[data-signal][data-integration="NOT_INTEGRATED"]')).toHaveCount(21);
   await expect(page.locator('[data-signal]:not([data-integration="NOT_INTEGRATED"])')).toHaveCount(0);
 
-  // The corpus: the compiler refuses geometry for a selectable record, and the twin draws nothing in its place.
+  // The corpus: the twin opens on a record the release can place, so something
+  // is drawn on arrival. The refusal is one selection away rather than the
+  // landing state — the compiler refuses geometry for a selectable record whose
+  // subject no position record names, and the twin draws nothing in its place.
   const projection = page.getByTestId('earth-projection');
-  await expect(projection).toHaveAttribute('data-outcome', 'UNAVAILABLE');
-  await expect(projection).toHaveAttribute('data-code', 'GEOMETRY_NOT_AVAILABLE');
-  await expect(projection).toContainText('invents none');
+  await expect(projection).toHaveAttribute('data-outcome', 'READY', { timeout: 20_000 });
   const before = await page.getByTestId('earth-valid-at').textContent();
   const select = page.getByLabel('Record', { exact: true });
+  await select.selectOption('REC-0101');
+  await expect(projection).toHaveAttribute('data-outcome', 'UNAVAILABLE', { timeout: 20_000 });
+  await expect(projection).toHaveAttribute('data-code', 'GEOMETRY_NOT_AVAILABLE');
+  await expect(projection).toContainText('invents none');
   const options = await select.locator('option').allTextContents();
   expect(options.length).toBeGreaterThan(1);
   expect(options.join('\n')).not.toMatch(/REC-0305|REC-0401|REC-0402/);
@@ -54,7 +59,7 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await page.screenshot({ path: testInfo.outputPath('earth-twin.png') });
 
   // A view is a link: a flight ends with the camera in the hash; the global preset is the global hash; a link restores its view.
-  const global = '#v=0.0000,0.0000,26000000,0.0,-90.0';
+  const global = '#v=0.0000,0.0000,12000000,0.0,-90.0';
   await expect(page.getByTestId('earth-link')).toHaveText(global);
   const subSolarLatitude = /(-?\d+\.\d\d)°/.exec((await page.getByTestId('earth-subsolar').textContent()) ?? '')![1];
   await page.getByTestId('fly-subsolar').click();
@@ -62,7 +67,7 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await expect(page.getByTestId('earth-camera')).toContainText(`${subSolarLatitude}`, { timeout: 20_000 });
   await expect.poll(async () => { const current = new URL(page.url()).hash; return current !== global && current === (await page.getByTestId('earth-link').textContent()); }, { timeout: 20_000 }).toBe(true);
   const hash = new URL(page.url()).hash;
-  await expect(page.getByTestId('earth-camera')).toContainText('26,000 km');
+  await expect(page.getByTestId('earth-camera')).toContainText('12,000 km');
   await page.getByTestId('fly-global').click();
   await expect(page.getByTestId('earth-camera')).toContainText('0.0000°, 0.0000°', { timeout: 20_000 });
   await expect(page).toHaveURL(new RegExp(global.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), { timeout: 20_000 });
@@ -78,11 +83,21 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await expect(status).toHaveAttribute('data-state', 'READY', { timeout: 45_000 });
   await expect(page.getByTestId('earth-link')).toHaveText(global);
 
-  // A record is drawn only where its own subject's position record declares. The draft-survey record's lot has a berth position from the port custody system: choosing it lists that declaration, with its source's interest and stated uncertainty, and flies the camera there.
-  await expect(projection).toHaveAttribute('data-outcome', 'UNAVAILABLE');
-  await expect(page.getByTestId('earth-placed')).toHaveAttribute('data-count', '0');
+  // A record is drawn only where its own subject's position record declares.
+  // The twin now opens on a record the release can place, so this arrives READY
+  // rather than on an empty globe — and the refusal is one selection away
+  // rather than the landing state: a sample's moisture has no position record
+  // for its subject, so nothing is drawn and the twin says why.
+  await expect(projection).toHaveAttribute('data-outcome', 'READY', { timeout: 20_000 });
+  // The draft-survey record's lot has a berth position from the port custody
+  // system: choosing it lists that declaration, with its source's interest and
+  // stated uncertainty, and flies the camera there. Selected away and back,
+  // because the twin already opens on it and re-selecting the current record is
+  // not a change — the flight follows a change of selection.
+  await page.getByLabel('Record', { exact: true }).selectOption('REC-0101');
+  await expect(projection).toHaveAttribute('data-outcome', 'UNAVAILABLE', { timeout: 20_000 });
   await page.getByLabel('Record', { exact: true }).selectOption('REC-0203');
-  await expect(projection).toHaveAttribute('data-outcome', 'READY', { timeout: 15_000 });
+  await expect(projection).toHaveAttribute('data-outcome', 'READY', { timeout: 20_000 });
   await expect(projection).toContainText('1 declared position');
   const berth = projection.locator('[data-position-record="REC-0207"]');
   await expect(berth).toHaveAttribute('data-interest', 'disinterested');
@@ -141,4 +156,31 @@ test('the derivation beneath the globe keys each position no finer than its evid
   await expect(pair).toContainText('different places');
   await expect(panel.locator('[data-answer="OVERLAPPING"]')).toHaveCount(0);
   await expect(panel).toContainText('Containment is the join that would matter, and it is absent');
+});
+
+/**
+ * The twin lands on a placed record rather than on an empty globe. Before this,
+ * the default was simply the first deliverable record — moisture, whose subject
+ * the release does not position — so a reader arrived to nothing drawn under a
+ * red refusal.
+ */
+test('the twin arrives with something on the globe, and folds what a reader would scroll past', async ({ page }) => {
+  await page.goto('/earth');
+  await page.waitForLoadState('load');
+
+  await expect(page.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY', { timeout: 20_000 });
+  // The HUD counts what is drawn. Arriving at zero was the defect.
+  await expect(page.getByTestId('earth-placed')).toHaveAttribute('data-count', '1', { timeout: 20_000 });
+  await expect(page.getByTestId('earth-projection')).toHaveAttribute('data-outcome', 'READY');
+
+  // The two heaviest sections start shut, and their counts survive the fold.
+  const layers = page.getByTestId('earth-layers');
+  const signals = page.getByTestId('earth-signals');
+  expect(await layers.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+  expect(await signals.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+  await expect(signals).toContainText('21 named, 0 integrated');
+
+  // And they still open.
+  await signals.locator('> summary').click();
+  expect(await signals.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(true);
 });

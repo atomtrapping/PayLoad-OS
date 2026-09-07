@@ -152,7 +152,7 @@ describe('EarthTwin', () => {
     const user = userEvent.setup();
     render(<EarthTwin release={release} source={source} records={records} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
-    expect(screen.getByTestId('earth-link')).toHaveTextContent('#v=0.0000,0.0000,26000000,0.0,-90.0');
+    expect(screen.getByTestId('earth-link')).toHaveTextContent('#v=0.0000,0.0000,12000000,0.0,-90.0');
     act(() => { for (const listener of listeners) listener(); });
     expect(window.location.hash).toBe('#v=-97.4028,30.3668,1200000,11.5,-45.8');
     expect(screen.getByTestId('earth-camera')).toHaveTextContent('30.3668°, -97.4028° · 1,200 km');
@@ -551,5 +551,66 @@ describe('EarthTwin', () => {
     const refused = screen.getByTestId('link-selection-refused');
     expect(refused).toHaveAttribute('data-named', 'REC-NOT-HERE');
     expect(refused.textContent).toMatch(/a default would look like success/);
+  });
+});
+
+describe('what the twin opens on', () => {
+  /**
+   * The twin's whole question is where a record's subject was. Opening on one
+   * the release cannot place showed an empty globe under a red refusal — true
+   * about that record, and a poor first question to have asked for the reader.
+   */
+  it('opens on a record whose subject the release positions, not merely the first', () => {
+    const mixed: EarthRecord[] = [
+      { recordId: 'REC-NOPOS', title: 'Moisture', subjectId: 'SAMPLE-1', predicate: 'condition.moisture', validFrom: '2026-08-01T00:00:00Z', positionDeclared: false },
+      { recordId: 'REC-POS', title: 'Gross quantity', subjectId: 'LOT-1', predicate: 'quantity.gross', validFrom: '2026-08-03T10:00:00Z', positionDeclared: true },
+    ];
+    render(<EarthTwin release={release} source={source} records={mixed} assetsReady loadEngine={loadEngine} />);
+    expect(screen.getByLabelText('Record')).toHaveValue('REC-POS');
+  });
+
+  /** When the release positions nothing, the refusal is the honest landing state. */
+  it('falls back to the first record when no subject is positioned', () => {
+    const none: EarthRecord[] = [
+      { recordId: 'REC-A', title: 'Moisture', subjectId: 'SAMPLE-1', predicate: 'condition.moisture', validFrom: '2026-08-01T00:00:00Z', positionDeclared: false },
+      { recordId: 'REC-B', title: 'Other', subjectId: 'SAMPLE-2', predicate: 'x', validFrom: '2026-08-02T00:00:00Z', positionDeclared: false },
+    ];
+    render(<EarthTwin release={release} source={source} records={none} assetsReady loadEngine={loadEngine} />);
+    expect(screen.getByLabelText('Record')).toHaveValue('REC-A');
+  });
+
+  it('still honours a link that names a record, positioned or not', () => {
+    // A link is a view and, optionally, a record; a bare `r=` is not a link at all.
+    window.location.hash = '#v=0.0000,0.0000,12000000,0.0,-90.0&r=REC-NOPOS';
+    const mixed: EarthRecord[] = [
+      { recordId: 'REC-NOPOS', title: 'Moisture', subjectId: 'SAMPLE-1', predicate: 'condition.moisture', validFrom: '2026-08-01T00:00:00Z', positionDeclared: false },
+      { recordId: 'REC-POS', title: 'Gross quantity', subjectId: 'LOT-1', predicate: 'quantity.gross', validFrom: '2026-08-03T10:00:00Z', positionDeclared: true },
+    ];
+    render(<EarthTwin release={release} source={source} records={mixed} assetsReady loadEngine={loadEngine} />);
+    expect(screen.getByLabelText('Record')).toHaveValue('REC-NOPOS');
+    window.location.hash = '';
+  });
+});
+
+describe('the inspector folds what a reader arrives past', () => {
+  /**
+   * The layer list and the twenty-one-source registry were most of the column's
+   * height. Folded, the counts stay in the summaries, so shutting them hides
+   * the lists and not the facts.
+   */
+  it('starts with the layers and the signal registry closed, and keeps their counts visible', () => {
+    render(<EarthTwin release={release} source={source} records={records} assetsReady loadEngine={loadEngine} />);
+    const layers = screen.getByTestId('earth-layers');
+    const signals = screen.getByTestId('earth-signals');
+    expect(layers.tagName).toBe('DETAILS');
+    expect(signals.tagName).toBe('DETAILS');
+    expect((layers as HTMLDetailsElement).open).toBe(false);
+    expect((signals as HTMLDetailsElement).open).toBe(false);
+    expect(signals).toHaveTextContent('21 named, 0 integrated');
+  });
+
+  it('leaves the corpus panel open, because it is what the page is for', () => {
+    render(<EarthTwin release={release} source={source} records={records} assetsReady loadEngine={loadEngine} />);
+    expect(screen.getByTestId('earth-projection')).toBeVisible();
   });
 });

@@ -152,7 +152,16 @@ export const CLOCK_MEANING = {
 /* ═══ A view is a link ═══ */
 
 export interface TwinView { longitude: number; latitude: number; height: number; heading: number; pitch: number }
-export const GLOBAL_VIEW: TwinView = { longitude: 0, latitude: 0, height: 26_000_000, heading: 0, pitch: -90 };
+/*
+ * The whole Earth, framed to fill the stage rather than sit in it.
+ *
+ * At 26,000 km the globe subtended about 11° of a 60° field and occupied
+ * roughly a third of the frame, most of the instrument being black. At
+ * 12,000 km it subtends about 20°, so the disc spans two thirds — still the
+ * whole planet, with margin for the terminator and for a placement flying in
+ * from an edge.
+ */
+export const GLOBAL_VIEW: TwinView = { longitude: 0, latitude: 0, height: 12_000_000, heading: 0, pitch: -90 };
 export const VIEW_BOUNDS = { height: { min: 1_000, max: 100_000_000 }, pitch: { min: -90, max: 0 } } as const;
 
 const finite = (value: number, min: number, max: number) => Number.isFinite(value) && value >= min && value <= max;

@@ -50,8 +50,8 @@ describe('the Earth Twin as data', () => {
     expect(hash).toBe('v=-97.7431,30.2672,1200000,12.5,-45.0');
     expect(parseView(`#${hash}`)).toEqual(view);
     expect(parseView(formatView(GLOBAL_VIEW))).toEqual(GLOBAL_VIEW);
-    expect(formatView({ ...GLOBAL_VIEW, heading: 359.99 })).toBe('v=0.0000,0.0000,26000000,0.0,-90.0');
-    expect(formatView({ ...GLOBAL_VIEW, heading: -0.01 })).toBe('v=0.0000,0.0000,26000000,0.0,-90.0');
+    expect(formatView({ ...GLOBAL_VIEW, heading: 359.99 })).toBe('v=0.0000,0.0000,12000000,0.0,-90.0');
+    expect(formatView({ ...GLOBAL_VIEW, heading: -0.01 })).toBe('v=0.0000,0.0000,12000000,0.0,-90.0');
     expect(parseView(formatView({ ...GLOBAL_VIEW, heading: 359.99 }))).not.toBeNull();
     for (const bad of ['', '#', 'v=', 'v=1,2,3', 'v=181,0,1000000,0,-90', 'v=0,91,1000000,0,-90', 'v=0,0,999,0,-90', 'v=0,0,1000000,360,-90', 'v=0,0,1000000,0,1', 'v=0,0,1000000,0,-90,extra', 'v=NaN,0,1000000,0,-90', `v=0,0,1000000,0,-90${'0'.repeat(100)}`, 'v=0,0,1e6,0,-90']) expect(parseView(bad), bad).toBeNull();
   });

@@ -8,7 +8,15 @@ import { fmtUtc } from '@/lib/format';
 type CesiumModule = typeof import('cesium');
 type Viewer = import('cesium').Viewer;
 
-export interface EarthRecord { recordId: string; title: string; subjectId: string; predicate: string; validFrom: string; validTo?: string }
+export interface EarthRecord {
+  recordId: string; title: string; subjectId: string; predicate: string; validFrom: string; validTo?: string;
+  /**
+   * The release declares a position record for this record's subject. A hint
+   * for which record to open on, never a promise that the compiler will place
+   * it — the compiler decides, on the exact version and the asked-for clocks.
+   */
+  positionDeclared?: boolean;
+}
 export interface EarthTwinProps {
   release: { releaseId: string; corpusId: string; knownAt: string };
   source: ProjectionSpec['source'];
@@ -44,8 +52,26 @@ const faint = { color: 'var(--text-muted)' };
 
 const KEY_LABEL = { NONE: 'no key', FREE_KEY: 'free key', OPTIONAL_KEY: 'optional key', METERED_KEY: 'metered key' } as const;
 
-function Part({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+/**
+ * One inspector section.
+ *
+ * `folded` makes it a disclosure that starts closed. Two sections earn it —
+ * the layer list and the twenty-one-source registry — because between them
+ * they were most of the column's height, and a reader arriving to look at a
+ * globe had to scroll past both to reach what is on it. Folding them loses
+ * nothing: the summary carries the count, so the registry still says
+ * twenty-one named and none integrated with the section shut.
+ */
+function Part({ title, children, testId, folded }: { title: string; children: ReactNode; testId?: string; folded?: boolean }) {
   const id = `earth-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  if (folded) {
+    return (
+      <details className="inspector-section inspector-fold" data-testid={testId}>
+        <summary><h3 id={id}>{title}</h3></summary>
+        <div className="inspector-fold-body">{children}</div>
+      </details>
+    );
+  }
   return <section className="inspector-section" aria-labelledby={id} data-testid={testId}><h3 id={id}>{title}</h3>{children}</section>;
 }
 
@@ -162,7 +188,17 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
     typeof window === 'undefined' ? null : parseLink(window.location.hash),
     records.map((record) => record.recordId),
   ), [records]);
-  const [recordId, setRecordId] = useState(linked.recordId ?? records[0]?.recordId ?? '');
+  /*
+   * With no link naming one, open on a record whose subject the release
+   * positions. The twin's whole question is where a record's subject was, and
+   * landing on one the release cannot place showed an empty globe under a red
+   * refusal — a true statement about that record, and a poor first question to
+   * have asked on the reader's behalf. `positionDeclared` only says a position
+   * record exists for the subject; the compiler still decides, so when nothing
+   * is positioned this falls back to the first record and the refusal stands.
+   */
+  const opensOn = records.find((entry) => entry.positionDeclared)?.recordId ?? records[0]?.recordId ?? '';
+  const [recordId, setRecordId] = useState(linked.recordId ?? opensOn);
   const [answer, setAnswer] = useState<{ key: string; outcome: ProjectionOutcome } | null>(null);
   const [sunResult, setSunResult] = useState<{ instance: symbol; validAt: string; point: SunPoint | null } | null>(null);
   const [copied, setCopied] = useState('');
@@ -414,7 +450,7 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
             <ul className="m-0 p-0 list-none flex flex-col gap-0.5 text-[11.5px]" style={faint} aria-label="What the twin does not claim" data-testid="earth-nonclaims">{TWIN_NONCLAIMS.map((n) => <li key={n}><span aria-hidden="true">✕</span> {n}</li>)}</ul>
           </Part>
 
-          <Part title="Layers" testId="earth-layers">
+          <Part title="Layers" testId="earth-layers" folded>
             <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
               {TWIN_LAYERS.map((layer) => (
                 <li key={layer.id} className="surface-inset p-2 text-[12px] flex flex-col gap-0.5" data-layer={layer.id} data-state={layer.state}>
@@ -508,7 +544,7 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
             )}
           </Part>
 
-          <Part title={`World signals · ${GEV_SIGNAL_SOURCES.length} named, 0 integrated`} testId="earth-signals">
+          <Part title={`World signals · ${GEV_SIGNAL_SOURCES.length} named, 0 integrated`} testId="earth-signals" folded>
             <p className="m-0 text-[12px]" style={muted}>The public signals {EARTH_TWIN_ORIGIN.name} reads, with their terms as its source list records them. Each would enter Payload OS through the acquisition rail under a registration and a rights decision. None has.</p>
             <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Signal sources">
               {GEV_SIGNAL_SOURCES.map((s) => (

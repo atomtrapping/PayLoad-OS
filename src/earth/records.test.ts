@@ -156,9 +156,13 @@ describe('Earth record choices before client serialization', () => {
     freeze(corpus);
     const choices = earthRecordChoices(corpus, release);
     for (const choice of choices) {
+      // The exact serialized surface. `positionDeclared` joins it as a hint for
+      // which record the twin opens on — it says the release positions the
+      // subject, never that the compiler will place this record.
       expect(Object.keys(choice).sort()).toEqual(
-        ['recordId', 'title', 'subjectId', 'predicate', 'validFrom', ...(choice.validTo === undefined ? [] : ['validTo'])].sort(),
+        ['positionDeclared', 'recordId', 'title', 'subjectId', 'predicate', 'validFrom', ...(choice.validTo === undefined ? [] : ['validTo'])].sort(),
       );
+      expect(typeof choice.positionDeclared).toBe('boolean');
     }
     const choice = choices.find((entry) => entry.recordId === record.recordId)!;
     expect(choice.validTo).toBe(record.validTo);

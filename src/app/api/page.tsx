@@ -5,6 +5,8 @@ import { asOfPayload, recordsPayload, releaseManifestPayload, releasesPayload, r
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { Section } from '@/components/primitives/Section';
 import { MCP_TOOLS } from '@/mcp/tools';
+import { CALLER_IS_A_SOURCE, INTENT_IS_THE_UPGRADE, PURPOSE_SHAPING, TRANSPORT_AXES, TWO_PART_RULE, servingStanding } from '@/domain/servingBoundary';
+import { REASONER_MAY, REASONER_MAY_NOT, REASONING_RULES, WITNESS_NOT_AUTHORITY } from '@/domain/reasoningWitness';
 import { CopyButton } from '@/components/primitives/CopyButton';
 
 export const metadata: Metadata = { title: 'API' };
@@ -121,6 +123,57 @@ export default async function ApiPage() {
               ))}
             </tbody>
           </table>
+          </div>
+        </Section>
+
+        <Section title="What a transport can enforce, and what it cannot" id="api-boundary">
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="serving-standing">{servingStanding().statement}</p>
+          <div className="surface overflow-x-auto" tabIndex={0}>
+            <table className="ledger-table text-[12px]" aria-label="An open surface against a tool surface">
+              <thead><tr><th scope="col">Question</th><th scope="col">Open surface</th><th scope="col">Tool surface</th><th scope="col">Stronger</th></tr></thead>
+              <tbody>
+                {TRANSPORT_AXES.map((a) => (
+                  <tr key={a.axis} data-transport-axis={a.axis} data-stronger={a.stronger}>
+                    <td style={{ color: 'var(--text-heading)' }}>{a.question}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{a.openSurface}</td>
+                    <td>{a.toolSurface}</td>
+                    <td style={{ color: a.stronger === 'NEITHER' ? 'var(--status-conditional)' : 'var(--check-passed)' }}>{a.stronger === 'NEITHER' ? 'Neither' : a.stronger === 'TOOL_SURFACE' ? 'Tool surface' : 'Open surface'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="intent-upgrade">{INTENT_IS_THE_UPGRADE.claim} {INTENT_IS_THE_UPGRADE.because} {INTENT_IS_THE_UPGRADE.notASubstitute}</p>
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-heading)' }} data-testid="two-part-rule">Serve the corpus under a purpose. Serve the estates never.</p>
+          <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="What never leaves the wall">
+            {TWO_PART_RULE.estates.map((e) => <li key={e}>{e}</li>)}
+          </ul>
+          <ul className="m-0 p-0 list-none grid gap-1 sm:grid-cols-3" aria-label="How a purpose shapes an answer">
+            {PURPOSE_SHAPING.map((p) => (
+              <li key={p.purpose} className="surface-inset p-2 text-[12px]" data-purpose={p.purpose}>
+                <span style={{ color: 'var(--text-heading)' }}>{p.purpose}</span>
+                <div style={{ color: 'var(--text-secondary)' }}>{p.shape}</div>
+                <div style={{ color: 'var(--text-muted)' }}>{p.reason}</div>
+              </li>
+            ))}
+          </ul>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{CALLER_IS_A_SOURCE.claim} {CALLER_IS_A_SOURCE.soThen} {CALLER_IS_A_SOURCE.sharedWithBilling}</p>
+        </Section>
+
+        <Section title="A reasoner over this surface" id="api-reasoner">
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="witness-not-authority">{WITNESS_NOT_AUTHORITY.statement} {WITNESS_NOT_AUTHORITY.because} {WITNESS_NOT_AUTHORITY.sameWall}</p>
+          <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="The three rules a reasoner is held to">
+            {REASONING_RULES.map((r) => (
+              <li key={r.id} className="surface-inset p-2 text-[12px]" data-reasoning-rule={r.id} data-rule-enforced={String(r.enforced)}>
+                <span style={{ color: 'var(--text-heading)' }}>{r.rule}</span>
+                <div style={{ color: 'var(--text-secondary)' }}>{r.prevents}</div>
+                <div style={{ color: r.enforced ? 'var(--check-passed)' : 'var(--status-refused)' }}>{r.enforced ? 'Enforced: ' : 'Not enforced. Would be: '}{r.enforcement}</div>
+              </li>
+            ))}
+          </ul>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><span className="label-sm">May</span><ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }}>{REASONER_MAY.map((m) => <li key={m}>{m}</li>)}</ul></div>
+            <div><span className="label-sm">May not</span><ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--status-refused)' }}>{REASONER_MAY_NOT.map((m) => <li key={m}>{m}</li>)}</ul></div>
           </div>
         </Section>
 

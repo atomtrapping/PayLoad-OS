@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MEMBERSHIP_CLASSES, MEMBERSHIP_MEANING, PORT_SET_LOSS, PORT_SET_METHOD, occupancySeries, portSetAt, type MembershipRuling } from './portSet';
+import { MEMBERSHIP_CLASSES, MEMBERSHIP_MEANING, PORT_SET_LOSS, PORT_SET_METHOD, occupancySeries, portSetAt, type MembershipRuling,
+  COMPOSITIONAL_HIERARCHY, PORT_SET_SEQUENCE, SET_JOINS, SET_OBJECTS, SET_PRODUCTS, portSetStanding,
+} from './portSet';
 
 function ruling(over: Partial<MembershipRuling> & Pick<MembershipRuling, 'rulingId' | 'vesselId'>): MembershipRuling {
   return {
@@ -117,5 +119,40 @@ describe('a port is a time-indexed set whose membership is ruled', () => {
     expect(bad.because).toMatch(/no set is resolved and none is reported as empty/);
     expect(PORT_SET_LOSS.join(' ')).toMatch(/Membership is a ruling, not a test/);
     expect(PORT_SET_LOSS.join(' ')).toMatch(/Nothing here observes a vessel/);
+  });
+});
+
+describe('what the set is worth, and the grammar before the feeds', () => {
+  it('gives each set object what it prices and how an estimator reads it', () => {
+    expect(SET_OBJECTS).toHaveLength(6);
+    for (const o of SET_OBJECTS) {
+      expect(o.prices.trim().length).toBeGreaterThan(40);
+      expect(o.asAState.trim().length).toBeGreaterThan(40);
+    }
+    expect(SET_OBJECTS.find((o) => o.id === 'BERTH_OCCUPANCY')!.prices).toMatch(/rather than nameplate/);
+    expect(SET_OBJECTS.find((o) => o.id === 'FLOW_BALANCE')!.asAState).toMatch(/stiff-soft/);
+  });
+
+  it('renders a coverage gap as coverage and refuses coincidence as attribution', () => {
+    expect(SET_JOINS).toHaveLength(5);
+    expect(SET_JOINS.find((j) => j.id === 'IMAGERY')!.hazard).toMatch(/render void as void/);
+    expect(SET_JOINS.find((j) => j.id === 'DOCUMENTS')!.hazard).toMatch(/manufactures causes/);
+    expect(SET_JOINS.find((j) => j.id === 'PORT_PAIR')!.hazard).toMatch(/resolution again/);
+  });
+
+  it('lifts to four scales under one grammar, and locates the asset in time', () => {
+    expect(COMPOSITIONAL_HIERARCHY.levels.map((l) => l.level)).toEqual(['Port', 'Corridor', 'Lane', 'Network']);
+    expect(COMPOSITIONAL_HIERARCHY.why).toMatch(/rather than a bespoke model per scale/);
+    expect(SET_PRODUCTS.differentiator).toMatch(/inputs are commodities/);
+    expect(SET_PRODUCTS.archiveGated).toMatch(/only time can buy/);
+    expect(PORT_SET_SEQUENCE[PORT_SET_SEQUENCE.length - 1]).toMatch(/rather than as a dot/);
+  });
+
+  it('holds no port and no ruling, over a population that is not zero', () => {
+    const standing = portSetStanding(2);
+    expect(standing.ports).toBe(0);
+    expect(standing.membershipRulings).toBe(0);
+    expect(standing.statement).toMatch(/no ruling exists/);
+    expect(standing.statement).toMatch(/not yet a set/);
   });
 });

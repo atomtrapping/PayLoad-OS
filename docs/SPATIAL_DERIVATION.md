@@ -143,3 +143,81 @@ then.
 | The derivation beneath the globe | `src/components/earth/SpatialKeys.tsx`, at `/earth` |
 | The programme | `/model`, section "Space: the display was the easy half" |
 | The join key it supplies | `SPATIAL_CELL` in `src/domain/identity.ts` |
+
+## Three sensor families, two convergences
+
+The families that would fill the derivations above are satellite, LiDAR and
+meteorology, and only one of the two convergences between them is work.
+
+**The sensor convergence is already free.** Satellite and LiDAR are two
+observation models over one state: imagery constrains plan position and extent,
+LiDAR constrains elevation and structure. Complementary observability is what a
+filter is for, and the estimator grammar fuses them without modification. What
+blocks it is not the fusion — it is that no estimator runs over corpus records.
+
+**The semantic convergence is the actual gap.** Imagery segmentation emits
+spectral classes and detector labels; point-cloud classification emits ground,
+building, vegetation, wire; and neither emits the corpus's own concepts. Fusing
+at the pixel and the point yields "there is a thing here", not "this unit grew".
+The missing piece is a shared feature-to-concept mapping, in four stages that are
+each an instance of a discipline this repository already has:
+
+1. **Feature** — detector outputs per source and per model version, as candidate
+   observations with noise models. A vision model is an extraction adapter.
+2. **Concept mapping** — source vocabularies onto corpus concepts, as versioned
+   mappings with receipts. This is where the judgment, and therefore the estate,
+   lives.
+3. **Reconciliation** — where two families disagree, the disagreement is encoded,
+   not averaged. Cross-family disagreement is unusually informative because the
+   error physics are genuinely independent.
+4. **Admission** — fused, concept-typed, uncertainty-carrying candidates cross the
+   boundary, or they do not become facts.
+
+Two families with independent error physics agreeing is worth more than five
+syndicated sources agreeing — which is the independence weighting the invariant
+scoring already requires, over the one population where independence is physical
+rather than contractual.
+
+### Meteorology is not a third sensor
+
+Satellite and LiDAR constrain the state; **meteorology drives it and gates the
+observations**. Structure, motion, and cause.
+
+| Quantity | Acts on | Slot in the machinery |
+|---|---|---|
+| Precipitation, snowpack | Stockpiles, river stages, flood exposure, access | Process-model input, and a constraint family |
+| Wind | Vessel speed, crane operations, flyability, generation | State-space coupling, and a term in a position's noise model |
+| Cloud, fog | Whether an optical sensor can observe at all | **Observation-model gating**: the optical rows of `H` switch off |
+| Temperature extremes | Pours, speed restrictions, grid load, expansion | Validity bounds on operational facts |
+| Storm tracks | Berth occupancy, closure, event onset | The event clock a parametric trigger needs |
+
+The row people skip is the third. **Weather gates the sensors, not only the
+world**, which changes what an absence means: a gap in optical coverage is not
+silence, it is explained missing data, and an as-of answer over it should return
+"optical unavailable, cloud fraction 0.9" rather than an empty result that reads
+as nothing happening. Provenance applied to void.
+
+And the reanalysis is a witness, not the weather. A gridded value at a facility's
+coordinates is a model output interpolated to a point, with its own observation
+model and its own uncertainty — ingested as an observation with a noise model and
+a lineage, never as ground truth. Reanalyses revise, so valid time is the
+weather's and knowledge time is the product release's, which is the two-clock
+discipline verbatim. Treating a grid cell as a measurement is how the frame
+problem arrives through the weather door.
+
+### The vertical datum, before the first elevation
+
+Two families referencing different vertical data — ellipsoidal height against an
+orthometric height above a geoid — are each internally consistent and wrong
+against each other by tens of metres. A vertical datum is therefore a required
+field wherever an elevation appears, and a transform between two of them is a
+declared object with evidence, not an offset applied in a script.
+
+The record contract carries a horizontal datum and no elevation at all, so the
+trap is not yet reachable. It becomes reachable the day the first elevation is
+recorded, which is exactly why the field belongs in the contract before that day.
+The contract is days of work now and a migration later; the ingestion, the fusion
+and the storm-event ledger all queue behind corpus volume and behind acquisition
+decisions that are the operator's, not this repository's.
+
+`src/domain/sensorFamilies.ts` carries all of it as data.

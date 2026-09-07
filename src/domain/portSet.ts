@@ -190,3 +190,86 @@ export const PORT_SET_LOSS = [
   'Derived series are projections of the ruling ledger. Occupancy, queue depth and turnaround are rebuildable from the rulings and are never themselves the record.',
   'Nothing here observes a vessel. A ruling is only as good as the channels that adjudicated it, and this module neither acquires nor verifies them.',
 ] as const;
+
+/* ── What the set is worth, and why the grammar comes before the feeds ── */
+
+/**
+ * The mechanism above computes a set. These are the objects a set makes
+ * sellable, the joins that make it joinable, and the reason the whole thing is
+ * worth declaring before any feed exists. None of it is computed here: the
+ * series are projections of the ruling ledger, and there are no rulings.
+ */
+export interface SetObject {
+  id: 'BERTH_OCCUPANCY' | 'QUEUE_DEPTH' | 'TURNAROUND' | 'COMPOSITION' | 'DRAFT_TRANSITIONS' | 'FLOW_BALANCE';
+  title: string;
+  what: string;
+  /** What it prices, said as the thing a customer would pay for. */
+  prices: string;
+  /** How the estimator reads it, since every one of these is a series. */
+  asAState: string;
+}
+
+export const SET_OBJECTS: readonly SetObject[] = [
+  { id: 'BERTH_OCCUPANCY', title: 'Berth occupancy sequence', what: 'Per-berth membership over time, which occupancySeries already computes from rulings.', prices: 'The port’s real capacity: observed utilization rather than nameplate or declared capacity.', asAState: 'A state with dynamics, bounded above by the berth count, and a constraint family of its own.' },
+  { id: 'QUEUE_DEPTH', title: 'Queue depth series', what: 'The size of the queue and anchorage classes over time.', prices: 'Congestion before it shows in waiting times, which is the leading indicator rather than the lagging one.', asAState: 'A driven process: weather, demand and labour are its forcing, and its innovation spectrum separates scheduled congestion from capacity erosion from an event.' },
+  { id: 'TURNAROUND', title: 'Turnaround distribution', what: 'Arrival-to-departure intervals per class of call.', prices: 'The port’s operational state, where slow degradation is the early sign of a labour action, a weather regime or a demand shift.', asAState: 'A distribution with a regime, so the object of interest is the regime change rather than the mean.' },
+  { id: 'COMPOSITION', title: 'Composition by identity', what: 'Which operators and carriers hold the set.', prices: 'Share shifts: reallocation visible before it is announced.', asAState: 'A categorical series whose changes are only as trustworthy as the identity resolution beneath them, which is absent.' },
+  { id: 'DRAFT_TRANSITIONS', title: 'Draft-transition ledger', what: 'Loading and discharge inferred from draft change while in the set.', prices: 'Throughput without a customs document, which is the statistic nobody publishes.', asAState: 'An event series over a state component the corpus cannot yet carry, so it is the highest-value component to add.' },
+  { id: 'FLOW_BALANCE', title: 'Arrivals against departures', what: 'The balance of entries and exits over the set.', prices: 'Consistency of the whole picture, and the residual when it fails to close.', asAState: 'Flow conservation on the set — the constraint stack’s first live application, stiff-soft because vessels leave observation as well as leaving port.' },
+];
+
+export interface SetJoin {
+  id: 'WEATHER' | 'IMAGERY' | 'DISPATCH' | 'DOCUMENTS' | 'PORT_PAIR';
+  with: string;
+  yields: string;
+  hazard: string;
+}
+
+export const SET_JOINS: readonly SetJoin[] = [
+  { id: 'WEATHER', with: 'The forcing field at the same instants', yields: 'Downtime separated into attributed and unexplained: occupancy under storm conditions, wind-day closures, and the gating that makes an absence explained rather than missing.', hazard: 'Attributed downtime is an insurance and a claim question, so the attribution must be evidence-bearing rather than a plausible pairing of two series.' },
+  { id: 'IMAGERY', with: 'Each scene’s detections at the scene’s own instant', yields: 'Two residuals: hulls present in imagery and absent from the set, which is the off-transponder economy; and set members not imaged, which is coverage accounting.', hazard: 'The second residual is the one that must render void as void. A member not imaged is not an absence of the vessel, and a coverage gap reported as a finding is the fabrication this system exists to refuse.' },
+  { id: 'DISPATCH', with: 'The declared-intent set at the same instants', yields: 'Declared arrival against ruled arrival, at fleet scale: a reliability metric for a carrier or a shipper rather than for one voyage.', hazard: 'It is a belief against a belief. Scoring a carrier on divergence assumes the ruling is right, and the ruling has its own confidence.' },
+  { id: 'DOCUMENTS', with: 'Filings, permits and labour events over the same period', yields: 'Disruption attribution: a stand-down or an action set against the set’s own dynamics. This is the cross-line join in one operation, because it needs a document corpus and a physical set held as governed series on both sides.', hazard: 'Coincidence in time is not attribution. Two series moving together need a stated mechanism, or the join manufactures causes at the rate the calendar allows.' },
+  { id: 'PORT_PAIR', with: 'Another port’s set', yields: 'The corridor: transshipment pairs, feeder flows, and the network’s own membership.', hazard: 'A pairing inferred from timing alone is a correlation. A corridor edge needs a vessel identity carried across both sets, which is resolution again.' },
+];
+
+export const COMPOSITIONAL_HIERARCHY = {
+  rule: 'The same object at every scale: a set, changing in time, whose membership is adjudicated and joinable.',
+  levels: [
+    { level: 'Port', members: 'Vessels, by membership class.' },
+    { level: 'Corridor', members: 'Transits between two ports.' },
+    { level: 'Lane', members: 'Corridors that serve one trade.' },
+    { level: 'Network', members: 'Lanes, and the ports that anchor them.' },
+  ],
+  why: 'One grammar and one correction path for all four, rather than a bespoke model per scale. The port is the base case and the rest are the same construction applied to its own outputs.',
+} as const;
+
+export const SET_PRODUCTS = {
+  differentiator: 'The inputs are commodities — position feeds, public imagery, filings. The adjudicated operational state is not, because it is the governance layer that makes utilization, turnaround, arrival dispersion and residuals defensible rather than plausible.',
+  notThis: 'Cargo and flow estimates, which the established vendors already sell and sell well. This is operational state with provenance, which they do not.',
+  archiveGated: 'A set history cannot be reconstructed later. Occupancy, queue and turnaround series for a period nobody recorded are unrecoverable at any budget, which is the one asset in this system that only time can buy — and the reason the grammar is worth declaring before the first feed rather than after.',
+} as const;
+
+export const PORT_SET_SEQUENCE: readonly string[] = [
+  'The membership ruling and the set resolution first, which exist: a ruling with both clocks, a supersession path, and a set that reports unknown rather than zero.',
+  'The derived series next as projections of the ledger, so that a superseded ruling moves every aggregate that depended on it.',
+  'The joins as named set intersections after that, each with its own hazard, so a coincidence in time is never reported as an attribution.',
+  'Ingestion last. Every position that ever arrives then lands as membership evidence with two clocks rather than as a dot, which is the whole difference between starting the archive now and starting it later.',
+];
+
+export interface PortSetStanding {
+  ports: number;
+  membershipRulings: number;
+  setSeries: number;
+  statement: string;
+}
+
+/** Pure: nothing is held. The population is stated so the zero is legible. */
+export function portSetStanding(positionsInCorpus: number): PortSetStanding {
+  return {
+    ports: 0,
+    membershipRulings: 0,
+    setSeries: 0,
+    statement: `The mechanism resolves a set from rulings and no ruling exists. ${positionsInCorpus} record${positionsInCorpus === 1 ? '' : 's'} in the demonstration corpus carry a position, and one of them names a loading terminal — which is a place a set would be defined over, and not yet a set.`,
+  };
+}

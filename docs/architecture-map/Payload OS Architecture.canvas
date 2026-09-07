@@ -688,6 +688,42 @@
    "y": 3150,
    "width": 340,
    "height": 230
+  },
+  {
+   "id": "c8ca708cda1c13f1",
+   "type": "text",
+   "text": "## Estimation, constraints and invariant scoring\n`SPECIFIED · NOTHING SOLVED · NOTHING SCORED`\n\nA hard constraint is a measurement with R = 0, so constraints are beliefs with provenance. Certainty is harvested in proportion to declared confidence, a violated constraint is evidence about the constraint, and a solver never decides an identity.\n\n[[Estimation, constraints and invariant scoring]]",
+   "x": 1168,
+   "y": 2478,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "93c0e38808bad8d3",
+   "type": "text",
+   "text": "## Sensor families and the concept mapping\n`CONTRACT ONLY · NOTHING REGISTERED · NOTHING FUSED`\n\nThe sensor convergence is free; the semantic one is the work. Satellite and LiDAR observe structure, meteorology forces the state and gates the sensors, and the concept mapping is where the estate would live.\n\n[[Sensor families and the concept mapping]]",
+   "x": 40,
+   "y": 994,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "1e5337a7b82b9a09",
+   "type": "text",
+   "text": "## Vessel state and the port set\n`TYPED · NOTHING ACQUIRED · NOTHING ADJUDICATED`\n\nThe vessel is the state the other four families were defined around, and a port is a time-indexed set whose membership is adjudicated. Dispatch is a prior, not an observation.\n\n[[Vessel state and the port set]]",
+   "x": 416,
+   "y": 1666,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "c2bd7f04993e3633",
+   "type": "text",
+   "text": "## The computation carrier and congruence\n`DOCTRINE · TWO OF FOUR · NOTHING EXPORTED`\n\nThe punch card, not the proof: credibility lives in the estate and the rulings, and the carrier only carries it. A manifest mirrors the model, which means it mirrors the model's errors.\n\n[[The computation carrier and congruence]]",
+   "x": 2124,
+   "y": 994,
+   "width": 340,
+   "height": 230
   }
  ],
  "edges": [
@@ -1278,6 +1314,87 @@
    "toSide": "right",
    "toEnd": "arrow",
    "label": "the cells the complex nests"
+  },
+  {
+   "id": "a9b5f07d2b76a633",
+   "fromNode": "aea369fb89a8cb9c",
+   "fromSide": "bottom",
+   "toNode": "c8ca708cda1c13f1",
+   "toSide": "top",
+   "toEnd": "arrow",
+   "label": "bounds become priors"
+  },
+  {
+   "id": "d7de4d9fbab5f2e4",
+   "fromNode": "c8ca708cda1c13f1",
+   "fromSide": "top",
+   "toNode": "05e0ead83a506ff1",
+   "toSide": "bottom",
+   "toEnd": "arrow",
+   "label": "informs, never decides"
+  },
+  {
+   "id": "f3d79f0a0ae2aace",
+   "fromNode": "c8ca708cda1c13f1",
+   "fromSide": "right",
+   "toNode": "cb9fd696c3751941",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "V3 is the reference channel"
+  },
+  {
+   "id": "9438689cbc1d5e2f",
+   "fromNode": "93c0e38808bad8d3",
+   "fromSide": "top",
+   "toNode": "a033456ef5f309ba",
+   "toSide": "bottom",
+   "toEnd": "arrow",
+   "label": "imagery terms are the strictest"
+  },
+  {
+   "id": "d7228ee185d218d7",
+   "fromNode": "93c0e38808bad8d3",
+   "fromSide": "bottom",
+   "toNode": "8d048f25b1d57354",
+   "toSide": "top",
+   "toEnd": "arrow",
+   "label": "the same discipline, spatial family"
+  },
+  {
+   "id": "e79a86754a0794f6",
+   "fromNode": "330dddd03d6a63d6",
+   "fromSide": "left",
+   "toNode": "93c0e38808bad8d3",
+   "toSide": "right",
+   "toEnd": "arrow",
+   "label": "the contract change detection needs"
+  },
+  {
+   "id": "f546d44883f60375",
+   "fromNode": "93c0e38808bad8d3",
+   "fromSide": "right",
+   "toNode": "1e5337a7b82b9a09",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "the families that observe it"
+  },
+  {
+   "id": "fe75560f8293d7b7",
+   "fromNode": "1e5337a7b82b9a09",
+   "fromSide": "right",
+   "toNode": "05e0ead83a506ff1",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "every set operation needs resolution"
+  },
+  {
+   "id": "ff8c03eb011bec62",
+   "fromNode": "c2bd7f04993e3633",
+   "fromSide": "bottom",
+   "toNode": "00265400c4b95979",
+   "toSide": "top",
+   "toEnd": "arrow",
+   "label": "promotes the role, not the authority"
   }
  ]
 }

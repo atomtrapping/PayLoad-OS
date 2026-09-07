@@ -102,6 +102,41 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.getByTestId('manifold-tier')).toContainText('corpus → learned manifold → render');
   await expect(page.locator('[data-complex]')).toHaveCount(4);
   await expect(page.locator('[data-manifold-trap="CONTINUOUS_FABRICATION"]')).toContainText('Void renders void');
+  // Estimation: a constraint is a measurement, clipping is malpractice, and a solver never decides identity.
+  await expect(page.getByTestId('constraint-identity')).toContainText('H = C, R = 0 and z = c');
+  await expect(page.locator('[data-enforcement="CLIPPING"][data-verdict="FORBIDDEN"]')).toContainText('corrupts the posterior silently');
+  await expect(page.locator('[data-enforcement="PROJECTION"][data-verdict="RECOMMENDED"]')).toHaveCount(1);
+  await expect(page.getByTestId('harvest-rule')).toContainText('rank(C) for free');
+  await expect(page.locator('[data-factor]')).toHaveCount(5);
+  await expect(page.getByTestId('solver-boundary')).toContainText('never delegates authority to the solver');
+  // Scoring: four tiers, three frame risks, and a reference channel the filters cannot feed.
+  await expect(page.locator('[data-filter-tier]')).toHaveCount(4);
+  await expect(page.locator('[data-filter-tier="RELIABILITY"][data-filter-state="ABSENT"]')).toHaveCount(1);
+  await expect(page.locator('[data-frame-risk="CORRELATED_FAILURE"]')).toContainText('never by the count of agreeing sources');
+  await expect(page.getByTestId('reference-firewall')).toContainText('benchmark that trains the test');
+  // Three sensor families: two observe structure, one forces the state and gates the sensors.
+  await expect(page.locator('[data-sensor-family]')).toHaveCount(3);
+  await expect(page.locator('[data-sensor-family="METEOROLOGY"][data-sensor-role="FORCES_AND_GATES"]')).toHaveCount(1);
+  await expect(page.getByTestId('two-convergences')).toContainText('neither emits corpus concepts');
+  await expect(page.getByTestId('weather-role')).toContainText('gates the sensors');
+  await expect(page.getByTestId('vertical-datum')).toContainText('not yet reachable');
+  await expect(page.locator('[data-mapping-stage]')).toHaveCount(4);
+  // Caravan: five channels, and the one that is a prior rather than an observation.
+  await expect(page.locator('[data-vessel-channel]')).toHaveCount(5);
+  await expect(page.locator('[data-vessel-channel="DISPATCH"][data-channel-kind="PRIOR"]')).toContainText('most common error in this domain');
+  await expect(page.getByTestId('closure-measurement')).toContainText('aggregators already sell');
+  await expect(page.getByTestId('membership-ruling')).toContainText('An unknown set is not an empty set');
+  await expect(page.locator('[data-set-object]')).toHaveCount(6);
+  // The carrier: two of four card properties, general proving refused, the model mirrored and not the world.
+  await expect(page.getByTestId('not-credibility')).toContainText('estate');
+  await expect(page.locator('[data-card-property][data-card-present="false"]')).toHaveCount(2);
+  await expect(page.getByTestId('mirrors-the-model')).toContainText('Two congruences, two guardians');
+  await expect(page.getByTestId('authority-direction')).toContainText('Never a silent overwrite');
+  await expect(page.getByTestId('composition-adjudication')).toContainText('many claims, one addressable state');
+  await expect(page.locator('[data-vocabulary-pair="Adjudication policy"]')).toHaveCount(1);
+  // The actuarial mapping: three correspondences are the same object under two names.
+  await expect(page.locator('[data-correspondence="IDENTICAL"]')).toHaveCount(3);
+  await expect(page.getByTestId('mandate-inversion')).toContainText('inventing a professional duty');
   await expect(page.locator('[data-engine="records"][data-presence="FIXTURE"]')).toHaveCount(1);
   await expect(page.locator('[data-tier][data-reached="true"]')).toHaveCount(2);
   // Storage is declared as candidates with an honest present state: six classes, none held by a running service.
@@ -165,8 +200,15 @@ test('a release page states certification, the production record and the rights 
 test('stream: changing the knowledge time changes the answer, in the page and in the feed link', async ({ page }) => {
   await page.goto('/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z');
   await expect(page.getByRole('article', { name: 'Record REC-0203' })).toBeVisible();
-  await page.getByLabel('Known by').fill('2026-09-01T12:00');
-  await expect(page.getByRole('article', { name: 'Record REC-0204' })).toBeVisible();
+  // The control is a client component, and a fill that lands before React has
+  // attached its handler changes the DOM value without changing the state. This
+  // failed once in four full-suite runs and never in 25 isolated or parallel
+  // repeats, so the interaction is retried rather than the assertion weakened:
+  // the answer must still change to REC-0204, or this fails.
+  await expect(async () => {
+    await page.getByLabel('Known by').fill('2026-09-01T12:00');
+    await expect(page.getByRole('article', { name: 'Record REC-0204' })).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
   await expect(page.getByTestId('asof-url')).toContainText('knownAt=2026-09-01T12%3A00%3A00Z');
 });
 

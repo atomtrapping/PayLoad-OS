@@ -252,6 +252,20 @@ test('a retraction names what it reaches and what it cannot reach, and the recal
   await expect(page.getByTestId('recall-machinery')).toContainText('not a convenience of the schema');
 });
 
+test('the serving boundary states what a transport can enforce, and the reasoner is a witness with no authority', async ({ page }) => {
+  await page.goto('/api');
+  await expect(page.getByTestId('serving-standing')).toContainText('none of it is enforced yet');
+  await expect(page.locator('[data-transport-axis]')).toHaveCount(5);
+  // Four axes favour the tool surface; retention favours neither, and the page says so.
+  await expect(page.locator('[data-transport-axis="RETENTION"][data-stronger="NEITHER"]')).toHaveCount(1);
+  await expect(page.getByTestId('intent-upgrade')).toContainText('not proof of one');
+  await expect(page.getByTestId('two-part-rule')).toContainText('Serve the estates never');
+  await expect(page.locator('[data-purpose="Model training"]')).toContainText('Refused at the type level');
+  await expect(page.getByTestId('witness-not-authority')).toContainText('One wall, a third occupant');
+  await expect(page.locator('[data-reasoning-rule]')).toHaveCount(3);
+  await expect(page.locator('[data-reasoning-rule][data-rule-enforced="false"]')).toHaveCount(3);
+});
+
 test('the products page meters usage honestly: the content half is carried, the event half is not', async ({ page }) => {
   await page.goto('/products');
   // Four content fields are carried; five event fields are not, and the page says so.

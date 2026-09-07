@@ -140,3 +140,85 @@ inventing one.
 Nothing here has been used by anyone. The mapping has 8 correspondences; the
 corpus has no development history, has answered no valuation date, and has no
 engagement.
+
+## The serving boundary: what a transport can enforce
+
+`src/domain/servingBoundary.ts` compares an open surface with a tool surface on
+five axes, and refuses to claim the one it does not win.
+
+| Question | Stronger |
+|---|---|
+| What does systematic probing cost the caller? | Tool surface — probing at scale becomes paying at scale |
+| What does the caller learn about how the corpus is addressed? | Tool surface — intentions, not the addressing system |
+| Does provenance stay attached to the answer? | Tool surface — the receipt rides inside the frame |
+| Can the boundary know what the answer is for? | Tool surface — a call can declare a purpose |
+| What stops a caller keeping what it received? | **Neither**, and the conversational frame is worse |
+
+The upgrade is intent. A key says who is calling; a tool call can say who and
+what for — and this system's rights model has always decided against a purpose
+without ever having a transport that could ask. Declaring a purpose is not
+proving one; it moves the question from "can this be enforced at all" to "what
+happens when a declaration is false", which is a rights and evidence question.
+
+**Serve the corpus under a purpose. Serve the estates never.** Calibration
+internals, source-reliability models, the structure of the disagreement layer,
+and identity decision records do not leave the wall on any transport. The corpus
+is the inventory; the estates are the business.
+
+Every caller is a source in this system's own sense — identified, recorded,
+metered — and the three fields that would make that true (a recipient identity,
+a request identifier, a served instant) are the same three the metering receipt
+is missing. One set of fields, two purposes, neither present.
+
+### Attesting the policy, which is not attesting the corpus
+
+General proving of corpus computation stays refused. This is a different
+boundary: the response pipeline — query, rights check, admissibility filter,
+shaping, receipt — is a deterministic computation over declared inputs, which is
+what a proof guest is. So the thing to prove is not that a fact is true; it is
+that **the policy ran**.
+
+That buys verifiable refusal (REFUSED means the policy refused, checkable rather
+than described), demonstrable filtering (a caller verifies the declared policy
+produced this response from this release, without seeing either), and selective
+disclosure — provenance served without substance, which is a better product than
+a sample for a caller deciding whether to buy.
+
+It does not answer estate leakage. No cryptography fixes an architecture error:
+the estates are safe because they are unserved, not because they are proven
+unserved. Doctrine draws the line; a proof shows the line was held.
+
+Three preconditions, each already built for another reason: a deterministic
+response computation (a proof over floating-point dispatch is unavailable; over
+pinned fixed-point arithmetic it is natural — the archival discipline and the
+cryptographic layer share a precondition), the policy as a digest-addressed
+artifact, and receipts as first-class objects the proof slots into as one more
+grade. Three costs, priced rather than assumed: proving is not free, so it is a
+tier and not a default; the guest is a new frame-validity surface, since a wrong
+guest proves the wrong policy perfectly; and it enforces a boundary it does not
+draw.
+
+## A reasoner over the surface
+
+`src/domain/reasoningWitness.ts`. The pairing is complementary: a reasoner
+without the corpus has no epistemic structure — it cannot say which release an
+answer came from, cannot separate a claim it read from one it composed, and has
+no way to refuse. A corpus without a reasoner has structure and no traversal.
+
+Three rules, **none of them enforced by anything today**:
+
+1. An explanation is a **projection of the ledger, not a generation over it**.
+   Every sentence resolves to records; one that resolves to nothing is not an
+   explanation.
+2. A **tier crossing in a sentence is an authored claim**. "The vessel arrived"
+   is a different claim from "berth containment at 04:12, at confidence 0.6,
+   superseded twice", and promoting the second into the first crosses a waterline
+   in prose where no ruling was made.
+3. **Reasoning outputs are candidates**, with a method identity and a version,
+   the same shape a parser's output takes.
+
+The surface is safe today because it is read-only, which is not the same as the
+rules being held. The reasoner is the most powerful witness in the system and
+has no authority in it — the same wall that keeps a solver from deciding an
+identity and an audit computation from becoming a corpus fact, with a third
+occupant.

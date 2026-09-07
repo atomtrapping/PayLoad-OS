@@ -67,7 +67,7 @@
    "x": 0,
    "y": 672,
    "width": 1548,
-   "height": 326,
+   "height": 584,
    "color": "4"
   },
   {
@@ -115,9 +115,9 @@
    "type": "group",
    "label": "Corpus Fabric — evidence → candidates, releases, products",
    "x": 0,
-   "y": 1078,
+   "y": 1336,
    "width": 1548,
-   "height": 592,
+   "height": 850,
    "color": "3"
   },
   {
@@ -125,7 +125,7 @@
    "type": "text",
    "text": "## Local production rail\n`IMPLEMENTED · OPT-IN · LOOPBACK`\n\nOne command contract drives registration, capture, fixed normalization and candidate-build assembly with structured stage receipts, historical retry, conflict detection, quarantine of invalid input and request-bound failed-run integrity.\n\n[[Local production rail]]",
    "x": 40,
-   "y": 1134,
+   "y": 1392,
    "width": 340,
    "height": 230,
    "color": "3"
@@ -135,7 +135,7 @@
    "type": "text",
    "text": "## Normalization adapters\n`TWO ADAPTERS`\n\nA fixed Caravan Carrier adapter and the FMCSA Census normalization turn captured bytes into typed candidates; every derived quantity names its method and version and every run carries the adapter digest.\n\n[[Normalization adapters]]",
    "x": 416,
-   "y": 1134,
+   "y": 1392,
    "width": 340,
    "height": 230,
    "color": "3"
@@ -145,7 +145,7 @@
    "type": "text",
    "text": "## Candidate builds and comparison\n`IMPLEMENTED · UNADMITTED`\n\nExact, inspectable candidate builds assembled from normalizations, each member carrying its derivation decision, source class and knowledge time; two builds can be compared by source-scoped membership and immutable references.\n\n[[Candidate builds and comparison]]",
    "x": 792,
-   "y": 1134,
+   "y": 1392,
    "width": 340,
    "height": 230,
    "color": "3"
@@ -155,7 +155,7 @@
    "type": "text",
    "text": "## Corpus object model\n`THE PRODUCT · FIXTURE-BACKED`\n\nReleases with knowledge cutoffs and build records; records with stable `notation://` identity, subject, predicate, value, unit, basis, uncertainty bounds, validity bounds, two clocks, evidence class and provenance; retractions; rights schedules; governance.\n\n[[Corpus object model]]",
    "x": 1168,
-   "y": 1134,
+   "y": 1392,
    "width": 340,
    "height": 230,
    "color": "3"
@@ -165,7 +165,7 @@
    "type": "text",
    "text": "## Certified release manifest and production record\n`COMMITTED · UNSIGNED`\n\nEach release carries a manifest (build, release digest, record count, retractions applied, sources with rights, certification, governance) whose commitment is the digest of its canonical JSON, and a production record across the twelve stages.\n\n[[Certified release manifest and production record]]",
    "x": 40,
-   "y": 1400,
+   "y": 1658,
    "width": 340,
    "height": 230,
    "color": "3"
@@ -175,7 +175,7 @@
    "type": "text",
    "text": "## Information products\n`SPECIFIED · FIXTURE-COVERED`\n\nThe first information product: a customer question, subjects, fields with evidence requirements and the corpus's coverage of them, freshness by release, permitted uses, correction as the same question at two knowledge times, and the delivered-record contract.\n\n[[Information products]]",
    "x": 416,
-   "y": 1400,
+   "y": 1658,
    "width": 340,
    "height": 230,
    "color": "3"
@@ -185,7 +185,7 @@
    "type": "group",
    "label": "State Fabric — validation, admission and canonical versions",
    "x": 0,
-   "y": 1750,
+   "y": 2266,
    "width": 1172,
    "height": 326,
    "color": "1"
@@ -195,7 +195,7 @@
    "type": "text",
    "text": "## Admission authority\n`ABSENT · MILESTONE PRIORITY`\n\nThe explicit validation boundary that turns a candidate into an admitted canonical version. It does not exist yet, and every surface says so; the rails refuse what they cannot vouch for.\n\n[[Admission authority]]",
    "x": 40,
-   "y": 1806,
+   "y": 2322,
    "width": 340,
    "height": 230,
    "color": "1"
@@ -205,7 +205,7 @@
    "type": "text",
    "text": "## Notation state kernel (Rust)\n`PRESENT · LOCAL · AUTHORED STATE ONLY`\n\nA deterministic Rust command and history core for authored notation objects and explicit relationships: the frontend sends commands over a loopback API; Rust replays and validates; Save writes a versioned local snapshot.\n\n[[Notation state kernel (Rust)]]",
    "x": 416,
-   "y": 1806,
+   "y": 2322,
    "width": 340,
    "height": 230,
    "color": "1"
@@ -215,7 +215,7 @@
    "type": "text",
    "text": "## Three states of information (E, K, I)\n`DOCTRINE AS DATA`\n\nEvidence (what was observed; append-only, content-addressed), Canonical (admitted under a schema as a version; immutable per version), Inquiry (what one investigation manipulates; allowed to be wrong; promotion crosses validation).\n\n[[Three states of information (E, K, I)]]",
    "x": 792,
-   "y": 1806,
+   "y": 2322,
    "width": 340,
    "height": 230,
    "color": "1"
@@ -225,7 +225,7 @@
    "type": "group",
    "label": "Compute / Decision Fabric — derived objects, never truth by default",
    "x": 0,
-   "y": 2156,
+   "y": 2672,
    "width": 1548,
    "height": 592,
    "color": "5"
@@ -235,7 +235,7 @@
    "type": "text",
    "text": "## Recorded observation replay\n`CONTRACT + COMPILER · SYNTHETIC MANIFEST`\n\nA strict manifest of frames, sessions, clocks with alignments, sensors, calibrations with validity, poses with stamps, operator associations and observations with point estimates; the compiler places each observation or states exactly why it is unplaced.\n\n[[Recorded observation replay]]",
    "x": 40,
-   "y": 2212,
+   "y": 2728,
    "width": 340,
    "height": 230,
    "color": "5"
@@ -245,7 +245,7 @@
    "type": "text",
    "text": "## Registration and access geometry\n`IMPLEMENTED · SYNTHETIC PREVIEW`\n\nA bounded 3D rigid weighted-least-squares estimator with local conditional covariance and held-out check points, plus explicit access geometry: Cartesian distance, permitted-network shortest paths and closure scenarios.\n\n[[Registration and access geometry]]",
    "x": 416,
-   "y": 2212,
+   "y": 2728,
    "width": 340,
    "height": 230,
    "color": "5"
@@ -255,7 +255,7 @@
    "type": "text",
    "text": "## Spatial inquiry (floor access)\n`IMPLEMENTED · MANUAL ANNOTATION`\n\nHow does opening or closing one explicit passage change access through one floor? A validated layout with spaces and passages, a scenario, and a directed-room-access analysis with CONFIRMED, POSSIBLE_ONLY and DISCONNECTED reachability.\n\n[[Spatial inquiry (floor access)]]",
    "x": 792,
-   "y": 2212,
+   "y": 2728,
    "width": 340,
    "height": 230,
    "color": "5"
@@ -265,7 +265,7 @@
    "type": "text",
    "text": "## Clearance value-of-information experiment\n`IMPLEMENTED · SYNTHETIC PREVIEW`\n\nExact finite Bayesian decision analysis over a declared joint model: expected decision-loss reduction minus acquisition cost for a measurement, without executing any action.\n\n[[Clearance value-of-information experiment]]",
    "x": 1168,
-   "y": 2212,
+   "y": 2728,
    "width": 340,
    "height": 230,
    "color": "5"
@@ -275,7 +275,7 @@
    "type": "text",
    "text": "## Scalar Gaussian benchmark\n`BASELINE · SYNTHETIC`\n\nOne conventional scalar linear-Gaussian estimator with an evidence-bound benchmark and held-out-reference metrics: the baseline every later model must beat on the same evidence.\n\n[[Scalar Gaussian benchmark]]",
    "x": 40,
-   "y": 2478,
+   "y": 2994,
    "width": 340,
    "height": 230,
    "color": "5"
@@ -285,7 +285,7 @@
    "type": "text",
    "text": "## GAT IFC audit instrument\n`PINNED ENGINE · SPECIALIST`\n\nA preserved IFC (Industry Foundation Classes) building-model artifact is audited by the exact pinned GAT engine; the original report, a separate safe projection and an immutable execution receipt keep distinct identities.\n\n[[GAT IFC audit instrument]]",
    "x": 416,
-   "y": 2478,
+   "y": 2994,
    "width": 340,
    "height": 230,
    "color": "5"
@@ -295,7 +295,7 @@
    "type": "text",
    "text": "## Scientific model roles\n`DOCTRINE`\n\nDifferent methods answer different questions: factor graphs first for estimation, then physics-informed and operator models where they earn their place; a prediction never grants canonical admission or distribution rights.\n\n[[Scientific model roles]]",
    "x": 792,
-   "y": 2478,
+   "y": 2994,
    "width": 340,
    "height": 230,
    "color": "5"
@@ -305,7 +305,7 @@
    "type": "group",
    "label": "Projection Fabric — representations, APIs and instruments",
    "x": 0,
-   "y": 2828,
+   "y": 3344,
    "width": 1548,
    "height": 592,
    "color": "6"
@@ -315,7 +315,7 @@
    "type": "text",
    "text": "## Projection spec and compiler\n`IMPLEMENTED · READ-ONLY`\n\nOne closed spec (`payload.projection-spec.v1`) and one router; the compiler works over one exact fixture release, enforces rights, visibility and time bounds, returns detached copies and states `sourceMutated: false`.\n\n[[Projection spec and compiler]]",
    "x": 40,
-   "y": 2884,
+   "y": 3400,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -325,7 +325,7 @@
    "type": "text",
    "text": "## Corpus feed API v1\n`IMPLEMENTED · FIXTURE-BACKED`\n\nReleases, records, manifests, as-of queries, retractions and rulings as JSON over the same payloads the screens use; the stream page shows the feed URL that reproduces every answer.\n\n[[Corpus feed API v1]]",
    "x": 416,
-   "y": 2884,
+   "y": 3400,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -335,7 +335,7 @@
    "type": "text",
    "text": "## MCP server and tools\n`IMPLEMENTED · STDIO`\n\nEight Model Context Protocol tools wrap the same payloads as the feed: list and get releases, manifests, records, as-of queries, retractions and rulings.\n\n[[MCP server and tools]]",
    "x": 792,
-   "y": 2884,
+   "y": 3400,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -345,7 +345,7 @@
    "type": "text",
    "text": "## Earth Twin (CesiumJS)\n`PRESENT · KEYLESS · OFFLINE`\n\nA CesiumJS globe served from this origin with bundled imagery on the WGS84 ellipsoid, computed day and night at the twin's world time, and one point per geodetic position declared as a corpus record; the inspector names every layer's source and state.\n\n[[Earth Twin (CesiumJS)]]",
    "x": 1168,
-   "y": 2884,
+   "y": 3400,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -355,7 +355,7 @@
    "type": "text",
    "text": "## Ruling projections and result manifests\n`IMPLEMENTED · FIXTURE CASES`\n\nThe same case bundle projected for sponsor, internal reviewer, named counterparty or public; rulings commit to a result manifest with a commitment, evidence root and anchor, exported machine-readably with an API example.\n\n[[Ruling projections and result manifests]]",
    "x": 40,
-   "y": 3150,
+   "y": 3666,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -365,7 +365,7 @@
    "type": "group",
    "label": "Application layer — the Payload OS workbench (Next.js)",
    "x": 0,
-   "y": 3500,
+   "y": 4016,
    "width": 1548,
    "height": 592,
    "color": "2"
@@ -375,7 +375,7 @@
    "type": "text",
    "text": "## App shell, navigation and design system\n`IMPLEMENTED`\n\nOne shell: a top bar that says where you are, the domain-product control, five activity areas (Acquisition, Corpus, Notations, Inquiry, Coordination) declared as data, a center surface and an inspector pattern with responsive sheets.\n\n[[App shell, navigation and design system]]",
    "x": 40,
-   "y": 3556,
+   "y": 4072,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -385,7 +385,7 @@
    "type": "text",
    "text": "## Production path workspace\n`IMPLEMENTED · REAL RAIL OR FIXTURE MODE`\n\nOne continuous path in seven stages (source, acquisition, normalization, candidate build, inspection, notation, release), each with a state from a closed vocabulary derived from what the rails produced, with recovery actions and an inspector.\n\n[[Production path workspace]]",
    "x": 416,
-   "y": 3556,
+   "y": 4072,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -395,7 +395,7 @@
    "type": "text",
    "text": "## Candidates rail\n`IMPLEMENTED`\n\nThe candidate-production rail before admission as an observable process: collection, extraction, normalization, candidate readiness; every metric names the field it is read from and every instant its clock; where coverage stops and what would change it.\n\n[[Candidates rail]]",
    "x": 792,
-   "y": 3556,
+   "y": 4072,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -405,7 +405,7 @@
    "type": "text",
    "text": "## Notation workspace\n`IMPLEMENTED · LOCAL AUTHORING`\n\nAuthor, relate and preserve interpretations against the Rust kernel: drafts survive navigation and reload, three states told apart (unapplied, previewed, saved), undo and redo, conflict recovery, capacity, and an evidence-reference panel whose persistence waits for the backend.\n\n[[Notation workspace]]",
    "x": 1168,
-   "y": 3556,
+   "y": 4072,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -415,7 +415,7 @@
    "type": "text",
    "text": "## Case workbench\n`IMPLEMENTED · FIXTURE CASES`\n\nThe optional prescribed control over the corpus: CASE → USE → CLAIMS → EVIDENCE → CHECKS → RULING → REMEDIATION → RELEASE → MONITORING, with staged intake, a decision rail, lineage from artifact to ruling, bitemporal replay and admission profiles.\n\n[[Case workbench]]",
    "x": 40,
-   "y": 3822,
+   "y": 4338,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -425,7 +425,7 @@
    "type": "text",
    "text": "## Observation replay surface\n`IMPLEMENTED · SYNTHETIC PREVIEW`\n\nThe recorded-observation contract made understandable: a linked frame diagram (sensor → calibration → body → pose → world), a timeline of clock alignments, calibration validity, stamps and pose mismatches, an observation register, and an inspector connecting a selection to its evidence, estimate, placement and comparisons.\n\n[[Observation replay surface]]",
    "x": 416,
-   "y": 3822,
+   "y": 4338,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -435,7 +435,7 @@
    "type": "text",
    "text": "## Inquiry instrument pages\n`IMPLEMENTED · SYNTHETIC PREVIEWS`\n\nSpatial Inquiry (/spatial), Registration and access (/compute/registration), Clearance (/compute/clearance) and the Earth Twin (/earth): each a page over one compute or projection contract, marked as synthetic preview where it is one.\n\n[[Inquiry instrument pages]]",
    "x": 792,
-   "y": 3822,
+   "y": 4338,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -445,7 +445,7 @@
    "type": "text",
    "text": "## Corpus and product pages\n`IMPLEMENTED`\n\n/product (the operating model as data), /products, /releases and release detail with certification and rights, /stream (as-of), /retractions and /api (endpoints with live examples).\n\n[[Corpus and product pages]]",
    "x": 1168,
-   "y": 3822,
+   "y": 4338,
    "width": 340,
    "height": 230,
    "color": "2"
@@ -455,7 +455,7 @@
    "type": "group",
    "label": "Coordination layer — participants, requests, results",
    "x": 0,
-   "y": 4172,
+   "y": 4688,
    "width": 1172,
    "height": 326,
    "color": "6"
@@ -465,7 +465,7 @@
    "type": "text",
    "text": "## Stable (agents and apparatus)\n`IMPLEMENTED · LOCAL REGISTRATION`\n\nDefinitions of each participant: purpose, authority, runtime, version, domains, input and output contracts, capabilities and references; synastry is the declared connections between contracts with missing inputs stated.\n\n[[Stable (agents and apparatus)]]",
    "x": 40,
-   "y": 4228,
+   "y": 4744,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -475,7 +475,7 @@
    "type": "text",
    "text": "## Board (messages and acknowledgements)\n`IMPLEMENTED · LOCAL POSTING`\n\nShared messages by topic and kind: requests, handoffs, blockers, results and acknowledgements, directed or broadcast, with replies and release context.\n\n[[Board (messages and acknowledgements)]]",
    "x": 416,
-   "y": 4228,
+   "y": 4744,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -485,7 +485,7 @@
    "type": "text",
    "text": "## Coordination ledger and contract\n`IMPLEMENTED · payload.coordination.v1`\n\nThe contract behind stable and board: validated commands, references restricted to the current scope, directed contract connections, an inbox, a seed, and two thin clients (Python and JavaScript). Two manually started workers consume it: contract review and candidate-build review.\n\n[[Coordination ledger and contract]]",
    "x": 792,
-   "y": 4228,
+   "y": 4744,
    "width": 340,
    "height": 230,
    "color": "6"
@@ -496,7 +496,7 @@
    "label": "Firm, domain products and customers",
    "x": 1708,
    "y": 0,
-   "width": 796,
+   "width": 1172,
    "height": 592
   },
   {
@@ -532,7 +532,7 @@
    "label": "Doctrine and governance (applies to every layer)",
    "x": 1708,
    "y": 672,
-   "width": 796,
+   "width": 1172,
    "height": 592
   },
   {
@@ -613,7 +613,7 @@
    "text": "## How to read this canvas\n\nRows follow the architectural cycle from world to representation; the right column holds what applies everywhere. Each card is one part: its name, its present state in backticks, two sentences, and a link to its note. Solid arrows are the flows that exist; a red card is a declared absence. Edit freely: the notes carry the detail and the open questions.",
    "x": 1708,
    "y": -300,
-   "width": 796,
+   "width": 1172,
    "height": 200
   },
   {
@@ -639,7 +639,7 @@
    "type": "text",
    "text": "## Correction and recall machinery\n`MODELLED · LEDGER SPECIFIED AND EMPTY`\n\nFor one retraction, which derived artifacts a corrected fact taints and which cannot be decided because no producer retained the reference. As-of answering as a contract feature.\n\n[[Correction and recall machinery]]",
    "x": 792,
-   "y": 1400,
+   "y": 1658,
    "width": 340,
    "height": 230
   },
@@ -648,7 +648,7 @@
    "type": "text",
    "text": "## Identity core and cross-line join\n`MODELLED · JOIN ABSENT`\n\nResolution, provenance, bitemporality and linkage solved once for every line, with a per-line identifier family beneath. The cross-line join is the moat and it is absent.\n\n[[Identity core and cross-line join]]",
    "x": 1168,
-   "y": 1400,
+   "y": 1658,
    "width": 340,
    "height": 230
   },
@@ -685,7 +685,7 @@
    "type": "text",
    "text": "## Scene interchange and the learned tier\n`ROUTED · NOTHING WRITTEN · NOTHING EMBEDDED`\n\nUSD composition resolves opinions to one value; the corpus preserves disagreement — a strong output, an impossible store. The layer stack is the release ABI, and the learned manifold is the tier below the corpus where void renders void.\n\n[[Scene interchange and the learned tier]]",
    "x": 416,
-   "y": 3150,
+   "y": 3666,
    "width": 340,
    "height": 230
   },
@@ -694,7 +694,7 @@
    "type": "text",
    "text": "## Estimation, constraints and invariant scoring\n`SPECIFIED · NOTHING SOLVED · NOTHING SCORED`\n\nA hard constraint is a measurement with R = 0, so constraints are beliefs with provenance. Certainty is harvested in proportion to declared confidence, a violated constraint is evidence about the constraint, and a solver never decides an identity.\n\n[[Estimation, constraints and invariant scoring]]",
    "x": 1168,
-   "y": 2478,
+   "y": 2994,
    "width": 340,
    "height": 230
   },
@@ -712,7 +712,7 @@
    "type": "text",
    "text": "## Vessel state and the port set\n`TYPED · NOTHING ACQUIRED · NOTHING ADJUDICATED`\n\nThe vessel is the state the other four families were defined around, and a port is a time-indexed set whose membership is adjudicated. Dispatch is a prior, not an observation.\n\n[[Vessel state and the port set]]",
    "x": 416,
-   "y": 1666,
+   "y": 1924,
    "width": 340,
    "height": 230
   },
@@ -720,8 +720,17 @@
    "id": "c2bd7f04993e3633",
    "type": "text",
    "text": "## The computation carrier and congruence\n`DOCTRINE · TWO OF FOUR · NOTHING EXPORTED`\n\nThe punch card, not the proof: credibility lives in the estate and the rulings, and the carrier only carries it. A manifest mirrors the model, which means it mirrors the model's errors.\n\n[[The computation carrier and congruence]]",
-   "x": 2124,
-   "y": 994,
+   "x": 2500,
+   "y": 728,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "17c64e8040432334",
+   "type": "text",
+   "text": "## The serving boundary and the reasoner\n`SPECIFIED · NOTHING ENFORCED · NO CALLER IDENTIFIED`\n\nServe the corpus under a purpose, serve the estates never. A tool call can carry intent where a key cannot — and the reasoner is the most powerful witness in the system with no authority in it.\n\n[[The serving boundary and the reasoner]]",
+   "x": 2500,
+   "y": 56,
    "width": 340,
    "height": 230
   }
@@ -1395,6 +1404,24 @@
    "toSide": "top",
    "toEnd": "arrow",
    "label": "promotes the role, not the authority"
+  },
+  {
+   "id": "0a910cebb17ba07f",
+   "fromNode": "7514238e91321af6",
+   "fromSide": "right",
+   "toNode": "17c64e8040432334",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "the surface this is about"
+  },
+  {
+   "id": "ffc6057a8a71e22f",
+   "fromNode": "17c64e8040432334",
+   "fromSide": "left",
+   "toNode": "9d8ca27ef943b99f",
+   "toSide": "right",
+   "toEnd": "arrow",
+   "label": "the same three missing fields"
   }
  ]
 }

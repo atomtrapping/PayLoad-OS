@@ -32,6 +32,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 - [[Notation Systems and Payload OS]] — `AUTHORITATIVE POSITIONING` — A systems and intelligence firm for the physical economy.
 - [[Domain products (Caravan, Tradewind, Landshark)]] — `CARAVAN ACTIVE · TWO MODULE SLOTS` — Three domain products over one platform.
 - [[Usage as telemetry]] — `MODELLED · NOTHING METERED · EVENT HALF ABSENT` — Every query and compute run is a lap; what a response would have to carry before a bill could point at it.
+- [[The serving boundary and the reasoner]] — `SPECIFIED · NOTHING ENFORCED · NO CALLER IDENTIFIED` — What a transport can enforce that a key cannot, the two-part rule, policy attestation, and the three rules a reasoner over the surface is held to.
 - [[Customers and distribution channels]] — `DECLARED` — Physical-economy brokers, asset and portfolio managers, insurance and financing firms.
 
 ### Doctrine and governance (applies to every layer)
@@ -134,6 +135,7 @@ flowchart TB
     firm["Notation Systems and Payload OS"]
     products["Domain products (Caravan, Tradewind, Landshark)"]
     customers["Customers and distribution channels"]
+    serving["The serving boundary and the reasoner"]
   end
   subgraph doctrine["Doctrine and governance (applies to every layer)"]
     direction LR
@@ -293,6 +295,8 @@ flowchart TB
   spatialprog -- "the contract change detection needs" --> families
   families -- "the families that observe it" --> maritime
   carrier -- "promotes the role, not the authority" --> scenetier
+  feed -- "the surface this is about" --> serving
+  serving -- "receipts ride with the answer" --> customers
   classDef absent fill:#7a1f1f,stroke:#e06666,color:#fff;
   class admission absent;
 ```

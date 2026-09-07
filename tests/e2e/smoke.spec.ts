@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const ROUTES = ['/product', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
+const ROUTES = ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
 
 for (const route of ROUTES) {
   test(`renders ${route} without console errors`, async ({ page }) => {
@@ -17,7 +17,7 @@ for (const route of ROUTES) {
 }
 
 test('axe: releases, stream, case workspace and ruling viewer have no serious or critical violations', async ({ page }) => {
-  for (const route of ['/product', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/cases/CASE-CAR-7C104', '/rulings/RUL-7C104-r2', '/cases']) {
+  for (const route of ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/cases/CASE-CAR-7C104', '/rulings/RUL-7C104-r2', '/cases']) {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
     const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
@@ -75,7 +75,7 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
 });
 
 test('the product page states the firm, the twelve stages, the three customer categories and the four-step economic architecture', async ({ page }) => {
-  await page.goto('/product');
+  await page.goto('/model');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('systems and intelligence firm for the physical economy');
   await expect(page.locator('[data-stage]')).toHaveCount(12);
   await expect(page.locator('[data-customer]')).toHaveCount(3);
@@ -117,7 +117,7 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await page.getByRole('link', { name: /^Local weighted rigid registration/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Registration and access' })).toBeVisible();
   await expect(page.getByTestId('registration-boundary')).toContainText('not a surveyed building');
-  await page.goto('/product');
+  await page.goto('/model');
   await page.getByRole('link', { name: /^Local clearance value-of-information/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Clearance measurement design' })).toBeVisible();
   await expect(page.getByTestId('clearance-boundary')).toContainText('Synthetic demonstration');

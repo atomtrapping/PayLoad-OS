@@ -6,9 +6,9 @@ import { CROSS_LINE_JOIN, CORE_STATE_LABEL, FAMILY_STATE_LABEL, IDENTIFIER_FAMIL
 import { STORAGE_CLASSES, STORAGE_PRESENT_STATE, STORAGE_SEQUENCE, STORAGE_STATE_LABEL, STORE_KIND_LABEL } from '@/domain/storage';
 import { Section } from '@/components/primitives/Section';
 
-export const metadata: Metadata = { title: 'Product model' };
+export const metadata: Metadata = { title: 'Operating model' };
 
-/** What the firm is, what it makes, how it distributes it, whom it serves, and what exists here. The text is the founder's; the presence flags are facts about this repository. */
+/** What the firm is, what it makes, how it distributes it, whom it serves, and what exists here. The three APIs are the products; this terminal is not one. The text is the founder's; the presence flags are facts about this repository. */
 export default function ProductPage() {
   return (
     <div className="p-3 sm:p-5 max-w-[1000px] mx-auto w-full flex flex-col gap-6">

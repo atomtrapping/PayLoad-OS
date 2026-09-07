@@ -17,7 +17,7 @@ tags:
 
 ## What it is
 
-- Recorded as data in `src/domain/storage.ts` and rendered on `/product`, in the same honest-present-state pattern as the fabrics and the projection engines.
+- Recorded as data in `src/domain/storage.ts` and rendered on `/model`, in the same honest-present-state pattern as the fabrics and the projection engines.
 - Every class carries the access pattern that asks for that store kind, the candidate technologies, the fabric that owns the information, what holds it here today, the doctrine invariant the store must not break, and what has to be true before choosing one.
 - PostgreSQL is wired for the records class. The other five classes are held by local content-addressed files under operator-selected `.payload/` roots and by committed fixtures.
 - The records store arrived before the admission authority, which the sequence said should come first. Until admission exists, nothing stops an unadmitted candidate being written into a canonical-shaped row.
@@ -25,7 +25,7 @@ tags:
 ## Where it lives
 
 - `src/domain/storage.ts`, `src/domain/storage.test.ts`
-- `/product` section "Where the corpus is stored"
+- `/model` section "Where the corpus is stored"
 - `docs/STORAGE.md`
 
 ## Boundaries

@@ -138,13 +138,13 @@ examples/carrier synthetic Carrier JSON, acquisition declaration and normalizati
 src/mcp         MCP tools over the same feed payloads, and the stdio server
 src/domain/informationProduct.ts  the first information product as data, held to the corpus by its test: every field exists, every released record meets the stated evidence requirement, the customer question is answerable through the feed at two knowledge times
 src/domain/deliveredRecord.ts     the ten questions a delivered record answers, mapped to payload fields; its test holds every record the feed delivers to all ten
-src/domain/doctrine.ts   the architecture carried forward as data: five fabrics, three states of information, seven rules with where each is enforced and which tests prove it, verification tiers (docs/ARCHITECTURE.md is the prose; /product renders it)
+src/domain/doctrine.ts   the architecture carried forward as data: five fabrics, three states of information, seven rules with where each is enforced and which tests prove it, verification tiers (docs/ARCHITECTURE.md is the prose; /model renders it)
 src/domain/projection.ts the projection instruments' questions and roles and the routing table as data, over the one router in src/projection/spec.ts; a test checks the table against the router for every combination
 src/architecture.test.ts structural doctrine: browser and page layers take only types and the pure policy evaluator from the rails; the rails import nothing from above; every projection leaves the corpus untouched and identities intact
 src/fixtures/production  the candidate-production demonstration: pipeline.ts runs examples/ through the real local rails at fixed instants; demo.json is its committed output, drift-tested and separation-tested
 src/fixtures    Caravan corpus releases, records, retractions and rights; profile and cases; manifest builder; digest plan; committed digests
 src/components  primitives, case workspace, ruling viewer, replay, queue, intake, shell
-src/app         product model: /product
+src/app         operating model: /model (/product redirects to it)
                 corpus: /releases, /releases/[releaseId], /stream, /retractions, /api, /api/v1/* (fixture feed)
                 workbench: /cases, /cases/new, /cases/[caseId], /rulings, /rulings/[rulingId], /replay/[caseId], /profiles, /evidence
                 coordination: /agents, /board, /api/coordination, /api/coordination/inbox (read-only fixtures or local sandbox)

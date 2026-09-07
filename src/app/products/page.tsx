@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { asOfPayload } from '@/adapter/feed';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
+import { DOMAINS } from '@/domain/domains';
+import { FLAGSHIP_PRODUCTS } from '@/domain/product';
 import { Section } from '@/components/primitives/Section';
 import { DELIVERED_RECORD_CONTRACT, ENVELOPE_FIELDS } from '@/domain/deliveredRecord';
 import { CARAVAN_LOT_STATE as product } from '@/domain/informationProduct';
@@ -9,7 +11,7 @@ import { CUSTOMER_CATEGORIES } from '@/domain/product';
 import { CARAVAN_CORPUS, CARAVAN_RELEASES } from '@/fixtures/caravan/release';
 import { fmtUtc } from '@/lib/format';
 
-export const metadata: Metadata = { title: 'Information product' };
+export const metadata: Metadata = { title: 'Products' };
 
 /** The first information product, and the promise every delivered record makes. Both are held to the corpus by tests; the page states what they state. */
 export default async function ProductsPage() {
@@ -31,7 +33,30 @@ export default async function ProductsPage() {
       <FixtureBanner note="The specification is data in src/domain/informationProduct.ts; informationProduct.test.ts holds it to the demonstration corpus. Fixture clock: 2026-09-01." />
       <div className="p-3 sm:p-5 max-w-[1100px] mx-auto w-full flex flex-col gap-6">
         <header className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 flex-wrap"><span className="label-sm">Information product</span><span className="label-sm">{product.domain}</span><span className="id">{product.productId}</span><span className="label-sm">{product.schema}</span></div>
+          <span className="label-sm">Notation Systems \u00b7 the three products</span>
+          <h1 className="m-0 text-[20px] font-semibold leading-snug" style={{ color: 'var(--text-heading)' }}>Caravan, Tradewind and Landshark</h1>
+          <p className="m-0 text-[13.5px]" style={{ color: 'var(--text-secondary)' }}>{FLAGSHIP_PRODUCTS.statement}</p>
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }} data-testid="products-state">{FLAGSHIP_PRODUCTS.here}</p>
+        </header>
+
+        <Section title="The three products" id="ip-products">
+          <ul className="m-0 p-0 list-none grid gap-3 sm:grid-cols-3">
+            {DOMAINS.map((d) => (
+              <li key={d.id} className="surface p-3 flex flex-col gap-1.5" data-flagship={d.id} data-corpus={d.enabled ? 'PRESENT' : 'ABSENT'} style={{ borderStyle: d.enabled ? 'solid' : 'dashed' }}>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-[14px] font-semibold" style={{ color: d.enabled ? 'var(--text-heading)' : 'var(--text-muted)' }}>{d.label}</span>
+                  <span className="label-sm">{d.delivery}</span>
+                </div>
+                <div className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{d.scope}</div>
+                <div className="text-[11.5px]" style={{ color: d.enabled ? 'var(--text-muted)' : 'var(--status-conditional)' }}>{d.note}</div>
+              </li>
+            ))}
+          </ul>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>Payload OS, the terminal you are reading this in, is not among them. It operates, monitors and navigates the backend these are produced from. <Link href="/model" style={{ color: 'var(--info)' }}>The operating model</Link> states the rest.</p>
+        </Section>
+
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 flex-wrap"><span className="label-sm">What Caravan delivers</span><span className="label-sm">{product.domain}</span><span className="id">{product.productId}</span><span className="label-sm">{product.schema}</span></div>
           <h1 className="m-0 text-[20px] font-semibold leading-snug" style={{ color: 'var(--text-heading)' }}>{product.title}</h1>
           <p className="m-0 text-[14px]" style={{ color: 'var(--text-primary)' }} data-testid="customer-question">{product.customerQuestion}</p>
           <ul className="m-0 p-0 list-none flex flex-wrap gap-2" aria-label="Customer categories">

@@ -112,7 +112,7 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
     why: 'Approximate nearest-neighbour retrieval for candidate generation, where an exact index has no answer to give.',
     candidates: ['Qdrant', 'Milvus', 'pgvector'],
     fabric: 'compute',
-    here: { state: 'ABSENT', what: 'No embedding is computed anywhere in this repository, and no model is trained or served.', where: '/product' },
+    here: { state: 'ABSENT', what: 'No embedding is computed anywhere in this repository, and no model is trained or served.', where: '/model' },
     invariant: 'Computation produces derived objects, not truth. Embedding similarity is not a canonical relation: a neighbour is a candidate for a human or a validation boundary to judge, never an admitted link.',
     before: 'A declared model, version and input scope per embedding, so a vector can be traced to what produced it and recomputed. Customers apply their own inference to the corpus; this store would serve retrieval, not sell a model.',
   },

@@ -379,6 +379,24 @@ export function positionSeparations(positions: readonly GeodeticPosition[]): Sub
   return groups;
 }
 
+/**
+ * Why there is no reading, when there is none. A subject with a single
+ * declaration is not compared, and silence there is indistinguishable from
+ * not having looked. Absence gets its reason like everything else does, and
+ * the reason is itself worth reading: one declaration from one source is the
+ * weakest state the evidence has, and standing alone is not corroboration.
+ */
+export function soleDeclaration(positions: readonly GeodeticPosition[]): string | null {
+  if (!positions.length) return null;
+  if (positionSeparations(positions).length) return null;
+  const declared = new Map<string, GeodeticPosition>();
+  for (const position of positions) if (!declared.has(position.positionRecordId)) declared.set(position.positionRecordId, position);
+  const sources = new Set([...declared.values()].map((position) => position.source.sourceId));
+  const subjects = new Set([...declared.values()].map((position) => position.subject.canonicalId));
+  const count = declared.size;
+  return `${count} ${count === 1 ? 'declaration' : 'declarations'} from ${sources.size} ${sources.size === 1 ? 'source' : 'sources'}, across ${subjects.size} resolved ${subjects.size === 1 ? 'identity' : 'identities'}: no identity here carries two, so there is nothing to compare. A single account is not corroborated by standing alone.`;
+}
+
 /** What this derivation is and, more importantly, what a reader must not take it for. */
 export const SEPARATION_LOSS = [
   'Separation is the geodesic on the WGS84 ellipsoid between two declared points. It is not a route, not a travelled distance, and not a distance through or around anything.',

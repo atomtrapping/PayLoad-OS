@@ -70,7 +70,7 @@ describe('the Earth Twin as data', () => {
 
 /* ── What the declared positions imply ── */
 
-import { SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, geodesicSeparationM, positionSeparations } from './earth';
+import { SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, geodesicSeparationM, positionSeparations, soleDeclaration } from './earth';
 import type { GeodeticPosition } from './earth';
 
 const LAT = 51.5, LON = -0.12;
@@ -224,6 +224,29 @@ describe('separation between declared positions', () => {
     expect(loss).toMatch(/declare twice and observe once/);
     expect(loss).toMatch(/nothing here can tell corroboration from syndication/);
     expect(loss).toMatch(/Agreement between sources is never counted as evidence/);
+  });
+
+  it('says why there is no reading, so silence is never mistaken for having looked', () => {
+    // One declaration is not compared. Rendering nothing there is
+    // indistinguishable from not having asked, so the absence carries its
+    // reason — and the reason is a finding of its own.
+    const alone = soleDeclaration([at('p-a', LAT, 30)]);
+    expect(alone).toMatch(/1 declaration from 1 source/);
+    expect(alone).toMatch(/nothing to compare/);
+    expect(alone).toMatch(/not corroborated by standing alone/);
+
+    // Two declarations of one identity are compared, so the reading speaks
+    // and this line stays silent rather than doubling it.
+    expect(soleDeclaration([at('p-a', LAT, 30), at('p-b', LAT + NEAR, 30)])).toBeNull();
+    // Nothing declared at all is not this case either.
+    expect(soleDeclaration([])).toBeNull();
+
+    // Two identities with one declaration each: still nothing to compare,
+    // and the count says so rather than implying a comparison happened.
+    const other = at('p-z', LAT, 30, { subject: { subjectId: 'subject-b', canonicalId: 'urn:facility:two', subjectType: 'facility' } });
+    const two = soleDeclaration([at('p-a', LAT, 30), other]);
+    expect(two).toMatch(/2 declarations from 1 source, across 2 resolved identities/);
+    expect(two).toMatch(/no identity here carries two/);
   });
 
   it('writes metres at the precision the measurement carries', () => {

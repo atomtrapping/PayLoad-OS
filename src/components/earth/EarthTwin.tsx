@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
-import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -457,7 +457,10 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
                   ))}
                 </ul>
                 <span style={faint}>Drawn where the source says the subject was over that interval, not where it is. The point’s colour is the declaring source’s interest; the ring is the stated uncertainty.</span>
-                <DeclaredPositionReading groups={positionSeparations(outcome.positions)} /></>}
+                <DeclaredPositionReading groups={positionSeparations(outcome.positions)} />
+                {soleDeclaration(outcome.positions) && (
+                  <span style={faint} data-testid="sole-declaration">{soleDeclaration(outcome.positions)}</span>
+                )}</>}
               {outcome.state === 'UNAVAILABLE' && <><span className="mono" style={{ color: 'var(--status-refused)' }}>{outcome.code}</span><span style={muted}>{outcome.detail}</span><span style={faint}>{corpusLayer.draws}</span></>}
               {outcome.state === 'REFUSED' && <><span className="mono" style={{ color: 'var(--status-refused)' }}>{outcome.code}</span><span style={muted}>{outcome.detail}</span></>}
             </div>

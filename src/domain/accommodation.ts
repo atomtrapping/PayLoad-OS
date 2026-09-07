@@ -71,6 +71,7 @@ export type PreconditionId =
   | 'SOURCE_LINEAGE'
   | 'DECLARED_SOURCE_TIME'
   | 'A_DENOMINATOR'
+  | 'DECLARED_DEPENDENCY_EDGES'
   | 'IDENTITY_RESOLUTION'
   | 'ESTABLISHED_WORLD_TIME'
   | 'AREAL_GEOMETRY'
@@ -191,6 +192,15 @@ export const PRECONDITIONS: readonly Precondition[] = [
     met: false,
     because: 'The corpus has restated two records, the longest arriving eighteen days after the record became knowable. That measures a window and does not estimate a frequency: a handful of events over one synthetic corpus supports an anecdote. Anything that prices a hold, a reserve or a confidence needs a denominator this corpus has not run long enough to have.',
     probe: (corpus) => corpus.retractions.length >= 30 && corpus.records.length >= 500,
+  },
+  {
+    id: 'DECLARED_DEPENDENCY_EDGES',
+    what: 'Forward edges from a record to the things standing on it, declared by each dependent.',
+    kind: 'CORPUS_CONTENT',
+    met: false,
+    because: 'The closure exists and walks transitively, cycles and diamonds included. What is absent is the edges: nothing has declared one, so a correction reaches nothing — and the fan-out says that is a statement about the declared edges rather than about the world, because an index implying completeness would turn an unknown into a clean bill.',
+    probe: () => false,
+    provenBy: 'src/domain/dependencyIndex.ts, src/db/schema.ts',
   },
   {
     id: 'IDENTITY_RESOLUTION',
@@ -481,6 +491,13 @@ export const CAPABILITIES: readonly Capability[] = [
     module: 'src/domain/candidateProjection.ts',
     needs: ['IDENTITY_RESOLUTION', 'ESTABLISHED_WORLD_TIME'],
     ifMistaken: 'Every hop now exists and the whole path runs end to end in a test: rail, resolve, establish, project, admit. What is missing is not machinery but evidence — an identifier registry with a registration in it, and a source that declares when its facts took effect rather than only when it was read.',
+  },
+  {
+    id: 'CORRECTION_FAN_OUT',
+    what: 'A retraction reaching every release, ruling, derived record, served answer and attestation that stands on the restated record.',
+    module: 'src/domain/dependencyIndex.ts',
+    needs: ['DECLARED_DEPENDENCY_EDGES'],
+    ifMistaken: 'The closure is not the notification. It computes who must be told; telling them is a delivery with its own record. And a served answer is reached so a correction can follow it, never so the answer can be edited.',
   },
   {
     id: 'RESPONSE_PIPELINE',

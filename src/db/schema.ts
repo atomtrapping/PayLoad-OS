@@ -75,6 +75,19 @@ export const recordAncestry = pgTable('record_ancestry', {
   authority: text('authority').notNull(),
 });
 
+// The forward edge. record_ancestry runs backwards — where a record came from —
+// and nothing answered the other direction, so a retraction could only reach
+// dependents whoever wrote it had listed by hand. A dependent declares this at
+// the moment it comes to depend; an undeclared one is unreachable, which the
+// fan-out reports rather than implying it covered everything.
+export const dependencyEdges = pgTable('dependency_edge', {
+  dependentKind: text('dependent_kind').notNull(),
+  dependentId: text('dependent_id').notNull(),
+  dependsOn: text('depends_on').notNull(),
+  declaredAt: timestamp('declared_at', { withTimezone: true, mode: 'string' }).notNull(),
+  because: text('because').notNull(),
+});
+
 export const retractions = pgTable('retractions', {
   retractionId: text('retraction_id').primaryKey(),
   corpusId: text('corpus_id').notNull().references(() => corpora.corpusId),

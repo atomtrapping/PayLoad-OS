@@ -137,3 +137,33 @@ test('the open palette has no serious accessibility violations and does not wide
   const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(accessibility.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
 });
+
+/**
+ * The grammar exists in the domain and nothing serves it. The page says both,
+ * and the missing-question refusal is the one worth holding to its wording.
+ */
+test('the API page states the questions the endpoints do not yet ask', async ({ page }) => {
+  await page.goto('/api');
+  await page.waitForLoadState('load');
+  const grammar = page.getByTestId('query-grammar');
+  await expect(grammar).toContainText('WHAT_CHANGED');
+  await expect(grammar).toContainText('WHAT_IS_MISSING');
+  await expect(grammar).toContainText('circular');
+  await expect(page.getByText('No endpoint serves it yet')).toBeVisible();
+
+  // A change log over the demonstration corpus. This subject arrived and was
+  // corrected; the withdrawal in the corpus is on another subject, which is why
+  // the coverage panel below is where it shows.
+  const changed = page.getByTestId('grammar-changed');
+  await expect(changed).toContainText('ARRIVED');
+  await expect(changed).toContainText('CORRECTED');
+  await expect(changed).toContainText('an as-of query before the correction still returns the earlier answer');
+
+  // All three answers in one panel: held, withdrawn, and never held — and the
+  // last said as a fact about the corpus rather than about the subject.
+  const missing = page.getByTestId('grammar-missing');
+  await expect(missing).toContainText('HELD');
+  await expect(missing).toContainText('HELD_THEN_WITHDRAWN');
+  await expect(missing).toContainText('NOT_HELD');
+  await expect(missing).toContainText('nobody told us');
+});

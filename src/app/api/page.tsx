@@ -5,6 +5,9 @@ import { asOfPayload, recordsPayload, releaseManifestPayload, releasesPayload, r
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { Section } from '@/components/primitives/Section';
 import { QueryCostPanel } from '@/components/corpus/QueryCostPanel';
+import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
+import { currentRelease } from '@/domain/corpus';
+import { GRAMMAR_LOSS, QUESTION_MEANING, whatChanged, whatIsMissing } from '@/domain/queryGrammar';
 import { MCP_TOOLS } from '@/mcp/tools';
 import { CALLER_IS_A_SOURCE, INTENT_IS_THE_UPGRADE, PURPOSE_SHAPING, TRANSPORT_AXES, TWO_PART_RULE, servingStanding } from '@/domain/servingBoundary';
 import { REASONER_MAY, REASONER_MAY_NOT, REASONING_RULES, WITNESS_NOT_AUTHORITY } from '@/domain/reasoningWitness';
@@ -110,6 +113,73 @@ export default async function ApiPage() {
             <li>Poll <span className="id">/api/v1/retractions?since=&lt;cutoff&gt;</span>. A correction names the replacement record; a withdrawal names what to stop relying on and which rulings it touched.</li>
             <li>When a new release appears, re-run the same queries against it and compare. The earlier release still answers as it did.</li>
           </ol>
+        </Section>
+
+        <Section title="Questions the endpoints do not yet ask" id="api-grammar">
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+            The four shapes above are point and set lookups. The questions worth paying for are temporal joins over the
+            correction tape, the supersession chain and the dependency edges — three structures this corpus has. The grammar
+            that composes them is in <span className="id">src/domain/queryGrammar.ts</span> and is exercised over the
+            demonstration corpus below. <strong>No endpoint serves it yet</strong>: the shapes are specified and tested, and
+            the routes are the next step rather than a claim made here.
+          </p>
+          {(() => {
+            const release = currentRelease(CARAVAN_CORPUS);
+            const subject = 'LOT-5B-221';
+            const log = whatChanged(CARAVAN_CORPUS, release, { subjectId: subject, since: '2026-08-01T00:00:00Z', knownBy: release.knownAt });
+            // The subjects are supplied because the corpus has no census; asked to
+            // find absences in its own records it could only ever answer nothing.
+            // Samples, because moisture is a sample-level predicate: asked of a lot
+            // it correctly answers NOT_HELD for everything, which is a true answer
+            // to a malformed question. These three show all it can say — one held,
+            // one withdrawn, one never reported.
+            const missing = whatIsMissing(CARAVAN_CORPUS, release, {
+              subjectIds: ['SAMPLE-S-4402', 'SAMPLE-S-4390', 'SAMPLE-S-4499-NEVER-REPORTED'],
+              predicate: 'condition.moisture',
+              knownBy: release.knownAt,
+            });
+            return (
+              <div className="flex flex-col gap-3" data-testid="query-grammar">
+                <dl className="kv text-[12.5px]">
+                  {(Object.keys(QUESTION_MEANING) as Array<keyof typeof QUESTION_MEANING>).map((shape) => (
+                    <div key={shape} className="contents">
+                      <dt className="mono">{shape}</dt>
+                      <dd>{QUESTION_MEANING[shape]}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="surface-inset p-3 flex flex-col gap-1" data-testid="grammar-changed">
+                  <span className="label-sm">WHAT_CHANGED · {subject} · since 2026-08-01</span>
+                  {log.changes.map((change) => (
+                    <p key={`${change.kind}:${change.recordId}`} className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+                      <span className="label-sm" style={{ color: change.kind === 'WITHDRAWN' ? 'var(--status-revoked)' : change.kind === 'CORRECTED' ? 'var(--status-superseded)' : 'var(--status-admitted)' }}>{change.kind}</span>{' '}
+                      <span className="mono">{change.predicate}</span> <span className="ts">{change.at}</span>
+                    </p>
+                  ))}
+                  <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{log.because}</p>
+                </div>
+                <div className="surface-inset p-3 flex flex-col gap-1" data-testid="grammar-missing">
+                  <span className="label-sm">WHAT_IS_MISSING · condition.moisture · three named samples</span>
+                  {missing.coverage === null ? (
+                    <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{missing.because}</p>
+                  ) : (
+                    <>
+                      {missing.coverage.map((entry) => (
+                        <p key={entry.subjectId} className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
+                          <span className="mono">{entry.subjectId}</span>{' '}
+                          <span className="label-sm" style={{ color: entry.holding === 'HELD' ? 'var(--status-admitted)' : entry.holding === 'HELD_THEN_WITHDRAWN' ? 'var(--status-revoked)' : 'var(--check-na)' }}>{entry.holding}</span>
+                        </p>
+                      ))}
+                      <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{missing.because}</p>
+                    </>
+                  )}
+                </div>
+                <ul className="m-0 pl-4 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }}>
+                  {GRAMMAR_LOSS.map((entry) => <li key={entry}>{entry}</li>)}
+                </ul>
+              </div>
+            );
+          })()}
         </Section>
 
         <Section title="What a read costs" id="api-cost">

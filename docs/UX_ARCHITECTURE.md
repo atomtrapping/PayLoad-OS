@@ -78,6 +78,24 @@ Twenty-six destinations across six areas is a good map and a slow journey, so th
 
 Soft navigation between pages measured 73–185 ms; `/earth` is 1080 ms, which is CesiumJS starting. Speed was not the problem and was left alone.
 
+### The questions the endpoints do not ask
+
+The four served shapes — releases, records, as-of, retractions — are point and set lookups. The questions worth paying for are temporal joins over three structures the corpus already has: the correction tape, the supersession chain and the dependency adjacency. `src/domain/queryGrammar.ts` is the grammar that composes them, shown working over the demonstration corpus on `/api` and **served by no endpoint yet** — the shapes are specified and tested; the routes are the next step rather than a claim made on the page.
+
+| Shape | Answers | Underneath |
+| --- | --- | --- |
+| `WHAT_CHANGED` | What the corpus learned about a subject between two knowledge instants: records that arrived, records a correction replaced, records a withdrawal removed | A scan |
+| `WHAT_DEPENDS_ON` | What stands on a restated record, so a correction can reach it | The prepared adjacency |
+| `WHAT_IS_MISSING` | Which of the subjects **you name** the corpus holds nothing for | A scan |
+
+Three refusals carry the weight:
+
+- **You cannot ask what is missing without saying what should have been there.** A corpus that scanned its own records for absences would answer *missing from the set I already hold*, which is circular and can only ever return nothing. So `whatIsMissing` requires the subjects and refuses without them: the corpus has no census, and only the caller knows what should have been covered.
+- **Three holdings, kept apart.** `HELD`, `HELD_THEN_WITHDRAWN` and `NOT_HELD` are different facts, and only the first says anything about the world. `NOT_HELD` is about the corpus — the thing may well be so, and nobody told us. Collapsing them is the calmest lie available here.
+- **An empty change log is not a quiet period.** It says the corpus learned nothing in the window; a fact that stayed true and was never restated produces no entry.
+
+Naming a question does not make it cheap: each shape carries its cost class from `queryCost`, and two of the three are scans.
+
 ### Design system
 
 The design language, the inspector pattern, the two slices built on it (notations, candidate production) and the verification receipt are in [Workspace design](WORKSPACE_DESIGN.md).

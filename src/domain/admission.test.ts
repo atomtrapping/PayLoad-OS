@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADMISSION_LOSS, ADMISSION_METHOD, ADMITTED_PROVENANCE, CHECK_MEANING, RECORD_PROVENANCE, admit, admitInto, admittedRow, crossedTheGate, releaseLeaks, type AdmissionCandidate } from './admission';
+import { ADMISSION_LOSS, ADMISSION_METHOD, ADMITTED_PROVENANCE, CHECK_MEANING, isAdmitting, RECORD_PROVENANCE, admit, admitInto, admittedRow, crossedTheGate, releaseLeaks, type AdmissionCandidate } from './admission';
 
 const AUTHORITY = 'role:corpus-steward';
 const RULED_AT = '2026-09-07T12:00:00Z';
@@ -15,6 +15,7 @@ function candidate(over: Partial<AdmissionCandidate> = {}): AdmissionCandidate {
     provenance: { artifactDigest: 'a'.repeat(64), capturedAt: '2026-09-07T06:00:00Z' },
     provenanceClass: 'LIVE_CAPTURE',
     sourceTime: '2026-09-07T05:30:00Z',
+    conditions: [],
     validFrom: '2026-09-07T06:00:00Z',
     knownAt: '2026-09-07T09:00:00Z',
     rightsDecision: 'PERMITTED',
@@ -163,6 +164,46 @@ describe('the admission authority: the gate the store says it is owed', () => {
     const proposed = candidate();
     const { row } = admittedRow(proposed, admit(proposed, AUTHORITY, RULED_AT));
     expect(crossedTheGate(row!.provenance)).toBe(true);
+  });
+
+  it('speaks the workbench\u2019s ruling vocabulary, and a conditional admission carries its conditions to the row', () => {
+    const plain = admit(candidate(), AUTHORITY, RULED_AT);
+    expect(plain.outcome).toBe('ADMITTED');
+    expect(plain.conditions).toEqual([]);
+
+    const conditions = ['Admissible for underwriting only while the carrier registration stays active.'];
+    const conditional = candidate({ conditions });
+    const ruling = admit(conditional, AUTHORITY, RULED_AT);
+    expect(ruling.outcome).toBe('ADMITTED_WITH_CONDITIONS');
+    expect(isAdmitting(ruling.outcome)).toBe(true);
+    // Verbatim, never summarised: a paraphrased condition is one nobody agreed to.
+    expect(ruling.conditions).toEqual(conditions);
+    expect(ruling.because).toMatch(/Dropping them reads this as the wrong word/);
+
+    // And they reach the row, so downstream cannot read it as unconditional.
+    const { row } = admittedRow(conditional, ruling);
+    expect(row!.outcome).toBe('ADMITTED_WITH_CONDITIONS');
+    expect(row!.conditions).toEqual(conditions);
+    expect(ADMISSION_LOSS.join(' ')).toMatch(/not a weaker admission/);
+
+    // A refused candidate carries no conditions forward at all.
+    const refused = admit(candidate({ conditions, rightsDecision: 'UNDECIDED' }), AUTHORITY, RULED_AT);
+    expect(refused.outcome).toBe('REFUSED');
+    expect(refused.conditions).toEqual([]);
+    expect(isAdmitting(refused.outcome)).toBe(false);
+  });
+
+  it('lets a ruling replace a ruling about the same record, and nothing else', () => {
+    const replacement = admit(candidate(), AUTHORITY, RULED_AT, { rulingId: 'rul-prior', recordId: 'REC-1' });
+    expect(replacement.outcome).toBe('ADMITTED');
+    expect(replacement.supersedesRulingId).toBe('rul-prior');
+
+    const elsewhere = admit(candidate(), AUTHORITY, RULED_AT, { rulingId: 'rul-other', recordId: 'REC-ELSEWHERE' });
+    expect(elsewhere.outcome).toBe('REFUSED');
+    expect(elsewhere.failed.find((f) => f.check === 'SUPERSESSION_IS_ABOUT_THIS_RECORD')!.because)
+      .toMatch(/replaces a ruling about the same record or it replaces nothing/);
+    expect(elsewhere.supersedesRulingId).toBeNull();
+    expect(CHECK_MEANING.SUPERSESSION_IS_ABOUT_THIS_RECORD).toMatch(/silently retire a decision nobody revisited/);
   });
 
   it('checks rule 2 rather than asserting it: no rail identifier reaches the release', () => {

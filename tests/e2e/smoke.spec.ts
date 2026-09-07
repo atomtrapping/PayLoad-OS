@@ -59,13 +59,13 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
   const list = await releases.json();
   expect(list.fixture_only).toBe(true);
   expect(list.releases[0].status).toBe('CURRENT');
-  const asOf = await request.get('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z');
+  const asOf = await request.get('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z&question=WHAT_WE_HELD');
   const a = await asOf.json();
   expect(a.answer.value).toBe(40);
-  const later = await (await request.get('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-09-01T12:00:00Z')).json();
+  const later = await (await request.get('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-09-01T12:00:00Z&question=WHAT_WE_HELD')).json();
   expect(later.answer.value).toBe(40.12);
   expect(later.answer.uncertainty).toEqual({ low: 40.08, high: 40.16, semantics: 'Weighbridge stated accuracy ±0.040 t' });
-  const refused = await (await request.get('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-7C-104&predicate=condition.moisture&validAt=2026-08-28T14:00:00Z&knownAt=2026-09-01T12:00:00Z')).json();
+  const refused = await (await request.get('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-7C-104&predicate=condition.moisture&validAt=2026-08-28T14:00:00Z&knownAt=2026-09-01T12:00:00Z&question=WHAT_WE_HELD')).json();
   expect(refused.answer).toBeNull();
   expect(refused.refusal.code).toBe('NO_IDENTITY_LINK');
   const retractions = await (await request.get('/api/v1/retractions?since=2026-08-26T00:00:00Z')).json();
@@ -188,9 +188,28 @@ test('the model page derives what each capability waits on, and separates absorb
   expect(await section.locator('[data-fit="RUNS_TODAY"]').count()).toBeGreaterThan(0);
   await expect(section.locator('[data-capability="ADMISSION"][data-fit="SEVERAL_THINGS_AWAY"]')).toContainText('A built gate is not a crossed one');
   await expect(section.locator('[data-capability="EVENT_CLOSURE"]')).toContainText('placed in time by two channels');
-  // The third clock is the addition the rest of the system still owes for.
-  await expect(section.locator('[data-absorbed="false"]').first()).toContainText('third clock');
+  // The third clock's debt is paid and the module says so; what stays owed is the schema slot.
+  await expect(section.locator('[data-pressure="Every caller of an as-of answer"][data-absorbed="true"]')).toContainText('paid rather than noted');
+  await expect(section.locator('[data-absorbed="false"]').first()).toContainText('record schema');
   await expect(section.locator('[data-pressure="The verification tiers"][data-absorbed="true"]')).toContainText('None of the additions raises a tier');
+});
+
+test('the stream names which as-of question it asks, and refuses the one this corpus cannot bound', async ({ page }) => {
+  await page.goto('/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z&question=WHAT_WE_HELD');
+  // The answerable question: the clock is named on the page and carried in the feed link.
+  await expect(page.getByTestId('asof-question')).toHaveValue('WHAT_WE_HELD');
+  await expect(page.getByTestId('asof-question-meaning')).toContainText('CORPUS_KNOWLEDGE_TIME');
+  await expect(page.getByTestId('asof-banner')).toContainText('Answer for');
+  await expect(page.getByTestId('asof-url')).toHaveText(/question=WHAT_WE_HELD/);
+
+  // Switching the question refuses rather than re-answering on the wrong clock.
+  await page.getByTestId('asof-question').selectOption('WHAT_THE_SOURCE_KNEW');
+  await expect(page.getByTestId('asof-question-meaning')).toContainText('SOURCE_TIME');
+  const banner = page.getByTestId('asof-banner');
+  await expect(banner).toContainText('QUESTION_NOT_ANSWERABLE');
+  await expect(banner).toContainText('No record in this corpus carries one');
+  await expect(page.locator('#st-refusal')).toContainText('never inferred from a gap');
+  await expect(page.getByTestId('asof-url')).toHaveText(/question=WHAT_THE_SOURCE_KNEW/);
 });
 
 test('a release page states certification, the production record and the rights matrix with trading prohibited', async ({ page }) => {

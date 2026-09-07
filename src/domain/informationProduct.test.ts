@@ -46,7 +46,7 @@ describe('the first information product, held to the demonstration corpus', () =
   });
 
   it('answers the customer question through the feed as a delivered record, at two knowledge times, without erasing the earlier answer', async () => {
-    const q = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z' };
+    const q = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', question: 'WHAT_WE_HELD' } as const;
     const early = (await asOfPayload('REL-CAR-2026.09.01', { ...q, knownAt: '2026-08-20T00:00:00Z' }))!;
     const late = (await asOfPayload('REL-CAR-2026.09.01', { ...q, knownAt: '2026-09-01T12:00:00Z' }))!;
     expect(early.answer).not.toBeNull();

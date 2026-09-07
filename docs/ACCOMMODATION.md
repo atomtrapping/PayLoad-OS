@@ -64,16 +64,27 @@ historical depth is measured in weeks.
 existed, and whether the existing system absorbs it without change. Most of it
 is absorbed, because a module that only declares costs nothing.
 
-Two are **owed**:
+One is **owed**:
 
-- **The third clock** changes every existing caller rather than adding beside
-  them. A caller must name which as-of question it is asking, because *what the
-  source knew by D* and *what this system held at K* are different questions
-  with different answers.
 - **Constraints as observations with provenance** need a slot in the record
   schema that does not exist. A constraint declared in a module is not a
   constraint the corpus carries, and the two must not be confused when a solver
   arrives.
+
+One **was owed and has been paid**, which is what this module is for:
+
+- **The third clock** changed every existing caller rather than adding beside
+  them. A caller must name which as-of question it is asking, because *what the
+  source knew by D* and *what this system held at K* are different questions
+  bounded by different clocks. `AsOfQuery` now carries a required `question`
+  with no default, so the compiler enumerated every caller that owed one; the
+  HTTP route and the MCP tool refuse an unnamed or unrecognised question rather
+  than guessing; every answer states the `boundedBy` clock in the domain object
+  and in the wire shape; and `WHAT_THE_SOURCE_KNEW` is refused outright as
+  `QUESTION_NOT_ANSWERABLE`, because no record here carries a source clock and
+  answering it on knowledge time would report what this system held as what the
+  source knew. The refusal is decided before rights or validity are consulted,
+  so no later check can quietly answer a question that was never answerable.
 
 The strongest thing the additions produced is in the absorbed column: the
 independence rule arrived in three unrelated places at once — event closure,

@@ -17,7 +17,8 @@ export const metadata: Metadata = { title: 'Products' };
 /** The first information product, and the promise every delivered record makes. Both are held to the corpus by tests; the page states what they state. */
 export default async function ProductsPage() {
   const current = CARAVAN_RELEASES.at(-1)!;
-  const q = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z' };
+  // Both answers ask what this system held; the two knowledge times are the point of the pair.
+  const q = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', question: 'WHAT_WE_HELD' } as const;
   const [early, late] = await Promise.all([
     asOfPayload(current.releaseId, { ...q, knownAt: '2026-08-20T00:00:00Z' }),
     asOfPayload(current.releaseId, { ...q, knownAt: current.knownAt }),

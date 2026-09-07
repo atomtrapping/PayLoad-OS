@@ -41,16 +41,24 @@ describe('MCP tools (a distribution mechanism over the same feed)', () => {
   });
 
   it('query_as_of returns the same reconstruction as the HTTP feed, and a refusal is a successful return', async () => {
-    const a = (await runMcpTool('query_as_of', { releaseId: 'REL-CAR-2026.09.01', subject: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z' })) as { fixture_only: boolean; answer: { value: number } };
+    const a = (await runMcpTool('query_as_of', { releaseId: 'REL-CAR-2026.09.01', subject: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z', question: 'WHAT_WE_HELD' })) as { fixture_only: boolean; answer: { value: number }; boundedBy: string };
     expect(a.fixture_only).toBe(true);
     expect(a.answer.value).toBe(40);
-    const r = (await runMcpTool('query_as_of', { releaseId: 'REL-CAR-2026.09.01', subject: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-01T12:00:00Z' })) as { answer: null; refusal: { code: string; remedy: string } };
+    expect(a.boundedBy).toBe('CORPUS_KNOWLEDGE_TIME');
+    const r = (await runMcpTool('query_as_of', { releaseId: 'REL-CAR-2026.09.01', subject: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' })) as { answer: null; refusal: { code: string; remedy: string } };
     expect(r.answer).toBeNull();
     expect(r.refusal.code).toBe('NO_IDENTITY_LINK');
+    // The source question is refused through this surface too, on the same terms.
+    const source = (await runMcpTool('query_as_of', { releaseId: 'REL-CAR-2026.09.01', subject: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z', question: 'WHAT_THE_SOURCE_KNEW' })) as { answer: null; boundedBy: string; refusal: { code: string } };
+    expect(source.answer).toBeNull();
+    expect(source.boundedBy).toBe('SOURCE_TIME');
+    expect(source.refusal.code).toBe('QUESTION_NOT_ANSWERABLE');
   });
 
   it('malformed arguments are tool errors; an unknown release is a refusal with a remedy', async () => {
-    await expect(runMcpTool('query_as_of', { releaseId: 'x', subject: 's', predicate: 'p', validAt: 'yesterday', knownAt: 'now' })).rejects.toThrow(/ISO 8601/);
+    await expect(runMcpTool('query_as_of', { releaseId: 'x', subject: 's', predicate: 'p', validAt: 'yesterday', knownAt: 'now', question: 'WHAT_WE_HELD' })).rejects.toThrow(/ISO 8601/);
+    // No default question: an unnamed one is a tool error rather than a guess.
+    await expect(runMcpTool('query_as_of', { releaseId: 'REL-CAR-2026.09.01', subject: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z' })).rejects.toThrow(/WHAT_WE_HELD/);
     const r = (await runMcpTool('get_release', { releaseId: 'nope' })) as { error: string; remedy: string };
     expect(r.error).toBe('release_not_found');
     expect(r.remedy).toBe('Call list_releases.');

@@ -16,6 +16,9 @@
 import type { CanonicalURI, Domain, EvidenceClass, Hash, ISODateTime, VisibilityClass } from './types';
 import type { BinaryEvidence, SourceAudience, SourceOperation, SourceRegistration, SourceUseDecision, StorageReceipt } from '@/data-os/contracts';
 import { evaluateSourceUse } from '@/data-os/source-policy';
+import type { AsOfQuestion } from './referenceGround';
+export type { AsOfQuestion } from './referenceGround';
+export { QUESTION_MEANING } from './referenceGround';
 
 /* ── Rights ── */
 
@@ -375,6 +378,19 @@ export function deliverable(corpus: Corpus, release: CorpusRelease, record: Corp
   return deliveryDecision(release, record, viewer)?.state === 'ALLOWED';
 }
 
+/**
+ * Which clock an as-of answer was bounded by. `knownAt` on a CorpusRecord is
+ * the instant the record became knowable to *this system*, so it answers what
+ * we held. No record carries the source's own clock, which is why the other
+ * question is refused rather than answered on the wrong one.
+ */
+export type AsOfClock = 'CORPUS_KNOWLEDGE_TIME' | 'SOURCE_TIME';
+
+export const CLOCK_FOR_QUESTION: Record<AsOfQuestion, AsOfClock> = {
+  WHAT_WE_HELD: 'CORPUS_KNOWLEDGE_TIME',
+  WHAT_THE_SOURCE_KNEW: 'SOURCE_TIME',
+};
+
 export interface AsOfQuery {
   subjectId: string;
   predicate: string;
@@ -382,10 +398,17 @@ export interface AsOfQuery {
   validAt: ISODateTime;
   /** Knowledge cutoff: only records knowable by this instant are considered. */
   knownAt: ISODateTime;
+  /**
+   * Which as-of question is being asked. Required, and deliberately without a
+   * default: the two questions use different clocks, and a caller that does not
+   * name one gets whichever clock the implementation happened to carry. That is
+   * how backfill fabricates, so the type refuses to let it happen quietly.
+   */
+  question: AsOfQuestion;
 }
 
 export interface AsOfRefusal {
-  code: 'NO_RECORD' | 'NO_IDENTITY_LINK' | 'RETRACTED' | 'OUTSIDE_VALIDITY' | 'NOT_DELIVERABLE';
+  code: 'NO_RECORD' | 'NO_IDENTITY_LINK' | 'RETRACTED' | 'OUTSIDE_VALIDITY' | 'NOT_DELIVERABLE' | 'QUESTION_NOT_ANSWERABLE';
   reason: string;
   remedy: string;
   /** Records that were considered and why they did not answer. */
@@ -395,6 +418,8 @@ export interface AsOfRefusal {
 export interface AsOfAnswer {
   query: AsOfQuery;
   releaseId: string;
+  /** The clock the answer was actually bounded by, named rather than assumed. */
+  boundedBy: AsOfClock;
   /** The record that answers, with its status at the knowledge time. */
   record?: CorpusRecord;
   status?: RecordStatus;
@@ -432,8 +457,25 @@ function withinValidity(r: CorpusRecord, validAt: ISODateTime): boolean {
 export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, opts: { enforceRights?: boolean; viewer?: VisibilityClass } = {}): AsOfAnswer {
   const knownAt = q.knownAt <= release.knownAt ? q.knownAt : release.knownAt;
   const query = { ...q, knownAt };
+  const boundedBy = CLOCK_FOR_QUESTION[q.question];
   const records = releaseRecords(corpus, release);
   const considered: AsOfRefusal['considered'] = [];
+
+  // No record carries the source's own clock, so the source question cannot be
+  // bounded here. Answering it on knowledge time instead would report what this
+  // system held as what the source knew, which is the fabrication the third
+  // clock exists to prevent. It is refused, and the refusal says why.
+  if (q.question === 'WHAT_THE_SOURCE_KNEW') {
+    return {
+      query, releaseId: release.releaseId, boundedBy, resolution: 'NONE', candidates: [],
+      refusal: {
+        code: 'QUESTION_NOT_ANSWERABLE',
+        reason: 'This asks what the source had published by the instant, which must be bounded by the source\u2019s own clock. No record in this corpus carries one: every record states when it became knowable here, and that is a fact about this system rather than about the source.',
+        remedy: 'Ask WHAT_WE_HELD, which this corpus can answer, and read it as a statement about this system. The source question becomes answerable when records carry a declared source time \u2014 declared by the source, never inferred from a gap between the other two clocks.',
+        considered: [],
+      },
+    };
+  }
 
   const evaluate = (subjectId: string, resolution: AsOfAnswer['resolution'], identityLink?: CorpusRecord): AsOfAnswer | null => {
     const candidates = candidatesFor(records, subjectId, q.predicate, query);
@@ -458,23 +500,23 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
         considered.push({ recordId: r.recordId, because: `source ${r.provenance.sourceId}: ${d?.state ?? 'NO_REGISTRATION'} (${d?.reasons.join(', ') ?? 'no registration'})` });
         continue;
       }
-      return { query, releaseId: release.releaseId, record: r, status, resolution, identityLink, candidates };
+      return { query, releaseId: release.releaseId, boundedBy, record: r, status, resolution, identityLink, candidates };
     }
     // Candidates existed but none answered; report the most specific refusal.
     const retracted = candidates.find((r) => recordStatusAt(corpus, r, knownAt) === 'RETRACTED');
     if (retracted) {
       const retraction = corpus.retractions.find((x) => x.retractionId === retracted.retractedByRetractionId);
       return {
-        query, releaseId: release.releaseId, resolution, identityLink, candidates, retraction,
+        query, releaseId: release.releaseId, boundedBy, resolution, identityLink, candidates, retraction,
         refusal: { code: 'RETRACTED', reason: `The only record was withdrawn: ${retraction?.reason ?? 'reason not recorded'}`, remedy: 'Obtain a replacement artifact from the producer, or an independent one; the corpus will carry it as a new record.', considered },
       };
     }
     if (opts.enforceRights && candidates.some((r) => !deliverable(corpus, release, r, opts.viewer))) {
       const d = deliveryDecision(release, candidates[0], opts.viewer);
-      return { query, releaseId: release.releaseId, resolution, identityLink, candidates, refusal: { code: 'NOT_DELIVERABLE', reason: `A record exists but the source-use decision for this delivery is ${d?.state ?? 'absent'}: ${d?.reasons.join(', ') ?? 'no registration'}.`, remedy: 'Register the source for this operation and audience, or supply an equivalent artifact from a source that permits it.', considered } };
+      return { query, releaseId: release.releaseId, boundedBy, resolution, identityLink, candidates, refusal: { code: 'NOT_DELIVERABLE', reason: `A record exists but the source-use decision for this delivery is ${d?.state ?? 'absent'}: ${d?.reasons.join(', ') ?? 'no registration'}.`, remedy: 'Register the source for this operation and audience, or supply an equivalent artifact from a source that permits it.', considered } };
     }
     return {
-      query, releaseId: release.releaseId, resolution, identityLink, candidates,
+      query, releaseId: release.releaseId, boundedBy, resolution, identityLink, candidates,
       refusal: { code: 'OUTSIDE_VALIDITY', reason: 'Records exist for this subject and predicate but none describes the requested world time.', remedy: 'Query a world time inside a record\'s validity, or supply an artifact that describes the requested time.', considered },
     };
   };
@@ -497,7 +539,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
     .sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1));
   if (sampleRecords.length > 0 && links.length === 0) {
     return {
-      query, releaseId: release.releaseId, resolution: 'NONE', candidates: [],
+      query, releaseId: release.releaseId, boundedBy, resolution: 'NONE', candidates: [],
       refusal: {
         code: 'NO_IDENTITY_LINK',
         reason: `Records for ${q.predicate} exist on sample subjects, but no identity link (${IDENTITY_LINK_PREDICATE}) connects any of them to ${q.subjectId} as of ${knownAt}. The corpus never merges on similarity.`,
@@ -507,7 +549,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
     };
   }
   return {
-    query, releaseId: release.releaseId, resolution: 'NONE', candidates: [],
+    query, releaseId: release.releaseId, boundedBy, resolution: 'NONE', candidates: [],
     refusal: { code: 'NO_RECORD', reason: `No record for ${q.predicate} on ${q.subjectId} was knowable by ${knownAt} in ${release.releaseId}.`, remedy: 'Supply an artifact that states it; the corpus will carry it with its evidence class, rights and both clocks.', considered },
   };
 }

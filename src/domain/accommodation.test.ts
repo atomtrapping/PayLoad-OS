@@ -79,13 +79,19 @@ describe('what the additions cost the system', () => {
       expect(pressure.obligation.length).toBeGreaterThan(40);
       expect(pressure.cost.length).toBeGreaterThan(30);
     }
+    // The third clock's debt is paid: the query requires its question and both
+    // public surfaces refuse an unnamed one. What stays owed is the schema slot.
     const clocks = PRESSURE.find((p) => p.from.includes('third clock'))!;
-    expect(clocks.absorbed).toBe(false);
+    expect(clocks.absorbed).toBe(true);
+    expect(clocks.cost).toContain('paid rather than noted');
+    const schema = PRESSURE.find((p) => p.on === 'The record schema')!;
+    expect(schema.absorbed).toBe(false);
   });
 
   it('keeps the finding about the one thing building cannot do', () => {
     expect(THE_FINDING.theOneThingBuildingCannotDo).toContain('person');
     expect(THE_FINDING.narrowness.length).toBeGreaterThan(60);
     expect(THE_FINDING.andItCannotBeAdjudicated).toContain('stated its own uncertainty');
+    expect(THE_FINDING.whatGotPaid).toContain('refuse an unnamed question');
   });
 });

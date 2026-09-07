@@ -44,7 +44,7 @@ describe('feed payloads', () => {
   });
 
   it('as-of returns a typed refusal with a remedy, never a zero', async () => {
-    const p = await asOfPayload(CURRENT, { subjectId: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-01T12:00:00Z' });
+    const p = await asOfPayload(CURRENT, { subjectId: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' });
     expect(p?.answer).toBeNull();
     expect(p?.refusal?.code).toBe('NO_IDENTITY_LINK');
     expect(p?.refusal?.remedy).toMatch(/identity-link record/);
@@ -52,7 +52,7 @@ describe('feed payloads', () => {
   });
 
   it('as-of resolves through an identity link and reports the link used', async () => {
-    const p = await asOfPayload(CURRENT, { subjectId: 'LOT-5B-221', predicate: 'condition.moisture', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z' });
+    const p = await asOfPayload(CURRENT, { subjectId: 'LOT-5B-221', predicate: 'condition.moisture', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' });
     expect(p?.resolution).toBe('VIA_IDENTITY_LINK');
     expect(p?.identityLink?.recordId).toBe('REC-0202');
     expect(p?.answer?.value).toBe(5.1);
@@ -110,7 +110,7 @@ describe('certification, rights and attribution', () => {
     const rec = p!.records.find((r) => r.recordId === 'REC-0201')!;
     expect(rec.rights?.attribution).toBe('Northgate Inspection Services LIMS — northgate-certificate-licence-2026');
     expect(rec.rights?.permittedUses).toContain('customer_delivery');
-    const a = await asOfPayload(CURRENT, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z' });
+    const a = await asOfPayload(CURRENT, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' });
     expect(a?.answer?.rights?.sourceName).toBe('Terminal weighbridge');
   });
 });

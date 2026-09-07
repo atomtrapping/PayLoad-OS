@@ -56,8 +56,8 @@ export const MCP_TOOLS = [
   def({
     name: 'query_as_of',
     description: 'What the release could answer about a subject and predicate at a world time, given what was knowable at a knowledge time. Returns the answering record with its status, the identity link used if any, or a typed refusal with a remedy and the candidates set aside.',
-    shape: { releaseId: z.string(), subject: z.string(), predicate: z.string(), validAt: iso('validAt').describe('World time the answer must describe'), knownAt: iso('knownAt').describe('Knowledge cutoff; clamped to the release cutoff') },
-    run: async ({ releaseId, subject, predicate, validAt, knownAt }) => (await asOfPayload(releaseId, { subjectId: subject, predicate, validAt, knownAt })) ?? notFound('release', releaseId, 'Call list_releases.'),
+    shape: { releaseId: z.string(), subject: z.string(), predicate: z.string(), validAt: iso('validAt').describe('World time the answer must describe'), knownAt: iso('knownAt').describe('Knowledge cutoff; clamped to the release cutoff'), question: z.enum(['WHAT_WE_HELD', 'WHAT_THE_SOURCE_KNEW']).describe('Which as-of question. WHAT_WE_HELD is bounded by this corpus\u2019s knowledge time. WHAT_THE_SOURCE_KNEW is bounded by the source\u2019s own clock, which no record here carries, so it is refused rather than answered on the wrong clock. There is no default.') },
+    run: async ({ releaseId, subject, predicate, validAt, knownAt, question }) => (await asOfPayload(releaseId, { subjectId: subject, predicate, validAt, knownAt, question })) ?? notFound('release', releaseId, 'Call list_releases.'),
   }),
   def({
     name: 'list_retractions',

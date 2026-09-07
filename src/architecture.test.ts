@@ -71,7 +71,7 @@ describe('layer boundaries', () => {
 });
 
 const RELEASE = 'REL-CAR-2026.09.01';
-const ASOF = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z' };
+const ASOF = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' } as const;
 
 async function projectEverything() {
   const feed = await Promise.all([
@@ -82,7 +82,7 @@ async function projectEverything() {
   ]);
   const args: Record<string, unknown> = {
     list_releases: {}, get_release: { releaseId: RELEASE }, get_release_manifest: { releaseId: RELEASE }, list_records: { releaseId: RELEASE },
-    query_as_of: { releaseId: RELEASE, subject: ASOF.subjectId, predicate: ASOF.predicate, validAt: ASOF.validAt, knownAt: ASOF.knownAt },
+    query_as_of: { releaseId: RELEASE, subject: ASOF.subjectId, predicate: ASOF.predicate, validAt: ASOF.validAt, knownAt: ASOF.knownAt, question: 'WHAT_WE_HELD' },
     list_retractions: {}, get_ruling: { rulingId: 'RUL-7C104-r2' }, get_ruling_manifest: { rulingId: 'RUL-7C104-r2' },
     get_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' }, verify_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' },
     get_dispatch_event: { decisionId: 'DISP-EVT-2026-0803' }, replay_dispatch_liability: { decisionId: 'DISP-EVT-2026-0803' },
@@ -117,7 +117,7 @@ describe('identity survives representation changes', () => {
     const asOf = (await asOfPayload(RELEASE, ASOF))!;
     expect(asOf.answer).not.toBeNull();
     expect(asOf.answer!.canonicalId).toBe(byId.get(asOf.answer!.recordId));
-    const viaTool = (await runMcpTool('query_as_of', { releaseId: RELEASE, subject: ASOF.subjectId, predicate: ASOF.predicate, validAt: ASOF.validAt, knownAt: ASOF.knownAt })) as typeof asOf;
+    const viaTool = (await runMcpTool('query_as_of', { releaseId: RELEASE, subject: ASOF.subjectId, predicate: ASOF.predicate, validAt: ASOF.validAt, knownAt: ASOF.knownAt, question: 'WHAT_WE_HELD' })) as typeof asOf;
     expect(viaTool.answer!.canonicalId).toBe(asOf.answer!.canonicalId);
   });
 });

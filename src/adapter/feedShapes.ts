@@ -88,6 +88,10 @@ export function retractionPayload(r: Retraction) {
 export function asOfBody(a: AsOfAnswer, rightsOf: (sourceId: string) => RightsSchedule | undefined = () => undefined, decisionOf: (r: CorpusRecord) => SourceUseDecision | undefined = () => undefined) {
   return {
     query: a.query,
+    // Which clock bounded the answer, stated so a reader never has to infer it
+    // from the query, and so the two questions stay distinguishable in the wire
+    // shape rather than only in the code that produced it.
+    boundedBy: a.boundedBy,
     resolution: a.resolution,
     answer: a.record ? { ...recordPayload(a.record, rightsOf(a.record.provenance.sourceId), decisionOf(a.record)), statusAtKnownAt: a.status } : null,
     identityLink: a.identityLink ? recordPayload(a.identityLink, rightsOf(a.identityLink.provenance.sourceId), decisionOf(a.identityLink)) : null,
@@ -97,7 +101,7 @@ export function asOfBody(a: AsOfAnswer, rightsOf: (sourceId: string) => RightsSc
 }
 
 export function asOfUrl(releaseId: string, q: AsOfAnswer['query']): string {
-  const p = new URLSearchParams({ subject: q.subjectId, predicate: q.predicate, validAt: q.validAt, knownAt: q.knownAt });
+  const p = new URLSearchParams({ subject: q.subjectId, predicate: q.predicate, validAt: q.validAt, knownAt: q.knownAt, question: q.question });
   return `/api/v1/releases/${encodeURIComponent(releaseId)}/as-of?${p.toString()}`;
 }
 

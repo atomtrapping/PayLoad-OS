@@ -69,6 +69,7 @@ export type PreconditionId =
   | 'REPEATED_POSITION'
   | 'MULTI_CHANNEL_EVENT'
   | 'SOURCE_LINEAGE'
+  | 'DECLARED_SOURCE_TIME'
   | 'AREAL_GEOMETRY'
   | 'HISTORICAL_DEPTH'
   | 'STATED_UNCERTAINTY'
@@ -171,6 +172,14 @@ export const PRECONDITIONS: readonly Precondition[] = [
       [...accounts(corpus).entries()].some(
         ([key, records]) => key.split('|')[1].startsWith('custody.') && sourcesOf(records).size >= 2,
       ),
+  },
+  {
+    id: 'DECLARED_SOURCE_TIME',
+    what: 'A record carrying the source\u2019s own clock: when the source published or knew the thing.',
+    kind: 'CORPUS_CONTENT',
+    met: false,
+    because: 'Every record states when it became knowable *here*, which is a fact about this system. The store carries a third clock and no committed record fills it, so the source as-of question is refused rather than answered on the wrong clock. It must be declared by the source; inferring it from the gap between the other two clocks would be this system guessing at provenance.',
+    probe: (corpus) => corpus.records.some((r) => 'sourceTime' in r || 'publishedAt' in r),
   },
   {
     id: 'SOURCE_LINEAGE',
@@ -412,6 +421,20 @@ export const CAPABILITIES: readonly Capability[] = [
     ifMistaken: 'The corpus has the pair and not the bounds. The verdict it can reach today is NOT_ASSESSABLE, which is an honest answer and not a weak version of agreement.',
   },
   {
+    id: 'NAMED_AS_OF_QUESTION',
+    what: 'An as-of answer that names which question it answers and which clock bounded it, and refuses the question it cannot answer.',
+    module: 'src/domain/corpus.ts',
+    needs: ['BOTH_CLOCKS', 'THE_SERVING_BOUNDARY'],
+    ifMistaken: 'It refuses the source question rather than answering it. That refusal is the feature: this corpus carries no source clock, so the only honest answer to "what had the source published by then" is that it cannot be bounded here.',
+  },
+  {
+    id: 'SOURCE_TIME_AS_OF',
+    what: 'Answering what the source had published by an instant, bounded by the source\u2019s own clock.',
+    module: 'src/domain/referenceGround.ts',
+    needs: ['DECLARED_SOURCE_TIME'],
+    ifMistaken: 'Inferring a source time from the gap between the other two clocks would make the answer up. The clock is declared by the source or the question stays refused.',
+  },
+  {
     id: 'RESPONSE_PIPELINE',
     what: 'What leaves and why: five stages in refusal order, with a receipt over the run.',
     module: 'src/domain/responsePipeline.ts',
@@ -502,8 +525,8 @@ export const PRESSURE: readonly Pressure[] = [
     on: 'Every caller of an as-of answer',
     from: 'The third clock: source time, distinct from acquisition and knowledge time.',
     obligation: 'A caller must name which as-of question it is asking, because *what the source knew by D* and *what this system held at K* are different questions with different answers.',
-    absorbed: false,
-    cost: 'This is the one addition that changes existing callers rather than adding beside them. Every read path either names its question or answers a question nobody asked.',
+    absorbed: true,
+    cost: 'This was the one addition that changed existing callers rather than adding beside them, and the debt has been paid rather than noted. AsOfQuery carries a required question with no default, so the compiler named every caller that owed one; the HTTP route and the MCP tool refuse an unnamed or unknown question instead of guessing; every answer states the clock it was bounded by; and the source question is refused outright, because no record here carries a source clock and answering it on knowledge time is exactly the fabrication the third clock exists to prevent.',
   },
   {
     on: 'The record schema',
@@ -555,5 +578,6 @@ export const THE_FINDING = {
   andItCannotBeAdjudicated: 'That pair is not assessable, because the draft survey states no bound. So the missing thing is more precise than "a second account": it is a second account that stated its own uncertainty. A source that declines to bound itself contributes a number and no test.',
   narrowness: 'Almost every other unmet precondition is corpus content and a variation on the same theme — a position observed twice, an event placed by two channels, an account with a bound. The system is one kind of thing away, many times over, not many things away once.',
   order: 'That makes the acquisition order the whole roadmap, and it puts stated uncertainty at the top of the specification for any source worth connecting. Building more description moves nothing.',
+  whatGotPaid: 'The third clock\u2019s debt was the one addition that fell on existing callers, and it is paid: the as-of query requires its question, the compiler found every caller that owed one, both public surfaces refuse an unnamed question, and the question this corpus cannot answer is refused rather than served on the wrong clock. What remains owed is the record-schema slot a constraint needs.',
   theOneThingBuildingCannotDo: 'An admission authority is a person accepting responsibility for a ruling. No module produces one, and the gate is built and waiting on it.',
 } as const;

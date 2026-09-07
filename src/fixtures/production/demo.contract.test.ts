@@ -77,7 +77,7 @@ describe('candidate production is separate from the corpus, the feed and the too
       releasesPayload(), releasePayload(releaseId), releaseManifestPayload(releaseId),
       recordsPayload(releaseId, 'COUNTERPARTY_SHARED'), recordsPayload(releaseId, 'PUBLIC_RULING'),
       retractionsPayload(undefined, 'COUNTERPARTY_SHARED'),
-      asOfPayload(releaseId, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z' }),
+      asOfPayload(releaseId, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' }),
       rulingPayload('RUL-7C104-r2', 'COUNTERPARTY_SHARED'), rulingManifestPayload('RUL-7C104-r2', 'COUNTERPARTY_SHARED'),
     ]);
     const text = JSON.stringify(payloads);
@@ -91,7 +91,7 @@ describe('candidate production is separate from the corpus, the feed and the too
     const releaseId = 'REL-CAR-2026.09.01';
     const args: Record<string, unknown> = {
       list_releases: {}, get_release: { releaseId }, get_release_manifest: { releaseId }, list_records: { releaseId },
-      query_as_of: { releaseId, subject: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z' },
+      query_as_of: { releaseId, subject: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' },
       list_retractions: {}, get_ruling: { rulingId: 'RUL-7C104-r2' }, get_ruling_manifest: { rulingId: 'RUL-7C104-r2' },
       get_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' }, verify_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' },
       get_dispatch_event: { decisionId: 'DISP-EVT-2026-0803' }, replay_dispatch_liability: { decisionId: 'DISP-EVT-2026-0803' },

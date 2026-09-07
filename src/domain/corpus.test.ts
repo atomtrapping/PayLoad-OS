@@ -22,22 +22,22 @@ describe('corpus releases', () => {
 
 describe('as-of answers', () => {
   it('reconstructs the earlier quantity before the correction was knowable, and the corrected one after', () => {
-    const before = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z' });
+    const before = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z', question: 'WHAT_WE_HELD' });
     expect(before.record?.recordId).toBe('REC-0203');
     expect(before.record?.value).toBe(40);
     expect(before.status).toBe('CURRENT');
-    const after = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-26T00:00:00Z' });
+    const after = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-26T00:00:00Z', question: 'WHAT_WE_HELD' });
     expect(after.record?.recordId).toBe('REC-0204');
     expect(after.record?.value).toBe(40.12);
     expect(after.record?.uncertainty).toEqual({ low: 40.08, high: 40.16, semantics: 'Weighbridge stated accuracy ±0.040 t' });
   });
 
   it('reaches a lot condition through an identity-link record, and refuses with a remedy when no link exists', () => {
-    const linked = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'condition.moisture', validAt: '2026-08-17T16:00:00Z', knownAt: rel3.knownAt });
+    const linked = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'condition.moisture', validAt: '2026-08-17T16:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_WE_HELD' });
     expect(linked.resolution).toBe('VIA_IDENTITY_LINK');
     expect(linked.identityLink?.recordId).toBe('REC-0202');
     expect(linked.record?.value).toBe(5.1);
-    const unlinked = queryAsOf(corpus, rel3, { subjectId: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: rel3.knownAt });
+    const unlinked = queryAsOf(corpus, rel3, { subjectId: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_WE_HELD' });
     expect(unlinked.record).toBeUndefined();
     expect(unlinked.refusal?.code).toBe('NO_IDENTITY_LINK');
     expect(unlinked.refusal?.remedy).toMatch(/links a sample identifier to LOT-7C-104/);
@@ -45,9 +45,9 @@ describe('as-of answers', () => {
   });
 
   it('a withdrawn record answers before the withdrawal was knowable and is refused as RETRACTED after', () => {
-    const before = queryAsOf(corpus, rel3, { subjectId: 'LOT-3F-440', predicate: 'condition.moisture', validAt: '2026-08-11T12:00:00Z', knownAt: '2026-08-15T00:00:00Z' });
+    const before = queryAsOf(corpus, rel3, { subjectId: 'LOT-3F-440', predicate: 'condition.moisture', validAt: '2026-08-11T12:00:00Z', knownAt: '2026-08-15T00:00:00Z', question: 'WHAT_WE_HELD' });
     expect(before.record?.recordId).toBe('REC-0111');
-    const after = queryAsOf(corpus, rel3, { subjectId: 'LOT-3F-440', predicate: 'condition.moisture', validAt: '2026-08-11T12:00:00Z', knownAt: rel3.knownAt });
+    const after = queryAsOf(corpus, rel3, { subjectId: 'LOT-3F-440', predicate: 'condition.moisture', validAt: '2026-08-11T12:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_WE_HELD' });
     expect(after.record).toBeUndefined();
     // the identity link was withdrawn too, so the refusal is the absence of a link, not a retracted moisture
     expect(['RETRACTED', 'NO_IDENTITY_LINK']).toContain(after.refusal?.code);
@@ -55,21 +55,21 @@ describe('as-of answers', () => {
   });
 
   it('refuses outside validity and refuses with NO_RECORD, never a zero', () => {
-    const early = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-01T00:00:00Z', knownAt: rel3.knownAt });
+    const early = queryAsOf(corpus, rel3, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-01T00:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_WE_HELD' });
     expect(early.refusal?.code).toBe('OUTSIDE_VALIDITY');
-    const none = queryAsOf(corpus, rel3, { subjectId: 'LOT-9A-017', predicate: 'quantity.gross', validAt: '2026-08-30T10:00:00Z', knownAt: rel3.knownAt });
+    const none = queryAsOf(corpus, rel3, { subjectId: 'LOT-9A-017', predicate: 'quantity.gross', validAt: '2026-08-30T10:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_WE_HELD' });
     expect(none.refusal?.code).toBe('NO_RECORD');
     expect(none.record).toBeUndefined();
   });
 
   it('a knowledge time later than the release cutoff is clamped to the release', () => {
-    const a = queryAsOf(corpus, rel2, { subjectId: 'LOT-7C-104', predicate: 'custody.loading_completed', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-30T00:00:00Z' });
+    const a = queryAsOf(corpus, rel2, { subjectId: 'LOT-7C-104', predicate: 'custody.loading_completed', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-30T00:00:00Z', question: 'WHAT_WE_HELD' });
     expect(a.query.knownAt).toBe(rel2.knownAt);
     expect(a.refusal?.code).toBe('NO_RECORD');
   });
 
   it('rights guard: a record whose source forbids customer delivery never leaves the corpus', () => {
-    const a = queryAsOf(corpus, rel3, { subjectId: 'LOT-7C-104', predicate: 'contract.moisture_max', validAt: '2026-08-28T14:00:00Z', knownAt: rel3.knownAt }, { enforceRights: true });
+    const a = queryAsOf(corpus, rel3, { subjectId: 'LOT-7C-104', predicate: 'contract.moisture_max', validAt: '2026-08-28T14:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_WE_HELD' }, { enforceRights: true });
     expect(a.record).toBeUndefined();
     expect(a.refusal?.code).toBe('NOT_DELIVERABLE');
     const delivered = deliverableRecords(corpus, rel3, 'COUNTERPARTY_SHARED');
@@ -87,5 +87,38 @@ describe('retraction feed', () => {
     expect(later.map((r) => r.retractionId)).toEqual(['RET-0002']);
     expect(later[0].affectedRulingIds).toEqual(['RUL-3F440-r1']);
     expect(later[0].kind).toBe('WITHDRAWAL');
+  });
+
+  it('names the clock every answer was bounded by, and refuses the question this corpus cannot bound', () => {
+    const q = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z' } as const;
+
+    const held = queryAsOf(corpus, rel3, { ...q, question: 'WHAT_WE_HELD' });
+    expect(held.boundedBy).toBe('CORPUS_KNOWLEDGE_TIME');
+    expect(held.record?.recordId).toBe('REC-0203');
+
+    // The same query, the other question. No record carries a source clock, so
+    // bounding it is impossible and answering on knowledge time would report
+    // what this system held as what the source knew.
+    const source = queryAsOf(corpus, rel3, { ...q, question: 'WHAT_THE_SOURCE_KNEW' });
+    expect(source.boundedBy).toBe('SOURCE_TIME');
+    expect(source.record).toBeUndefined();
+    expect(source.refusal?.code).toBe('QUESTION_NOT_ANSWERABLE');
+    expect(source.candidates).toEqual([]);
+    expect(source.resolution).toBe('NONE');
+    // The remedy names the declared clock and forbids inferring one.
+    expect(source.refusal?.remedy).toContain('declared source time');
+    expect(source.refusal?.remedy).toContain('never inferred');
+  });
+
+  it('refuses the source question before anything else, so no rights or validity check can quietly answer it', () => {
+    // A subject and predicate with no record at all: the source question is
+    // still refused as unanswerable rather than as NO_RECORD, because which
+    // question was asked is settled before what the corpus holds is consulted.
+    const absent = queryAsOf(corpus, rel3, { subjectId: 'LOT-9A-017', predicate: 'quantity.gross', validAt: '2026-08-30T10:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_THE_SOURCE_KNEW' });
+    expect(absent.refusal?.code).toBe('QUESTION_NOT_ANSWERABLE');
+    // And a rights-restricted one answers the same way, rather than leaking that a record exists.
+    const restricted = queryAsOf(corpus, rel3, { subjectId: 'LOT-7C-104', predicate: 'contract.moisture_max', validAt: '2026-08-28T14:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_THE_SOURCE_KNEW' }, { enforceRights: true });
+    expect(restricted.refusal?.code).toBe('QUESTION_NOT_ANSWERABLE');
+    expect(restricted.candidates).toEqual([]);
   });
 });

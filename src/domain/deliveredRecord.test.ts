@@ -27,7 +27,7 @@ describe('the delivered-record contract', () => {
   });
 
   it('an as-of answer and a tool result are delivered records too', async () => {
-    const q = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z' };
+    const q = { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' } as const;
     const p = (await asOfPayload('REL-CAR-2026.09.01', q))!;
     expect(p.answer).not.toBeNull();
     expect(answersAll(p.answer!)).toBe(true);

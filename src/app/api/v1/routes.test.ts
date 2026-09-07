@@ -80,10 +80,42 @@ describe('/api/v1 route handlers (fixture feed)', () => {
     expect((await bad.json()).error).toBe('query_incomplete');
     const notIso = await asOf(req('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-7C-104&predicate=quantity.gross&validAt=yesterday&knownAt=now'), params({ releaseId: 'REL-CAR-2026.09.01' }));
     expect(notIso.status).toBe(400);
-    const ok = await asOf(req('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-7C-104&predicate=quantity.gross&validAt=2026-08-28T14:00:00Z&knownAt=2026-09-01T12:00:00Z'), params({ releaseId: 'REL-CAR-2026.09.01' }));
+    const base = '/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-7C-104&predicate=quantity.gross&validAt=2026-08-28T14:00:00Z&knownAt=2026-09-01T12:00:00Z';
+
+    // The question has no default: an unnamed one is refused rather than guessed,
+    // because the two are bounded by different clocks and the caller could not
+    // tell from the answer which it had been served.
+    const unnamed = await asOf(req(base), params({ releaseId: 'REL-CAR-2026.09.01' }));
+    expect(unnamed.status).toBe(400);
+    const unnamedBody = await unnamed.json();
+    expect(unnamedBody.error).toBe('question_not_named');
+    expect(unnamedBody.remedy).toContain('Bounded by acquisition time');
+    expect(unnamedBody.remedy).toContain('Bounded by source time');
+    const unknown = await asOf(req(`${base}&question=WHATEVER`), params({ releaseId: 'REL-CAR-2026.09.01' }));
+    expect(unknown.status).toBe(400);
+    expect((await unknown.json()).error).toBe('question_not_named');
+
+    const ok = await asOf(req(`${base}&question=WHAT_WE_HELD`), params({ releaseId: 'REL-CAR-2026.09.01' }));
     const body = await ok.json();
     expect(body.answer.recordId).toBe('REC-0302');
     expect(body.answer.uncertainty.low).toBe(19.94);
+    // The answer names the clock it was bounded by rather than leaving it inferred.
+    expect(body.boundedBy).toBe('CORPUS_KNOWLEDGE_TIME');
+    expect(body.query.question).toBe('WHAT_WE_HELD');
+  });
+
+  it('refuses the source question rather than answering it on this corpus\u2019s clock', async () => {
+    const res = await asOf(req('/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-7C-104&predicate=quantity.gross&validAt=2026-08-28T14:00:00Z&knownAt=2026-09-01T12:00:00Z&question=WHAT_THE_SOURCE_KNEW'), params({ releaseId: 'REL-CAR-2026.09.01' }));
+    // A refusal is a result, not an error: the route answers 200 with a typed refusal.
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.answer).toBeNull();
+    expect(body.boundedBy).toBe('SOURCE_TIME');
+    expect(body.refusal.code).toBe('QUESTION_NOT_ANSWERABLE');
+    expect(body.refusal.reason).toContain('No record in this corpus carries one');
+    expect(body.refusal.remedy).toContain('never inferred from a gap');
+    // A record that would have answered the other question is not smuggled in.
+    expect(body.candidates).toEqual([]);
   });
 
   it('serves the retraction feed since a cursor', async () => {

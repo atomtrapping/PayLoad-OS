@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { Corpus, CorpusRecord } from '@/domain/corpus';
-import { currentRelease, queryAsOf, recordById, recordStatusAt, releaseById, releaseIndex } from '@/domain/corpus';
+import { CLOCK_FOR_QUESTION, QUESTION_MEANING, currentRelease, queryAsOf, recordById, recordStatusAt, releaseById, releaseIndex } from '@/domain/corpus';
+import type { AsOfQuestion } from '@/domain/corpus';
 import { asOfBody, asOfUrl } from '@/adapter/feedShapes';
 import { CopyButton } from '@/components/primitives/CopyButton';
 import { Section } from '@/components/primitives/Section';
@@ -20,7 +21,14 @@ export interface StreamInitial {
   validAt?: string;
   knownAt?: string;
   record?: string;
+  question?: string;
 }
+
+const QUESTIONS = Object.keys(QUESTION_MEANING) as AsOfQuestion[];
+const QUESTION_LABEL: Record<AsOfQuestion, string> = {
+  WHAT_WE_HELD: 'What this system held',
+  WHAT_THE_SOURCE_KNEW: 'What the source knew',
+};
 
 /**
  * The as-of query surface. Choose a release, a subject, a predicate, a
@@ -40,8 +48,9 @@ export function StreamExplorer({ corpus, initial }: { corpus: Corpus; initial: S
   const [predicate, setPredicate] = useState(seed?.predicate ?? initial.predicate ?? 'condition.moisture');
   const [validAt, setValidAt] = useState(seed?.validFrom ?? initial.validAt ?? '2026-08-28T14:00:00Z');
   const [knownAt, setKnownAt] = useState(initial.knownAt ?? release.knownAt);
+  const [question, setQuestion] = useState<AsOfQuestion>(QUESTIONS.includes(initial.question as AsOfQuestion) ? (initial.question as AsOfQuestion) : 'WHAT_WE_HELD');
 
-  const answer = useMemo(() => queryAsOf(corpus, release, { subjectId, predicate, validAt, knownAt }, { enforceRights: true }), [corpus, release, subjectId, predicate, validAt, knownAt]);
+  const answer = useMemo(() => queryAsOf(corpus, release, { subjectId, predicate, validAt, knownAt, question }, { enforceRights: true }), [corpus, release, subjectId, predicate, validAt, knownAt, question]);
   const url = asOfUrl(release.releaseId, answer.query);
   const rights = (sourceId: string) => release.sources.find((s) => s.sourceId === sourceId);
   const body = JSON.stringify({ fixture_only: true, release: { releaseId: release.releaseId, buildId: release.build.buildId, knownAt: release.knownAt, certification: release.certification }, ...asOfBody(answer, rights) }, null, 2);
@@ -72,6 +81,12 @@ export function StreamExplorer({ corpus, initial }: { corpus: Corpus; initial: S
         <label className="flex flex-col gap-1"><span className="label-sm">Information known by (UTC)</span>
           <input type="datetime-local" value={toLocal(knownAt)} onChange={(e) => e.target.value && setKnownAt(fromLocal(e.target.value))} className="surface-inset px-2 py-1 mono text-[12.5px]" step={60} aria-label="Known by" />
           <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Clamped to the release cutoff {fmtUtc(release.knownAt)}.</span>
+        </label>
+        <label className="flex flex-col gap-1 md:col-span-2 xl:col-span-3"><span className="label-sm">As-of question</span>
+          <select value={question} onChange={(e) => setQuestion(e.target.value as AsOfQuestion)} className="surface-inset px-2 py-1.5 text-[12.5px] mono" data-testid="asof-question">
+            {QUESTIONS.map((q) => <option key={q} value={q}>{QUESTION_LABEL[q]} — {q}</option>)}
+          </select>
+          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }} data-testid="asof-question-meaning">{QUESTION_MEANING[question]} Bounded by <span className="id">{CLOCK_FOR_QUESTION[question]}</span>.</span>
         </label>
       </form>
 

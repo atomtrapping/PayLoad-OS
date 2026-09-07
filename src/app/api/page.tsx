@@ -17,13 +17,13 @@ const CORPUS_CONTRACT = `interface CorpusSource {
   listReleases(corpusId?): Promise<CorpusRelease[]>;
   getRelease(releaseId): Promise<{ corpus; release } | undefined>;
   records(releaseId, viewer): Promise<{ records; withheldByRights; withheldByVisibility }>;
-  asOf(releaseId, { subjectId, predicate, validAt, knownAt }): Promise<AsOfAnswer>;
+  asOf(releaseId, { subjectId, predicate, validAt, knownAt, question: 'WHAT_WE_HELD' }): Promise<AsOfAnswer>;
   retractions(since?, viewer): Promise<Retraction[]>;
 }`;
 
 const DECISION_RULE = `// customer-side, any language: settle provisionally if the measured gross weight,
 // including its stated bound, is within 0.5 % of the declared quantity
-const a = await get(\`/api/v1/releases/\${release}/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=\${validAt}&knownAt=\${knownAt}\`);
+const a = await get(\`/api/v1/releases/\${release}/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=\${validAt}&knownAt=\${knownAt}&question=WHAT_WE_HELD\`);
 if (a.refusal) return { decision: 'hold', because: a.refusal.code, remedy: a.refusal.remedy };
 if (a.answer.evidenceClass.claimStrength === 'estimated') return { decision: 'hold', because: 'estimate, not a measurement' };
 const { low, high } = a.answer.uncertainty;
@@ -55,8 +55,10 @@ export default async function ApiPage() {
   const releases = await releasesPayload();
   const current = releases.releases.find((r) => r.status === 'CURRENT')?.releaseId ?? '';
   const records = await recordsPayload(current, 'COUNTERPARTY_SHARED', { subjectId: 'LOT-5B-221' });
-  const asOf = await asOfPayload(current, { subjectId: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-01T12:00:00Z' });
-  const asOfHit = await asOfPayload(current, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z' });
+  const asOf = await asOfPayload(current, { subjectId: 'LOT-7C-104', predicate: 'condition.moisture', validAt: '2026-08-28T14:00:00Z', knownAt: '2026-09-01T12:00:00Z', question: 'WHAT_WE_HELD' });
+  const asOfHit = await asOfPayload(current, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z', question: 'WHAT_WE_HELD' });
+  // The question this corpus cannot answer, refused rather than served on the wrong clock.
+  const asOfSourceQuestion = await asOfPayload(current, { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-08-20T00:00:00Z', question: 'WHAT_THE_SOURCE_KNEW' });
   const retractions = await retractionsPayload('2026-08-26T00:00:00Z', 'COUNTERPARTY_SHARED');
   const manifest = await rulingManifestPayload('RUL-7C104-r2', 'COUNTERPARTY_SHARED');
   const releaseManifest = await releaseManifestPayload(current);
@@ -78,7 +80,7 @@ export default async function ApiPage() {
               <tr><td className="id">GET /api/v1/releases/:id</td><td>Build record with input digests, coverage, sources with their rights schedule, links.</td></tr>
               <tr><td className="id">GET /api/v1/releases/:id/manifest</td><td>The certified release manifest and its commitment: build record with stages and input digests, release digest, sources with rights, certification and governance.</td></tr>
               <tr><td className="id">GET /api/v1/releases/:id/records[?subject=&amp;predicate=&amp;projection=]</td><td>Deliverable records after the rights guard and the visibility projection, with withheld counts.</td></tr>
-              <tr><td className="id">GET /api/v1/releases/:id/as-of?subject=&amp;predicate=&amp;validAt=&amp;knownAt=</td><td>One reconstructed answer with status at the knowledge time, the identity link used if any, or a typed refusal with a remedy and the candidates set aside.</td></tr>
+              <tr><td className="id">GET /api/v1/releases/:id/as-of?subject=&amp;predicate=&amp;validAt=&amp;knownAt=&amp;question=</td><td>One reconstructed answer with status at the knowledge time, the identity link used if any, or a typed refusal with a remedy and the candidates set aside. <span className="id">question</span> is required and has no default: <span className="id">WHAT_WE_HELD</span> is bounded by this corpus&apos;s knowledge time, <span className="id">WHAT_THE_SOURCE_KNEW</span> by the source&apos;s own clock. Every answer states the <span className="id">boundedBy</span> clock, so which question was answered is never inferred.</td></tr>
               <tr><td className="id">GET /api/v1/retractions[?since=&amp;projection=]</td><td>Push retractions: corrections and withdrawals, oldest first, with affected and replacement records and affected rulings.</td></tr>
               <tr><td className="id">GET /api/v1/rulings/:id[?projection=]</td><td>Application layer: a ruling as the workbench returns it, at the requested projection.</td></tr>
               <tr><td className="id">GET /api/v1/rulings/:id/manifest</td><td>The <span className="id">notations.result-manifest.v1</span> sidecar and its commitment.</td></tr>
@@ -92,8 +94,9 @@ export default async function ApiPage() {
           <Example title="Releases" url="/api/v1/releases" body={releases} />
           <Example title="Certified release manifest of the current release" url={`/api/v1/releases/${current}/manifest`} body={releaseManifest} />
           <Example title="Records for lot 5B-221 in the current release" url={`/api/v1/releases/${current}/records?subject=LOT-5B-221`} body={records} />
-          <Example title="As-of: lot 5B-221 quantity as knowable on 2026-08-20 (before the correction)" url={`/api/v1/releases/${current}/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z`} body={asOfHit} />
-          <Example title="As-of: lot 7C-104 moisture — a typed refusal (no identity link)" url={`/api/v1/releases/${current}/as-of?subject=LOT-7C-104&predicate=condition.moisture&validAt=2026-08-28T14:00:00Z&knownAt=2026-09-01T12:00:00Z`} body={asOf} />
+          <Example title="As-of: lot 5B-221 quantity as knowable on 2026-08-20 (before the correction)" url={`/api/v1/releases/${current}/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z&question=WHAT_WE_HELD`} body={asOfHit} />
+          <Example title="As-of: lot 7C-104 moisture — a typed refusal (no identity link)" url={`/api/v1/releases/${current}/as-of?subject=LOT-7C-104&predicate=condition.moisture&validAt=2026-08-28T14:00:00Z&knownAt=2026-09-01T12:00:00Z&question=WHAT_WE_HELD`} body={asOf} />
+          <Example title="As-of: the same query asking what the source knew — refused, not answered on the wrong clock" url={`/api/v1/releases/${current}/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z&question=WHAT_THE_SOURCE_KNEW`} body={asOfSourceQuestion} />
           <Example title="Retractions issued after 2026-08-26" url="/api/v1/retractions?since=2026-08-26T00:00:00Z" body={retractions} />
           <Example title="Application layer: ruling manifest for RUL-7C104-r2" url="/api/v1/rulings/RUL-7C104-r2/manifest" body={manifest} />
         </Section>

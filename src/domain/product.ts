@@ -76,7 +76,7 @@ export const ENGINES: readonly Engine[] = [
     inThisRepository: [
       { item: 'Corpus releases with production records, release digests and certified release manifests', presence: 'FIXTURE', where: '/releases' },
       { item: 'Records with uncertainty and validity bounds, both clocks, provenance, evidence class, rights and identity', presence: 'FIXTURE', where: '/stream' },
-      { item: 'As-of answers and typed refusals', presence: 'FIXTURE', where: '/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-09-01T12:00:00Z' },
+      { item: 'As-of answers and typed refusals', presence: 'FIXTURE', where: '/api/v1/releases/REL-CAR-2026.09.01/as-of?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-09-01T12:00:00Z&question=WHAT_WE_HELD' },
       { item: 'Push retractions: corrections and recalls', presence: 'FIXTURE', where: '/retractions' },
       { item: 'Feed API', presence: 'FIXTURE', where: '/api' },
       { item: 'MCP tools over the same feed', presence: 'FIXTURE', where: '/api#api-mcp' },

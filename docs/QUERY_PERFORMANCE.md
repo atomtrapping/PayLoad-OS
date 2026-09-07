@@ -70,6 +70,28 @@ and the shape is already visible without a customer:
   An index built first and filtered second holds what the filter would have
   withheld, and every failure in that shape is a disclosure rather than a bug.
 
+## The numbers, addressable
+
+`src/domain/queryCost.ts` holds the points above as data, and `/api` renders
+them. It answers what a read costs at a size, from points that were recorded,
+and refuses outside them: past the last run the answer is `UNKNOWN` rather than
+an extrapolation, because a scan's curve is knowable where it was run and a
+guess everywhere else — and the guess would be the most persuasive figure on the
+page precisely because it would carry a decimal point. That is
+`admittedRecords: number | 'UNKNOWN'` one layer over: an unmeasured cost is not
+a fast one.
+
+Two things are recorded rather than derived. The condition tree is held at
+**five legs**, which is what ran — dividing it into a per-leg figure would be an
+assumption about how cost scales in leg count, and the benchmark never varied
+that number. `planCondition` scales from the five-leg measurement and carries
+`COST_SCALES_LINEARLY_IN_LEGS` as a field rather than a footnote. And the
+conditions travel on every estimate, because a number whose conditions travelled
+separately from it is a number that will eventually be quoted without them.
+
+A test reads this document's table back and fails if it disagrees with the
+module, so the prose cannot drift away from the numbers it describes.
+
 ## What this does not say
 
 It does not say the system is slow, because there is no system yet — these are

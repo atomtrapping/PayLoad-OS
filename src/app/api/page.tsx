@@ -4,6 +4,7 @@ import { getCorpusSource } from '@/adapter/corpusSource';
 import { asOfPayload, recordsPayload, releaseManifestPayload, releasesPayload, retractionsPayload, rulingManifestPayload } from '@/adapter/feed';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { Section } from '@/components/primitives/Section';
+import { QueryCostPanel } from '@/components/corpus/QueryCostPanel';
 import { MCP_TOOLS } from '@/mcp/tools';
 import { CALLER_IS_A_SOURCE, INTENT_IS_THE_UPGRADE, PURPOSE_SHAPING, TRANSPORT_AXES, TWO_PART_RULE, servingStanding } from '@/domain/servingBoundary';
 import { REASONER_MAY, REASONER_MAY_NOT, REASONING_RULES, WITNESS_NOT_AUTHORITY } from '@/domain/reasoningWitness';
@@ -109,6 +110,18 @@ export default async function ApiPage() {
             <li>Poll <span className="id">/api/v1/retractions?since=&lt;cutoff&gt;</span>. A correction names the replacement record; a withdrawal names what to stop relying on and which rulings it touched.</li>
             <li>When a new release appears, re-run the same queries against it and compare. The earlier release still answers as it did.</li>
           </ol>
+        </Section>
+
+        <Section title="What a read costs" id="api-cost">
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+            The product noun is <em>indexed and queryable</em>. There is no index: an as-of answer filters the whole record
+            array, so it costs the corpus rather than the answer. That was an inference from reading the code until
+            <span className="id"> scripts/bench-query.ts</span> made it a number, and these are the numbers, said by the
+            system rather than worked out by the reader. Outside the sizes that were actually run the answer is
+            <span className="mono"> UNKNOWN</span> — a projected curve would be the most convincing figure here precisely
+            because it would carry a decimal point.
+          </p>
+          <QueryCostPanel />
         </Section>
 
         <Section title="MCP tools" id="api-mcp">

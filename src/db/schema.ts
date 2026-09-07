@@ -24,6 +24,18 @@ export const records = pgTable('records', {
   validFrom: timestamp('valid_from', { withTimezone: true, mode: 'string' }).notNull(),
   validTo: timestamp('valid_to', { withTimezone: true, mode: 'string' }),
   knownAt: timestamp('known_at', { withTimezone: true, mode: 'string' }).notNull(),
+  // Stamped at entry by the admission gate, never reconstructed later: when
+  // the source published it, when this system obtained it, and how it
+  // arrived. The last is declared by the candidate and never inferred from
+  // the gap between the other two.
+  sourceTime: timestamp('source_time', { withTimezone: true, mode: 'string' }).notNull(),
+  acquisitionTime: timestamp('acquisition_time', { withTimezone: true, mode: 'string' }).notNull(),
+  // LIVE_CAPTURE and BACKFILLED are stamped by the admission gate and mean
+  // the row crossed it. DEMONSTRATION means it did not: the committed
+  // fixtures are seeded here so the pages have something to show, and the
+  // column is what keeps them from reading as admitted state. The gate
+  // cannot emit DEMONSTRATION and the seeder cannot emit the other two.
+  provenance: text('provenance').notNull(),
   data: jsonb('data').notNull(),
 });
 

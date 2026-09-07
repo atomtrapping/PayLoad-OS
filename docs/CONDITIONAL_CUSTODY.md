@@ -43,6 +43,55 @@ protocol is not the receipts. It is this computable tail-risk property, which
 their stack cannot represent. The receipts are how it is produced; the property
 is what it is worth.
 
+## What a condition can say
+
+`src/domain/conditionGrammar.ts`.
+
+The first version was one subject, one predicate, one scalar comparison. That
+expresses *"gross quantity at most 40.05 t"* and nothing else — not detention,
+which accrues past a free window; not an accessorial, which triggers on an event
+class; not a truck-ordered-not-used, which is a condition on something *not*
+happening; and nothing with an "or" in it. Every real freight or trade term has
+at least one of those. A counterparty who has to restate their rate confirmation
+as a scalar comparison does not use the system, so **their terms compile into
+this grammar rather than being replaced by it.**
+
+Five node kinds — `SCALAR`, `EVENT`, `DURATION`, `ALL_OF`, `ANY_OF` — with the
+counterparty's own wording carried verbatim on **every** node. The compiled form
+is what the corpus evaluates; the agreed text is what a dispute reads, and
+neither is derived from the other.
+
+### Composition is three-valued
+
+A node answers `GRANTED`, `WITHHELD` or `NOT_ADJUDICABLE`, and composition is
+Kleene-ordered rather than boolean. In `ALL_OF` a definite failure outranks an
+unknown — one leg definitely unmet settles it whatever the others could not
+decide. In `ANY_OF` a definite success outranks one, for the same reason.
+
+What is never allowed is an unknown quietly becoming a false, which is what
+ordinary boolean composition does silently. A composite with one answerable leg
+and one the corpus cannot resolve is **undecided, not refused** — the vehicle
+stays held rather than returning the deposit on a question nobody answered.
+
+### The term that looks easy and is not
+
+A condition on something *not* happening — TONU, no damage recorded, no customs
+hold — cannot be settled by failing to find a record. Absence of a record is a
+fact about the corpus, not about the world.
+
+So `DID_NOT_OCCUR` requires a declared **coverage** record: something that states
+this window was watched. Without one the node is `NOT_ADJUDICABLE` and says why.
+With one, the non-occurrence is *attributed rather than assumed* — and if the
+coverage record is itself missing, that is an unwatched silence and says nothing
+either.
+
+### Detention, worked
+
+Arrived 08:00, released 13:30, two hours free: 5.5 elapsed − 2 free = **3.5 h
+chargeable**. Against a term allowing two further hours, the leg is `WITHHELD`
+and the reason states the arithmetic and both record ids. Against a term allowing
+four, it holds. One end missing refuses rather than assuming the other.
+
 ## Release is irreversible and facts are not
 
 A chain settles at machine speed. A correction arrives at world speed. The gap

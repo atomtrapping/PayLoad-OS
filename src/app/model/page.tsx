@@ -17,7 +17,7 @@ import { AUTHORITY_DIRECTION, CARD_PROPERTIES, CONGRUENCE, FROZEN_SIDE, GENERAL_
 import { COMPOSITION_IS_ADJUDICATION, INTEROP_VOCABULARY } from '@/domain/usdProjection';
 import { CORRESPONDENCES, FIT_DEPTH_LABEL, MANDATE_INVERSION } from '@/domain/actuarial';
 import { CAPABILITIES, PRESSURE, THE_FINDING, accommodationStanding, fitOf } from '@/domain/accommodation';
-import { ATTESTOR_KINDS, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, TRUST_ORDER, VEHICLE_ROLE, VEHICLE_SEQUENCE, VENUE_PROPERTIES, evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition } from '@/domain/collateralVehicle';
+import { ATTESTOR_KINDS, LIABILITY_BOUNDARY, scalar, LIFECYCLE, NEVER, TRUST_ORDER, VEHICLE_ROLE, VEHICLE_SEQUENCE, VENUE_PROPERTIES, evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition } from '@/domain/collateralVehicle';
 import { NEGATIVE_RULES, WHY_ONE_IS_NOT_ENOUGH } from '@/domain/negativeStates';
 import { currentRelease } from '@/domain/corpus';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
@@ -40,8 +40,9 @@ export default function ProductPage() {
   // The worked demonstration: a condition sitting between the draft survey and
   // the weighbridge, decided before the correction was knowable.
   const condition: ReleaseCondition = {
-    conditionId: 'COND-GROSS-40-05', subjectId: 'LOT-5B-221', predicate: 'quantity.gross', test: 'AT_MOST', value: 40.05,
+    conditionId: 'COND-GROSS-40-05',
     agreedText: 'Release on confirmation that the gross quantity of lot 5B-221 does not exceed 40.05 t.',
+    root: scalar('LOT-5B-221', 'quantity.gross', 'AT_MOST', 40.05, 'Gross quantity not to exceed 40.05 t.'),
   };
   const vehicleRelease = currentRelease(CARAVAN_CORPUS);
   const decision = evaluateRelease(CARAVAN_CORPUS, vehicleRelease, condition, '2026-08-20T00:00:00Z');

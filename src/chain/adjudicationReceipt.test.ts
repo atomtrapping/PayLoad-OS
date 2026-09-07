@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { currentRelease } from '@/domain/corpus';
-import { evaluateRelease, exposureAfter, type ReleaseCondition } from '@/domain/collateralVehicle';
+import { evaluateRelease, exposureAfter, scalar, type ReleaseCondition } from '@/domain/collateralVehicle';
 import {
   CARD_FUNCTIONS, CLOCK_CODE, ZERO_DIGEST, POST_RELEASE_CODE, RECEIPT_TYPES, ReceiptRefusal, STANDING_CODE, VERDICT_CODE,
   buildReceipt, evidenceDigestOf,
@@ -11,8 +11,9 @@ const corpus = CARAVAN_CORPUS;
 const release = currentRelease(corpus);
 const DOMAIN = { name: 'NotationsOS.Adjudication', version: '1', chainId: 1, verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC' };
 const TIGHT: ReleaseCondition = {
-  conditionId: 'COND-GROSS-40-05', subjectId: 'LOT-5B-221', predicate: 'quantity.gross', test: 'AT_MOST', value: 40.05,
+  conditionId: 'COND-GROSS-40-05',
   agreedText: 'Release on confirmation that the gross quantity of lot 5B-221 does not exceed 40.05 t.',
+  root: scalar('LOT-5B-221', 'quantity.gross', 'AT_MOST', 40.05, 'Gross quantity not to exceed 40.05 t.'),
 };
 const TRADE = `0x${'11'.repeat(32)}`;
 const WINDOW = 18 * 86_400;

@@ -51,6 +51,8 @@
 import type { Corpus, CorpusRecord, CorpusRelease, Retraction } from './corpus';
 import type { ISODateTime } from './types';
 import { queryAsOf, recordStatusAt } from './corpus';
+import { evaluateNode, type ConditionNode, type FactResolver } from './conditionGrammar';
+export * from './conditionGrammar';
 
 export const VEHICLE_METHOD = 'notationsos.conditional-custody.v1';
 
@@ -130,17 +132,18 @@ export const LIFECYCLE: readonly Stage[] = [
 
 /* ── A release condition ── */
 
-export type ConditionTest = 'AT_LEAST' | 'AT_MOST' | 'EQUALS' | 'EXISTS';
-
+/**
+ * A release condition: an addressable identity, the counterparty's own wording
+ * for the whole agreement, and a tree that compiles it.
+ *
+ * The tree is the thing the corpus evaluates; the agreed text is the thing a
+ * dispute reads. Neither is derived from the other, because a term that has to
+ * be rewritten in this system's grammar to be usable is a term nobody brings.
+ * See conditionGrammar.ts for the node kinds.
+ */
 export interface ReleaseCondition {
   conditionId: string;
-  /** The subject the condition is about: a lot, a vessel, a facility. */
-  subjectId: string;
-  predicate: string;
-  test: ConditionTest;
-  /** Absent for EXISTS, which asks only whether the corpus can answer at all. */
-  value?: number | string;
-  /** Prose the counterparties agreed to, kept verbatim so a dispute reads what was signed. */
+  root: ConditionNode;
   agreedText: string;
 }
 
@@ -184,19 +187,6 @@ export interface ReleaseDecision {
  */
 export const DISPUTE_QUESTION = 'WHAT_WE_HELD' as const;
 
-function compare(test: ConditionTest, actual: number | string, expected: number | string | undefined): boolean {
-  if (test === 'EXISTS') return true;
-  if (expected === undefined) return false;
-  if (test === 'EQUALS') return String(actual) === String(expected);
-  const left = Number(actual), right = Number(expected);
-  if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
-  return test === 'AT_LEAST' ? left >= right : left <= right;
-}
-
-const TEST_PROSE: Record<ConditionTest, string> = {
-  AT_LEAST: 'at least', AT_MOST: 'at most', EQUALS: 'exactly', EXISTS: 'answerable at all',
-};
-
 /**
  * Pure: does the condition hold on what the vehicle held at this instant?
  *
@@ -214,28 +204,41 @@ export function evaluateRelease(corpus: Corpus, release: CorpusRelease, conditio
   // must say so.
   const exposureAtDecision = restatementExposure(corpus, decidedAtKnowledge);
   const base = { condition, decidedAtKnowledge, standing, releaseId: release.releaseId, exposureAtDecision };
-  const answer = queryAsOf(corpus, release, {
-    subjectId: condition.subjectId,
-    predicate: condition.predicate,
-    validAt: decidedAtKnowledge,
-    knownAt: decidedAtKnowledge,
-    question: DISPUTE_QUESTION,
-  });
-  if (!answer.record) {
+
+  // Every leg reaches the corpus through the same as-of answer, so a retracted,
+  // superseded, out-of-validity or undeliverable record becomes a reason that
+  // leg could not be decided rather than a silent failure to fire.
+  const resolve: FactResolver = (subjectId, predicate) => {
+    const answer = queryAsOf(corpus, release, {
+      subjectId, predicate, validAt: decidedAtKnowledge, knownAt: decidedAtKnowledge, question: DISPUTE_QUESTION,
+    });
+    if (!answer.record) {
+      return { fact: null, because: `${subjectId} ${predicate} at ${decidedAtKnowledge}: ${answer.refusal?.code ?? 'no answer'}. ${answer.refusal?.reason ?? ''}`.trim() };
+    }
+    const link = answer.identityLink ? [answer.identityLink.recordId] : [];
+    void link;
     return {
-      ...base, verdict: 'NOT_ADJUDICABLE', reliedOn: [],
-      because: `The corpus cannot answer the condition at ${decidedAtKnowledge}: ${answer.refusal?.code ?? 'no answer'}. ${answer.refusal?.reason ?? ''} Nothing is released on an unanswerable condition, and nothing is returned on one either — the vehicle stays held.`.trim(),
+      fact: {
+        recordId: answer.record.recordId,
+        value: answer.record.value,
+        unit: answer.record.unit,
+        validFrom: answer.record.validFrom,
+      },
+      because: '',
     };
-  }
-  const met = compare(condition.test, answer.record.value, condition.value);
-  const stated = condition.test === 'EXISTS' ? '' : ` ${TEST_PROSE[condition.test]} ${condition.value}${answer.record.unit ? ` ${answer.record.unit}` : ''}`;
+  };
+
+  const outcome = evaluateNode(condition.root, resolve);
   return {
     ...base,
-    verdict: met ? 'GRANTED' : 'WITHHELD',
-    reliedOn: [answer.record.recordId, ...(answer.identityLink ? [answer.identityLink.recordId] : [])],
-    because: `${answer.record.recordId} states ${answer.record.value}${answer.record.unit ? ` ${answer.record.unit}` : ''} against a condition of${stated || ' existence'}, so the condition ${met ? 'holds' : 'does not hold'} on what was knowable at ${decidedAtKnowledge}. This is a statement about the record, not about the cargo.`,
+    verdict: outcome.verdict,
+    reliedOn: outcome.reliedOn,
+    because: outcome.verdict === 'NOT_ADJUDICABLE'
+      ? `${outcome.because} Nothing is released on an unadjudicable condition, and nothing is returned on one either — the vehicle stays held.`
+      : outcome.because,
   };
 }
+
 
 /* ── What happened to the facts after the money moved ── */
 

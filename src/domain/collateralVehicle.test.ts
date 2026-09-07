@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { currentRelease, releaseById } from './corpus';
 import {
-  ATTESTOR_KINDS, POST_RELEASE_MEANING, DISPUTE_QUESTION, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, PRICEABILITY_GATE,
+  ATTESTOR_KINDS, POST_RELEASE_MEANING, scalar, DISPUTE_QUESTION, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, PRICEABILITY_GATE,
   TRUST_ORDER, VEHICLE_ROLE, VEHICLE_SEQUENCE, VENUE_PROPERTIES,
   evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition,
 } from './collateralVehicle';
@@ -13,11 +13,8 @@ const release = currentRelease(corpus);
 /** The condition sits between the draft survey (40.000 t) and the weighbridge (40.120 t). */
 const TIGHT: ReleaseCondition = {
   conditionId: 'COND-GROSS-40-05',
-  subjectId: 'LOT-5B-221',
-  predicate: 'quantity.gross',
-  test: 'AT_MOST',
-  value: 40.05,
   agreedText: 'Release on confirmation that the gross quantity of lot 5B-221 does not exceed 40.05 t.',
+  root: scalar('LOT-5B-221', 'quantity.gross', 'AT_MOST', 40.05, 'Gross quantity not to exceed 40.05 t.'),
 };
 
 describe('conditional custody: hold, monitor, adjudicate, release', () => {
@@ -84,10 +81,8 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
     const rel1 = releaseById(corpus, 'REL-CAR-2026.08.18') ?? release;
     const moisture: ReleaseCondition = {
       conditionId: 'COND-MOISTURE-EXISTS',
-      subjectId: 'SAMPLE-S-4390',
-      predicate: 'condition.moisture',
-      test: 'EXISTS',
       agreedText: 'Release on a moisture determination for sample S-4390 being of record.',
+      root: scalar('SAMPLE-S-4390', 'condition.moisture', 'EXISTS', undefined, 'A moisture determination is of record.'),
     };
     const decision = evaluateRelease(corpus, rel1, moisture, '2026-08-14T00:00:00Z');
     expect(decision.verdict).toBe('GRANTED');
@@ -109,8 +104,9 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
 
   it('withholds rather than releasing when the corpus cannot answer, and never returns on an unanswerable condition', () => {
     const absent: ReleaseCondition = {
-      conditionId: 'COND-ABSENT', subjectId: 'LOT-9A-017', predicate: 'quantity.gross', test: 'AT_LEAST', value: 1,
+      conditionId: 'COND-ABSENT',
       agreedText: 'Release on a gross quantity for a lot the corpus has never carried.',
+      root: scalar('LOT-9A-017', 'quantity.gross', 'AT_LEAST', 1, 'Gross quantity of at least 1 t.'),
     };
     const decision = evaluateRelease(corpus, release, absent, '2026-09-01T12:00:00Z');
     expect(decision.verdict).toBe('NOT_ADJUDICABLE');
@@ -210,11 +206,46 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
 
     // A decision nothing has touched stands, rather than being called anything else.
     const untouched = evaluateRelease(corpus, release, {
-      conditionId: 'COND-UNTOUCHED', subjectId: 'LOT-7C-104', predicate: 'quantity.gross', test: 'AT_LEAST', value: 1,
+      conditionId: 'COND-UNTOUCHED',
       agreedText: 'Release on a gross quantity for lot 7C-104 of at least 1 t.',
+      root: scalar('LOT-7C-104', 'quantity.gross', 'AT_LEAST', 1, 'Gross quantity of at least 1 t.'),
     }, '2026-09-01T12:00:00Z');
     const exposure = exposureAfter(corpus, release, untouched, '2026-09-01T12:00:00Z');
     expect(exposure.state).toBe('STANDS');
     expect(exposure.restatements).toEqual([]);
+  });
+
+  it('adjudicates a composite condition over the real corpus, and an undecided leg does not become a failed one', () => {
+    // One leg the corpus can answer, one it cannot. Under ALL_OF that is
+    // undecided, never withheld — the release stays held rather than returning.
+    const composite = evaluateRelease(corpus, release, {
+      conditionId: 'COND-COMPOSITE',
+      agreedText: 'Release on the gross quantity being within tolerance and a moisture determination of record for a lot that has none.',
+      root: {
+        kind: 'ALL_OF', agreedText: 'Both terms of the confirmation.',
+        of: [
+          scalar('LOT-5B-221', 'quantity.gross', 'AT_MOST', 41, 'Gross quantity not to exceed 41 t.'),
+          scalar('LOT-9A-017', 'condition.moisture', 'EXISTS', undefined, 'A moisture determination is of record.'),
+        ],
+      },
+    }, '2026-09-01T12:00:00Z');
+    expect(composite.verdict).toBe('NOT_ADJUDICABLE');
+    expect(composite.because).toContain('an undecided leg is not a failed one');
+    expect(composite.because).toContain('the vehicle stays held');
+
+    // Swap the unanswerable leg for a definitely-unmet one and the composite is decided.
+    const decided = evaluateRelease(corpus, release, {
+      conditionId: 'COND-COMPOSITE-2',
+      agreedText: 'Release on the gross quantity being within an impossible tolerance and within a generous one.',
+      root: {
+        kind: 'ALL_OF', agreedText: 'Both terms.',
+        of: [
+          scalar('LOT-5B-221', 'quantity.gross', 'AT_MOST', 41, 'Gross quantity not to exceed 41 t.'),
+          scalar('LOT-5B-221', 'quantity.gross', 'AT_MOST', 1, 'Gross quantity not to exceed 1 t.'),
+        ],
+      },
+    }, '2026-09-01T12:00:00Z');
+    expect(decided.verdict).toBe('WITHHELD');
+    expect(decided.reliedOn).toContain('REC-0204');
   });
 });

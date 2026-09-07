@@ -361,6 +361,7 @@ src/domain/informationProduct.ts  the first information product as data, held to
 src/domain/deliveredRecord.ts     the ten questions a delivered record answers, mapped to payload fields; its test holds every record the feed delivers to all ten
 src/domain/doctrine.ts   the architecture carried forward as data: five fabrics, three states of information, seven rules with where each is enforced and which tests prove it, verification tiers (docs/ARCHITECTURE.md is the prose; /model renders it)
 src/chain          keccak256, EIP-712 and the adjudication receipt: the digest a settlement contract verifies, built from a real ruling; contracts/ holds the escrow (docs/SETTLEMENT_BRIDGE.md)
+src/domain/conditionGrammar.ts  what a release condition can say: five composable node kinds, three-valued composition where an unknown never becomes a false, and a did-not-occur term that needs declared coverage rather than a failure to find a record
 src/domain/routeClosure.ts  the three states of a route: open, closed, and the one systems lose — unclosed, which is a bilateral instrument rather than a failure
 src/domain/negativeStates.ts  the kinds of no, kept apart: seven named rules, each with the fabrication its collapse produces and the module that enforces it
 src/domain/collateralVehicle.ts  hold, monitor, adjudicate, release: the condition evaluator that never holds the collateral, never warrants the outcome and never un-fires a release; the restatement exposure measured and refused as a rate (docs/CONDITIONAL_CUSTODY.md)

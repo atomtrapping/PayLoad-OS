@@ -139,15 +139,19 @@ export default async function ProductsPage() {
               question: product.customerQuestion,
               releaseId: current.releaseId,
             }, gradeFrom('UNKNOWN'));
-            if (built.manifest === null) return <p className="m-0 text-[12.5px]">{built.because}</p>;
-            const { manifest } = built;
+            // `records` is the discriminant. This page never ships bytes, so it
+            // reads the description either way — but an unsellable slice has no
+            // records to read, which is the boundary rather than a caveat.
+            if (built.records === null && built.manifest === null) return <p className="m-0 text-[12.5px]">{built.because}</p>;
+            const manifest = built.manifest!;
+            const cut = built.records !== null;
             return (
               <div className="flex flex-col gap-3" data-testid="catalog-slice">
                 <div className="surface p-3 flex flex-col gap-1">
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="label-sm" style={{ color: manifest.readiness === 'SELLABLE' ? 'var(--status-admitted)' : 'var(--status-refused)' }}>{manifest.readiness}</span>
                     <span className="label-sm">grade {manifest.admissionGrade}</span>
-                    <span className="label-sm">{manifest.recordCount} records</span>
+                    <span className="label-sm">{manifest.recordCount} records {cut ? 'cut' : 'described, not cut'}</span>
                     <span className="label-sm">cutoff {fmtUtc(manifest.release.knowledgeCutoff)}</span>
                   </div>
                   <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{manifest.because}</p>

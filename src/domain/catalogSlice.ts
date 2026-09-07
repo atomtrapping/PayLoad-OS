@@ -113,12 +113,43 @@ export interface SliceManifest {
   loss: readonly string[];
 }
 
-export interface Slice {
+/**
+ * A cut that may be shipped. Its manifest is SELLABLE by construction — there
+ * is no way to reach this shape with an unsellable one.
+ */
+export interface SliceCut {
   manifest: SliceManifest;
   records: readonly CorpusRecord[];
   /** Records the bounds excluded, counted so a reader knows the slice is a slice. */
   excluded: number;
 }
+
+/**
+ * A slice that was described and not cut.
+ *
+ * The manifest is still here — a reader is entitled to see what the extract
+ * would have been and why it is not one — and `records` is null, so there is
+ * nothing to ship. `manifest` is null only when the release itself was not
+ * found, which is a different failure: nothing was described because there was
+ * nothing to describe.
+ */
+export interface SliceRefused {
+  manifest: SliceManifest | null;
+  records: null;
+  because: string;
+}
+
+/**
+ * Narrow on `records`.
+ *
+ * A discriminated union rather than a flag beside the payload, because
+ * `admittedRow` already settled this shape one layer down: *a refusal never
+ * yields a row, and no caller can obtain one by ignoring an outcome it did not
+ * like.* Returning the records next to a manifest that says NOT_FOR_SALE would
+ * leave exactly that door open — the readiness would be advice, and advice is
+ * what a shipping script skips.
+ */
+export type SliceResult = SliceCut | SliceRefused;
 
 const digestOf = (value: unknown): string =>
   `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
@@ -128,6 +159,7 @@ const SLICE_LOSS = [
   'A manifest states what the records are, never that they are true. Every record still carries its own evidence class, and a slice of asserted values is a slice of assertions however many there are.',
   'The correction summary counts what this release has issued. It is not a forecast, and below the stated gate it is not a rate either.',
   'An extract has a vintage. A buyer holding it after the next release holds an answer that was correct as of its cutoff, which is what the cutoff is for.',
+  'An unsellable slice is described and not cut. This manifest comes back so a reader can see what the extract would have been; the records do not, because a readiness a caller can decline to read is advice rather than a boundary.',
 ] as const;
 
 /** How a grade decides whether the extract may be sold, and why. */
@@ -169,10 +201,10 @@ function summariseCorrections(retractions: readonly Retraction[], records: numbe
  * compression derivation uses, and for the same reason: a default would let a
  * page report a fact it never checked.
  */
-export function buildSlice(corpus: Corpus, spec: SliceSpec, admissionGrade: AdmissionGrade): Slice | { manifest: null; because: string } {
+export function buildSlice(corpus: Corpus, spec: SliceSpec, admissionGrade: AdmissionGrade): SliceResult {
   const release: CorpusRelease | undefined = corpus.releases.find((entry) => entry.releaseId === spec.releaseId);
   if (!release) {
-    return { manifest: null, because: `No release ${spec.releaseId} in this corpus, so there is nothing to extract from. A slice names its release because an extract without one has no cutoff and therefore no vintage.` };
+    return { manifest: null, records: null, because: `No release ${spec.releaseId} in this corpus, so there is nothing to extract from. A slice names its release because an extract without one has no cutoff and therefore no vintage.` };
   }
 
   const all = releaseRecords(corpus, release);
@@ -223,11 +255,15 @@ export function buildSlice(corpus: Corpus, spec: SliceSpec, admissionGrade: Admi
     readiness,
   };
 
-  return {
-    manifest: { ...body, digest: digestOf(body), because, loss: SLICE_LOSS },
-    records,
-    excluded: all.length - records.length,
-  };
+  const manifest: SliceManifest = { ...body, digest: digestOf(body), because, loss: SLICE_LOSS };
+  // The export boundary, made mechanical: an unsellable manifest yields no
+  // records at all. The description survives so a reader can see what the
+  // extract would have been; the bytes do not, so nothing downstream can ship
+  // them by declining to read the readiness.
+  if (manifest.readiness !== 'SELLABLE') {
+    return { manifest, records: null, because: `Described and not cut. ${because}` };
+  }
+  return { manifest, records, excluded: all.length - records.length };
 }
 
 /** Convenience for a caller with no store access, which is every caller today. */

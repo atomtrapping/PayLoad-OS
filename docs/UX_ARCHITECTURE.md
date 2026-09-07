@@ -78,6 +78,12 @@ Twenty-six destinations across six areas is a good map and a slow journey, so th
 
 Soft navigation between pages measured 73–185 ms; `/earth` is 1080 ms, which is CesiumJS starting. Speed was not the problem and was left alone.
 
+### The export boundary, made mechanical
+
+A closed catalog sells bounded extracts, and `src/domain/catalogSlice.ts` cuts them. Its manifest is derived from the records it describes; its readiness is derived from the admission grade, which is supplied because a `Corpus` value carries none.
+
+The boundary is not the readiness field — it is the return type. `buildSlice` returns a union discriminated on `records`, and an unsellable manifest comes back with `records: null`. The description survives, so a reader can see what the extract would have been and why it is not one; the bytes do not, so nothing downstream can ship them by declining to read a flag. `admittedRow` settled this shape one layer down — *a refusal never yields a row, and no caller can obtain one by ignoring an outcome it did not like* — and the slice had it as advice until the type made it a boundary.
+
 ### The questions the endpoints do not ask
 
 The four served shapes — releases, records, as-of, retractions — are point and set lookups. The questions worth paying for are temporal joins over three structures the corpus already has: the correction tape, the supersession chain and the dependency adjacency. `src/domain/queryGrammar.ts` is the grammar that composes them, shown working over the demonstration corpus on `/api` and **served by no endpoint yet** — the shapes are specified and tested; the routes are the next step rather than a claim made on the page.

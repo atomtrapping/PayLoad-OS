@@ -14,11 +14,39 @@ instant? That distinction decides everything downstream. An underwriter is a
 party to the outcome; a stakeholder is not, and here neutrality is the whole
 service rather than something spent to win the business.
 
+## Reversal exposure is a property of a corpus, and only a corpus can compute it
+
+This is the exportable part, so it is worth stating plainly rather than as a
+lifecycle note.
+
+Every oracle in production publishes a value and has **no representation of that
+value being wrong later**. It has a history of what it published, not a history
+of what it retracted, because a feed has no correction tape. That is not an
+implementation gap; it is a category boundary. A feed can tell you what it said
+at T. It cannot tell you what it has since had to unsay, how long that usually
+takes, or what a decision made at T would read as now.
+
+The consequence is an invisible tail risk under every on-chain conditional
+mechanism built on general-purpose oracles: settlement correct at T, incorrect
+at T+Δ, and **no party in the system can state the exposure, let alone price
+it**. Not because nobody has done the arithmetic — because the data structure
+that the arithmetic would run over does not exist on their side of the line.
+
+`restatementExposure` and `exposureAfter` do not merely measure this for one
+vehicle. They demonstrate that **reversal exposure is a measurable property of a
+corpus**: computable from a correction tape, both clocks, and records that keep
+their identity when superseded. A feed-based oracle architecture cannot compute
+it at any price, because its history has nothing to compute over.
+
+So the thing being sold to the venue, the consortium chain and the insurance
+protocol is not the receipts. It is this computable tail-risk property, which
+their stack cannot represent. The receipts are how it is produced; the property
+is what it is worth.
+
 ## Release is irreversible and facts are not
 
-This is the risk that goes unwritten, and it is the reason a general-purpose
-oracle cannot fill this role. A chain settles at machine speed. A correction
-arrives at world speed. The gap between them is the entire liability.
+A chain settles at machine speed. A correction arrives at world speed. The gap
+between them is the entire liability.
 
 An oracle publishes a value and has no notion of that value being restated
 later. This corpus does: a retraction is a first-class object, records carry
@@ -60,19 +88,73 @@ reported the two the same way would tell a depositor its cargo was misdescribed
 when what actually happened is that an inspector's paperwork failed. Withdrawn
 is not false, here as everywhere else in this system.
 
-## The window is measured, and is not a rate
+## The window is measured, and priceability is a gate rather than a refusal
 
 `restatementExposure` reads the corpus's own history: 2 restatements over 21
 records, the longest arriving **18.3 days** after the record it restates became
 knowable.
 
-That measures a window. It does not estimate a frequency, and the function says
-so rather than returning a number that would be used as one. A handful of events
-over one synthetic corpus supports an anecdote; a vehicle that held deposits for
-nineteen days on this evidence would be pricing something it does not have. The
-window becomes estimable when the corpus has run long enough to have a
-denominator — which is the credibility problem an actuary would name on sight,
-arriving here through the collateral door.
+That measures a window. It does not estimate a frequency, and `ratePriceable` is
+**derived from a declared gate** rather than hardcoded — `PRICEABILITY_GATE`
+names thresholds (30 restatements, 500 records, a corpus that is not a committed
+demonstration) and the function reports which are unmet. So the refusal is not a
+permanent `false` that someone eventually deletes: it is a milestone indicator
+that flips on its own when the corpus earns it, with the discipline that governed
+beforehand governing the number afterwards.
+
+Two questions, two denominators — the same structure as the as-of law, applied to
+statistics. `2/21` answers *what has this corpus restated*. A depositor asks
+*what will your restatement behaviour be*. Those are different questions over
+different populations, and emitting the first as an answer to the second is what
+every "99.9% accuracy" claim in the data business actually does. The gate makes
+the conflation unrepresentable rather than discouraged, and `andEvenThen` says
+that passing the thresholds still does not make a rate about this corpus a rate
+about a new source.
+
+### The decision carries its own risk neighbourhood
+
+`ReleaseDecision.exposureAtDecision` attaches the corpus's restatement behaviour
+*as it was known at the decision instant* — bounded by the decision's own
+knowledge time, so an audit does not have to rebuild the risk context and cannot
+rebuild it with hindsight. A release decided 2026-08-20 records that the corpus
+had restated nothing yet, and says that this is an absence of observed
+corrections rather than evidence that none was coming. The same condition
+decided twelve days later records two restatements and the longest lag. The
+vehicle's honesty then covers not only what it held but how vulnerable its
+holding was known to be.
+
+## Where a release could execute
+
+The vehicle targets a **property set, not a venue**: non-custodial hold,
+verifiable release execution, a binding point for an attestation, and a
+settlement leg that belongs to somebody else. Any venue with those four can host
+one. Naming a chain in the design would bet the architecture on a vendor, and
+the routing table already treats engines this way.
+
+Two kinds of attestor, and only one is scarce. An **execution attestor** proves a
+program ran on given inputs — reproducible by anyone holding both, which is
+exactly the property that lets an attestor set be open, and commodity for the
+same reason. It says nothing about whether the inputs described the world: a
+verified computation over an asserted fact is a verified assertion. A **fact
+attestor** claims something about the world that nobody can re-derive from the
+inputs, so its qualification is the estate behind it — and specifically whether
+it can still say something useful once the claim is restated. That second half is
+the part usually missing, and it is the part this module measures.
+
+`TRUST_ORDER` fixes what governs when the venue brings a trust model of its own.
+The adjudication and its receipt come first. A proof, where one is wanted, comes
+second — and it says the declared policy ran, not that the policy was right. A
+venue feature comes third and is convenience, never ground. An enclave and a
+proof both let a counterparty verify without inspecting, which makes them easy to
+treat as interchangeable; they are not, because an enclave's assurance terminates
+in a manufacturer's attestation chain and a proof's in mathematics. Either is
+fine as a venue feature; neither may become the reason a fact is believed.
+
+And the confusion worth naming: **transport verification is not content
+testimony.** A verifier that checks a message crossed chains correctly has
+verified the message. Nobody in that stack has verified that the condition inside
+it was adjudicated rather than asserted. Two verification layers are needed, and
+the industry has built the pipe one.
 
 ## What it must never do
 

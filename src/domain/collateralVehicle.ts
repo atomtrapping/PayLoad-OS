@@ -153,6 +153,27 @@ export type ReleaseVerdict = 'GRANTED' | 'WITHHELD' | 'NOT_ADJUDICABLE';
  */
 export type DecisionStanding = 'BINDING' | 'DEMONSTRATION';
 
+/**
+ * The corpus's restatement behaviour as it was known at the decision instant.
+ *
+ * Attached to the decision rather than reconstructed later, because an audit of
+ * a release should not have to rebuild the risk context from scratch and would
+ * rebuild it with hindsight if it tried. It is bounded by the decision's own
+ * knowledge time for the same reason: a decision may carry what the corpus knew
+ * about itself when it decided, and nothing it learned afterwards.
+ */
+export interface ExposureAtDecision {
+  /** Restatements the corpus had already made by the decision instant. */
+  restatementsKnown: number;
+  /** The longest one, in days. Null when the corpus had restated nothing yet. */
+  longestObservedLagDays: number | null;
+  /** Whether that history supported a rate at that instant. */
+  ratePriceable: boolean;
+  /** Why it did not, when it did not. */
+  unmet: string[];
+  statement: string;
+}
+
 export interface ReleaseDecision {
   condition: ReleaseCondition;
   /** The instant the vehicle decided, and the only clock a dispute may ask about. */
@@ -162,6 +183,12 @@ export interface ReleaseDecision {
   /** Every record the verdict stood on, by id. A dispute begins here. */
   reliedOn: string[];
   releaseId: string;
+  /**
+   * The risk neighbourhood the decision was made in, carried with it. The
+   * vehicle's honesty then covers not only what it held but how vulnerable its
+   * holding was known to be.
+   */
+  exposureAtDecision: ExposureAtDecision;
   because: string;
 }
 
@@ -195,7 +222,17 @@ const TEST_PROSE: Record<ConditionTest, string> = {
  */
 export function evaluateRelease(corpus: Corpus, release: CorpusRelease, condition: ReleaseCondition, decidedAtKnowledge: ISODateTime): ReleaseDecision {
   const standing: DecisionStanding = 'DEMONSTRATION';
-  const base = { condition, decidedAtKnowledge, standing, releaseId: release.releaseId };
+  const known = restatementExposure(corpus, decidedAtKnowledge);
+  const exposureAtDecision: ExposureAtDecision = {
+    restatementsKnown: known.corrections + known.withdrawals,
+    longestObservedLagDays: known.longestLagDays,
+    ratePriceable: known.ratePriceable,
+    unmet: known.unmet,
+    statement: known.longestLagDays === null
+      ? 'At this instant the corpus had restated nothing, which is an absence of observed corrections and not evidence that none was coming.'
+      : `At this instant the corpus had made ${known.corrections + known.withdrawals} restatements, the longest ${known.longestLagDays} days after the record it restated became knowable${known.ratePriceable ? '' : ', which does not support a rate'}.`,
+  };
+  const base = { condition, decidedAtKnowledge, standing, releaseId: release.releaseId, exposureAtDecision };
   const answer = queryAsOf(corpus, release, {
     subjectId: condition.subjectId,
     predicate: condition.predicate,
@@ -286,6 +323,23 @@ export function exposureAfter(corpus: Corpus, release: CorpusRelease, decision: 
 
 /* ── Pricing the window, and refusing to ── */
 
+/**
+ * What it would take for the observed window to become a rate.
+ *
+ * Declared here rather than decided in the function, so that priceability is a
+ * gate with named preconditions and not a permanent `false` someone eventually
+ * deletes. When the corpus reaches these, ratePriceable flips on its own and the
+ * discipline that was in place beforehand is the discipline that governs the
+ * number afterwards.
+ */
+export const PRICEABILITY_GATE = {
+  minRestatements: 30,
+  minRecords: 500,
+  requiresNonFixtureCorpus: true,
+  why: 'A frequency needs a denominator. Two restatements over twenty-one synthetic records is an anecdote, and a rate computed from it would be multiplied by a real exposure by someone who did not read this sentence. The thresholds are a floor for the sample being worth arithmetic at all, not a claim that the rate is trustworthy at thirty.',
+  andEvenThen: 'A rate over a corpus is a rate about that corpus’s sources and their behaviour. It answers what this corpus has restated, not what a new source will restate, and the two are different questions with different denominators.',
+} as const;
+
 export interface RestatementExposure {
   recordsCarried: number;
   corrections: number;
@@ -293,8 +347,10 @@ export interface RestatementExposure {
   /** Days between a record becoming knowable and a restatement of it being issued. */
   observedLagDays: number[];
   longestLagDays: number | null;
-  /** Whether the sample supports a rate. It does not. */
+  /** Derived from PRICEABILITY_GATE against the corpus, never asserted. */
   ratePriceable: boolean;
+  /** Which gate conditions are not met. Empty exactly when ratePriceable is true. */
+  unmet: string[];
   statement: string;
 }
 
@@ -308,10 +364,15 @@ export interface RestatementExposure {
  * credibility problem an actuary would name immediately, arriving here through
  * the collateral door.
  */
-export function restatementExposure(corpus: Corpus): RestatementExposure {
-  const byId = new Map<string, CorpusRecord>(corpus.records.map((r) => [r.recordId, r]));
+export function restatementExposure(corpus: Corpus, knownBy?: ISODateTime): RestatementExposure {
+  // Bounded by a knowledge instant when one is given, so a decision can carry
+  // the exposure the corpus actually knew about at the time rather than the
+  // exposure hindsight supplies.
+  const records = knownBy === undefined ? corpus.records : corpus.records.filter((r) => r.knownAt <= knownBy);
+  const retractions = knownBy === undefined ? corpus.retractions : corpus.retractions.filter((r) => r.issuedAt <= knownBy);
+  const byId = new Map<string, CorpusRecord>(records.map((r) => [r.recordId, r]));
   const lags: number[] = [];
-  for (const retraction of corpus.retractions) {
+  for (const retraction of retractions) {
     for (const id of retraction.affectedRecordIds) {
       const record = byId.get(id);
       if (!record) continue;
@@ -320,21 +381,89 @@ export function restatementExposure(corpus: Corpus): RestatementExposure {
     }
   }
   lags.sort((a, b) => a - b);
-  const corrections = corpus.retractions.filter((r) => r.kind === 'CORRECTION').length;
-  const withdrawals = corpus.retractions.filter((r) => r.kind === 'WITHDRAWAL').length;
+  const corrections = retractions.filter((r) => r.kind === 'CORRECTION').length;
+  const withdrawals = retractions.filter((r) => r.kind === 'WITHDRAWAL').length;
   const longest = lags.length ? lags[lags.length - 1] : null;
+  const unmet: string[] = [];
+  if (corrections + withdrawals < PRICEABILITY_GATE.minRestatements) unmet.push(`fewer than ${PRICEABILITY_GATE.minRestatements} restatements observed (${corrections + withdrawals})`);
+  if (records.length < PRICEABILITY_GATE.minRecords) unmet.push(`fewer than ${PRICEABILITY_GATE.minRecords} records carried (${records.length})`);
+  if (PRICEABILITY_GATE.requiresNonFixtureCorpus && corpus.fixture_only) unmet.push('the corpus is a committed demonstration, so its restatement behaviour is authored rather than observed');
   return {
-    recordsCarried: corpus.records.length,
+    recordsCarried: records.length,
     corrections,
     withdrawals,
     observedLagDays: lags,
     longestLagDays: longest,
-    ratePriceable: false,
+    ratePriceable: unmet.length === 0,
+    unmet,
     statement: longest === null
       ? 'This corpus carries no restatement of any record, so there is no observed window at all. An unobserved window is not a short one.'
       : `${corrections + withdrawals} restatements over ${corpus.records.length} records, the longest arriving ${longest} days after the record it restates became knowable. That is the observed exposure window and it is not a rate: a handful of events over one synthetic corpus supports an anecdote, not a frequency, and a vehicle that held deposits for ${Math.ceil(longest)} days on this evidence would be pricing a number it does not have. The window becomes estimable when the corpus has run long enough to have a denominator.`,
   };
 }
+
+/* ── Where a release could execute, stated as properties rather than as a venue ── */
+
+/**
+ * The vehicle targets a property set, not a chain.
+ *
+ * Venues churn and adapters are cheap, so naming one in the design would be
+ * betting the architecture on a vendor. What a release actually requires is
+ * four properties; any venue that has them can host one, and the routing table
+ * already treats engines this way.
+ */
+export const VENUE_PROPERTIES = [
+  { property: 'Non-custodial hold', why: 'The collateral is held by the chain or a qualified custodian. A venue that requires the evaluator to hold it is asking for the one thing this role must never do.' },
+  { property: 'Verifiable release execution', why: 'A third party can check that the release logic ran as written, without being handed the corpus.' },
+  { property: 'A binding point for an attestation', why: 'The decision travels with the release rather than beside it, so what executed and what it executed on are one artifact.' },
+  { property: 'A settlement leg that is somebody else’s', why: 'Whether funds move is the vehicle contract’s business. Adjudication and settlement stay separate, which is the same separation the corpus keeps between evidence and assertion.' },
+] as const;
+
+/**
+ * Two kinds of attestor, and only one of them is scarce.
+ *
+ * An execution attestor proves a program ran: given the program and the inputs,
+ * any competent operator can produce the same proof, so the qualification is
+ * commodity by construction. A fact attestor claims something about the world,
+ * which nobody can re-derive from the inputs, so the qualification is whatever
+ * estate stands behind the claim — and specifically whether it can still say
+ * something useful once the claim is restated.
+ *
+ * That second half is the part that is usually missing and is measurable here:
+ * exposureAfter and restatementExposure are what standing behind a fact looks
+ * like when the fact changes.
+ */
+export const ATTESTOR_KINDS = [
+  {
+    kind: 'EXECUTION',
+    proves: 'That a program ran on given inputs and produced this output.',
+    scarcity: 'Commodity. The proof is reproducible by anyone holding the program and the inputs, which is the property that makes an open attestor set work at all.',
+    saysNothingAbout: 'Whether the inputs described the world. A verified computation over an asserted fact is a verified assertion.',
+  },
+  {
+    kind: 'FACT',
+    proves: 'That an event happened, on receipted evidence, at a stated instant, under a named adjudication.',
+    scarcity: 'Estate-dependent. Nobody can re-derive it from the inputs, so the qualification is the corpus behind it: two clocks, declared provenance, and a correction tape.',
+    saysNothingAbout: 'Whether the fact will still read the same next week — but it can say what has been restated, how long that took, and what the decision would be now, which is the difference between standing behind a fact and having published one.',
+  },
+] as const;
+
+/**
+ * Whose trust model governs when the venue has one of its own.
+ *
+ * A hardware enclave and a proof both let a counterparty verify without
+ * inspecting, which makes them easy to treat as interchangeable. They are not:
+ * an enclave's assurance terminates in a manufacturer's attestation chain and a
+ * proof's terminates in mathematics. Either is fine as a venue feature. Neither
+ * may become the reason a fact is believed, because that would move the ground
+ * of the claim from the corpus to a vendor.
+ */
+export const TRUST_ORDER = {
+  first: 'The adjudication and its receipt. The fact is believed because of the evidence and the ruling over it.',
+  second: 'A proof, where one is wanted, that the declared policy ran. Mathematical, and it says the policy ran rather than that the policy was right.',
+  third: 'A venue feature — an enclave, an attestor set, a transport verifier — which is convenience and never ground.',
+  theConfusion: 'Transport verification is not content testimony. A verifier that checks a message crossed correctly has verified the message, and nobody in that stack has verified that the condition inside it was adjudicated rather than asserted. Two verification layers are needed and the industry has built the pipe one.',
+} as const;
 
 /* ── What is missing before any of this is real ── */
 

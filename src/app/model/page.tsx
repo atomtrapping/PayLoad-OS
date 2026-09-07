@@ -17,7 +17,8 @@ import { AUTHORITY_DIRECTION, CARD_PROPERTIES, CONGRUENCE, FROZEN_SIDE, GENERAL_
 import { COMPOSITION_IS_ADJUDICATION, INTEROP_VOCABULARY } from '@/domain/usdProjection';
 import { CORRESPONDENCES, FIT_DEPTH_LABEL, MANDATE_INVERSION } from '@/domain/actuarial';
 import { CAPABILITIES, PRESSURE, THE_FINDING, accommodationStanding, fitOf } from '@/domain/accommodation';
-import { LIABILITY_BOUNDARY, LIFECYCLE, NEVER, VEHICLE_ROLE, VEHICLE_SEQUENCE, evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition } from '@/domain/collateralVehicle';
+import { ATTESTOR_KINDS, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, TRUST_ORDER, VEHICLE_ROLE, VEHICLE_SEQUENCE, VENUE_PROPERTIES, evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition } from '@/domain/collateralVehicle';
+import { NEGATIVE_RULES, WHY_ONE_IS_NOT_ENOUGH } from '@/domain/negativeStates';
 import { currentRelease } from '@/domain/corpus';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { Section } from '@/components/primitives/Section';
@@ -597,6 +598,20 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           </tbody>
         </table>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="custody-window">{window.statement}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="custody-priceability">
+          Priceability is a gate rather than a refusal: {window.unmet.join('; ')}. It flips on its own when the corpus earns it.
+        </p>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="custody-exportable">
+          Every oracle in production publishes a value and has no representation of that value being wrong later, because a feed
+          has no correction tape. So under every conditional mechanism built on one there is an invisible tail risk — correct at
+          settlement, incorrect afterwards, and no party able to state the exposure. What is computed above is not a fact about
+          this vehicle: <span style={{ color: 'var(--text-heading)' }}>reversal exposure is a measurable property of a corpus</span>,
+          and a feed-based architecture cannot compute it at any price because its history has nothing to compute over.
+        </p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="custody-neighbourhood">
+          The decision carries the risk neighbourhood it was made in, bounded by its own clock so an audit cannot rebuild it with
+          hindsight: at {fmtUtc(decision.decidedAtKnowledge)}, {decision.exposureAtDecision.statement}
+        </p>
 
         <h3 className="m-0 text-[13.5px] font-semibold" style={{ color: 'var(--text-heading)' }}>The lifecycle, and what exists here for each stage</h3>
         <table className="ledger-table text-[12px]" aria-label="Vehicle lifecycle">
@@ -626,9 +641,53 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           </tbody>
         </table>
         <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}><span style={{ color: 'var(--text-heading)' }}>Attested:</span> {LIABILITY_BOUNDARY.attests} <span style={{ color: 'var(--text-heading)' }}>Not warranted:</span> {LIABILITY_BOUNDARY.doesNotWarrant} {LIABILITY_BOUNDARY.soADispute}</p>
+        <h3 className="m-0 text-[13.5px] font-semibold" style={{ color: 'var(--text-heading)' }}>Where a release could execute, and whose trust governs</h3>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+          The vehicle targets a property set rather than a venue: {VENUE_PROPERTIES.map((p) => p.property.toLowerCase()).join(', ')}.
+          Any venue with those four can host one, and naming a chain in the design would bet the architecture on a vendor.
+        </p>
+        <table className="ledger-table text-[12px]" aria-label="Two kinds of attestor" data-testid="custody-attestors">
+          <thead><tr><th scope="col">Attestor</th><th scope="col">Proves</th><th scope="col">Scarcity</th><th scope="col">Says nothing about</th></tr></thead>
+          <tbody>
+            {ATTESTOR_KINDS.map((attestor) => (
+              <tr key={attestor.kind} data-attestor={attestor.kind}>
+                <td><span className="id">{attestor.kind}</span></td>
+                <td style={{ color: 'var(--text-secondary)' }}>{attestor.proves}</td>
+                <td style={{ color: 'var(--text-secondary)' }}>{attestor.scarcity}</td>
+                <td style={{ color: 'var(--text-muted)' }}>{attestor.saysNothingAbout}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="custody-trust-order">
+          <span style={{ color: 'var(--text-heading)' }}>First:</span> {TRUST_ORDER.first} <span style={{ color: 'var(--text-heading)' }}>Second:</span> {TRUST_ORDER.second} <span style={{ color: 'var(--text-heading)' }}>Third:</span> {TRUST_ORDER.third} {TRUST_ORDER.theConfusion}
+        </p>
         <ol className="m-0 pl-4 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="What is missing before any of this is real">
           {VEHICLE_SEQUENCE.map((step) => <li key={step}>{step}</li>)}
         </ol>
+      </Section>
+
+      <Section title="The kinds of no, kept apart" id="pm-negative">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+          Every data system has one negative state and calls it null. {WHY_ONE_IS_NOT_ENOUGH.ours} Each pair below, collapsed,
+          produces a specific fabrication, and the fabrication is always in the same direction: a claim about the world manufactured
+          out of a fact about records. {WHY_ONE_IS_NOT_ENOUGH.theTest}
+        </p>
+        <table className="ledger-table text-[12px]" aria-label="Named negative-state rules">
+          <thead><tr><th scope="col">Rule</th><th scope="col">Kept apart from</th><th scope="col">What collapsing them fabricates</th></tr></thead>
+          <tbody>
+            {NEGATIVE_RULES.map((rule) => (
+              <tr key={rule.id} data-negative-rule={rule.id}>
+                <td>
+                  <span style={{ color: 'var(--text-heading)' }}>{rule.rule}</span>
+                  <div className="text-[11.5px] mono" style={{ color: 'var(--text-muted)' }}>{rule.enforcedIn.module.replace('src/domain/', '')} · {rule.enforcedIn.symbol}</div>
+                </td>
+                <td style={{ color: 'var(--text-secondary)' }}>{rule.distinguishes[0]} <span style={{ color: 'var(--status-refused)' }}>≠</span> {rule.distinguishes[1]}</td>
+                <td style={{ color: 'var(--text-muted)' }}>{rule.theFabrication}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Section>
 
       <Section title="What the additions cost, and what one acquisition would move" id="pm-accommodation">

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { currentRelease, releaseById } from './corpus';
 import {
-  DISPUTE_QUESTION, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, VEHICLE_ROLE, VEHICLE_SEQUENCE,
+  ATTESTOR_KINDS, DISPUTE_QUESTION, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, PRICEABILITY_GATE,
+  TRUST_ORDER, VEHICLE_ROLE, VEHICLE_SEQUENCE, VENUE_PROPERTIES,
   evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition,
 } from './collateralVehicle';
 
@@ -126,5 +127,60 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
     expect(VEHICLE_SEQUENCE[0]).toContain('admitted record');
     expect(VEHICLE_SEQUENCE.some((s) => s.includes('adversarial-oracle'))).toBe(true);
     expect(VEHICLE_SEQUENCE.some((s) => s.toLowerCase().includes('custody arrangement'))).toBe(true);
+  });
+
+  it('carries the risk neighbourhood it decided in, bounded by its own clock rather than by hindsight', () => {
+    const early = evaluateRelease(corpus, release, TIGHT, '2026-08-20T00:00:00Z');
+    const late = evaluateRelease(corpus, release, TIGHT, '2026-09-01T12:00:00Z');
+    // At the earlier instant the corpus had restated nothing yet; by the later one it had.
+    expect(early.exposureAtDecision.restatementsKnown).toBe(0);
+    expect(early.exposureAtDecision.longestObservedLagDays).toBeNull();
+    expect(early.exposureAtDecision.statement).toContain('not evidence that none was coming');
+    expect(late.exposureAtDecision.restatementsKnown).toBeGreaterThan(0);
+    expect(late.exposureAtDecision.longestObservedLagDays).toBeGreaterThan(0);
+    // Neither instant supports a rate, and each says which conditions it missed.
+    expect(early.exposureAtDecision.ratePriceable).toBe(false);
+    expect(late.exposureAtDecision.ratePriceable).toBe(false);
+    expect(late.exposureAtDecision.unmet.some((u) => u.includes('committed demonstration'))).toBe(true);
+  });
+
+  it('derives priceability from a declared gate rather than returning a permanent false', () => {
+    const exposure = restatementExposure(corpus);
+    expect(exposure.ratePriceable).toBe(false);
+    expect(exposure.unmet.length).toBeGreaterThan(0);
+    // Every unmet condition names a threshold from the gate, so the gate can open.
+    expect(exposure.unmet.some((u) => u.includes(String(PRICEABILITY_GATE.minRestatements)))).toBe(true);
+    expect(exposure.unmet.some((u) => u.includes(String(PRICEABILITY_GATE.minRecords)))).toBe(true);
+    expect(PRICEABILITY_GATE.andEvenThen).toContain('different denominators');
+    // ratePriceable is true exactly when nothing is unmet.
+    expect(exposure.ratePriceable).toBe(exposure.unmet.length === 0);
+  });
+
+  it('bounds the exposure by a knowledge instant when one is given', () => {
+    const all = restatementExposure(corpus);
+    const early = restatementExposure(corpus, '2026-08-20T00:00:00Z');
+    expect(all.corrections + all.withdrawals).toBe(2);
+    expect(early.corrections + early.withdrawals).toBe(0);
+    expect(early.recordsCarried).toBeLessThan(all.recordsCarried);
+    expect(early.statement).toContain('no observed window at all');
+  });
+
+  it('targets a property set rather than a venue, and keeps the two kinds of attestor apart', () => {
+    expect(VENUE_PROPERTIES.map((p) => p.property)).toContain('Non-custodial hold');
+    expect(VENUE_PROPERTIES.length).toBe(4);
+    const execution = ATTESTOR_KINDS.find((a) => a.kind === 'EXECUTION')!;
+    const fact = ATTESTOR_KINDS.find((a) => a.kind === 'FACT')!;
+    expect(execution.scarcity).toContain('Commodity');
+    expect(execution.saysNothingAbout).toContain('verified assertion');
+    expect(fact.scarcity).toContain('Estate-dependent');
+    // Standing behind a fact is the measurable half, and it points at this module's own machinery.
+    expect(fact.saysNothingAbout).toContain('what has been restated');
+  });
+
+  it('puts the adjudication first and a venue feature last, and separates transport from testimony', () => {
+    expect(TRUST_ORDER.first).toContain('adjudication');
+    expect(TRUST_ORDER.second).toContain('policy ran rather than that the policy was right');
+    expect(TRUST_ORDER.third).toContain('never ground');
+    expect(TRUST_ORDER.theConfusion).toContain('Transport verification is not content testimony');
   });
 });

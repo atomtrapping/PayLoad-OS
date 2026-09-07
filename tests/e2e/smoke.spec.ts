@@ -228,6 +228,29 @@ test('the model page works a release through a correction, and never un-fires it
   await expect(section.locator('[data-never="Hold the collateral."]')).toContainText('licensed activity');
   await expect(section.locator('[data-never="Un-fire a release."]')).toContainText('never alters it');
   await expect(section.locator('[data-vehicle-state="RELEASED"]')).toContainText('No release has fired');
+  // The exportable claim: reversal exposure is a property of a corpus, not of this vehicle.
+  await expect(page.getByTestId('custody-exportable')).toContainText('measurable property of a corpus');
+  await expect(page.getByTestId('custody-exportable')).toContainText('has no correction tape');
+  // Priceability is a gate that names what it is waiting for.
+  await expect(page.getByTestId('custody-priceability')).toContainText('flips on its own');
+  // The decision carries the neighbourhood it was made in, and at that instant nothing had been restated.
+  await expect(page.getByTestId('custody-neighbourhood')).toContainText('not evidence that none was coming');
+  // Execution attestors are commodity; fact attestors are estate-dependent.
+  await expect(page.getByTestId('custody-attestors').locator('[data-attestor="EXECUTION"]')).toContainText('verified assertion');
+  await expect(page.getByTestId('custody-attestors').locator('[data-attestor="FACT"]')).toContainText('Estate-dependent');
+  await expect(page.getByTestId('custody-trust-order')).toContainText('Transport verification is not content testimony');
+});
+
+test('the model page keeps the kinds of no apart, each with the mechanism that enforces it', async ({ page }) => {
+  await page.goto('/model');
+  const section = page.locator('#pm-negative');
+  const rules = section.locator('[data-negative-rule]');
+  expect(await rules.count()).toBeGreaterThanOrEqual(7);
+  await expect(section.locator('[data-negative-rule="UNKNOWN_IS_NOT_EMPTY"]')).toContainText('An unknown set is not an empty set');
+  await expect(section.locator('[data-negative-rule="WITHDRAWN_IS_NOT_FALSE"]')).toContainText('does not supply a contrary fact');
+  await expect(section.locator('[data-negative-rule="WITHDRAWN_IS_NOT_FALSE"]')).toContainText('collateralVehicle.ts');
+  await expect(section.locator('[data-negative-rule="REFUSED_IS_NOT_FALSE"]')).toContainText('admissibility');
+  await expect(section).toContainText('phone call');
 });
 
 test('a release page states certification, the production record and the rights matrix with trading prohibited', async ({ page }) => {

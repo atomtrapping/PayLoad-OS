@@ -70,6 +70,7 @@ export type PreconditionId =
   | 'MULTI_CHANNEL_EVENT'
   | 'SOURCE_LINEAGE'
   | 'DECLARED_SOURCE_TIME'
+  | 'A_DENOMINATOR'
   | 'AREAL_GEOMETRY'
   | 'HISTORICAL_DEPTH'
   | 'STATED_UNCERTAINTY'
@@ -180,6 +181,14 @@ export const PRECONDITIONS: readonly Precondition[] = [
     met: false,
     because: 'Every record states when it became knowable *here*, which is a fact about this system. The store carries a third clock and no committed record fills it, so the source as-of question is refused rather than answered on the wrong clock. It must be declared by the source; inferring it from the gap between the other two clocks would be this system guessing at provenance.',
     probe: (corpus) => corpus.records.some((r) => 'sourceTime' in r || 'publishedAt' in r),
+  },
+  {
+    id: 'A_DENOMINATOR',
+    what: 'Enough corpus history for a restatement rate to mean something.',
+    kind: 'CORPUS_CONTENT',
+    met: false,
+    because: 'The corpus has restated two records, the longest arriving eighteen days after the record became knowable. That measures a window and does not estimate a frequency: a handful of events over one synthetic corpus supports an anecdote. Anything that prices a hold, a reserve or a confidence needs a denominator this corpus has not run long enough to have.',
+    probe: (corpus) => corpus.retractions.length >= 30 && corpus.records.length >= 500,
   },
   {
     id: 'SOURCE_LINEAGE',
@@ -433,6 +442,20 @@ export const CAPABILITIES: readonly Capability[] = [
     module: 'src/domain/referenceGround.ts',
     needs: ['DECLARED_SOURCE_TIME'],
     ifMistaken: 'Inferring a source time from the gap between the other two clocks would make the answer up. The clock is declared by the source or the question stays refused.',
+  },
+  {
+    id: 'CONDITIONAL_CUSTODY',
+    what: 'A collateral deposit held and released against an adjudicated fact: the documentary credit with receipts in place of documents.',
+    module: 'src/domain/collateralVehicle.ts',
+    needs: ['ADMITTED_RECORD', 'AN_ADMISSION_AUTHORITY', 'MULTI_CHANNEL_EVENT', 'LIVE_SOURCE'],
+    ifMistaken: 'The adjudication runs today and every decision it reaches is stamped DEMONSTRATION, because money must not move on a fixture. The condition also needs a second channel: one channel that also benefits from the release is the adversarial-oracle case with extra steps.',
+  },
+  {
+    id: 'PRICED_HOLD_WINDOW',
+    what: 'Holding a deposit past the window in which the facts behind it are likely to be restated.',
+    module: 'src/domain/collateralVehicle.ts',
+    needs: ['A_DENOMINATOR'],
+    ifMistaken: 'The window is measured, not estimated: two restatements over twenty-one records, the longest arriving eighteen days later. That is an anecdote and the module refuses to make it a rate.',
   },
   {
     id: 'RESPONSE_PIPELINE',

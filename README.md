@@ -149,6 +149,16 @@ does not have.
   holds no stake but its inputs do, and it does not know whose.
   [`docs/GAT_INSPECTOR.md`](docs/GAT_INSPECTOR.md)
 
+- **Conditional custody** — a deposit held and released against an adjudicated
+  fact: the documentary credit with receipts in place of documents, and
+  deliberately not an insurance product, because a stakeholder that also has a
+  stake is not a stakeholder. Its real risk is that release is irreversible and
+  facts are not, which a general-purpose oracle cannot even represent: worked
+  over the committed corpus, a condition GRANTED on 2026-08-20 reads WITHHELD
+  after a correction arrives 5.6 days later, and the decision is not touched. The
+  exposure window is measured — 18.3 days at the longest — and explicitly refused
+  as a rate.
+  [`docs/CONDITIONAL_CUSTODY.md`](docs/CONDITIONAL_CUSTODY.md)
 - **What the additions cost** — one bullet per capability is not an inventory of
   what works. The preconditions each one waits on are declared, probed against
   the records where the corpus can decide them, and the fit is derived rather
@@ -331,6 +341,7 @@ src/mcp         MCP tools over the same feed payloads, and the stdio server
 src/domain/informationProduct.ts  the first information product as data, held to the corpus by its test: every field exists, every released record meets the stated evidence requirement, the customer question is answerable through the feed at two knowledge times
 src/domain/deliveredRecord.ts     the ten questions a delivered record answers, mapped to payload fields; its test holds every record the feed delivers to all ten
 src/domain/doctrine.ts   the architecture carried forward as data: five fabrics, three states of information, seven rules with where each is enforced and which tests prove it, verification tiers (docs/ARCHITECTURE.md is the prose; /model renders it)
+src/domain/collateralVehicle.ts  hold, monitor, adjudicate, release: the condition evaluator that never holds the collateral, never warrants the outcome and never un-fires a release; the restatement exposure measured and refused as a rate (docs/CONDITIONAL_CUSTODY.md)
 src/domain/accommodation.ts  what each capability waits on, with the corpus probing every precondition it can decide; the fit is derived and never declared (docs/ACCOMMODATION.md)
 src/domain/projection.ts the projection instruments' questions and roles and the routing table as data, over the one router in src/projection/spec.ts; a test checks the table against the router for every combination
 src/domain/admission.ts  the gate: nine checks with refusal as the default, the entry stamp of three clocks and declared provenance, a writable row obtainable only from an ADMITTED ruling, ancestry kept outside the release, and releaseLeaks checking doctrine rule 2 rather than asserting it

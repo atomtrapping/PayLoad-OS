@@ -131,7 +131,11 @@ describe('EarthTwin', () => {
     expect(spec.view).toEqual({ mode: 'GLOBE', coordinateSemantics: 'GEODETIC', representation: 'GLOBAL_3D' });
     expect(spec.selection).toEqual({ recordIds: ['REC-1'], knownAt: release.knownAt, validAt: '2026-08-03T10:00:00Z' });
     expect(screen.getByTestId('earth-valid-at')).toHaveTextContent('2026-08-03 10:00:00 UTC');
-    expect(screen.getByTestId('earth-subsolar')).toHaveTextContent('computed by CesiumJS');
+    // The sub-solar point reads "computing…" until the engine mock settles, so
+    // this is an asynchronous transition and has to be awaited like the others
+    // in this file. Asserting it synchronously passes in isolation and flakes
+    // under full-suite load, which is the worst of both.
+    await waitFor(() => expect(screen.getByTestId('earth-subsolar')).toHaveTextContent('computed by CesiumJS'));
     expect(screen.getByTestId('earth-subsolar')).toHaveTextContent('TEME approximation');
 
     await user.selectOptions(screen.getByLabelText('Record'), 'REC-2');

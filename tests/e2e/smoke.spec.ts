@@ -212,6 +212,24 @@ test('the stream names which as-of question it asks, and refuses the one this co
   await expect(page.getByTestId('asof-url')).toHaveText(/question=WHAT_THE_SOURCE_KNEW/);
 });
 
+test('the model page works a release through a correction, and never un-fires it', async ({ page }) => {
+  await page.goto('/model');
+  const section = page.locator('#pm-custody');
+  const worked = page.getByTestId('custody-worked');
+  // Granted on what was held, withheld on what is held, and the decision untouched.
+  await expect(worked.locator('[data-custody-row="decision"]')).toContainText('GRANTED');
+  await expect(worked.locator('[data-custody-row="decision"]')).toContainText('DEMONSTRATION');
+  await expect(worked.locator('[data-custody-row="restatement"]')).toContainText('RET-0001 (CORRECTION)');
+  await expect(worked.locator('[data-custody-row="now"]')).toContainText('WITHHELD');
+  await expect(worked.locator('[data-custody-row="now"]')).toContainText('right on what was held and is wrong on what is held');
+  // The window is measured and refused as a rate.
+  await expect(page.getByTestId('custody-window')).toContainText('anecdote, not a frequency');
+  // The prohibitions are rendered with where each is enforced.
+  await expect(section.locator('[data-never="Hold the collateral."]')).toContainText('licensed activity');
+  await expect(section.locator('[data-never="Un-fire a release."]')).toContainText('never alters it');
+  await expect(section.locator('[data-vehicle-state="RELEASED"]')).toContainText('No release has fired');
+});
+
 test('a release page states certification, the production record and the rights matrix with trading prohibited', async ({ page }) => {
   await page.goto('/releases/REL-CAR-2026.09.01');
   await expect(page.getByTestId('certification')).toContainText('Certified release');

@@ -97,6 +97,19 @@ one.** Co-location is evidence about where things are, never on its own an
 identity decision. A disagreement here is a question for adjudication, not
 an answer.
 
+**Declarations are counted, and sources are counted separately**, because
+they are not the same number. Three overlapping declarations from one source
+are one account restated, not a threefold agreement, and the finding says so.
+Two sources that disagree with each other read differently from one source
+that contradicts itself, and that too is named.
+
+The limit is stated rather than worked around: **distinct sources are not
+independent sources.** Two sources republishing one original measurement
+declare twice and observe once, and a position record carries no lineage that
+would show it — so nothing here can tell corroboration from syndication, and
+agreement between sources is never counted as evidence. Overlap remains the
+absence of a contradiction, never the presence of support.
+
 Across everything placed, the count of subjects whose standing declarations
 cannot all be right is itself a finding, and is shown as one.
 

@@ -70,7 +70,7 @@ describe('the Earth Twin as data', () => {
 
 /* ── What the declared positions imply ── */
 
-import { SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, geodesicSeparationM, positionSeparations } from './earth';
+import { SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, geodesicSeparationM, positionSeparations, soleDeclaration } from './earth';
 import type { GeodeticPosition } from './earth';
 
 const LAT = 51.5, LON = -0.12;
@@ -133,7 +133,8 @@ describe('separation between declared positions', () => {
     const [group] = positionSeparations([at('p-a', LAT, 30), at('p-b', LAT + NEAR, 30)]);
     expect(group.state).toBe('OVERLAPPING');
     expect(group.pairs[0].because).toMatch(/can contain one common point/);
-    expect(group.because).toMatch(/whole of the finding/);
+    // Both declarations are from one source, so the finding says what that is.
+    expect(group.because).toMatch(/one account restated, not accounts agreeing/);
     const loss = SEPARATION_LOSS.join(' ');
     expect(loss).toMatch(/Overlapping radii are not agreement/);
     expect(loss).toMatch(/never on its own a reason to treat two subjects as one/);
@@ -184,6 +185,68 @@ describe('separation between declared positions', () => {
     const [group] = positionSeparations([at('p-a', LAT, 5), at('p-b', LAT + FAR, 5), at('p-c', LAT + NEAR, null)]);
     expect(group.pairs.map((p) => p.state).sort()).toEqual(['DISJOINT', 'NOT_ASSESSABLE', 'NOT_ASSESSABLE']);
     expect(group.state).toBe('DISJOINT');
+  });
+
+  it('counts sources apart from declarations, so one source restating itself never reads as agreement', () => {
+    // Three overlapping declarations, all from one source. Counting
+    // declarations would call that a threefold agreement; counting sources
+    // says what it is.
+    const [one] = positionSeparations([
+      at('p-a', LAT, 30), at('p-b', LAT + NEAR, 30), at('p-c', LAT - NEAR, 30),
+    ]);
+    expect(one.state).toBe('OVERLAPPING');
+    expect(one.sourceIds).toEqual(['src-one']);
+    expect(one.because).toMatch(/3 standing declarations from 1 source/);
+    expect(one.because).toMatch(/one account restated, not accounts agreeing/);
+    expect(one.because).toMatch(/Nothing corroborates anything here/);
+
+    const other = { sourceId: 'src-two', sourceName: 'Registry Two' };
+    const [two] = positionSeparations([at('p-a', LAT, 30), at('p-b', LAT + NEAR, 30, { source: other })]);
+    expect(two.sourceIds).toEqual(['src-one', 'src-two']);
+    expect(two.because).toMatch(/2 standing declarations from 2 sources/);
+    // Even two sources agreeing is not corroboration, and the finding says so.
+    expect(two.because).toMatch(/it is not corroboration/);
+  });
+
+  it('names a source that contradicts itself, and says nothing here can tell corroboration from syndication', () => {
+    const [group] = positionSeparations([at('p-a', LAT, 5), at('p-b', LAT + FAR, 5)]);
+    expect(group.state).toBe('DISJOINT');
+    expect(group.because).toMatch(/Both are the same source, which has contradicted itself/);
+
+    const other = { sourceId: 'src-two', sourceName: 'Registry Two' };
+    const [across] = positionSeparations([at('p-a', LAT, 5), at('p-b', LAT + FAR, 5, { source: other })]);
+    expect(across.because).not.toMatch(/contradicted itself/);
+
+    // The limit is stated rather than worked around: two source ids are not
+    // two observations, and a position record carries no lineage to tell.
+    const loss = SEPARATION_LOSS.join(' ');
+    expect(loss).toMatch(/Distinct sources are not independent sources/);
+    expect(loss).toMatch(/declare twice and observe once/);
+    expect(loss).toMatch(/nothing here can tell corroboration from syndication/);
+    expect(loss).toMatch(/Agreement between sources is never counted as evidence/);
+  });
+
+  it('says why there is no reading, so silence is never mistaken for having looked', () => {
+    // One declaration is not compared. Rendering nothing there is
+    // indistinguishable from not having asked, so the absence carries its
+    // reason — and the reason is a finding of its own.
+    const alone = soleDeclaration([at('p-a', LAT, 30)]);
+    expect(alone).toMatch(/1 declaration from 1 source/);
+    expect(alone).toMatch(/nothing to compare/);
+    expect(alone).toMatch(/not corroborated by standing alone/);
+
+    // Two declarations of one identity are compared, so the reading speaks
+    // and this line stays silent rather than doubling it.
+    expect(soleDeclaration([at('p-a', LAT, 30), at('p-b', LAT + NEAR, 30)])).toBeNull();
+    // Nothing declared at all is not this case either.
+    expect(soleDeclaration([])).toBeNull();
+
+    // Two identities with one declaration each: still nothing to compare,
+    // and the count says so rather than implying a comparison happened.
+    const other = at('p-z', LAT, 30, { subject: { subjectId: 'subject-b', canonicalId: 'urn:facility:two', subjectType: 'facility' } });
+    const two = soleDeclaration([at('p-a', LAT, 30), other]);
+    expect(two).toMatch(/2 declarations from 1 source, across 2 resolved identities/);
+    expect(two).toMatch(/no identity here carries two/);
   });
 
   it('writes metres at the precision the measurement carries', () => {

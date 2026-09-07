@@ -284,6 +284,13 @@ export interface SubjectPositions {
   /** The resolved identity these declarations are about; the grouping key. */
   canonicalId: string;
   subjectIds: string[];
+  /**
+   * The distinct sources behind the standing declarations. Declarations are
+   * counted, sources are counted separately, and the two are never the same
+   * number by accident: three declarations from one source is one account
+   * restated, not three accounts agreeing.
+   */
+  sourceIds: string[];
   /** The declarations that stand at the asked-for knowledge instant. */
   compared: GeodeticPosition[];
   /** Declarations excluded before any comparison, each with why. */
@@ -347,6 +354,9 @@ export function positionSeparations(positions: readonly GeodeticPosition[]): Sub
     const pairs: PositionPair[] = [];
     for (let i = 0; i < compared.length; i += 1) for (let j = i + 1; j < compared.length; j += 1) pairs.push(pairOf(compared[i], compared[j]));
     const subjectIds = [...new Set(all.map((position) => position.subject.subjectId))].sort();
+    const sourceIds = [...new Set(compared.map((position) => position.source.sourceId))].sort();
+    const one = sourceIds.length === 1;
+    const counted = `${compared.length} standing ${compared.length === 1 ? 'declaration' : 'declarations'} from ${sourceIds.length} ${sourceIds.length === 1 ? 'source' : 'sources'}`;
     let state: PositionConsistency;
     let because: string;
     if (compared.length < 2) {
@@ -354,17 +364,37 @@ export function positionSeparations(positions: readonly GeodeticPosition[]): Sub
       because = `${all.length} declarations, of which one stands at this knowledge instant. There is nothing standing for it to contradict.`;
     } else if (pairs.some((pair) => pair.state === 'DISJOINT')) {
       state = 'DISJOINT';
-      because = `${compared.length} standing declarations, of which at least one pair cannot both be right. Where this subject is has not been settled, and nothing here settles it.`;
+      because = `${counted}, of which at least one pair cannot both be right. Where this subject is has not been settled, and nothing here settles it.${one ? ' Both are the same source, which has contradicted itself.' : ''}`;
     } else if (pairs.some((pair) => pair.state === 'NOT_ASSESSABLE')) {
       state = 'NOT_ASSESSABLE';
-      because = `${compared.length} standing declarations, of which at least one pair could not be tested. The set is not shown to be consistent.`;
+      because = `${counted}, of which at least one pair could not be tested. The set is not shown to be consistent.`;
     } else {
       state = 'OVERLAPPING';
-      because = `${compared.length} standing declarations whose stated uncertainties can all be satisfied by one position. That is the whole of the finding.`;
+      because = one
+        ? `${counted}, so this is one account restated, not accounts agreeing. Nothing corroborates anything here.`
+        : `${counted} whose stated uncertainties can all be satisfied by one position. That is the whole of the finding, and it is not corroboration.`;
     }
-    groups.push({ canonicalId, subjectIds, compared, setAside, pairs, state, because });
+    groups.push({ canonicalId, subjectIds, sourceIds, compared, setAside, pairs, state, because });
   }
   return groups;
+}
+
+/**
+ * Why there is no reading, when there is none. A subject with a single
+ * declaration is not compared, and silence there is indistinguishable from
+ * not having looked. Absence gets its reason like everything else does, and
+ * the reason is itself worth reading: one declaration from one source is the
+ * weakest state the evidence has, and standing alone is not corroboration.
+ */
+export function soleDeclaration(positions: readonly GeodeticPosition[]): string | null {
+  if (!positions.length) return null;
+  if (positionSeparations(positions).length) return null;
+  const declared = new Map<string, GeodeticPosition>();
+  for (const position of positions) if (!declared.has(position.positionRecordId)) declared.set(position.positionRecordId, position);
+  const sources = new Set([...declared.values()].map((position) => position.source.sourceId));
+  const subjects = new Set([...declared.values()].map((position) => position.subject.canonicalId));
+  const count = declared.size;
+  return `${count} ${count === 1 ? 'declaration' : 'declarations'} from ${sources.size} ${sources.size === 1 ? 'source' : 'sources'}, across ${subjects.size} resolved ${subjects.size === 1 ? 'identity' : 'identities'}: no identity here carries two, so there is nothing to compare. A single account is not corroborated by standing alone.`;
 }
 
 /** What this derivation is and, more importantly, what a reader must not take it for. */
@@ -375,4 +405,6 @@ export const SEPARATION_LOSS = [
   'A declaration that states no horizontal uncertainty is not compared and no radius is assumed for it. A pair that cannot be tested leaves the whole set untested, never consistent.',
   'A withdrawn or superseded declaration is set aside before any comparison, and named. Only what stands at the asked-for knowledge instant can contradict anything.',
   'The grouping key is the identity the compiler resolved, not proximity. Nothing here resolves an identity, and a disagreement is a question for adjudication, not an answer.',
+  'Declarations are counted, and so are the sources behind them, because they are not the same number. Several declarations from one source are one account restated.',
+  'Distinct sources are not independent sources. Two sources republishing one original measurement declare twice and observe once, and a position record carries no lineage that would show it, so nothing here can tell corroboration from syndication. Agreement between sources is never counted as evidence.',
 ] as const;

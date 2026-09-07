@@ -34,19 +34,22 @@ stated uncertainty gets **no key at all**: a refusal, not a default.
 
 **The cell is a blocking key; it is not the answer.** Sharing a cell makes two
 records worth comparing and establishes nothing else. The comparison is metric:
-separation against combined stated uncertainty, with the distance model's own
-error folded in, so the arithmetic is never allowed to decide what the geometry
-cannot.
+the geodesic on the WGS84 ellipsoid, by Vincenty's inverse solution — which
+refuses rather than returning the last iterate where it does not converge —
+tested against the radii the sources stated. One metric and one three-valued
+vocabulary serve two different questions: the Earth Twin asks whether one
+subject's own standing declarations can all be right at once, and this asks
+whether the evidence can tell two *different* subjects apart.
 
 That verdict refutes far more often than it confirms, and that is the useful
 direction. Geometry shows that two things are *not* in the same place far more
 cheaply than it shows that they are.
 
-| Verdict | Meaning |
+| Answer | Meaning |
 |---|---|
-| `DISTINGUISHABLE` | Separation exceeds combined stated uncertainty: not the same place |
-| `INDISTINGUISHABLE` | Inside it: this evidence cannot separate them — a **candidate** for a resolution decision, never a merge |
-| `UNDECIDABLE` | An uncertainty is missing, or the two quantities differ by less than the distance model's own error |
+| `DISJOINT` | The stated radii cannot contain one common point: not the same place |
+| `OVERLAPPING` | They can: this evidence cannot separate them — a **candidate** for a resolution decision, never a merge |
+| `NOT_ASSESSABLE` | A stated uncertainty is missing, or the geodesic does not converge there. No radius is assumed and nothing is concluded |
 
 ## What the demonstration corpus actually yields
 
@@ -54,9 +57,9 @@ Two subjects declare a position: a loading terminal at Rotterdam stated to
 ±250 m, and an origination yard at Santos stated to ±500 m. Both are keyable, both
 at geohash precision 6 — the finest resolution their own uncertainty supports —
 giving `u14ze9` and `6gxpdp`, cells roughly 754 × 611 m and 1 118 × 611 m at
-their respective latitudes. They do not block together. Their separation is
-9 753 910 m against 750 m of combined stated uncertainty, so the verdict is
-`DISTINGUISHABLE`.
+their respective latitudes. They do not block together. Their geodesic
+separation is 9 754 km against 750 m of combined stated uncertainty, so the
+answer is `DISJOINT`.
 
 Nothing is co-located, so nothing is even a candidate. That is the honest
 result, and it is the one the surface reports.
@@ -106,12 +109,13 @@ then.
   containment, adjacency and overlap — the strong geometric joins — are absent. A
   point can be near another point; it cannot contain one. Four of the five
   derivations wait on this.
-- **A resolution decision object.** An `INDISTINGUISHABLE` pair stops at
+- **A resolution decision object.** An `OVERLAPPING` pair stops at
   candidate. Carrying two identifiers to one subject with evidence, method,
   version and both clocks is the identity core's job, not a spatial one.
-- **A geodesic.** Haversine on a sphere is not a distance on the WGS84 ellipsoid.
-  The module says so and folds the difference into the verdict rather than
-  implying survey precision.
+- **A route.** The geodesic is the shortest path over the ellipsoid surface. It
+  is not a route, not a travelled distance and not a distance through anything.
+  A stated radius carries no distribution either, so no probability is computed
+  and none is implied.
 - **A spatial database.** PostGIS, S2, H3 and STAC are the purchased layer. What
   belongs to the firm is the resolution bound, the refusal where the evidence is
   silent, and the recorded judgment where two boundaries disagree.
@@ -133,7 +137,8 @@ then.
 
 | Part | Path |
 |---|---|
-| Cell key, extent, verdict | `src/domain/spatialKey.ts`, `src/domain/spatialKey.test.ts` |
+| Cell key, extent, the geodesic and the answer | `src/domain/spatialKey.ts`, `src/domain/spatialKey.test.ts` |
+| The twin's reading of one subject's own declarations, over the same metric | `positionSeparations` in `src/domain/earth.ts` |
 | Roles, derivations, capabilities, discipline | `src/domain/spatialDerivation.ts`, `src/domain/spatialDerivation.test.ts` |
 | The derivation beneath the globe | `src/components/earth/SpatialKeys.tsx`, at `/earth` |
 | The programme | `/model`, section "Space: the display was the easy half" |

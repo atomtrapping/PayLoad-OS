@@ -134,11 +134,11 @@ test('the derivation beneath the globe keys each position no finer than its evid
   await expect(berth).toContainText('No finer');
   await expect(panel.locator('[data-key-record="REC-0306"]')).toContainText('6gxpdp');
 
-  // The one cross-subject pair: the cells differ, and the metric verdict refutes.
+  // The one cross-subject pair: the cells differ, and the geodesic refutes.
   const pair = panel.locator('[data-pair="REC-0207-REC-0306"]');
-  await expect(pair).toHaveAttribute('data-verdict', 'DISTINGUISHABLE');
-  await expect(pair).toContainText('750 m of combined stated uncertainty');
+  await expect(pair).toHaveAttribute('data-answer', 'DISJOINT');
+  await expect(pair).toContainText('750 m of stated uncertainty');
   await expect(pair).toContainText('different places');
-  await expect(panel.locator('[data-verdict="INDISTINGUISHABLE"]')).toHaveCount(0);
+  await expect(panel.locator('[data-answer="OVERLAPPING"]')).toHaveCount(0);
   await expect(panel).toContainText('Containment is the join that would matter, and it is absent');
 });

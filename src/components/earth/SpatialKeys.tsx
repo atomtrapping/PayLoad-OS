@@ -1,16 +1,18 @@
 import { Section } from '@/components/primitives/Section';
 import type { Corpus } from '@/domain/corpus';
 import {
-  AREAL_GEOMETRY, CELL_SCHEME, KEY_REFUSAL_REASON, SEPARATION_METHOD, VERDICT_MEANING,
-  positionKeys, positionPairs, spatialKeyStanding,
+  AREAL_GEOMETRY, CELL_SCHEME, CONSISTENCY_MEANING, CROSS_SUBJECT_TEST, KEY_REFUSAL_REASON,
+  crossSubjectPairs, formatMetres, positionKeys, spatialKeyStanding,
 } from '@/domain/spatialKey';
 
 const metres = (value: number) => `${Math.round(value).toLocaleString('en-US')} m`;
 
-const VERDICT_TONE: Record<string, string> = {
-  DISTINGUISHABLE: 'var(--check-passed)',
-  INDISTINGUISHABLE: 'var(--status-conditional)',
-  UNDECIDABLE: 'var(--text-muted)',
+// DISJOINT is a decision and is accented as one. OVERLAPPING is plain, not green:
+// it is not a positive finding, and colouring it as one would say the sources agree.
+const ANSWER_TONE: Record<string, string> = {
+  DISJOINT: 'var(--text-heading)',
+  OVERLAPPING: 'var(--text-secondary)',
+  NOT_ASSESSABLE: 'var(--status-conditional)',
 };
 
 /**
@@ -21,7 +23,7 @@ const VERDICT_TONE: Record<string, string> = {
  */
 export function SpatialKeys({ corpus, releaseId }: { corpus: Corpus; releaseId: string }) {
   const keys = positionKeys(corpus);
-  const pairs = positionPairs(corpus);
+  const pairs = crossSubjectPairs(corpus);
   const standing = spatialKeyStanding(corpus);
 
   return (
@@ -61,32 +63,32 @@ export function SpatialKeys({ corpus, releaseId }: { corpus: Corpus; releaseId: 
         </div>
       </Section>
 
-      <Section title="Can two positions be told apart?" id="sk-pairs">
+      <Section title="Can two subjects be told apart?" id="sk-pairs">
         <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
-          The cell decides which pairs are worth comparing. The comparison itself is metric: separation against combined stated uncertainty, by {SEPARATION_METHOD.method} on a {SEPARATION_METHOD.figure}. {SEPARATION_METHOD.consequence}
+          {CROSS_SUBJECT_TEST.asks} Not {CROSS_SUBJECT_TEST.notThis.charAt(0).toLowerCase()}{CROSS_SUBJECT_TEST.notThis.slice(1)} {CROSS_SUBJECT_TEST.blocking} The measurement is the same one the twin uses: the geodesic on the WGS84 ellipsoid, tested against the radii the sources stated.
         </p>
         <div className="surface overflow-x-auto" tabIndex={0}>
           <table className="ledger-table text-[12px]" aria-label="Co-location verdicts between declared positions">
-            <thead><tr><th scope="col">Pair</th><th scope="col">Blocked together</th><th scope="col">Separation</th><th scope="col">Combined uncertainty</th><th scope="col">Verdict</th></tr></thead>
+            <thead><tr><th scope="col">Pair</th><th scope="col">Blocked together</th><th scope="col">Separation</th><th scope="col">Combined uncertainty</th><th scope="col">Answer</th></tr></thead>
             <tbody>
               {pairs.map((p) => (
-                <tr key={`${p.a.recordId}-${p.b.recordId}`} data-pair={`${p.a.recordId}-${p.b.recordId}`} data-verdict={p.verdict}>
+                <tr key={`${p.a.recordId}-${p.b.recordId}`} data-pair={`${p.a.recordId}-${p.b.recordId}`} data-answer={p.state}>
                   <td className="id">{p.a.recordId} · {p.b.recordId}<div style={{ color: 'var(--text-muted)' }}>{p.a.subjectId} · {p.b.subjectId}</div></td>
                   <td style={{ color: p.blockedTogether ? 'var(--status-conditional)' : 'var(--text-muted)' }}>
                     {p.blockingCells
                       ? <>{p.blockedTogether ? 'Yes' : 'No'}<div className="mono">{p.blockingCells.a} · {p.blockingCells.b}</div></>
                       : 'Not comparable'}
                   </td>
-                  <td className="mono">{metres(p.separationM)}</td>
-                  <td className="mono">{p.combinedUncertaintyM === null ? '—' : metres(p.combinedUncertaintyM)}</td>
-                  <td style={{ color: VERDICT_TONE[p.verdict] }}>{p.verdict === 'DISTINGUISHABLE' ? 'Not the same place' : p.verdict === 'INDISTINGUISHABLE' ? 'Cannot be separated' : 'Undecidable'}<div style={{ color: 'var(--text-muted)' }}>{p.because}</div></td>
+                  <td className="mono">{p.separation.state === 'MEASURED' ? formatMetres(p.separation.metres) : '—'}</td>
+                  <td className="mono">{p.combinedRadiusM === null ? '—' : formatMetres(p.combinedRadiusM)}</td>
+                  <td style={{ color: ANSWER_TONE[p.state] }}>{p.state === 'DISJOINT' ? 'Not the same place' : p.state === 'OVERLAPPING' ? 'Cannot be separated' : 'Not assessable'}<div style={{ color: 'var(--text-muted)' }}>{p.because}</div></td>
                 </tr>
               ))}
-              {pairs.length === 0 ? <tr><td colSpan={5} style={{ color: 'var(--text-muted)' }}>Fewer than two subjects declare a position, so there is no pair to compare.</td></tr> : null}
+              {pairs.length === 0 ? <tr><td colSpan={5} style={{ color: 'var(--text-muted)' }}>Fewer than two subjects declare a position, so there is no pair to test.</td></tr> : null}
             </tbody>
           </table>
         </div>
-        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{VERDICT_MEANING.INDISTINGUISHABLE}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{CONSISTENCY_MEANING.OVERLAPPING}</p>
         <p className="m-0 text-[12px]" style={{ color: 'var(--status-refused)' }}>
           Containment is the join that would matter, and it is absent. {AREAL_GEOMETRY.why} {AREAL_GEOMETRY.hazard}
         </p>

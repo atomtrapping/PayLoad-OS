@@ -17,13 +17,19 @@
  *
  * The cell is a blocking key; it is not the answer. Sharing a cell makes two
  * records worth comparing and establishes nothing else. The comparison is
- * metric: the separation against the combined stated uncertainty, with the
- * distance model's own error included, so that the verdict is never finer than
- * the arithmetic behind it. That verdict refutes far more often than it
- * confirms, which is the useful direction: geometry can show that two things
- * are not in the same place far more cheaply than it can show that they are.
+ * metric: the geodesic on the WGS84 ellipsoid, tested against the radii the
+ * sources stated, answering in one three-valued vocabulary. It refutes far
+ * more often than it confirms, which is the useful direction — geometry shows
+ * that two things are not in the same place far more cheaply than it shows
+ * that they are — and where a radius is missing or the method does not
+ * converge it declines to put the question at all.
  *
- * Nothing here resolves an identity. INDISTINGUISHABLE is a candidate for a
+ * The metric and the vocabulary are shared, deliberately. The Earth Twin asks
+ * of one subject whether its own standing declarations can all be right; this
+ * module asks of two subjects whether the evidence can tell them apart. Two
+ * questions, one measurement, no second implementation.
+ *
+ * Nothing here resolves an identity. OVERLAPPING is a candidate for a
  * resolution decision that does not exist yet (see ./identity), never a merge.
  */
 import { LOCATION_POSITION_PREDICATE, currentRelease, recordStatusAt, releaseRecords } from './corpus';
@@ -160,40 +166,104 @@ export function spatialKeyForRecord(record: CorpusRecord): SpatialKeyOutcome {
   return spatialKeyFor(record.geometry);
 }
 
-/* ── The comparison ── */
+/* ── The metric, and the vocabulary the answer is given in ── */
+
+/** The distance model, declared rather than assumed: the geodesic on the WGS84 ellipsoid, by Vincenty's inverse solution. */
+export const SEPARATION_METRIC = 'WGS84_ELLIPSOIDAL_GEODESIC';
+
+const WGS84 = { a: 6378137, f: 1 / 298.257223563 } as const;
+const RAD = Math.PI / 180;
+
+export type SeparationOutcome =
+  | { state: 'MEASURED'; metres: number }
+  | { state: 'NOT_ASSESSABLE'; because: string };
 
 /**
- * Haversine on a sphere of the IUGG mean radius. It is not the ellipsoid, and
- * the difference matters here because the separation is compared against metres
- * of stated uncertainty: a verdict decided inside the model's own error is not
- * a verdict.
+ * Vincenty's inverse solution on the WGS84 ellipsoid: the length of the
+ * shortest path over the ellipsoid surface between two points. It is not a
+ * route, not a distance through anything and not a straight line in space.
+ * The solution does not converge for very nearly antipodal points; there it
+ * refuses rather than returning the last iterate.
  */
-export const SEPARATION_METHOD = {
-  method: 'haversine',
-  figure: 'sphere of the IUGG mean radius, 6 371 008.8 m',
-  notThis: 'The WGS84 ellipsoid. A geodesic on the ellipsoid (Vincenty, Karney) is the correct distance and is not computed here.',
-  relativeError: 0.003,
-  consequence: 'Where the separation and the combined uncertainty differ by less than this model’s own error, the pair is UNDECIDABLE. The arithmetic is not allowed to decide what the geometry cannot.',
-} as const;
-
-const EARTH_RADIUS_M = 6_371_008.8;
-const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-
-/** Great-circle separation in metres, under SEPARATION_METHOD. */
-export function separationM(a: GeodeticPoint, b: GeodeticPoint): number {
-  const dLat = toRadians(b.latitude - a.latitude);
-  const dLon = toRadians(b.longitude - a.longitude);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(a.latitude)) * Math.cos(toRadians(b.latitude)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+export function geodesicSeparationM(
+  from: { longitude: number; latitude: number },
+  to: { longitude: number; latitude: number },
+): SeparationOutcome {
+  const coordinates = [from.longitude, from.latitude, to.longitude, to.latitude];
+  if (coordinates.some((value) => !Number.isFinite(value))) return { state: 'NOT_ASSESSABLE', because: 'A coordinate is not a finite number.' };
+  if (Math.abs(from.latitude) > 90 || Math.abs(to.latitude) > 90) return { state: 'NOT_ASSESSABLE', because: 'A latitude is outside the range the datum defines.' };
+  const { a, f } = WGS84;
+  const b = a * (1 - f);
+  const L = (to.longitude - from.longitude) * RAD;
+  const U1 = Math.atan((1 - f) * Math.tan(from.latitude * RAD));
+  const U2 = Math.atan((1 - f) * Math.tan(to.latitude * RAD));
+  const sinU1 = Math.sin(U1), cosU1 = Math.cos(U1), sinU2 = Math.sin(U2), cosU2 = Math.cos(U2);
+  let lambda = L, sinSigma = 0, cosSigma = 1, sigma = 0, cos2SigmaM = 1, cosSqAlpha = 1, converged = false;
+  for (let iteration = 0; iteration < 200; iteration += 1) {
+    const sinLambda = Math.sin(lambda), cosLambda = Math.cos(lambda);
+    sinSigma = Math.sqrt((cosU2 * sinLambda) ** 2 + (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ** 2);
+    if (sinSigma === 0) return { state: 'MEASURED', metres: 0 };
+    cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
+    sigma = Math.atan2(sinSigma, cosSigma);
+    const sinAlpha = (cosU1 * cosU2 * sinLambda) / sinSigma;
+    cosSqAlpha = 1 - sinAlpha * sinAlpha;
+    cos2SigmaM = cosSqAlpha === 0 ? 0 : cosSigma - (2 * sinU1 * sinU2) / cosSqAlpha;
+    const C = (f / 16) * cosSqAlpha * (4 + f * (4 - 3 * cosSqAlpha));
+    const previous = lambda;
+    lambda = L + (1 - C) * f * sinAlpha * (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM)));
+    if (Math.abs(lambda) > Math.PI) break;
+    if (Math.abs(lambda - previous) < 1e-12) { converged = true; break; }
+  }
+  if (!converged) return { state: 'NOT_ASSESSABLE', because: 'The geodesic between these two points did not converge: they are very nearly antipodal, and this method does not answer there.' };
+  const uSq = (cosSqAlpha * (a * a - b * b)) / (b * b);
+  const A = 1 + (uSq / 16384) * (4096 + uSq * (-768 + uSq * (320 - 175 * uSq)));
+  const B = (uSq / 1024) * (256 + uSq * (-128 + uSq * (74 - 47 * uSq)));
+  const deltaSigma = B * sinSigma * (cos2SigmaM + (B / 4) * (cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM) - (B / 6) * cos2SigmaM * (-3 + 4 * sinSigma * sinSigma) * (-3 + 4 * cos2SigmaM * cos2SigmaM)));
+  return { state: 'MEASURED', metres: b * A * (sigma - deltaSigma) };
 }
 
-export type ColocationVerdict = 'INDISTINGUISHABLE' | 'DISTINGUISHABLE' | 'UNDECIDABLE';
+/** Metres at the precision the number deserves; never more digits than the measurement carries meaning for. */
+export function formatMetres(metres: number): string {
+  if (metres >= 10_000) return `${(metres / 1000).toFixed(1)} km`;
+  if (metres >= 10) return `${metres.toFixed(0)} m`;
+  return `${metres.toFixed(2)} m`;
+}
 
-export const VERDICT_MEANING: Record<ColocationVerdict, string> = {
-  INDISTINGUISHABLE: 'The separation is inside the combined stated uncertainty: this evidence cannot tell the two positions apart. A candidate for a resolution decision, not a resolution.',
-  DISTINGUISHABLE: 'The separation exceeds the combined stated uncertainty: on this evidence the two positions are not the same place. This is the direction geometry answers cheaply.',
-  UNDECIDABLE: 'Either a stated uncertainty is missing, or the two quantities differ by less than the distance model’s own error. Nothing is concluded.',
+/**
+ * `DISJOINT`: the stated uncertainties cannot both contain one common
+ * point, so the accounts contradict and something must adjudicate them.
+ * `OVERLAPPING`: they can. `NOT_ASSESSABLE`: the question was not put,
+ * because something needed to put it is missing.
+ */
+export type PositionConsistency = 'DISJOINT' | 'OVERLAPPING' | 'NOT_ASSESSABLE';
+
+export const CONSISTENCY_MEANING: Record<PositionConsistency, string> = {
+  DISJOINT: 'The stated uncertainties cannot both contain one common point: on this evidence these are not the same place. This is the direction geometry answers cheaply.',
+  OVERLAPPING: 'They can contain one common point: this evidence cannot separate them. Across two subjects that is a candidate for a resolution decision, never a merge, and no such decision exists here.',
+  NOT_ASSESSABLE: 'The question was not put, because something needed to put it is missing: a stated uncertainty, or a geodesic this method answers for.',
 };
+
+/* ── The cross-subject question ── */
+
+/**
+ * Two questions share this metric and must not be confused.
+ *
+ * The twin asks the *intra-subject* one in ./earth: can a subject's own
+ * standing declarations all be right at once? A DISJOINT answer there is a
+ * contradiction between sources and a question for adjudication.
+ *
+ * This module asks the *cross-subject* one: can the evidence tell two
+ * different subjects apart? A DISJOINT answer here refutes a co-location
+ * claim. An OVERLAPPING answer establishes nothing on its own — it is a
+ * candidate for a resolution decision that does not exist.
+ */
+export const CROSS_SUBJECT_TEST = {
+  asks: 'Can this evidence tell two different subjects apart?',
+  notThis: 'Whether one subject’s own declarations agree, which the Earth Twin asks separately over the same metric.',
+  refutes: 'A DISJOINT answer is a real negative: the sources place two subjects in different places, with no name matching involved.',
+  confirmsNothing: 'An OVERLAPPING answer is not a resolution and not a merge. It says the geometry cannot separate them, and the resolution decision that could carry two identifiers to one subject does not exist.',
+  blocking: 'The cell key decides which pairs are worth this test at all. At corpus scale the metric is never run over all pairs; here the full set is shown so that the blocking decision itself stays inspectable.',
+} as const;
 
 export interface PositionKey {
   recordId: string;
@@ -204,7 +274,7 @@ export interface PositionKey {
   outcome: SpatialKeyOutcome;
 }
 
-export interface PositionPair {
+export interface CrossSubjectPair {
   a: PositionKey;
   b: PositionKey;
   /** The coarser of the two resolutions: the finest at which both are supportable. */
@@ -212,9 +282,10 @@ export interface PositionPair {
   /** Whether both truncate to the same cell at that precision, which is what makes them worth comparing. */
   blockedTogether: boolean;
   blockingCells: { a: string; b: string } | null;
-  separationM: number;
-  combinedUncertaintyM: number | null;
-  verdict: ColocationVerdict;
+  separation: SeparationOutcome;
+  /** The sum of the two stated radii, or null when the test could not be put. */
+  combinedRadiusM: number | null;
+  state: PositionConsistency;
   because: string;
 }
 
@@ -238,30 +309,26 @@ export function positionKeys(corpus: Corpus): PositionKey[] {
 }
 
 /**
- * Cross-subject pairs, with the blocking decision and the metric verdict shown
- * separately. Two positions of the same subject are a trajectory, not an
- * identity question, so they are not paired here.
- *
- * At corpus scale the blocking key is what keeps this from being all-pairs;
- * with a handful of positions the full set is returned so that the blocking
- * decision itself stays inspectable rather than implicit.
+ * Cross-subject pairs, with the blocking decision and the metric answer shown
+ * separately. Two positions of the same subject are the twin's question, not
+ * this one, so they are not paired here.
  */
-export function positionPairs(corpus: Corpus): PositionPair[] {
+export function crossSubjectPairs(corpus: Corpus): CrossSubjectPair[] {
   const keys = positionKeys(corpus);
-  const pairs: PositionPair[] = [];
+  const pairs: CrossSubjectPair[] = [];
   for (let i = 0; i < keys.length; i += 1) {
     for (let j = i + 1; j < keys.length; j += 1) {
       const a = keys[i], b = keys[j];
       if (a.subjectId === b.subjectId) continue;
-      pairs.push(comparePositions(a, b));
+      pairs.push(compareSubjects(a, b));
     }
   }
   return pairs;
 }
 
-/** Pure: the blocking decision and the verdict for one pair. */
-export function comparePositions(a: PositionKey, b: PositionKey): PositionPair {
-  const separation = separationM(a.point, b.point);
+/** Pure: the blocking decision and the answer for one cross-subject pair. */
+export function compareSubjects(a: PositionKey, b: PositionKey): CrossSubjectPair {
+  const separation = geodesicSeparationM(a.point, b.point);
   const keyA = a.outcome.keyed ? a.outcome.key : null;
   const keyB = b.outcome.keyed ? b.outcome.key : null;
   const blockingPrecision = keyA && keyB ? Math.min(keyA.precision, keyB.precision) : null;
@@ -269,30 +336,23 @@ export function comparePositions(a: PositionKey, b: PositionKey): PositionPair {
     ? { a: keyA.cell.slice(0, blockingPrecision), b: keyB.cell.slice(0, blockingPrecision) }
     : null;
   const blockedTogether = blockingCells !== null && blockingCells.a === blockingCells.b;
-  const combined = keyA && keyB ? keyA.boundedByM + keyB.boundedByM : null;
+  const base = { a, b, blockingPrecision, blockedTogether, blockingCells, separation };
 
-  let verdict: ColocationVerdict = 'UNDECIDABLE';
-  let because: string;
-  if (combined === null) {
-    because = 'One of the two positions carries no stated horizontal uncertainty, so there is nothing to compare the separation against.';
-  } else {
-    const margin = separation - combined;
-    const tolerance = separation * SEPARATION_METHOD.relativeError;
-    if (Math.abs(margin) <= tolerance) {
-      because = `The separation (${round(separation)} m) and the combined stated uncertainty (${round(combined)} m) differ by less than the distance model’s own error (±${round(tolerance)} m), so this arithmetic decides nothing.`;
-    } else if (margin > 0) {
-      verdict = 'DISTINGUISHABLE';
-      because = `${round(separation)} m apart, against ${round(combined)} m of combined stated uncertainty: the sources place these in different places.`;
-    } else {
-      verdict = 'INDISTINGUISHABLE';
-      because = `${round(separation)} m apart, inside ${round(combined)} m of combined stated uncertainty: this evidence cannot separate them. A resolution decision would be needed to say more, and none exists.`;
-    }
+  if (separation.state === 'NOT_ASSESSABLE') {
+    return { ...base, combinedRadiusM: null, state: 'NOT_ASSESSABLE', because: separation.because };
   }
-  return { a, b, blockingPrecision, blockedTogether, blockingCells, separationM: separation, combinedUncertaintyM: combined, verdict, because };
+  const missing = [keyA === null ? a.recordId : null, keyB === null ? b.recordId : null].filter((id): id is string => id !== null);
+  if (missing.length) {
+    return { ...base, combinedRadiusM: null, state: 'NOT_ASSESSABLE',
+      because: `${missing.join(' and ')} state${missing.length === 1 ? 's' : ''} no usable horizontal uncertainty. No radius is assumed for a declaration that does not carry one, so the two cannot be tested against each other.` };
+  }
+  const combinedRadiusM = keyA!.boundedByM + keyB!.boundedByM;
+  const disjoint = separation.metres > combinedRadiusM;
+  return { ...base, combinedRadiusM, state: disjoint ? 'DISJOINT' : 'OVERLAPPING',
+    because: disjoint
+      ? `${formatMetres(separation.metres)} apart, against a combined ${formatMetres(combinedRadiusM)} of stated uncertainty: the sources place these two subjects in different places.`
+      : `${formatMetres(separation.metres)} apart, within a combined ${formatMetres(combinedRadiusM)} of stated uncertainty: this evidence cannot separate them. A resolution decision would be needed to say more, and none exists.` };
 }
-
-/** Metres, grouped, to the metre. The verdict is about metres, so it is stated in metres. */
-const round = (metres: number) => Math.round(metres).toLocaleString('en-US');
 
 /* ── What the corpus can key today ── */
 
@@ -303,18 +363,18 @@ export interface SpatialKeyStanding {
   precisions: readonly number[];
   pairs: number;
   blocked: number;
-  verdicts: Record<ColocationVerdict, number>;
+  answers: Record<PositionConsistency, number>;
   statement: string;
 }
 
-/** Pure: counts what is keyed and what the comparison decided, asserting nothing further. */
+/** Pure: counts what is keyed and what the comparison answered, asserting nothing further. */
 export function spatialKeyStanding(corpus: Corpus): SpatialKeyStanding {
   const keys = positionKeys(corpus);
   const refusalCounts = new Map<KeyRefusal, number>();
   for (const k of keys) if (!k.outcome.keyed) refusalCounts.set(k.outcome.refusal, (refusalCounts.get(k.outcome.refusal) ?? 0) + 1);
-  const pairs = positionPairs(corpus);
-  const verdicts: Record<ColocationVerdict, number> = { INDISTINGUISHABLE: 0, DISTINGUISHABLE: 0, UNDECIDABLE: 0 };
-  for (const p of pairs) verdicts[p.verdict] += 1;
+  const pairs = crossSubjectPairs(corpus);
+  const answers: Record<PositionConsistency, number> = { DISJOINT: 0, OVERLAPPING: 0, NOT_ASSESSABLE: 0 };
+  for (const p of pairs) answers[p.state] += 1;
   const keyed = keys.filter((k) => k.outcome.keyed).length;
   return {
     positions: keys.length,
@@ -323,10 +383,10 @@ export function spatialKeyStanding(corpus: Corpus): SpatialKeyStanding {
     precisions: [...new Set(keys.flatMap((k) => (k.outcome.keyed ? [k.outcome.key.precision] : [])))].sort((x, y) => x - y),
     pairs: pairs.length,
     blocked: pairs.filter((p) => p.blockedTogether).length,
-    verdicts,
+    answers,
     statement: keys.length === 0
       ? 'No record in this release declares a position, so nothing is keyed.'
-      : `${keyed} of ${keys.length} declared position${keys.length === 1 ? '' : 's'} carry a stated uncertainty and are keyed. ${pairs.length} cross-subject pair${pairs.length === 1 ? '' : 's'} compared: ${verdicts.DISTINGUISHABLE} refuted by geometry, ${verdicts.INDISTINGUISHABLE} left as candidates for a resolution decision that does not exist, ${verdicts.UNDECIDABLE} undecidable.`,
+      : `${keyed} of ${keys.length} declared position${keys.length === 1 ? '' : 's'} carry a stated uncertainty and are keyed. ${pairs.length} cross-subject pair${pairs.length === 1 ? '' : 's'} tested: ${answers.DISJOINT} refuted by geometry, ${answers.OVERLAPPING} left as candidates for a resolution decision that does not exist, ${answers.NOT_ASSESSABLE} not assessable.`,
   };
 }
 

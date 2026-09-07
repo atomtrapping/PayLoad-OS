@@ -256,74 +256,19 @@ export const TWIN_NONCLAIMS = [
 
 /** The method that decided, versioned so an answer can be traced to it. */
 export const SEPARATION_METHOD = 'notationsos.position-separation.v1';
-/** The distance model, declared rather than assumed: the geodesic on the WGS84 ellipsoid, by Vincenty's inverse solution. */
-export const SEPARATION_METRIC = 'WGS84_ELLIPSOIDAL_GEODESIC';
-
-const WGS84 = { a: 6378137, f: 1 / 298.257223563 } as const;
-const RAD = Math.PI / 180;
-
-export type SeparationOutcome =
-  | { state: 'MEASURED'; metres: number }
-  | { state: 'NOT_ASSESSABLE'; because: string };
-
 /**
- * Vincenty's inverse solution on the WGS84 ellipsoid: the length of the
- * shortest path over the ellipsoid surface between two points. It is not a
- * route, not a distance through anything and not a straight line in space.
- * The solution does not converge for very nearly antipodal points; there it
- * refuses rather than returning the last iterate.
+ * The distance model, the geodesic and the three-valued consistency vocabulary
+ * are spatial primitives rather than Earth Twin machinery, so they live in
+ * ./spatialKey and are re-exported here: one implementation, one vocabulary,
+ * used both by the twin's reading of a subject's own declarations and by the
+ * cross-subject question the key exists to block for.
  */
-export function geodesicSeparationM(
-  from: { longitude: number; latitude: number },
-  to: { longitude: number; latitude: number },
-): SeparationOutcome {
-  const coordinates = [from.longitude, from.latitude, to.longitude, to.latitude];
-  if (coordinates.some((value) => !Number.isFinite(value))) return { state: 'NOT_ASSESSABLE', because: 'A coordinate is not a finite number.' };
-  if (Math.abs(from.latitude) > 90 || Math.abs(to.latitude) > 90) return { state: 'NOT_ASSESSABLE', because: 'A latitude is outside the range the datum defines.' };
-  const { a, f } = WGS84;
-  const b = a * (1 - f);
-  const L = (to.longitude - from.longitude) * RAD;
-  const U1 = Math.atan((1 - f) * Math.tan(from.latitude * RAD));
-  const U2 = Math.atan((1 - f) * Math.tan(to.latitude * RAD));
-  const sinU1 = Math.sin(U1), cosU1 = Math.cos(U1), sinU2 = Math.sin(U2), cosU2 = Math.cos(U2);
-  let lambda = L, sinSigma = 0, cosSigma = 1, sigma = 0, cos2SigmaM = 1, cosSqAlpha = 1, converged = false;
-  for (let iteration = 0; iteration < 200; iteration += 1) {
-    const sinLambda = Math.sin(lambda), cosLambda = Math.cos(lambda);
-    sinSigma = Math.sqrt((cosU2 * sinLambda) ** 2 + (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ** 2);
-    if (sinSigma === 0) return { state: 'MEASURED', metres: 0 };
-    cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
-    sigma = Math.atan2(sinSigma, cosSigma);
-    const sinAlpha = (cosU1 * cosU2 * sinLambda) / sinSigma;
-    cosSqAlpha = 1 - sinAlpha * sinAlpha;
-    cos2SigmaM = cosSqAlpha === 0 ? 0 : cosSigma - (2 * sinU1 * sinU2) / cosSqAlpha;
-    const C = (f / 16) * cosSqAlpha * (4 + f * (4 - 3 * cosSqAlpha));
-    const previous = lambda;
-    lambda = L + (1 - C) * f * sinAlpha * (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM)));
-    if (Math.abs(lambda) > Math.PI) break;
-    if (Math.abs(lambda - previous) < 1e-12) { converged = true; break; }
-  }
-  if (!converged) return { state: 'NOT_ASSESSABLE', because: 'The geodesic between these two points did not converge: they are very nearly antipodal, and this method does not answer there.' };
-  const uSq = (cosSqAlpha * (a * a - b * b)) / (b * b);
-  const A = 1 + (uSq / 16384) * (4096 + uSq * (-768 + uSq * (320 - 175 * uSq)));
-  const B = (uSq / 1024) * (256 + uSq * (-128 + uSq * (74 - 47 * uSq)));
-  const deltaSigma = B * sinSigma * (cos2SigmaM + (B / 4) * (cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM) - (B / 6) * cos2SigmaM * (-3 + 4 * sinSigma * sinSigma) * (-3 + 4 * cos2SigmaM * cos2SigmaM)));
-  return { state: 'MEASURED', metres: b * A * (sigma - deltaSigma) };
-}
+import { geodesicSeparationM, formatMetres } from './spatialKey';
+import type { PositionConsistency, SeparationOutcome } from './spatialKey';
 
-/** Metres at the precision the number deserves; never more digits than the measurement carries meaning for. */
-export function formatMetres(metres: number): string {
-  if (metres >= 10_000) return `${(metres / 1000).toFixed(1)} km`;
-  if (metres >= 10) return `${metres.toFixed(0)} m`;
-  return `${metres.toFixed(2)} m`;
-}
+export { SEPARATION_METRIC, geodesicSeparationM, formatMetres, CONSISTENCY_MEANING } from './spatialKey';
+export type { SeparationOutcome, PositionConsistency } from './spatialKey';
 
-/**
- * `DISJOINT`: the stated uncertainties cannot both contain one common
- * point, so the accounts contradict and something must adjudicate them.
- * `OVERLAPPING`: they can. `NOT_ASSESSABLE`: the question was not put,
- * because something needed to put it is missing.
- */
-export type PositionConsistency = 'DISJOINT' | 'OVERLAPPING' | 'NOT_ASSESSABLE';
 
 export interface PositionPair {
   a: GeodeticPosition;

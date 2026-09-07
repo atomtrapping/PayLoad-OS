@@ -34,7 +34,7 @@ describe('the four jobs space does, and the one that was built first', () => {
     expect(identity.here).toMatch(/refute/);
     expect(identity.missing).toMatch(/resolution decision object/);
     // And the corpus agrees: nothing is co-located, so nothing is even a candidate.
-    expect(spatialKeyStanding(CARAVAN_CORPUS).verdicts.INDISTINGUISHABLE).toBe(0);
+    expect(spatialKeyStanding(CARAVAN_CORPUS).answers.OVERLAPPING).toBe(0);
   });
 });
 

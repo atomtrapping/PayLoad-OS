@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import type { GeodeticPoint } from './corpus';
 import {
-  AREAL_GEOMETRY, CELL_SCHEME, KEY_REFUSAL_REASON, MAX_PRECISION, SEPARATION_METHOD, VERDICT_MEANING,
-  cellExtentM, cellPrecisionFor, comparePositions, encodeGeohash, positionKeys, positionPairs,
-  separationM, spatialKeyFor, spatialKeyStanding, type PositionKey,
+  AREAL_GEOMETRY, CELL_SCHEME, CONSISTENCY_MEANING, CROSS_SUBJECT_TEST, KEY_REFUSAL_REASON, MAX_PRECISION, SEPARATION_METRIC,
+  cellExtentM, cellPrecisionFor, compareSubjects, crossSubjectPairs, encodeGeohash, geodesicSeparationM,
+  positionKeys, spatialKeyFor, spatialKeyStanding, type PositionKey,
 } from './spatialKey';
 
 const point = (latitude: number, longitude: number, horizontalUncertaintyM?: number): GeodeticPoint => ({
@@ -90,67 +90,71 @@ describe('the key, and the refusals that are not defaults', () => {
   });
 });
 
-describe('separation, and the verdict the arithmetic is allowed to reach', () => {
-  it('measures a known great-circle distance to within the stated model error', () => {
-    // Rotterdam to Santos, ~9 500 km. The check is the model, not a geodesy library.
-    const metres = separationM(point(51.9497, 4.025), point(-23.9535, -46.313));
-    expect(metres).toBeGreaterThan(9_400_000);
-    expect(metres).toBeLessThan(9_800_000);
-    expect(separationM(point(0, 0), point(0, 0))).toBe(0);
+describe('the metric, and the answer it is allowed to reach', () => {
+  const measured = (a: GeodeticPoint, b: GeodeticPoint) => {
+    const outcome = geodesicSeparationM(a, b);
+    if (outcome.state !== 'MEASURED') throw new Error(outcome.because);
+    return outcome.metres;
+  };
+
+  it('measures the ellipsoidal geodesic, not a sphere', () => {
+    // One degree of latitude at the equator on WGS84 is 110 574 m; a sphere would say 111 195 m.
+    expect(measured(point(0, 0), point(1, 0))).toBeCloseTo(110_574, -1);
+    // One degree of longitude at the equator is 111 320 m.
+    expect(measured(point(0, 0), point(0, 1))).toBeCloseTo(111_320, -1);
+    expect(measured(point(0, 0), point(0, 0))).toBe(0);
+    expect(SEPARATION_METRIC).toBe('WGS84_ELLIPSOIDAL_GEODESIC');
+  });
+
+  it('refuses where the method does not answer, rather than returning the last iterate', () => {
+    const antipodal = geodesicSeparationM(point(0, 0), point(0.5, 179.7));
+    expect(antipodal.state).toBe('NOT_ASSESSABLE');
+    expect(geodesicSeparationM(point(Number.NaN, 0), point(0, 0)).state).toBe('NOT_ASSESSABLE');
   });
 
   const keyed = (recordId: string, subjectId: string, p: GeodeticPoint): PositionKey => ({
     recordId, subjectId, subjectType: 'Lot', title: recordId, point: p, outcome: spatialKeyFor(p),
   });
 
-  it('refutes when the separation exceeds the combined stated uncertainty', () => {
-    const pair = comparePositions(keyed('A', 'S1', point(51.9497, 4.025, 250)), keyed('B', 'S2', point(51.9600, 4.025, 250)));
-    expect(pair.verdict).toBe('DISTINGUISHABLE');
+  it('refutes when the stated radii cannot contain one common point', () => {
+    const pair = compareSubjects(keyed('A', 'S1', point(51.9497, 4.025, 250)), keyed('B', 'S2', point(51.9600, 4.025, 250)));
+    expect(pair.state).toBe('DISJOINT');
     expect(pair.because).toMatch(/different places/);
+    expect(pair.combinedRadiusM).toBe(500);
   });
 
   it('leaves a candidate, not a merge, when the evidence cannot separate them', () => {
-    const pair = comparePositions(keyed('A', 'S1', point(51.9497, 4.025, 250)), keyed('B', 'S2', point(51.9499, 4.0252, 250)));
-    expect(pair.verdict).toBe('INDISTINGUISHABLE');
+    const pair = compareSubjects(keyed('A', 'S1', point(51.9497, 4.025, 250)), keyed('B', 'S2', point(51.9499, 4.0252, 250)));
+    expect(pair.state).toBe('OVERLAPPING');
     expect(pair.because).toMatch(/resolution decision would be needed/);
-    expect(VERDICT_MEANING.INDISTINGUISHABLE).toMatch(/never a merge|not a resolution/);
+    expect(CONSISTENCY_MEANING.OVERLAPPING).toMatch(/never a merge/);
+    expect(CROSS_SUBJECT_TEST.confirmsNothing).toMatch(/not a resolution/);
   });
 
-  // The unusual one: the distance model's own error is part of the verdict.
-  it('declines to decide inside the distance model’s own error', () => {
-    const a = point(0, 0, 1_000_000);
-    const b = point(0, 18, 1_000_000);
-    const separation = separationM(a, b);
-    // Combined uncertainty set exactly at the separation: the margin is zero, well inside tolerance.
-    const tuned = comparePositions(
-      keyed('A', 'S1', { ...a, horizontalUncertaintyM: separation / 2 }),
-      keyed('B', 'S2', { ...b, horizontalUncertaintyM: separation / 2 }),
-    );
-    expect(tuned.verdict).toBe('UNDECIDABLE');
-    expect(tuned.because).toMatch(/distance model/);
-    expect(SEPARATION_METHOD.relativeError).toBeGreaterThan(0);
-    expect(SEPARATION_METHOD.notThis).toMatch(/ellipsoid/);
-  });
-
-  it('is undecidable when either side stated no uncertainty', () => {
-    const pair = comparePositions(keyed('A', 'S1', point(51.9497, 4.025, 250)), keyed('B', 'S2', point(51.9499, 4.0252)));
-    expect(pair.verdict).toBe('UNDECIDABLE');
-    expect(pair.combinedUncertaintyM).toBeNull();
+  it('is not assessable when either side stated no uncertainty', () => {
+    const pair = compareSubjects(keyed('A', 'S1', point(51.9497, 4.025, 250)), keyed('B', 'S2', point(51.9499, 4.0252)));
+    expect(pair.state).toBe('NOT_ASSESSABLE');
+    expect(pair.because).toMatch(/No radius is assumed/);
+    expect(pair.combinedRadiusM).toBeNull();
     expect(pair.blockingPrecision).toBeNull();
     expect(pair.blockedTogether).toBe(false);
   });
 
-  it('blocks at the coarser of the two resolutions', () => {
+  it('blocks at the coarser of the two resolutions, and the block is not the answer', () => {
     const a = keyed('A', 'S1', point(51.9497, 4.025, 30));
     const b = keyed('B', 'S2', point(51.9497, 4.0251, 3000));
-    const pair = comparePositions(a, b);
+    const pair = compareSubjects(a, b);
     expect(a.outcome.keyed && b.outcome.keyed).toBe(true);
     if (!a.outcome.keyed || !b.outcome.keyed) return;
     expect(pair.blockingPrecision).toBe(Math.min(a.outcome.key.precision, b.outcome.key.precision));
     expect(pair.blockedTogether).toBe(true);
     expect(pair.blockingCells!.a).toBe(pair.blockingCells!.b);
-    // Blocking is not the answer: the verdict is still the metric one.
-    expect(['INDISTINGUISHABLE', 'DISTINGUISHABLE', 'UNDECIDABLE']).toContain(pair.verdict);
+    expect(CROSS_SUBJECT_TEST.blocking).toMatch(/never run over all pairs/);
+  });
+
+  it('asks a different question from the twin, over the same metric', () => {
+    expect(CROSS_SUBJECT_TEST.asks).toMatch(/two different subjects apart/);
+    expect(CROSS_SUBJECT_TEST.notThis).toMatch(/one subject’s own declarations/);
   });
 });
 
@@ -163,17 +167,17 @@ describe('what the corpus can key today, reported rather than claimed', () => {
       // Every fixture position states its uncertainty, so every one is keyable.
       expect(k.outcome.keyed).toBe(true);
     }
-    for (const pair of positionPairs(CARAVAN_CORPUS)) expect(pair.a.subjectId).not.toBe(pair.b.subjectId);
+    for (const pair of crossSubjectPairs(CARAVAN_CORPUS)) expect(pair.a.subjectId).not.toBe(pair.b.subjectId);
   });
 
   it('states the standing without rounding it up', () => {
     const standing = spatialKeyStanding(CARAVAN_CORPUS);
     expect(standing.positions).toBe(positionKeys(CARAVAN_CORPUS).length);
     expect(standing.keyed).toBe(standing.positions);
-    expect(standing.pairs).toBe(positionPairs(CARAVAN_CORPUS).length);
-    expect(standing.verdicts.INDISTINGUISHABLE + standing.verdicts.DISTINGUISHABLE + standing.verdicts.UNDECIDABLE).toBe(standing.pairs);
+    expect(standing.pairs).toBe(crossSubjectPairs(CARAVAN_CORPUS).length);
+    expect(standing.answers.DISJOINT + standing.answers.OVERLAPPING + standing.answers.NOT_ASSESSABLE).toBe(standing.pairs);
     // Nothing in the demonstration corpus is co-located: the honest answer is a refutation.
-    expect(standing.verdicts.INDISTINGUISHABLE).toBe(0);
+    expect(standing.answers.OVERLAPPING).toBe(0);
     expect(standing.statement).toMatch(/resolution decision that does not exist/);
   });
 

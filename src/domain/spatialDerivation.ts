@@ -66,8 +66,8 @@ export const SPATIAL_ROLES: readonly SpatialRole[] = [
     title: 'Space as the resolver',
     job: 'Decide, from measured geometry rather than from matching names, whether two records are about the same thing.',
     state: 'PARTIAL',
-    here: 'Two positions are now compared metrically: the separation against their combined stated uncertainty, with the distance model’s own error included, yielding a refutation, a candidate, or an explicit refusal to decide. Geometry can already refute an identity claim here.',
-    missing: 'Confirmation. An INDISTINGUISHABLE pair is a candidate and stops there, because no resolution decision object exists to carry two identifiers to one subject with evidence, method, version and both clocks. Containment and adjacency — the strong geometric joins — need areal geometry the corpus does not carry.',
+    here: 'Two positions are now compared metrically: the geodesic on the WGS84 ellipsoid against their combined stated uncertainty, yielding a refutation, a candidate, or an explicit refusal to put the question. Geometry can already refute an identity claim here, and the Earth Twin asks the same test of one subject’s own declarations.',
+    missing: 'Confirmation. An OVERLAPPING pair is a candidate and stops there, because no resolution decision object exists to carry two identifiers to one subject with evidence, method, version and both clocks. Containment and adjacency — the strong geometric joins — need areal geometry the corpus does not carry.',
   },
   {
     id: 'JOIN_KEY',
@@ -211,7 +211,7 @@ export interface SpatialCapability {
 export const SPATIAL_CAPABILITIES: readonly SpatialCapability[] = [
   { capability: 'Datum, frame and transform discipline', component: 'src/domain/observationReplay.ts, /compute/observations', state: 'PARTIAL', note: 'Frames, calibrations and transforms are modelled for recorded observations with their validity windows. They are not corpus objects, so a position cannot yet cite the transform that produced it.' },
   { capability: 'Cell key and blocking', component: 'src/domain/spatialKey.ts', state: 'BUILT', note: 'Resolution bounded by stated uncertainty; a position with none is refused rather than defaulted.' },
-  { capability: 'Geometric verdict between two positions', component: 'src/domain/spatialKey.ts comparePositions', state: 'BUILT', note: 'Refutes on separation against combined uncertainty; declines to decide inside the distance model’s own error.' },
+  { capability: 'Geometric verdict between two positions', component: 'src/domain/spatialKey.ts compareSubjects', state: 'BUILT', note: 'One metric — the WGS84 ellipsoidal geodesic, by Vincenty’s inverse solution, refusing where it does not converge — and one three-valued vocabulary, shared with the twin’s reading of a subject’s own declarations.' },
   { capability: 'Areal geometry: containment, adjacency, overlap', component: 'CorpusRecord.geometry', state: 'ABSENT', note: AREAL_GEOMETRY.why },
   { capability: 'Scene and detector as a source', component: 'The extraction interface and the acquisition rail', state: 'ABSENT', note: 'The interface admits a vision model as an adapter; no imagery source is registered and no scene is acquired.' },
   { capability: 'Tasking economics over instruments', component: 'src/domain/n11MeasurementEconomy.ts', state: 'PARTIAL', note: 'Instruments carry ground resolution, latency, cost, sensitivity and false-alarm rate and are chosen by value of information. No site or indicator exists to point them at.' },
@@ -231,7 +231,7 @@ export const SPATIAL_DISCIPLINE = {
 export const SPATIAL_SEQUENCE: readonly string[] = [
   'The cell key first, because every other derivation presupposes it and it is the only one that needs no new source. Done: a key bounded by stated uncertainty, and a verdict that refuses rather than guesses.',
   'Areal geometry next, because containment is the strong join and four of the five derivations wait on it. It is a change to the record contract and a registered boundary source, not a database.',
-  'The resolution decision object, so that an INDISTINGUISHABLE pair can become one subject with evidence behind it and be undone without rewriting history. This is shared with the identity core and is not a spatial problem.',
+  'The resolution decision object, so that an OVERLAPPING pair can become one subject with evidence behind it and be undone without rewriting history. This is shared with the identity core and is not a spatial problem.',
   'Then the flow-through-geometry demonstration over one place and one week, end to end with digests, because it is the strongest single proof of the cross-line thesis and it is a demonstration rather than a product.',
   'Imagery last of the sources, because its rights are the strictest and its value depends on everything above it being in place.',
 ];

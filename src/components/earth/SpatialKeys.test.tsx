@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
-import { positionKeys, positionPairs } from '@/domain/spatialKey';
+import { crossSubjectPairs, positionKeys } from '@/domain/spatialKey';
 import { SpatialKeys } from './SpatialKeys';
 
 const release = 'COR-CAR-2026.09.01';
@@ -21,15 +21,21 @@ describe('the derivation beneath the globe', () => {
     }
   });
 
-  it('reports the verdict for every pair, with its reasoning shown', () => {
+  it('reports the answer for every cross-subject pair, with its reasoning shown', () => {
     render(<SpatialKeys corpus={CARAVAN_CORPUS} releaseId={release} />);
-    const pairs = positionPairs(CARAVAN_CORPUS);
+    const pairs = crossSubjectPairs(CARAVAN_CORPUS);
     expect(pairs.length).toBeGreaterThan(0);
     for (const pair of pairs) {
       const row = document.querySelector(`[data-pair="${pair.a.recordId}-${pair.b.recordId}"]`)!;
-      expect(row.getAttribute('data-verdict')).toBe(pair.verdict);
+      expect(row.getAttribute('data-answer')).toBe(pair.state);
       expect(row.textContent).toContain(pair.because);
     }
+  });
+
+  it('asks the cross-subject question, and says it is not the twin’s', () => {
+    render(<SpatialKeys corpus={CARAVAN_CORPUS} releaseId={release} />);
+    expect(screen.getByText(/Can this evidence tell two different subjects apart\?/)).toBeInTheDocument();
+    expect(screen.getByText(/one subject’s own declarations agree/)).toBeInTheDocument();
   });
 
   it('says the display is not the derivation, and that containment is absent', () => {

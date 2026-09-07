@@ -60,6 +60,32 @@ does not have.
   invariant each store must not break. PostgreSQL is selected and wired for
   records; the rest are local files and fixtures.
   [`docs/STORAGE.md`](docs/STORAGE.md)
+- **The admission gate** — nine checks with refusal as the default, and the ninth
+  is the one a process would omit: **nothing admits on its own behalf**, because a
+  process promoting its own output is a write wearing a ruling's clothes. A check
+  that cannot be evaluated fails, so an undeclared evidence axis is not a weak one
+  and an undecided right is not a quiet permission. Ancestry is produced only by an
+  admission and lives outside the release, and `releaseLeaks` checks doctrine rule 2
+  by scanning a serialized release rather than asserting the rule in a comment. The
+  gate exists; the act does not — and the fixtures the seeder writes are stamped
+  `DEMONSTRATION`, which makes the two writers disjoint by type.
+- **Reference ground, and the third clock** — *what the source knew by D* and *what
+  this system held at K* are two different questions, and answering the second with
+  the first invents a corpus that knew things it did not know. A caller names which
+  one it is asking, the two use different clocks on purpose, and what a question
+  excluded is named rather than dropped. Provenance is declared and never inferred:
+  no threshold reads a gap between the clocks as backfill. Absence gets three
+  readings and never a fourth, and none of them says the thing did not happen. The
+  ground is measured but not sold, reasoned over but never into.
+  [`docs/REFERENCE_GROUND.md`](docs/REFERENCE_GROUND.md)
+- **The response pipeline** — what leaves, and why: five stages in refusal order,
+  and the order is the argument. What no contract can buy is checked before what a
+  contract can, so the estates are refused before rights are read and a fully
+  permitted caller is still refused there. No later stage rescues an earlier
+  refusal; a `DEMONSTRATION` row is never served as corpus state whatever a licence
+  permits; a refusal is a result that names its stage, never an error and never
+  silence. Every run carries a receipt over the canonical serialization, which says
+  the declared policy ran — not that it was the right policy.
 - **Correction and identity** — downstream invalidation, the specified-and-empty
   delivery ledger, one identity core with three per-line identifier families and
   the absent cross-line join.
@@ -70,8 +96,10 @@ does not have.
 - **Space as a working dimension** — the display was the easy half. A cell key no
   finer than the source's own stated uncertainty, a geodesic verdict on whether
   two positions can be told apart, and the four other jobs space does once it
-  stops being a display attribute. Three sensor families, and the semantic
-  convergence that is the actual gap.
+  stops being a display attribute. Declarations and the sources behind them are
+  counted separately, so three overlapping declarations from one source read as one
+  account restated rather than a threefold agreement. Three sensor families, and
+  the semantic convergence that is the actual gap.
   [`docs/SPATIAL_DERIVATION.md`](docs/SPATIAL_DERIVATION.md)
 - **Estimation** — a constraint is a measurement with `R = 0`, so constraints are
   beliefs with provenance; certainty is harvested in proportion to declared
@@ -82,13 +110,24 @@ does not have.
 - **The maritime layer** — the vessel as the state the sensor families were
   defined around, dispatch typed as a *prior* so intent-versus-track stays
   signal, and the port as a time-indexed set whose membership is a ruling with
-  both clocks, where an unknown set is never an empty one.
+  both clocks, where an unknown set is never an empty one. When several channels
+  claim one arrival, the spread between them *is* the measurement: no composite
+  confidence is produced at all, and agreement is counted over declared independent
+  groups, because counting channels is counting republications.
   [`docs/MARITIME.md`](docs/MARITIME.md)
 - **The carrier, congruence and the serving boundary** — the punch card rather
   than the proof: credibility lives in the estate, the rulings and the two
   clocks, and no cryptography moves it. Plus what a transport can enforce that a
   key cannot, and the three rules a reasoner over the surface is held to.
   [`docs/CARRIER_AND_CONGRUENCE.md`](docs/CARRIER_AND_CONGRUENCE.md)
+- **Computations as archival artifacts** — can this be re-run from the artifact and
+  a spec, on a machine that does not exist yet? Inputs must be fixed by digest and
+  referenced by content rather than by a location; a version range is not a version.
+  Floating point drops a grade, and not on principle: changing only
+  `OPENBLAS_CORETYPE` was observed here to change covariance bytes while derived
+  means stayed byte-identical. Divergence isolates a changed input and an unstable
+  execution and then stops, because with everything pinned and fresh evidence still
+  disagreeing, a changed world and a wrong model look identical to a frozen trace.
 - **Legacy trade as backfill** — the strongest thing the past can offer this
   corpus, and why: records adversarially audited at creation, conserving mass and
   money so the constraint stack can adjudicate history, carrying institutional
@@ -101,6 +140,24 @@ does not have.
   preserves them; the hyperbolic manifold enters as the tier below the corpus,
   where void renders void.
   [`docs/PROJECTION_FABRIC.md`](docs/PROJECTION_FABRIC.md)
+- **The engine boundary** — where the pinned GAT engine's vocabulary meets the
+  corpus's, the mapping is data rather than a spelling match. `DERIVED` is a GAT
+  kind, a corpus claim strength *and* a corpus production class — three terms, one
+  spelling — so the rows are checked. `ASSUMED` and `SIMULATED` map to nothing at
+  all, and `unclassified` is not offered in their place: a value nothing witnessed
+  must not be gradable. No engine output is `disinterested`, because the engine
+  holds no stake but its inputs do, and it does not know whose.
+  [`docs/GAT_INSPECTOR.md`](docs/GAT_INSPECTOR.md)
+
+- **What the additions cost** — one bullet per capability is not an inventory of
+  what works. The preconditions each one waits on are declared, probed against
+  the records where the corpus can decide them, and the fit is derived rather
+  than asserted. The probes found something written down wrongly: the corpus
+  already holds one independently corroborated quantity — lot 5B-221's gross
+  weight, from a draft survey and a weighbridge — and it cannot be adjudicated,
+  because one side states no bound. What is missing is not a second account but
+  a second account that stated its own uncertainty.
+  [`docs/ACCOMMODATION.md`](docs/ACCOMMODATION.md)
 
 An editable [architecture map](docs/architecture-map/Payload%20OS%20Architecture.md)
 — an Obsidian canvas with one note per part, 63 of them — draws the fabrics,
@@ -154,18 +211,6 @@ Opt-in, loopback-only, operator-driven, and none of them a public control.
 - A [Rust notation state kernel](docs/LOCAL_NOTATION_STATE_KERNEL.md) backs
   `/notations`: stable-ID notations, explicit relations, undo and redo, versioned
   local saves. Authored workspace state, never canonical corpus state.
-
-The **admission gate** is now built, and with it the thing the records store said it was owed. Two modules named its absence as a live risk rather than a settled sequence: the store's tables are canonical-shaped, so until a gate existed nothing stopped an unadmitted candidate being written into a `records` row as though it were a version; and a corrected record could not reach the build that proposed it. `src/domain/admission.ts` is that gate. Nine checks, refusal as the default — retained bytes by content digest, three evidence axes with a production class that is not `unclassified`, an epistemic origin that could be evidence at all, both clocks with a knowledge time not earlier than the capture it descends from, a canonical subject, a rights decision that is `PERMITTED`, provenance declared rather than inferred, and a source clock that is not later than acquisition. A check that cannot be evaluated fails: an undeclared axis is not a weak one, and an undecided right is a refusal rather than a quiet permission. The ninth check is the one a process would omit: **nothing admits on its own behalf**, because a process promoting its own output is a write wearing a ruling's clothes. Ancestry is produced only by an admission and lives outside the release, and `releaseLeaks` checks doctrine rule 2 by scanning a serialized release for every candidate and build identifier rather than asserting the rule in a comment. **The gate exists; the act does not.** No candidate has crossed it, and the committed fixtures the seeder writes are stamped `DEMONSTRATION`, which makes the two writers disjoint by type: the gate cannot emit `DEMONSTRATION` and the seeder cannot emit the other two.
-
-Because a record's honesty is decided when it enters and cannot be worked out about it later, the `records` table now carries the **third clock**. Two clocks were enough while capture was live, since a source published and this system obtained it at nearly the same instant; backfill splits that instant in two. [Reference ground](docs/REFERENCE_GROUND.md) — `src/domain/referenceGround.ts` — keeps the consequence straight: *what the source knew by D* and *what this system held at K* are **two different questions**, and answering the second with the first invents a corpus that knew things it did not know. A caller names which question it is asking, the two use different clocks on purpose, and what a question excluded is named rather than dropped. Provenance is declared and never inferred: no threshold reads a gap between the clocks as backfill. Absence gets three readings and never a fourth — the ground does not cover the range, the source recorded nothing in a range it declared complete, or the two are indistinguishable — and none of them says the thing did not happen. The legacy layer is closed to this system's writes and to sale: measurements of the ground may be sold, the ground may not, and a reasoner works over it and never into it, because after absorption nothing it confirms is a check.
-
-The **response pipeline** at `src/domain/responsePipeline.ts` is what leaves and why. Five stages in refusal order, and the order is the argument: what no contract can buy is checked before what a contract can, so the estates — calibration, identity decisions, source reliability, the surprise tape — are refused before rights are read, and a fully permitted caller is still refused there. Then rights, admissibility, the as-of question and shaping, with no later stage rescuing an earlier refusal. A `DEMONSTRATION` row can never be served as corpus state whatever a licence permits: the pages may show it, an answer may not carry it. Provenance-only disclosure serves existence, grade and both clocks without content, and says it is not a weaker answer to the same question but the answer to a different one. A refusal is a result, never an error and never silence: it names the stage and the reason, so a caller who cannot have the substance is still told the shape of the wall. Every run carries a receipt over the canonical serialization of request, licence terms and outcomes — which says the declared policy ran and produced this, and not that the policy was the right policy or the release complete.
-
-Computations are graded as artifacts rather than trusted as proofs. `src/domain/computationCard.ts` asks the archival question — can this be re-run from the artifact and a spec, on a machine that does not exist yet? — and answers `CARD_GRADE`, `REPLAYABLE_HERE` or `LOG_ONLY`, inspecting the artifact and never the computation. Inputs must be fixed by digest and referenced by content rather than by a location or a moving target; a version range is not a version. Floating point drops to `REPLAYABLE_HERE`, and not on principle: this system already observed that changing only `OPENBLAS_CORETYPE` changes covariance bytes while derived means stay byte-identical. `divergenceOf` isolates a changed input and an unstable execution cleanly and then stops, because with everything pinned and fresh evidence still disagreeing a changed world and a wrong model look identical — the artifact mirrors the model, not the world, so that case needs an independent reference and says so. The response pipeline hands its own run to that grader rather than claiming proof-eligibility, which is how the claim stays checkable.
-
-Two derivations read what the corpus already draws. `src/domain/eventClosure.ts` measures the residual between channels claiming one event — AIS, a SAR pass, berth containment, a draft change, a dispatch ETA — under a declared metric, and produces no composite confidence at all, because the channels state an instant and a half-width and no distribution, and combining would assume an independence optical and SAR (shared weather gating) demonstrably lack. Agreement is counted over declared independent groups rather than over channels, since counting channels is counting republications. `src/domain/portSet.ts` makes a port a time-indexed set whose membership is a ruling rather than a test, with both clocks, supersession and the evidence that decided it — and carries the rule the rest of the system now shares: **an unknown set is not an empty set.** A port with no knowable ruling reports occupancy `null`, never `0`, because zero is a claim about the world and the absence of an observation is not. On the globe, the same discipline reads the positions the twin draws: declarations and the sources behind them are counted separately, so three overlapping declarations from one source read as one account restated rather than a threefold agreement, and the loss says plainly that distinct sources are not independent sources — two republishing one measurement declare twice and observe once, and a position record carries no lineage that would show it.
-
-Where the pinned GAT engine's vocabulary meets the corpus's, the mapping is data at the boundary (`src/gat/contracts.ts`). The engine declares epistemic origin on one axis of six terms; the corpus declares evidence on three axes that are not that axis. `DERIVED` is a GAT kind, a corpus claim strength and a corpus production class — three terms, one spelling — so the rows are checked rather than matched by spelling. `ASSUMED` and `SIMULATED` map to nothing at all, and `unclassified` is not offered in their place: a value nothing witnessed must not be gradable. And no engine output is `disinterested`, because the engine holds no stake but its inputs do and it does not know whose.
 
 ## Run
 
@@ -286,6 +331,7 @@ src/mcp         MCP tools over the same feed payloads, and the stdio server
 src/domain/informationProduct.ts  the first information product as data, held to the corpus by its test: every field exists, every released record meets the stated evidence requirement, the customer question is answerable through the feed at two knowledge times
 src/domain/deliveredRecord.ts     the ten questions a delivered record answers, mapped to payload fields; its test holds every record the feed delivers to all ten
 src/domain/doctrine.ts   the architecture carried forward as data: five fabrics, three states of information, seven rules with where each is enforced and which tests prove it, verification tiers (docs/ARCHITECTURE.md is the prose; /model renders it)
+src/domain/accommodation.ts  what each capability waits on, with the corpus probing every precondition it can decide; the fit is derived and never declared (docs/ACCOMMODATION.md)
 src/domain/projection.ts the projection instruments' questions and roles and the routing table as data, over the one router in src/projection/spec.ts; a test checks the table against the router for every combination
 src/domain/admission.ts  the gate: nine checks with refusal as the default, the entry stamp of three clocks and declared provenance, a writable row obtainable only from an ADMITTED ruling, ancestry kept outside the release, and releaseLeaks checking doctrine rule 2 rather than asserting it
 src/domain/referenceGround.ts  the third clock and the two as-of questions it keeps apart; three readings of absence; the ground measured but not sold, reasoned over but not into (docs/REFERENCE_GROUND.md)

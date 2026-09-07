@@ -176,6 +176,23 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.getByTestId('clearance-boundary')).toContainText('Synthetic demonstration');
 });
 
+test('the model page derives what each capability waits on, and separates absorbed pressure from owed', async ({ page }) => {
+  await page.goto('/model');
+  const section = page.locator('#pm-accommodation');
+  // The seed the probes found: one independently corroborated quantity that cannot be adjudicated.
+  await expect(section).toContainText('lot 5B-221’s gross weight');
+  await expect(section).toContainText('a second account that stated its own uncertainty');
+  // Every capability is rendered with a derived fit; at least one runs and at least one does not.
+  const capabilities = section.locator('[data-capability]');
+  expect(await capabilities.count()).toBeGreaterThanOrEqual(12);
+  expect(await section.locator('[data-fit="RUNS_TODAY"]').count()).toBeGreaterThan(0);
+  await expect(section.locator('[data-capability="ADMISSION"][data-fit="SEVERAL_THINGS_AWAY"]')).toContainText('A built gate is not a crossed one');
+  await expect(section.locator('[data-capability="EVENT_CLOSURE"]')).toContainText('placed in time by two channels');
+  // The third clock is the addition the rest of the system still owes for.
+  await expect(section.locator('[data-absorbed="false"]').first()).toContainText('third clock');
+  await expect(section.locator('[data-pressure="The verification tiers"][data-absorbed="true"]')).toContainText('None of the additions raises a tier');
+});
+
 test('a release page states certification, the production record and the rights matrix with trading prohibited', async ({ page }) => {
   await page.goto('/releases/REL-CAR-2026.09.01');
   await expect(page.getByTestId('certification')).toContainText('Certified release');

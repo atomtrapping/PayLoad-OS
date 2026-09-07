@@ -31,6 +31,7 @@ beforeEach(() => {
   temporary = mkdtempSync(join(workspace, '.stamp/gat-runtime-test-'));
 });
 afterEach(async () => {
+  restoreHost();
   vi.useRealTimers(); vi.restoreAllMocks();
   const actualSpawn = await vi.importActual<typeof import('node:child_process')>('node:child_process');
   const actualSource = await vi.importActual<typeof import('../../scripts/gat-source.mjs')>('../../scripts/gat-source.mjs');
@@ -39,7 +40,32 @@ afterEach(async () => {
   rmSync(temporary, { recursive: true, force: true });
 });
 
+/**
+ * The runtime refuses on any host that is not the pinned platform, before it
+ * looks at anything else. A simulation that leaves the real platform in place
+ * therefore never reaches the boundary it means to exercise: on Linux every
+ * assertion below would be answered by ENGINE_UNAVAILABLE. Simulating the
+ * runtime means simulating the host it is pinned to, so the descriptors are
+ * swapped here and restored after each test. The foreign-platform refusal is
+ * not lost by this — it is asserted on its own, below, with the simulation in
+ * place, which is the only way to prove the platform gate is what refuses.
+ */
+const hostDescriptors = new Map<'platform' | 'arch', PropertyDescriptor>();
+
+function simulatePinnedHost() {
+  for (const [key, value] of [['platform', GAT_ENGINE_PIN.platform], ['arch', GAT_ENGINE_PIN.architecture]] as const) {
+    if (!hostDescriptors.has(key)) hostDescriptors.set(key, Object.getOwnPropertyDescriptor(process, key)!);
+    Object.defineProperty(process, key, { value, configurable: true, enumerable: true, writable: false });
+  }
+}
+
+function restoreHost() {
+  for (const [key, descriptor] of hostDescriptors) Object.defineProperty(process, key, descriptor);
+  hostDescriptors.clear();
+}
+
 function simulatedRuntime() {
+  simulatePinnedHost();
   const root = join(temporary, '.payload/gat-runtime');
   for (const path of ['engine', 'venv/Scripts', 'wheels']) mkdirSync(join(root, path), { recursive: true });
   mkdirSync(join(temporary, 'scripts'), { recursive: true });
@@ -77,6 +103,24 @@ describe('fixed GAT process boundary', () => {
     vi.spyOn(process, 'cwd').mockReturnValue(temporary);
     await expect(runGatAudit(fixture)).rejects.toMatchObject({ code: 'ENGINE_UNAVAILABLE' });
     expect(existsSync(join(temporary, '.payload'))).toBe(false);
+  });
+
+  it('refuses a host that is not the pinned platform, with the runtime otherwise complete', async () => {
+    const root = simulatedRuntime();
+    Object.defineProperty(process, 'platform', { value: 'plan9', configurable: true, enumerable: true, writable: false });
+    const child = simulatedChild();
+    await expect(runGatAudit(fixture)).rejects.toMatchObject({ code: 'ENGINE_UNAVAILABLE' });
+    expect(vi.mocked(spawn)).not.toHaveBeenCalled();
+    expect(child.kill).not.toHaveBeenCalled();
+    expect(existsSync(join(root, 'audit.lock'))).toBe(false);
+  });
+
+  it('refuses a host that is not the pinned architecture, with the runtime otherwise complete', async () => {
+    simulatedRuntime();
+    Object.defineProperty(process, 'arch', { value: 'mips', configurable: true, enumerable: true, writable: false });
+    simulatedChild();
+    await expect(runGatAudit(fixture)).rejects.toMatchObject({ code: 'ENGINE_UNAVAILABLE' });
+    expect(vi.mocked(spawn)).not.toHaveBeenCalled();
   });
 
   it('checks the execution copy before starting Python', async () => {

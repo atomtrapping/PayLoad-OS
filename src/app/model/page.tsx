@@ -16,12 +16,22 @@ import { PORT_SET_LOSS, SET_OBJECTS, SET_PRODUCTS } from '@/domain/portSet';
 import { AUTHORITY_DIRECTION, CARD_PROPERTIES, CONGRUENCE, FROZEN_SIDE, GENERAL_PROVING, MIRRORS_THE_MODEL, NOT_CREDIBILITY } from '@/domain/computationCarrier';
 import { COMPOSITION_IS_ADJUDICATION, INTEROP_VOCABULARY } from '@/domain/usdProjection';
 import { CORRESPONDENCES, FIT_DEPTH_LABEL, MANDATE_INVERSION } from '@/domain/actuarial';
+import { CAPABILITIES, PRESSURE, THE_FINDING, accommodationStanding, fitOf } from '@/domain/accommodation';
+import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { Section } from '@/components/primitives/Section';
 
 export const metadata: Metadata = { title: 'Operating model' };
 
 /** What the firm is, what it makes, how it distributes it, whom it serves, and what exists here. The three APIs are the products; this terminal is not one. The text is the founder's; the presence flags are facts about this repository. */
+const FIT_LABEL = {
+  RUNS_TODAY: 'Runs today',
+  ONE_THING_AWAY: 'One thing away',
+  SEVERAL_THINGS_AWAY: 'Several things away',
+} as const;
+
 export default function ProductPage() {
+  const capabilityFits = CAPABILITIES.map((capability) => fitOf(capability, CARAVAN_CORPUS));
+  const accommodation = accommodationStanding(CARAVAN_CORPUS);
   return (
     <div className="p-3 sm:p-5 max-w-[1000px] mx-auto w-full flex flex-col gap-6">
       <header className="flex flex-col gap-2">
@@ -550,6 +560,46 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
             </tbody>
           </table>
         </div>
+      </Section>
+
+      <Section title="What the additions cost, and what one acquisition would move" id="pm-accommodation">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{THE_FINDING.theSeedIsAlreadyHere}</p>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{THE_FINDING.andItCannotBeAdjudicated}</p>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }}>{accommodation.statement}</p>
+        <table className="ledger-table text-[12px]" aria-label="Every capability, what it waits on, and the mistake available to a reader">
+          <thead><tr><th scope="col">Capability</th><th scope="col">Fit</th><th scope="col">Waiting on</th></tr></thead>
+          <tbody>
+            {capabilityFits.map((f) => (
+              <tr key={f.capability.id} data-capability={f.capability.id} data-fit={f.fit}>
+                <td>
+                  <span style={{ color: 'var(--text-heading)' }}>{f.capability.what}</span>
+                  <div className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{f.capability.ifMistaken}</div>
+                </td>
+                <td style={{ color: f.fit === 'RUNS_TODAY' ? 'var(--status-conditional)' : f.fit === 'ONE_THING_AWAY' ? 'var(--text-secondary)' : 'var(--status-refused)' }}>
+                  {FIT_LABEL[f.fit]}
+                </td>
+                <td style={{ color: 'var(--text-secondary)' }}>{f.unmet.length ? f.unmet.map((u) => u.what.replace(/\.$/, '')).join('; ') : 'Nothing. It runs on what the repository holds.'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{THE_FINDING.order} {THE_FINDING.theOneThingBuildingCannotDo}</p>
+        <h3 className="m-0 text-[13.5px] font-semibold" style={{ color: 'var(--text-heading)' }}>What the parts that already existed now owe</h3>
+        <table className="ledger-table text-[12px]" aria-label="Pressure the additions put on existing parts">
+          <thead><tr><th scope="col">On</th><th scope="col">Obligation</th><th scope="col">Absorbed</th></tr></thead>
+          <tbody>
+            {PRESSURE.map((pressure) => (
+              <tr key={pressure.on} data-pressure={pressure.on} data-absorbed={pressure.absorbed}>
+                <td>
+                  <span style={{ color: 'var(--text-heading)' }}>{pressure.on}</span>
+                  <div className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{pressure.from}</div>
+                </td>
+                <td style={{ color: 'var(--text-secondary)' }}>{pressure.obligation}<div className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{pressure.cost}</div></td>
+                <td style={{ color: pressure.absorbed ? 'var(--text-secondary)' : 'var(--status-refused)' }}>{pressure.absorbed ? 'Absorbed' : 'Owed'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Section>
 
       <Section title="Verification tiers" id="pm-verification">

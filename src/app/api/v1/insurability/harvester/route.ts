@@ -33,6 +33,8 @@ import {
   type StatutoryContext,
 } from '@/domain/statutoryAdmission';
 import { reportHarvest, runHarvest, runSpecimenHarvest } from '@/adapter/statutoryHarvester';
+import { notRequested, persistHarvest, type PersistenceTarget } from '@/adapter/statutoryPersistence';
+import { INTAKE_LOSS } from '@/domain/statutoryIntake';
 import { STATUTORY_SPECIMENS } from '@/fixtures/insurability/statutoryFilings';
 import type { Registration } from '@/domain/identityResolution';
 
@@ -54,7 +56,7 @@ const SURFACE = {
     performed: false,
     detail: 'This route never fetches. Capture takes bytes the caller supplies and there is no parameter that would make it reach a regulator, because collecting against a source is the operator’s act under the operator’s credentials and their reading of the source’s terms.',
   },
-  loss: [...HARVEST_LOSS, ...STATUTORY_ADMISSION_LOSS],
+  loss: [...HARVEST_LOSS, ...STATUTORY_ADMISSION_LOSS, ...INTAKE_LOSS],
 } as const;
 
 /**
@@ -82,7 +84,10 @@ export async function GET(req: NextRequest) {
     ...SURFACE,
     mode: 'DRAFTED_SPECIMEN_DEMONSTRATION',
     specimens: STATUTORY_SPECIMENS.map((entry) => ({ captureId: entry.declaration.captureId, jurisdiction: entry.declaration.jurisdiction, demonstrates: entry.demonstrates })),
-    ...reportHarvest(ran, asOf, inForceAt),
+    // The specimen run cannot write, and not because this route declines to
+    // ask: every specimen declares DRAFTED_SPECIMEN, which persistence refuses
+    // on the capture rather than on the row.
+    ...reportHarvest(ran, asOf, inForceAt, notRequested()),
   });
 }
 
@@ -104,6 +109,8 @@ export async function POST(req: NextRequest) {
     ruledAt?: string;
     asOf?: string;
     inForceAt?: string;
+    /** Ask for the rows to be written. Absent means nothing is written, which is the default. */
+    persist?: Pick<PersistenceTarget, 'corpusId' | 'releaseId'>;
   };
   try {
     const text = await req.text();
@@ -149,6 +156,14 @@ export async function POST(req: NextRequest) {
 
   const ran = runHarvest(documents, registry, buildId, knownThrough, context, authority, ruledAt);
 
+  // Writing is asked for explicitly or it does not happen. The door still
+  // decides: a drafted capture is refused there, not here.
+  const target = body.persist;
+  let persistence = notRequested();
+  if (target && typeof target === 'object' && typeof target.corpusId === 'string' && typeof target.releaseId === 'string') {
+    persistence = await persistHarvest(ran, { corpusId: target.corpusId, releaseId: target.releaseId, authority, ruledAt });
+  }
+
   return json({
     ...SURFACE,
     mode: 'SUPPLIED_BYTES',
@@ -157,6 +172,6 @@ export async function POST(req: NextRequest) {
     registryNote: registry.length === 0
       ? 'No NAIC registrations were supplied, so every subject stays UNRESOLVED and every candidate is refused on SUBJECT_IDENTIFIED. That is the registry being empty, not the filings being wrong.'
       : `${registry.length} registrations supplied; resolution is bounded by the build horizon of ${knownThrough}.`,
-    ...reportHarvest(ran, asOf, inForceAt),
+    ...reportHarvest(ran, asOf, inForceAt, persistence),
   });
 }

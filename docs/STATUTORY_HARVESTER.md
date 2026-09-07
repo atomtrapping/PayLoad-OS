@@ -184,9 +184,86 @@ that would make it fetch. It refuses, rather than defaults:
 An empty registry admits nothing and says why: *that is the registry being
 empty, not the filings being wrong.*
 
+## Admitting is not writing
+
+The first version of this page reported `admitted: 5` and said nothing about
+whether anything was written. That is misleading by omission — a reader can
+reasonably take an admission count for canonical state — so the served payload
+and the workspace now carry a third independent fact beside `crossedTheGate` and
+`beganAs`:
+
+```
+persistence: { outcome: 'NOT_REQUESTED', written: 0, canonicalStateMutated: false,
+               wouldBe: 'REFUSED_DRAFTED_SPECIMEN' }
+```
+
+**Nothing the harvester admits is written.** The rows are computed for the
+response and discarded with it. The canonical record count is unchanged, and
+`src/adapter/statutoryPersistence.ts` is the seam that would change it — by
+calling `src/db/admitRecords.ts`, which remains the one sanctioned door.
+`architecture.test.ts` fails on a third writer.
+
+### The hole this found
+
+A drafted specimen crosses the gate, and it should: the gate rules on what a
+candidate declares, and the specimen context declares
+`provenanceClass: 'BACKFILLED'` because that is what a republished regulatory
+order genuinely is. But `BACKFILLED` is one of the two values
+`ADMITTED_PROVENANCE` allows, which means **a row descending from bytes typed in
+this repository would land in the records table indistinguishable from a row
+descending from a real filing.**
+
+`architecture.test.ts` already keeps the seeder and the gate disjoint — the
+seeder stamps `DEMONSTRATION` and cannot emit the gate's values. The harvester
+needed the same separation one level up, on the **capture** rather than the row,
+because a specimen's dishonesty enters at the bytes and not at the ruling.
+
+So persistence refuses on `beganAs`, before any connection is opened:
+
+| Outcome | When |
+| --- | --- |
+| `NOT_REQUESTED` | The default. No write was asked for. |
+| `REFUSED_DRAFTED_SPECIMEN` | Any capture in the run declared `DRAFTED_SPECIMEN`. Refused even when a database is configured. |
+| `NOTHING_ADMITTED` | No candidate passed. A refusal is a record, but not a version. |
+| `NO_DATABASE` | No `DATABASE_URL`. A fact about the environment, not about the candidates. |
+| `WRITTEN` | Rows reached the door and it wrote them. |
+
+`POST` accepts `persist: { corpusId, releaseId }`; without it nothing is written,
+and with it the specimens are still refused.
+
+## Nothing collects, and the payload says so
+
+`intake.collecting` is `0` of `1` registered source. `src/domain/statutoryIntake.ts`
+declares `StatutoryCaptureSource` — the interface an operator's connector
+implements — and the only registered source is `supplied-bytes`, which declares
+`performsCollection: false`. The module has no network path either, and a test
+asserts it.
+
+This exists so **"light the source" is one bounded step** rather than one step
+plus unscoped integration. Everything downstream of intake — grammar, resolver,
+clocks, gate, receipt, as-of query — runs identically whether bytes arrived by
+POST or by a scheduled fetch, because none of them can tell the difference and
+none tries.
+
+`UNREGISTERED_JURISDICTIONS` states what the operator must settle per
+jurisdiction, as data rather than prose. Four apply everywhere: a read of the
+publication terms of use; a declared cadence and rate; a declared retention and
+republication right (which becomes the rights decision the gate checks); and a
+named admission authority. Two jurisdictions carry a further open decision, and
+both are visible only because the rail already refuses correctly:
+
+- **CA CDI** — many bulletins address a class of insurers rather than a named
+  carrier. Until the operator decides whether a class is a subject the corpus
+  carries, those filings are correctly refused on `SUBJECT_IDENTIFIED`.
+- **TX TDI** — orders commonly condition their effective date on an event. Until
+  the operator decides whether an event-conditioned order gets a bracketed world
+  time from a later observation, those are correctly refused on `BOTH_CLOCKS`.
+
 ## What it does not do
 
-- It does not collect. Ever, by any parameter.
+- It does not collect. Ever, by any parameter. `intake.collecting` is 0.
+- It does not write. `persistence.canonicalStateMutated` is false, and a drafted
+  specimen is refused at the capture even if asked for with a database present.
 - It does not read PDFs, understand prose, or infer a field from a sentence.
 - It does not verify that the carrier will do what the order says, or that the
   order will survive appeal. Admitting a filing says the regulator published it
@@ -201,14 +278,16 @@ empty, not the filings being wrong.*
 
 ## Verification
 
-80 tests, all passing:
+104 tests, all passing:
 
 | File | Tests | Holds |
 | --- | --- | --- |
 | `src/domain/statutoryHarvest.test.ts` | 23 | Digest over supplied bytes; the network absence; four presence states; what a value must read as; how a line is matched. |
 | `src/domain/statutoryAdmission.test.ts` | 29 | All ten checks pass on FL-1; the two refusals and that they do not smear; the horizon; three distinct clocks; claims vs coordinates; the authority check; receipt determinism; the two serving questions. |
-| `src/app/api/v1/insurability/harvester/route.test.ts` | 18 | The declared surface; both clocks; every refusal path; batch and size caps; digest reproducibility. |
-| `src/components/insurability/StatutoryHarvester.test.tsx` | 10 | The funnel; the excluded filing; the refusal tally; both clock controls; the inspector's `ABSENT` / `MALFORMED` distinction. |
+| `src/app/api/v1/insurability/harvester/route.test.ts` | 22 | The declared surface; both clocks; every refusal path; batch and size caps; digest reproducibility. |
+| `src/components/insurability/StatutoryHarvester.test.tsx` | 12 | The funnel; the excluded filing; the refusal tally; both clock controls; the inspector's `ABSENT` / `MALFORMED` distinction; the unchanged canonical state and the zero collecting sources. |
+| `src/adapter/statutoryPersistence.test.ts` | 15 | Admitting is not writing; the drafted-specimen refusal, reached before a connection and holding with a database configured; the other two refusals; that this is not a second writer and supplies no authority. |
+| `src/domain/statutoryIntake.test.ts` | 9 | Zero of one registered source collects, derived rather than written down; the per-jurisdiction operator preconditions; the absent network path. |
 
 The verification ladder at `/api/v1/status` moved accordingly, and the wording
 is deliberate: rung 4 is `VERIFIED_ON_SUPPLIED_BYTES` (the cycle runs; collection

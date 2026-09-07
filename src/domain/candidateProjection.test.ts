@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { admit } from './admission';
+import { resolveSubject, type Registration } from './identityResolution';
+import { establishWorldTime } from './worldTime';
 import { PROJECTION_LOSS, carrierClaims, censusClaims, projectToCandidates, type DeclaredContext, type RailCandidate } from './candidateProjection';
 
 const CONTEXT: DeclaredContext = {
@@ -111,5 +113,49 @@ describe('the rail reaches the gate', () => {
   it('says what it does not do', () => {
     expect(PROJECTION_LOSS.some((l) => l.includes('does not resolve identity'))).toBe(true);
     expect(PROJECTION_LOSS.some((l) => l.includes('belongs to whoever owns the vocabulary'))).toBe(true);
+  });
+
+  it('walks the whole path once the two stages run: rail, resolve, establish, project, admit', () => {
+    const registry: Registration[] = [{
+      family: 'USDOT', value: '118422', canonicalId: 'notation://subject/carrier-4402',
+      knownAt: '2026-08-01T00:00:00Z', evidenceRecordId: 'REC-REG-1',
+    }];
+
+    // Stage one: resolve on an issued identifier, not on the legal name.
+    const resolution = resolveSubject(
+      [{ family: 'NOT_AN_IDENTIFIER', value: 'Blue Anchor Logistics' }, { family: 'USDOT', value: '118422' }],
+      registry, '2026-09-07T09:00:00Z',
+    );
+    expect(resolution.outcome).toBe('RESOLVED');
+    expect(resolution.setAside[0].offered.family).toBe('NOT_AN_IDENTIFIER');
+
+    // Stage two: the source declares an effective date, so world time is established.
+    const world = establishWorldTime({ kind: 'SOURCE_DECLARED_EFFECTIVE', at: '2026-09-07T06:00:00Z', declaredBy: 'FMCSA filing' });
+    expect(world.outcome).toBe('ESTABLISHED');
+
+    // The projection now has both, and the gate admits.
+    const { candidates } = projectToCandidates(rail({
+      identity: { sourceRecordId: 'SRC-4402', canonicalId: resolution.canonicalId },
+      validTime: { state: 'OBSERVED', from: world.validFrom! },
+    }), CONTEXT);
+    const rulings = candidates.map((c) => admit(c, 'role:corpus-steward', '2026-09-07T12:00:00Z'));
+    expect(rulings.every((r) => r.outcome === 'ADMITTED')).toBe(true);
+    expect(candidates[0].subjectCanonicalId).toBe('notation://subject/carrier-4402');
+    expect(candidates[0].validFrom).toBe('2026-09-07T06:00:00Z');
+  });
+
+  it('stays refused when world time is only bracketed, because a bracket is not a valid-from', () => {
+    const world = establishWorldTime({
+      kind: 'BRACKETED_BY_READS', unchangedAt: '2026-08-03T00:00:00Z', changedBy: '2026-08-07T00:00:00Z', register: 'FMCSA company census',
+    });
+    expect(world.outcome).toBe('BRACKETED');
+    // There is nothing to hand the projection: flattening the bracket is the
+    // one move that would get this admitted, and it is the one that is wrong.
+    expect(world.validFrom).toBeNull();
+    const { candidates } = projectToCandidates(rail({
+      identity: { sourceRecordId: 'SRC-4402', canonicalId: 'notation://subject/carrier-4402' },
+    }), CONTEXT);
+    const rulings = candidates.map((c) => admit(c, 'role:corpus-steward', '2026-09-07T12:00:00Z'));
+    expect(rulings.every((r) => r.failed.map((f) => f.check).includes('BOTH_CLOCKS'))).toBe(true);
   });
 });

@@ -153,27 +153,6 @@ export type ReleaseVerdict = 'GRANTED' | 'WITHHELD' | 'NOT_ADJUDICABLE';
  */
 export type DecisionStanding = 'BINDING' | 'DEMONSTRATION';
 
-/**
- * The corpus's restatement behaviour as it was known at the decision instant.
- *
- * Attached to the decision rather than reconstructed later, because an audit of
- * a release should not have to rebuild the risk context from scratch and would
- * rebuild it with hindsight if it tried. It is bounded by the decision's own
- * knowledge time for the same reason: a decision may carry what the corpus knew
- * about itself when it decided, and nothing it learned afterwards.
- */
-export interface ExposureAtDecision {
-  /** Restatements the corpus had already made by the decision instant. */
-  restatementsKnown: number;
-  /** The longest one, in days. Null when the corpus had restated nothing yet. */
-  longestObservedLagDays: number | null;
-  /** Whether that history supported a rate at that instant. */
-  ratePriceable: boolean;
-  /** Why it did not, when it did not. */
-  unmet: string[];
-  statement: string;
-}
-
 export interface ReleaseDecision {
   condition: ReleaseCondition;
   /** The instant the vehicle decided, and the only clock a dispute may ask about. */
@@ -184,11 +163,16 @@ export interface ReleaseDecision {
   reliedOn: string[];
   releaseId: string;
   /**
-   * The risk neighbourhood the decision was made in, carried with it. The
-   * vehicle's honesty then covers not only what it held but how vulnerable its
-   * holding was known to be.
+   * The corpus's restatement exposure at the instant this was decided, so a
+   * later audit reads the decision's risk neighbourhood off the decision
+   * rather than reconstructing what it was. A decision made over a corpus
+   * that had never restated anything and one made over a corpus with a
+   * five-day observed lag are different decisions, and only the record says
+   * which this was. Carried, never priced: `ratePriceable` travels with it
+   * and is false, so nobody multiplies a fixture-scale denominator by an
+   * exposure and calls the product a risk.
    */
-  exposureAtDecision: ExposureAtDecision;
+  exposureAtDecision: RestatementExposure;
   because: string;
 }
 
@@ -222,16 +206,13 @@ const TEST_PROSE: Record<ConditionTest, string> = {
  */
 export function evaluateRelease(corpus: Corpus, release: CorpusRelease, condition: ReleaseCondition, decidedAtKnowledge: ISODateTime): ReleaseDecision {
   const standing: DecisionStanding = 'DEMONSTRATION';
-  const known = restatementExposure(corpus, decidedAtKnowledge);
-  const exposureAtDecision: ExposureAtDecision = {
-    restatementsKnown: known.corrections + known.withdrawals,
-    longestObservedLagDays: known.longestLagDays,
-    ratePriceable: known.ratePriceable,
-    unmet: known.unmet,
-    statement: known.longestLagDays === null
-      ? 'At this instant the corpus had restated nothing, which is an absence of observed corrections and not evidence that none was coming.'
-      : `At this instant the corpus had made ${known.corrections + known.withdrawals} restatements, the longest ${known.longestLagDays} days after the record it restated became knowable${known.ratePriceable ? '' : ', which does not support a rate'}.`,
-  };
+  // Computed once, at the decision, and carried on it: a later audit reads the
+  // risk neighbourhood off the decision rather than reconstructing it — and
+  // bounded by the decision's own knowledge time, because an exposure computed
+  // over everything the corpus has since learned is hindsight wearing the
+  // decision's clothes. A decision made before the corpus had restated anything
+  // must say so.
+  const exposureAtDecision = restatementExposure(corpus, decidedAtKnowledge);
   const base = { condition, decidedAtKnowledge, standing, releaseId: release.releaseId, exposureAtDecision };
   const answer = queryAsOf(corpus, release, {
     subjectId: condition.subjectId,
@@ -268,9 +249,56 @@ export interface Restatement {
   reason: string;
 }
 
+/**
+ * What a release stands on now, as a closed vocabulary a consumer may route on.
+ *
+ * `reversed` and `unsupported` are separate booleans because they are separate
+ * facts, but a downstream consumer handed two booleans will reach for one
+ * branch and collapse them — which is how WITHDRAWN IS NOT FALSE gets violated
+ * by a caller rather than by this module. So the terminal state is named here,
+ * once, and the names cannot be flattened without saying so out loud.
+ *
+ * The distinction has a settlement consequence and not only a semantic one. A
+ * reversal says the condition would now be decided the other way, which is a
+ * finding. A withdrawal says the support is gone and nothing replaced it, which
+ * is not a finding and must not be routed as one: the honest response is to
+ * hold and seek a fresh ruling, not to move money as though something contrary
+ * had been established.
+ */
+export type PostReleaseState =
+  /** Nothing the decision relied on has been restated. */
+  | 'STANDS'
+  /** A correction replaced a value and the condition now reads the other way. */
+  | 'REVERSED_ON_CORRECTION'
+  /** Support was withdrawn with nothing put in its place. Not a contrary finding. */
+  | 'UNSUPPORTED_BY_WITHDRAWAL'
+  /** Facts were restated and the verdict did not move. */
+  | 'RESTATED_WITHOUT_REVERSAL';
+
+export const POST_RELEASE_MEANING: Record<PostReleaseState, { meaning: string; andSo: string }> = {
+  STANDS: {
+    meaning: 'Nothing the decision relied on has been restated as of the instant asked about.',
+    andSo: 'That is the absence of a known correction, not a guarantee against a future one.',
+  },
+  REVERSED_ON_CORRECTION: {
+    meaning: 'A correction replaced a value the decision stood on, and the same condition now reads the other way.',
+    andSo: 'A finding. The decision was right on what was held and is wrong on what is held, and a consumer may act on that.',
+  },
+  UNSUPPORTED_BY_WITHDRAWAL: {
+    meaning: 'A record the decision stood on was withdrawn with nothing put in its place.',
+    andSo: 'Not a finding, and never to be routed as one. Nothing contrary has been established; what has happened is that the support is gone. A consumer that moves money on this is asserting a fact the corpus did not supply.',
+  },
+  RESTATED_WITHOUT_REVERSAL: {
+    meaning: 'Facts the decision relied on were restated and the verdict did not move.',
+    andSo: 'The correction moved a value without crossing the condition, which is luck about a threshold rather than a property of the process.',
+  },
+};
+
 export interface ReleaseExposure {
   decision: ReleaseDecision;
   restatements: Restatement[];
+  /** The terminal state, named so a consumer cannot collapse a withdrawal into a reversal. */
+  state: PostReleaseState;
   /** What the same condition evaluates to now, on everything the corpus has since learned. */
   verdictNow: ReleaseVerdict;
   /** The verdict changed. On a GRANTED decision this is the case that costs money. */
@@ -318,7 +346,18 @@ export function exposureAfter(corpus: Corpus, release: CorpusRelease, decision: 
   } else {
     because = `Facts the decision relied on were restated (${restatements.map((r) => r.retractionId).join(', ')}) and the verdict is unchanged. The correction moved the value without crossing the condition, so the release stands — which is luck about a threshold rather than a property of the process.`;
   }
-  return { decision, restatements, verdictNow: now.verdict, reversed, unsupported, because };
+  // Order matters: a withdrawal is checked before a reversal, because a
+  // decision whose support was withdrawn has no contrary finding to report even
+  // when the recomputed verdict differs — the recomputation is over a corpus
+  // that has lost the record, not over one that contradicts it.
+  const state: PostReleaseState = unsupported
+    ? 'UNSUPPORTED_BY_WITHDRAWAL'
+    : restatements.length === 0
+      ? 'STANDS'
+      : reversed
+        ? 'REVERSED_ON_CORRECTION'
+        : 'RESTATED_WITHOUT_REVERSAL';
+  return { decision, restatements, state, verdictNow: now.verdict, reversed, unsupported, because };
 }
 
 /* ── Pricing the window, and refusing to ── */

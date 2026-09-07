@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { currentRelease, releaseById } from './corpus';
 import {
-  ATTESTOR_KINDS, DISPUTE_QUESTION, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, PRICEABILITY_GATE,
+  ATTESTOR_KINDS, POST_RELEASE_MEANING, DISPUTE_QUESTION, LIABILITY_BOUNDARY, LIFECYCLE, NEVER, PRICEABILITY_GATE,
   TRUST_ORDER, VEHICLE_ROLE, VEHICLE_SEQUENCE, VENUE_PROPERTIES,
   evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition,
 } from './collateralVehicle';
@@ -72,6 +72,7 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
     expect(exposure.verdictNow).toBe('WITHHELD');
     expect(exposure.reversed).toBe(true);
     expect(exposure.unsupported).toBe(false);
+    expect(exposure.state).toBe('REVERSED_ON_CORRECTION');
     expect(exposure.because).toContain('right on what was held and is wrong on what is held');
 
     // The decision itself is untouched: a release that fired is history.
@@ -96,6 +97,10 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
     const exposure = exposureAfter(corpus, release, decision, '2026-09-01T12:00:00Z');
     expect(exposure.restatements.map((r) => r.kind)).toContain('WITHDRAWAL');
     expect(exposure.unsupported).toBe(true);
+    // The terminal state a consumer routes on keeps the withdrawal out of the
+    // reversal branch, so no downstream caller can flatten the two.
+    expect(exposure.state).toBe('UNSUPPORTED_BY_WITHDRAWAL');
+    expect(POST_RELEASE_MEANING[exposure.state].andSo).toContain('never to be routed as one');
     expect(exposure.because).toContain('removes support');
     expect(exposure.because).toContain('not a finding that the condition was false');
     // The corpus's own reason keeps the same distinction, and the vehicle carries it verbatim.
@@ -129,16 +134,25 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
     expect(VEHICLE_SEQUENCE.some((s) => s.toLowerCase().includes('custody arrangement'))).toBe(true);
   });
 
-  it('carries the risk neighbourhood it decided in, bounded by its own clock rather than by hindsight', () => {
+  it('carries the corpus\u2019s restatement exposure on the decision, bounded by its own clock rather than by hindsight', () => {
     const early = evaluateRelease(corpus, release, TIGHT, '2026-08-20T00:00:00Z');
     const late = evaluateRelease(corpus, release, TIGHT, '2026-09-01T12:00:00Z');
-    // At the earlier instant the corpus had restated nothing yet; by the later one it had.
-    expect(early.exposureAtDecision.restatementsKnown).toBe(0);
-    expect(early.exposureAtDecision.longestObservedLagDays).toBeNull();
-    expect(early.exposureAtDecision.statement).toContain('not evidence that none was coming');
-    expect(late.exposureAtDecision.restatementsKnown).toBeGreaterThan(0);
-    expect(late.exposureAtDecision.longestObservedLagDays).toBeGreaterThan(0);
-    // Neither instant supports a rate, and each says which conditions it missed.
+
+    // The decision arrives with its own context: what this corpus had restated
+    // by the instant it decided — and, crucially, not what it restated after.
+    // An exposure computed over everything since learned is hindsight wearing
+    // the decision's clothes, so the early decision must report nothing.
+    expect(early.exposureAtDecision.corrections + early.exposureAtDecision.withdrawals).toBe(0);
+    expect(early.exposureAtDecision.longestLagDays).toBeNull();
+    expect(early.exposureAtDecision.statement).toContain('no observed window at all');
+    expect(early.exposureAtDecision).not.toEqual(restatementExposure(corpus));
+
+    // By the later instant the same corpus has restated twice.
+    expect(late.exposureAtDecision.corrections + late.exposureAtDecision.withdrawals).toBe(2);
+    expect(late.exposureAtDecision.longestLagDays).toBeGreaterThan(0);
+
+    // Carried, never priced. The refusal travels with the decision so nobody
+    // multiplies a fixture-scale denominator by an exposure downstream.
     expect(early.exposureAtDecision.ratePriceable).toBe(false);
     expect(late.exposureAtDecision.ratePriceable).toBe(false);
     expect(late.exposureAtDecision.unmet.some((u) => u.includes('committed demonstration'))).toBe(true);
@@ -182,5 +196,25 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
     expect(TRUST_ORDER.second).toContain('policy ran rather than that the policy was right');
     expect(TRUST_ORDER.third).toContain('never ground');
     expect(TRUST_ORDER.theConfusion).toContain('Transport verification is not content testimony');
+  });
+
+  it('names a terminal state for every outcome, and checks the withdrawal before the reversal', () => {
+    // Every state has a meaning and a consequence, and the withdrawal's says plainly
+    // that nothing contrary was established.
+    for (const [state, meaning] of Object.entries(POST_RELEASE_MEANING)) {
+      expect(meaning.meaning.length, state).toBeGreaterThan(30);
+      expect(meaning.andSo.length, state).toBeGreaterThan(30);
+    }
+    expect(POST_RELEASE_MEANING.UNSUPPORTED_BY_WITHDRAWAL.andSo).toContain('Not a finding');
+    expect(POST_RELEASE_MEANING.REVERSED_ON_CORRECTION.andSo).toContain('A finding');
+
+    // A decision nothing has touched stands, rather than being called anything else.
+    const untouched = evaluateRelease(corpus, release, {
+      conditionId: 'COND-UNTOUCHED', subjectId: 'LOT-7C-104', predicate: 'quantity.gross', test: 'AT_LEAST', value: 1,
+      agreedText: 'Release on a gross quantity for lot 7C-104 of at least 1 t.',
+    }, '2026-09-01T12:00:00Z');
+    const exposure = exposureAfter(corpus, release, untouched, '2026-09-01T12:00:00Z');
+    expect(exposure.state).toBe('STANDS');
+    expect(exposure.restatements).toEqual([]);
   });
 });

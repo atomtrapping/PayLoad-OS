@@ -594,7 +594,7 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
             <tr data-custody-row="condition"><td>The condition</td><td>{condition.agreedText}</td></tr>
             <tr data-custody-row="decision"><td>Decided {fmtUtc(decision.decidedAtKnowledge)}</td><td><span className="id">{decision.verdict}</span> · <span className="id">{decision.standing}</span> — {decision.because}</td></tr>
             <tr data-custody-row="restatement"><td>What arrived later</td><td>{exposure.restatements.map((r) => `${r.retractionId} (${r.kind}) after ${(r.lagSeconds / 86_400).toFixed(1)} d`).join('; ') || 'Nothing.'}</td></tr>
-            <tr data-custody-row="now"><td>The same condition now</td><td style={{ color: exposure.reversed ? 'var(--status-refused)' : 'var(--text-secondary)' }}><span className="id">{exposure.verdictNow}</span> — {exposure.because}</td></tr>
+            <tr data-custody-row="now" data-post-release={exposure.state}><td>The same condition now</td><td style={{ color: exposure.reversed ? 'var(--status-refused)' : 'var(--text-secondary)' }}><span className="id">{exposure.verdictNow}</span> · <span className="id">{exposure.state}</span> — {exposure.because}</td></tr>
           </tbody>
         </table>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="custody-window">{window.statement}</p>

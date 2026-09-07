@@ -39,6 +39,32 @@ export const records = pgTable('records', {
   data: jsonb('data').notNull(),
 });
 
+// Every ruling the admission gate makes, admitted or refused. A refusal is a
+// record too: what fails is not deleted or hidden, it stays here with the
+// checks it failed and the authority that ruled.
+export const admissionRulings = pgTable('admission_ruling', {
+  rulingId: text('ruling_id').primaryKey(),
+  candidateId: text('candidate_id').notNull(),
+  recordId: text('record_id').notNull(),
+  outcome: text('outcome').notNull(),
+  authority: text('authority').notNull(),
+  ruledAt: timestamp('ruled_at', { withTimezone: true, mode: 'string' }).notNull(),
+  data: jsonb('data').notNull(),
+});
+
+// The join a correction needs, kept where doctrine rule 2 allows it to live:
+// outside the release. A release carries no candidate, build or run
+// identifier, and this table is how a corrected record reaches the build that
+// proposed it without one leaking into the release.
+export const recordAncestry = pgTable('record_ancestry', {
+  recordId: text('record_id').primaryKey(),
+  releaseId: text('release_id').notNull(),
+  candidateId: text('candidate_id').notNull(),
+  buildId: text('build_id'),
+  ruledAt: timestamp('ruled_at', { withTimezone: true, mode: 'string' }).notNull(),
+  authority: text('authority').notNull(),
+});
+
 export const retractions = pgTable('retractions', {
   retractionId: text('retraction_id').primaryKey(),
   corpusId: text('corpus_id').notNull().references(() => corpora.corpusId),

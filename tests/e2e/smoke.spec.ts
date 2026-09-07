@@ -221,6 +221,9 @@ test('the model page works a release through a correction, and never un-fires it
   await expect(worked.locator('[data-custody-row="decision"]')).toContainText('DEMONSTRATION');
   await expect(worked.locator('[data-custody-row="restatement"]')).toContainText('RET-0001 (CORRECTION)');
   await expect(worked.locator('[data-custody-row="now"]')).toContainText('WITHHELD');
+  // The terminal state is named on the surface: a correction reversed it, and a
+  // withdrawal would not have been routed the same way.
+  await expect(worked.locator('[data-custody-row="now"][data-post-release="REVERSED_ON_CORRECTION"]')).toBeVisible();
   await expect(worked.locator('[data-custody-row="now"]')).toContainText('right on what was held and is wrong on what is held');
   // The window is measured and refused as a rate.
   await expect(page.getByTestId('custody-window')).toContainText('anecdote, not a frequency');
@@ -234,7 +237,8 @@ test('the model page works a release through a correction, and never un-fires it
   // Priceability is a gate that names what it is waiting for.
   await expect(page.getByTestId('custody-priceability')).toContainText('flips on its own');
   // The decision carries the neighbourhood it was made in, and at that instant nothing had been restated.
-  await expect(page.getByTestId('custody-neighbourhood')).toContainText('not evidence that none was coming');
+  await expect(page.getByTestId('custody-neighbourhood')).toContainText('no observed window at all');
+  await expect(page.getByTestId('custody-neighbourhood')).toContainText('An unobserved window is not a short one');
   // Execution attestors are commodity; fact attestors are estate-dependent.
   await expect(page.getByTestId('custody-attestors').locator('[data-attestor="EXECUTION"]')).toContainText('verified assertion');
   await expect(page.getByTestId('custody-attestors').locator('[data-attestor="FACT"]')).toContainText('Estate-dependent');

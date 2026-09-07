@@ -53,6 +53,30 @@ describe('layer boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('one door writes canonical records, and the seeder is the only other writer of that table', () => {
+    // storage.ts names the risk this closes: the records table is
+    // canonical-shaped, so an unadmitted candidate written into it would be
+    // indistinguishable from a version. Only src/db/admitRecords.ts may write
+    // an admitted row; scripts/seed-db.ts writes DEMONSTRATION rows and says
+    // so in the column. Any third writer is a hole.
+    const writers: string[] = [];
+    for (const file of [...walk(join(ROOT, 'src')), ...walk(join(ROOT, 'scripts'))]) {
+      if (file === 'src/db/admitRecords.ts' || file === 'scripts/seed-db.ts') continue;
+      const text = readFileSync(join(ROOT, file), 'utf8');
+      if (/\binsert\(\s*records\s*\)/.test(text)) writers.push(file);
+    }
+    expect(writers).toEqual([]);
+
+    // And the sanctioned door cannot supply its own authority: it takes one.
+    const door = readFileSync(join(ROOT, 'src/db/admitRecords.ts'), 'utf8');
+    expect(door).toMatch(/authority: string/);
+    expect(door).not.toMatch(/authority:\s*['"`]/);
+    // The seeder stamps DEMONSTRATION and never a provenance the gate emits.
+    const seeder = readFileSync(join(ROOT, 'scripts/seed-db.ts'), 'utf8');
+    expect(seeder).toMatch(/provenance:\s*'DEMONSTRATION'/);
+    expect(seeder).not.toMatch(/'LIVE_CAPTURE'|'BACKFILLED'/);
+  });
+
   it('the pure policy evaluator and its helpers touch no node builtin, so allowing them in the browser is safe', () => {
     for (const file of ['src/data-os/source-policy.ts', 'src/data-os/validation.ts', 'src/data-os/contracts.ts']) {
       const text = readFileSync(join(ROOT, file), 'utf8');

@@ -382,8 +382,18 @@ describe('EarthTwin', () => {
     await user.selectOptions(screen.getByLabelText('Record'), 'REC-2');
     await waitFor(() => expect(projection).toHaveAttribute('data-outcome', 'READY'));
     expect(projection).toHaveTextContent('2 declared positions');
-    const positions = within(projection).getAllByRole('listitem');
+    // The drawn positions are one list; what they imply about each other is another beside it.
+    const positions = within(within(projection).getByRole('list', { name: 'Declared positions' })).getAllByRole('listitem');
     expect(positions.map((p) => `${p.getAttribute('data-position-record')}:${p.getAttribute('data-interest')}`)).toEqual(['REC-P1:disinterested', 'REC-P2:self_reported']);
+    // Two accounts of one subject, one of which states no uncertainty: the question is not put, and no radius is assumed to put it.
+    const reading = within(projection).getByTestId('position-separation');
+    const subject = within(reading).getByText('caravan:LOT-1').closest('[data-separation-subject]');
+    expect(subject).toHaveAttribute('data-separation-state', 'NOT_ASSESSABLE');
+    expect(subject).toHaveTextContent('not assessable');
+    expect(subject).toHaveTextContent('REC-P2 states no usable horizontal uncertainty');
+    expect(subject).toHaveTextContent('No radius is assumed');
+    expect(within(reading).getByTestId('separation-loss')).toHaveTextContent('Overlapping radii are not agreement');
+    expect(reading).toHaveTextContent('WGS84_ELLIPSOIDAL_GEODESIC');
     expect(positions[0]).toHaveTextContent('Port custody system');
     expect(positions[0]).toHaveTextContent('±250 m · WGS84');
     expect(positions[1]).toHaveTextContent('caravan:source:meridian-yard-log');
@@ -453,6 +463,42 @@ describe('EarthTwin', () => {
     expect(screen.queryByTestId('place-summary')).toBeNull();
     expect(screen.getByTestId('earth-placed')).toHaveAttribute('data-count', '0');
     await waitFor(() => expect(entitiesRemoveAll.mock.calls.length).toBeGreaterThan(entitiesAdd.mock.calls.length - 1));
+  });
+
+  it('reads the placed geometry: two standing accounts a kilometre apart with ±250 m each cannot both be right, and a withdrawn one is set aside before the question is put', async () => {
+    // One subject, three declarations: two that stand about a kilometre apart, and one withdrawn at this knowledge instant.
+    const far = { point: { datum: 'WGS84', longitude: 4.025, latitude: 51.9587, horizontalUncertaintyM: 250 } };
+    const fetch = api((body) => body.selection.recordIds[0] === 'REC-1'
+      ? ready([declared('REC-1', 'REC-P1'), declared('REC-1', 'REC-P2', 'self_reported', far), declared('REC-1', 'REC-P3', 'unknown', { ...far, statusAtKnownAt: 'RETRACTED' })])
+      : unavailable);
+    const user = userEvent.setup();
+    render(<EarthTwin release={release} source={source} records={records} assetsReady loadEngine={loadEngine} />);
+    await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
+    await waitFor(() => expect(screen.getByTestId('earth-projection')).toHaveAttribute('data-outcome', 'READY'));
+
+    const reading = within(screen.getByTestId('earth-projection')).getByTestId('position-separation');
+    const subject = within(reading).getByText('caravan:LOT-1').closest('[data-separation-subject]')!;
+    expect(subject).toHaveAttribute('data-separation-state', 'DISJOINT');
+    expect(subject).toHaveTextContent('cannot both be right');
+    // The distance is measured under the declared metric, not guessed from the numbers on screen.
+    expect(subject).toHaveTextContent(/1001 m apart, against ±250 m and ±250 m — a combined 500 m/);
+    expect(subject).toHaveTextContent('cannot contain one common point');
+    // The withdrawn declaration took no part in the comparison and is named as excluded, not silently dropped.
+    expect(within(subject as HTMLElement).getByRole('list', { name: 'Declarations compared' }).querySelectorAll('li')).toHaveLength(1);
+    const aside = within(subject as HTMLElement).getByRole('list', { name: 'Declarations set aside' });
+    expect(aside.querySelectorAll('[data-set-aside]')).toHaveLength(1);
+    expect(aside).toHaveTextContent('REC-P3');
+    expect(aside).toHaveTextContent('RETRACTED');
+    expect(aside).toHaveTextContent('must not be relied on at all');
+
+    // Across everything placed, the count is a finding of its own, and one declaration counts once however many records resolved it.
+    await user.click(screen.getByTestId('place-all'));
+    await waitFor(() => expect(screen.queryByText(/Asking the compiler… \d+ \/ \d+/)).toBeNull());
+    const placedSeparations = await screen.findByTestId('placed-separations');
+    expect(placedSeparations).toHaveAttribute('data-disagreeing', '1');
+    expect(placedSeparations).toHaveTextContent('1 subject has more than one declared position.');
+    expect(placedSeparations).toHaveTextContent('1 cannot all be right');
+    expect(fetch).toHaveBeenCalled();
   });
 
   it('selects the record a drawn point was placed for when the point is clicked, and ignores clicks on nothing', async () => {

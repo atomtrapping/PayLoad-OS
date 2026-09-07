@@ -238,3 +238,196 @@ export const TWIN_NONCLAIMS = [
   'No signal is live: the registry names sources and their terms; it collects nothing.',
   'The globe is not evidence: bundled imagery and a computed sun are context, not observations.',
 ] as const;
+
+/* ------------------------------------------------------------------ *
+ * What the declared positions imply
+ *
+ * The twin draws every position a subject's sources declare. Drawing them
+ * is not reading them: two points side by side answer nothing on their own.
+ * This is the one derivation over that geometry that the declarations
+ * themselves support — whether two standing accounts of where a subject is
+ * can both be right — and it is deliberately the weakest claim that is
+ * still useful. It measures a distance under a named metric, compares it
+ * against the uncertainties the sources stated, and says one of three
+ * things. It never assumes an uncertainty, never assumes a distribution,
+ * and never treats a shared location as a reason to treat two subjects as
+ * one thing.
+ * ------------------------------------------------------------------ */
+
+/** The method that decided, versioned so an answer can be traced to it. */
+export const SEPARATION_METHOD = 'notationsos.position-separation.v1';
+/** The distance model, declared rather than assumed: the geodesic on the WGS84 ellipsoid, by Vincenty's inverse solution. */
+export const SEPARATION_METRIC = 'WGS84_ELLIPSOIDAL_GEODESIC';
+
+const WGS84 = { a: 6378137, f: 1 / 298.257223563 } as const;
+const RAD = Math.PI / 180;
+
+export type SeparationOutcome =
+  | { state: 'MEASURED'; metres: number }
+  | { state: 'NOT_ASSESSABLE'; because: string };
+
+/**
+ * Vincenty's inverse solution on the WGS84 ellipsoid: the length of the
+ * shortest path over the ellipsoid surface between two points. It is not a
+ * route, not a distance through anything and not a straight line in space.
+ * The solution does not converge for very nearly antipodal points; there it
+ * refuses rather than returning the last iterate.
+ */
+export function geodesicSeparationM(
+  from: { longitude: number; latitude: number },
+  to: { longitude: number; latitude: number },
+): SeparationOutcome {
+  const coordinates = [from.longitude, from.latitude, to.longitude, to.latitude];
+  if (coordinates.some((value) => !Number.isFinite(value))) return { state: 'NOT_ASSESSABLE', because: 'A coordinate is not a finite number.' };
+  if (Math.abs(from.latitude) > 90 || Math.abs(to.latitude) > 90) return { state: 'NOT_ASSESSABLE', because: 'A latitude is outside the range the datum defines.' };
+  const { a, f } = WGS84;
+  const b = a * (1 - f);
+  const L = (to.longitude - from.longitude) * RAD;
+  const U1 = Math.atan((1 - f) * Math.tan(from.latitude * RAD));
+  const U2 = Math.atan((1 - f) * Math.tan(to.latitude * RAD));
+  const sinU1 = Math.sin(U1), cosU1 = Math.cos(U1), sinU2 = Math.sin(U2), cosU2 = Math.cos(U2);
+  let lambda = L, sinSigma = 0, cosSigma = 1, sigma = 0, cos2SigmaM = 1, cosSqAlpha = 1, converged = false;
+  for (let iteration = 0; iteration < 200; iteration += 1) {
+    const sinLambda = Math.sin(lambda), cosLambda = Math.cos(lambda);
+    sinSigma = Math.sqrt((cosU2 * sinLambda) ** 2 + (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ** 2);
+    if (sinSigma === 0) return { state: 'MEASURED', metres: 0 };
+    cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
+    sigma = Math.atan2(sinSigma, cosSigma);
+    const sinAlpha = (cosU1 * cosU2 * sinLambda) / sinSigma;
+    cosSqAlpha = 1 - sinAlpha * sinAlpha;
+    cos2SigmaM = cosSqAlpha === 0 ? 0 : cosSigma - (2 * sinU1 * sinU2) / cosSqAlpha;
+    const C = (f / 16) * cosSqAlpha * (4 + f * (4 - 3 * cosSqAlpha));
+    const previous = lambda;
+    lambda = L + (1 - C) * f * sinAlpha * (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM)));
+    if (Math.abs(lambda) > Math.PI) break;
+    if (Math.abs(lambda - previous) < 1e-12) { converged = true; break; }
+  }
+  if (!converged) return { state: 'NOT_ASSESSABLE', because: 'The geodesic between these two points did not converge: they are very nearly antipodal, and this method does not answer there.' };
+  const uSq = (cosSqAlpha * (a * a - b * b)) / (b * b);
+  const A = 1 + (uSq / 16384) * (4096 + uSq * (-768 + uSq * (320 - 175 * uSq)));
+  const B = (uSq / 1024) * (256 + uSq * (-128 + uSq * (74 - 47 * uSq)));
+  const deltaSigma = B * sinSigma * (cos2SigmaM + (B / 4) * (cosSigma * (-1 + 2 * cos2SigmaM * cos2SigmaM) - (B / 6) * cos2SigmaM * (-3 + 4 * sinSigma * sinSigma) * (-3 + 4 * cos2SigmaM * cos2SigmaM)));
+  return { state: 'MEASURED', metres: b * A * (sigma - deltaSigma) };
+}
+
+/** Metres at the precision the number deserves; never more digits than the measurement carries meaning for. */
+export function formatMetres(metres: number): string {
+  if (metres >= 10_000) return `${(metres / 1000).toFixed(1)} km`;
+  if (metres >= 10) return `${metres.toFixed(0)} m`;
+  return `${metres.toFixed(2)} m`;
+}
+
+/**
+ * `DISJOINT`: the stated uncertainties cannot both contain one common
+ * point, so the accounts contradict and something must adjudicate them.
+ * `OVERLAPPING`: they can. `NOT_ASSESSABLE`: the question was not put,
+ * because something needed to put it is missing.
+ */
+export type PositionConsistency = 'DISJOINT' | 'OVERLAPPING' | 'NOT_ASSESSABLE';
+
+export interface PositionPair {
+  a: GeodeticPosition;
+  b: GeodeticPosition;
+  separation: SeparationOutcome;
+  /** The sum of the two stated radii, or null when the test could not be put. */
+  combinedRadiusM: number | null;
+  state: PositionConsistency;
+  because: string;
+}
+
+export interface SubjectPositions {
+  /** The resolved identity these declarations are about; the grouping key. */
+  canonicalId: string;
+  subjectIds: string[];
+  /** The declarations that stand at the asked-for knowledge instant. */
+  compared: GeodeticPosition[];
+  /** Declarations excluded before any comparison, each with why. */
+  setAside: Array<{ position: GeodeticPosition; because: string }>;
+  pairs: PositionPair[];
+  state: PositionConsistency;
+  because: string;
+}
+
+const SET_ASIDE_REASON: Partial<Record<GeodeticPosition['statusAtKnownAt'], string>> = {
+  RETRACTED: 'Withdrawn at this knowledge instant: it must not be relied on at all, so it is not a competing account of where the subject is.',
+  SUPERSEDED: 'Superseded at this knowledge instant: a later declaration replaced it, so the difference between them is already resolved and is not a contradiction.',
+};
+
+function radiusOf(position: GeodeticPosition): number | null {
+  const radius = position.point.horizontalUncertaintyM;
+  if (radius === null || radius === undefined) return null;
+  return Number.isFinite(radius) && radius >= 0 ? radius : null;
+}
+
+function pairOf(a: GeodeticPosition, b: GeodeticPosition): PositionPair {
+  const separation = geodesicSeparationM(a.point, b.point);
+  if (separation.state === 'NOT_ASSESSABLE') return { a, b, separation, combinedRadiusM: null, state: 'NOT_ASSESSABLE', because: separation.because };
+  const radiusA = radiusOf(a), radiusB = radiusOf(b);
+  const missing = [radiusA === null ? a.positionRecordId : null, radiusB === null ? b.positionRecordId : null].filter((id): id is string => id !== null);
+  if (missing.length) {
+    return { a, b, separation, combinedRadiusM: null, state: 'NOT_ASSESSABLE',
+      because: `${missing.join(' and ')} state${missing.length === 1 ? 's' : ''} no usable horizontal uncertainty. No radius is assumed for a declaration that does not carry one, so the two cannot be tested against each other.` };
+  }
+  const combinedRadiusM = radiusA! + radiusB!;
+  const disjoint = separation.metres > combinedRadiusM;
+  return { a, b, separation, combinedRadiusM, state: disjoint ? 'DISJOINT' : 'OVERLAPPING',
+    because: `${formatMetres(separation.metres)} apart, against ±${radiusA} m and ±${radiusB} m — a combined ${formatMetres(combinedRadiusM)}. The two stated radii ${disjoint ? 'cannot contain one common point' : 'can contain one common point'}.` };
+}
+
+/**
+ * Group every declared position by the identity it was resolved to and ask,
+ * of each subject with more than one declaration, whether the standing ones
+ * can all be right. Positions are deduplicated by their own record id: the
+ * same declaration resolved for several selected records is one declaration.
+ */
+export function positionSeparations(positions: readonly GeodeticPosition[]): SubjectPositions[] {
+  const byCanonical = new Map<string, Map<string, GeodeticPosition>>();
+  for (const position of positions) {
+    const key = position.subject.canonicalId;
+    const declared = byCanonical.get(key) ?? new Map<string, GeodeticPosition>();
+    if (!declared.has(position.positionRecordId)) declared.set(position.positionRecordId, position);
+    byCanonical.set(key, declared);
+  }
+  const groups: SubjectPositions[] = [];
+  for (const [canonicalId, declared] of [...byCanonical.entries()].sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0))) {
+    const all = [...declared.values()].sort((x, y) => (x.positionRecordId < y.positionRecordId ? -1 : x.positionRecordId > y.positionRecordId ? 1 : 0));
+    if (all.length < 2) continue;
+    const compared: GeodeticPosition[] = [];
+    const setAside: SubjectPositions['setAside'] = [];
+    for (const position of all) {
+      const because = SET_ASIDE_REASON[position.statusAtKnownAt];
+      if (because) setAside.push({ position, because });
+      else compared.push(position);
+    }
+    const pairs: PositionPair[] = [];
+    for (let i = 0; i < compared.length; i += 1) for (let j = i + 1; j < compared.length; j += 1) pairs.push(pairOf(compared[i], compared[j]));
+    const subjectIds = [...new Set(all.map((position) => position.subject.subjectId))].sort();
+    let state: PositionConsistency;
+    let because: string;
+    if (compared.length < 2) {
+      state = 'NOT_ASSESSABLE';
+      because = `${all.length} declarations, of which one stands at this knowledge instant. There is nothing standing for it to contradict.`;
+    } else if (pairs.some((pair) => pair.state === 'DISJOINT')) {
+      state = 'DISJOINT';
+      because = `${compared.length} standing declarations, of which at least one pair cannot both be right. Where this subject is has not been settled, and nothing here settles it.`;
+    } else if (pairs.some((pair) => pair.state === 'NOT_ASSESSABLE')) {
+      state = 'NOT_ASSESSABLE';
+      because = `${compared.length} standing declarations, of which at least one pair could not be tested. The set is not shown to be consistent.`;
+    } else {
+      state = 'OVERLAPPING';
+      because = `${compared.length} standing declarations whose stated uncertainties can all be satisfied by one position. That is the whole of the finding.`;
+    }
+    groups.push({ canonicalId, subjectIds, compared, setAside, pairs, state, because });
+  }
+  return groups;
+}
+
+/** What this derivation is and, more importantly, what a reader must not take it for. */
+export const SEPARATION_LOSS = [
+  'Separation is the geodesic on the WGS84 ellipsoid between two declared points. It is not a route, not a travelled distance, and not a distance through or around anything.',
+  'The test is only whether the two stated uncertainty radii can contain one common point. The sources state a radius and no distribution, so no probability is computed and none is implied.',
+  'Overlapping radii are not agreement. Two sources whose rings meet may still be describing different things, and a shared location is never on its own a reason to treat two subjects as one.',
+  'A declaration that states no horizontal uncertainty is not compared and no radius is assumed for it. A pair that cannot be tested leaves the whole set untested, never consistent.',
+  'A withdrawn or superseded declaration is set aside before any comparison, and named. Only what stands at the asked-for knowledge instant can contradict anything.',
+  'The grouping key is the identity the compiler resolved, not proximity. Nothing here resolves an identity, and a disagreement is a question for adjudication, not an answer.',
+] as const;

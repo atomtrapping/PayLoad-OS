@@ -284,6 +284,13 @@ export interface SubjectPositions {
   /** The resolved identity these declarations are about; the grouping key. */
   canonicalId: string;
   subjectIds: string[];
+  /**
+   * The distinct sources behind the standing declarations. Declarations are
+   * counted, sources are counted separately, and the two are never the same
+   * number by accident: three declarations from one source is one account
+   * restated, not three accounts agreeing.
+   */
+  sourceIds: string[];
   /** The declarations that stand at the asked-for knowledge instant. */
   compared: GeodeticPosition[];
   /** Declarations excluded before any comparison, each with why. */
@@ -347,6 +354,9 @@ export function positionSeparations(positions: readonly GeodeticPosition[]): Sub
     const pairs: PositionPair[] = [];
     for (let i = 0; i < compared.length; i += 1) for (let j = i + 1; j < compared.length; j += 1) pairs.push(pairOf(compared[i], compared[j]));
     const subjectIds = [...new Set(all.map((position) => position.subject.subjectId))].sort();
+    const sourceIds = [...new Set(compared.map((position) => position.source.sourceId))].sort();
+    const one = sourceIds.length === 1;
+    const counted = `${compared.length} standing ${compared.length === 1 ? 'declaration' : 'declarations'} from ${sourceIds.length} ${sourceIds.length === 1 ? 'source' : 'sources'}`;
     let state: PositionConsistency;
     let because: string;
     if (compared.length < 2) {
@@ -354,15 +364,17 @@ export function positionSeparations(positions: readonly GeodeticPosition[]): Sub
       because = `${all.length} declarations, of which one stands at this knowledge instant. There is nothing standing for it to contradict.`;
     } else if (pairs.some((pair) => pair.state === 'DISJOINT')) {
       state = 'DISJOINT';
-      because = `${compared.length} standing declarations, of which at least one pair cannot both be right. Where this subject is has not been settled, and nothing here settles it.`;
+      because = `${counted}, of which at least one pair cannot both be right. Where this subject is has not been settled, and nothing here settles it.${one ? ' Both are the same source, which has contradicted itself.' : ''}`;
     } else if (pairs.some((pair) => pair.state === 'NOT_ASSESSABLE')) {
       state = 'NOT_ASSESSABLE';
-      because = `${compared.length} standing declarations, of which at least one pair could not be tested. The set is not shown to be consistent.`;
+      because = `${counted}, of which at least one pair could not be tested. The set is not shown to be consistent.`;
     } else {
       state = 'OVERLAPPING';
-      because = `${compared.length} standing declarations whose stated uncertainties can all be satisfied by one position. That is the whole of the finding.`;
+      because = one
+        ? `${counted}, so this is one account restated, not accounts agreeing. Nothing corroborates anything here.`
+        : `${counted} whose stated uncertainties can all be satisfied by one position. That is the whole of the finding, and it is not corroboration.`;
     }
-    groups.push({ canonicalId, subjectIds, compared, setAside, pairs, state, because });
+    groups.push({ canonicalId, subjectIds, sourceIds, compared, setAside, pairs, state, because });
   }
   return groups;
 }
@@ -375,4 +387,6 @@ export const SEPARATION_LOSS = [
   'A declaration that states no horizontal uncertainty is not compared and no radius is assumed for it. A pair that cannot be tested leaves the whole set untested, never consistent.',
   'A withdrawn or superseded declaration is set aside before any comparison, and named. Only what stands at the asked-for knowledge instant can contradict anything.',
   'The grouping key is the identity the compiler resolved, not proximity. Nothing here resolves an identity, and a disagreement is a question for adjudication, not an answer.',
+  'Declarations are counted, and so are the sources behind them, because they are not the same number. Several declarations from one source are one account restated.',
+  'Distinct sources are not independent sources. Two sources republishing one original measurement declare twice and observe once, and a position record carries no lineage that would show it, so nothing here can tell corroboration from syndication. Agreement between sources is never counted as evidence.',
 ] as const;

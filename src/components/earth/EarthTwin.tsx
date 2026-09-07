@@ -82,6 +82,9 @@ function DeclaredPositionReading({ groups }: { groups: SubjectPositions[] }) {
             <span className="label-sm" style={{ color: CONSISTENCY_TONE[group.state].color }}>{CONSISTENCY_TONE[group.state].label}</span>
             <span className="id">{group.canonicalId}</span>
             <span style={faint}>{group.subjectIds.join(', ')}</span>
+            <span style={faint} data-source-count={group.sourceIds.length}>
+              {group.sourceIds.length} {group.sourceIds.length === 1 ? 'source' : 'sources'}
+            </span>
           </div>
           <div style={muted}>{group.because}</div>
           {group.pairs.length > 0 && (

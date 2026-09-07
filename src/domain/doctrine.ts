@@ -64,54 +64,21 @@ export const DOCTRINE: readonly DoctrineRule[] = [
 ];
 
 /**
- * What an absence means.
+ * What an absence means lives in one place, and it is not here.
  *
- * The seven rules above govern how information moves. These govern what it
- * means when there is none — and they are separate because the industry this
- * system sells into has one negative state where this one has three. A feed
- * that returns nothing, a record that was withdrawn and a pair that could not
- * be tested are three different facts, and flattening them is the cheapest
- * fabrication available to a data system: it manufactures a claim out of the
- * absence of one, and the claim always reads as calm.
+ * `src/domain/negativeStates.ts` carries the negative-state registry: the
+ * distinct states an ordinary system collapses into one null, each with the
+ * pair it separates, the fabrication the collapse produces, and the module
+ * and exported symbol that enforce it. Its test reads those modules and
+ * fails if a named symbol has gone.
  *
- * Each is here because it is enforced somewhere, not because it sounds right.
+ * This file held a second, smaller copy of the same idea for a few hours.
+ * Two homes for one vocabulary is the registry problem in miniature, and the
+ * fix is one home rather than a third — so the copy is gone and this is the
+ * pointer. The seven rules below govern how information moves; the negative
+ * states govern what it means when there is none.
  */
-export interface NegativeStateRule {
-  name: string;
-  rule: string;
-  meaning: string;
-  /** The claim it refuses to let an absence become. */
-  refuses: string;
-  enforcedHere: string;
-  tests: readonly string[];
-}
-
-export const NEGATIVE_STATES: readonly NegativeStateRule[] = [
-  {
-    name: 'SILENCE IS NOT ZERO',
-    rule: 'The absence of an observation never composes into the presence of a fact.',
-    meaning: 'Nothing was recorded, and that is a fact about records. The world is not obliged to have been quiet because nobody wrote it down.',
-    refuses: 'A quantity of zero, a rate of zero, an empty set — any measurement manufactured from the absence of a measurement.',
-    enforcedHere: 'portSet reports occupancy null and never 0 where no ruling is knowable, and distinguishes that from a port that was ruled on with nothing in the set; referenceGround gives an empty range three readings — the source recorded nothing, we acquired nothing, or the two are indistinguishable — and none of them says the thing did not happen; spatial depths render unknown and unreachable rather than zero.',
-    tests: ['src/domain/portSet.test.ts', 'src/domain/referenceGround.test.ts', 'src/domain/spatial.test.ts'],
-  },
-  {
-    name: 'WITHDRAWN IS NOT FALSE',
-    rule: 'The absence of support is never a positive claim to the contrary.',
-    meaning: 'A withdrawal removes a claim from what may be relied on. It does not assert the opposite of that claim, and it does not delete the fact that the claim was once made.',
-    refuses: 'Reading a retraction as a negation, or as a deletion. A withdrawn finding that its paperwork failed is not a finding that the thing it described was misdescribed.',
-    enforcedHere: 'A retracted record is set aside before any comparison and named with why, never dropped; the stream shows the standing of every set-aside record so a withdrawn one cannot read as merely unlinked; the USD target requires a withdrawal to be an authored block carrying its retraction, because silence there would compose to the previous value and turn must-not-be-relied-on into unchanged.',
-    tests: ['src/domain/earth.test.ts', 'src/components/corpus/StreamExplorer.test.tsx', 'src/domain/usdProjection.test.ts'],
-  },
-  {
-    name: 'UNTESTED IS NOT CONSISTENT',
-    rule: 'A question that could not be put is never answered in the affirmative.',
-    meaning: 'Where the evidence cannot decide, the result is that it could not decide. One pair that cannot be tested leaves the whole set untested rather than agreeing.',
-    refuses: 'Treating the absence of a detected contradiction as agreement, and treating an undeclared uncertainty as a small one.',
-    enforcedHere: 'positionSeparations and eventClosure compare only declarations that state an uncertainty, assume no radius or window for one that does not, and return NOT_ASSESSABLE for the whole set when any pair could not be tested; overlapping is rendered plain rather than green, because it is the absence of a contradiction and not the presence of support.',
-    tests: ['src/domain/earth.test.ts', 'src/domain/eventClosure.test.ts'],
-  },
-];
+export const NEGATIVE_STATES_LIVE_IN = 'src/domain/negativeStates.ts' as const;
 
 export const OPERATIONAL_RULE = 'Build shared information before multiplying reasoning processes.';
 

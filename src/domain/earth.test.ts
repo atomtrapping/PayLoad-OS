@@ -70,7 +70,7 @@ describe('the Earth Twin as data', () => {
 
 /* ── What the declared positions imply ── */
 
-import { SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, geodesicSeparationM, positionSeparations, soleDeclaration } from './earth';
+import { SELECTION_MEANING, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatLink, formatMetres, geodesicSeparationM, parseLink, positionSeparations, selectionFromLink, soleDeclaration } from './earth';
 import type { GeodeticPosition } from './earth';
 
 const LAT = 51.5, LON = -0.12;
@@ -254,5 +254,47 @@ describe('separation between declared positions', () => {
     expect(formatMetres(4.567)).toBe('4.57 m');
     expect(formatMetres(400.3)).toBe('400 m');
     expect(formatMetres(12345)).toBe('12.3 km');
+  });
+});
+
+describe('a selection is a link, and one that cannot be honoured is refused', () => {
+  const VIEW = { longitude: 4.025, latitude: 51.9497, height: 1_000_000, heading: 0, pitch: -90 };
+
+  it('writes the selection beside the view, and a view-only link stays a view-only link', () => {
+    expect(formatLink(VIEW, 'REC-2')).toBe(`${formatView(VIEW)}&r=REC-2`);
+    expect(formatLink(VIEW, null)).toBe(formatView(VIEW));
+    // Links written before selections existed still parse, and select nothing.
+    expect(parseLink(formatView(VIEW))).toEqual({ view: VIEW, recordId: null });
+    expect(parseLink(`#${formatLink(VIEW, 'REC-2')}`)).toEqual({ view: VIEW, recordId: 'REC-2' });
+  });
+
+  it('rejects a malformed hash whole rather than salvaging the half it understands', () => {
+    // The view half is good and the record half is not: the link is refused,
+    // not read as a view. Nothing is clamped or half-read.
+    expect(parseLink(`${formatView(VIEW)}&r=has spaces`)).toBeNull();
+    expect(parseLink(`${formatView(VIEW)}&r=`)).toBeNull();
+    expect(parseLink(`${formatView(VIEW)}&r=A&r=B`)).toBeNull();
+    expect(parseLink(`v=nonsense&r=REC-2`)).toBeNull();
+    expect(parseLink(`${formatView(VIEW)}&r=${'x'.repeat(200)}`)).toBeNull();
+    expect(() => formatLink(VIEW, 'has spaces')).toThrow(/is not written into one/);
+  });
+
+  it('refuses a link naming a record this release does not offer, rather than showing the default', () => {
+    // A default would look exactly like success while showing something the
+    // link did not name, and the reader would believe they saw the shared thing.
+    const offered = ['REC-1', 'REC-2'];
+    const missing = selectionFromLink({ view: VIEW, recordId: 'REC-9' }, offered);
+    expect(missing.standing).toBe('NOT_OFFERED');
+    expect(missing.recordId).toBeNull();
+    expect(missing.named).toBe('REC-9');
+    expect(missing.because).toMatch(/a default would look like success/);
+    expect(missing.because).toMatch(/The link named REC-9/);
+
+    expect(selectionFromLink({ view: VIEW, recordId: 'REC-2' }, offered))
+      .toMatchObject({ standing: 'SELECTED', recordId: 'REC-2' });
+    expect(selectionFromLink({ view: VIEW, recordId: null }, offered))
+      .toMatchObject({ standing: 'NONE_NAMED', recordId: null });
+    expect(selectionFromLink(null, offered)).toMatchObject({ standing: 'NONE_NAMED', recordId: null });
+    expect(SELECTION_MEANING.NONE_NAMED).toMatch(/before selections were carried/);
   });
 });

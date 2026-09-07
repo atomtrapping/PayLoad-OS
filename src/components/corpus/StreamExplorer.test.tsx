@@ -46,4 +46,19 @@ describe('StreamExplorer (as-of answers)', () => {
     await user.selectOptions(screen.getByLabelText('Predicate'), 'quantity.gross');
     expect(screen.getByRole('article', { name: 'Record REC-0204' })).toBeInTheDocument();
   });
+
+  it('hands back a link for the reading, carrying the question it was asked under', () => {
+    render(<StreamExplorer corpus={CARAVAN_CORPUS} initial={{}} />);
+    const link = screen.getByTestId('stream-reading-link');
+    const href = link.getAttribute('href')!;
+    expect(href.startsWith('/stream?')).toBe(true);
+    // The question is in the link even at its default, so a shared reading
+    // does not become a different reading when a default changes.
+    expect(href).toContain('question=WHAT_WE_HELD');
+    for (const key of ['release=', 'subject=', 'predicate=', 'validAt=', 'knownAt=']) expect(href).toContain(key);
+    // And it is not the feed URL: the two answer different needs, and the
+    // page says so rather than leaving a reader to work it out.
+    expect(href).not.toBe(screen.getByTestId('asof-url').getAttribute('href'));
+    expect(screen.getByTestId('stream-reading-note').textContent).toMatch(/neither substitutes for the other/);
+  });
 });

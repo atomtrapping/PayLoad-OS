@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
-import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, globeSpec, integrationBlockers, parseView, placementLabel, projectionOutcome, type GeodeticPosition, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -51,6 +51,68 @@ function Part({ title, children, testId }: { title: string; children: ReactNode;
 
 function StatePill({ state }: { state: LayerState }) {
   return <span className="pill text-[10px] px-1.5" style={{ color: STATE_COLOR[state], borderColor: 'currentColor' }} title={LAYER_STATE_MEANING[state]}>{state.replace('_', ' ')}</span>;
+}
+
+/**
+ * The accent follows the same two tiers the rest of the estate uses.
+ * `DISJOINT` is a decision — these accounts cannot both be right — and is
+ * accented as one. `NOT_ASSESSABLE` is unresolved and takes the amber that
+ * means the question was not answered. `OVERLAPPING` is deliberately plain:
+ * it is not a positive finding, and colouring it as one would say the
+ * sources agree, which it does not say.
+ */
+const CONSISTENCY_TONE: Record<PositionConsistency, { color: string; label: string }> = {
+  DISJOINT: { color: 'var(--status-refused)', label: 'cannot both be right' },
+  NOT_ASSESSABLE: { color: 'var(--status-conditional)', label: 'not assessable' },
+  OVERLAPPING: { color: 'var(--text-secondary)', label: 'no contradiction shown' },
+};
+
+/**
+ * What the drawn points imply about each other. Drawing two positions says
+ * nothing; this says the one thing the declarations support, under a named
+ * metric and a named method, and prints what it is not.
+ */
+function DeclaredPositionReading({ groups }: { groups: SubjectPositions[] }) {
+  if (!groups.length) return null;
+  return (
+    <div className="flex flex-col gap-1" data-testid="position-separation">
+      {groups.map((group) => (
+        <div key={group.canonicalId} className="surface p-2 flex flex-col gap-1" data-separation-subject={group.canonicalId} data-separation-state={group.state}>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="label-sm" style={{ color: CONSISTENCY_TONE[group.state].color }}>{CONSISTENCY_TONE[group.state].label}</span>
+            <span className="id">{group.canonicalId}</span>
+            <span style={faint}>{group.subjectIds.join(', ')}</span>
+          </div>
+          <div style={muted}>{group.because}</div>
+          {group.pairs.length > 0 && (
+            <ul className="m-0 p-0 list-none flex flex-col gap-0.5" aria-label="Declarations compared">
+              {group.pairs.map((pair) => (
+                <li key={`${pair.a.positionRecordId}|${pair.b.positionRecordId}`} className="flex flex-col" data-pair-state={pair.state}>
+                  <span><span className="id">{pair.a.positionRecordId}</span> <span style={faint}>against</span> <span className="id">{pair.b.positionRecordId}</span>{' '}
+                    <span className="mono" style={{ color: CONSISTENCY_TONE[pair.state].color }}>{pair.separation.state === 'MEASURED' ? formatMetres(pair.separation.metres) : '—'}</span></span>
+                  <span style={faint}>{pair.because}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {group.setAside.length > 0 && (
+            <ul className="m-0 p-0 list-none flex flex-col gap-0.5" aria-label="Declarations set aside">
+              {group.setAside.map((entry) => (
+                <li key={entry.position.positionRecordId} data-set-aside={entry.position.positionRecordId}>
+                  <span className="id">{entry.position.positionRecordId}</span> <span className="mono" style={{ color: 'var(--status-revoked)' }}>{entry.position.statusAtKnownAt}</span>{' '}
+                  <span style={faint}>{entry.because}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+      <div style={faint}>Method <span className="mono">{SEPARATION_METHOD}</span> · metric <span className="mono">{SEPARATION_METRIC}</span></div>
+      <ul className="m-0 pl-4 list-disc flex flex-col gap-0.5" aria-label="What the separation does not say" data-testid="separation-loss">
+        {SEPARATION_LOSS.map((line) => <li key={line} style={faint}>{line}</li>)}
+      </ul>
+    </div>
+  );
 }
 
 /** The sun's ground point at an instant, from the engine's own ephemeris. Precise when the frame data has loaded; otherwise the TEME approximation the engine itself falls back to. */
@@ -267,6 +329,9 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
     viewer.scene.requestRender();
   }, [placements, activeInstance]);
 
+  /** Across everything placed, which subjects have standing declarations that cannot all be right. One declaration counts once however many records resolved it. */
+  const placedSeparations = useMemo(() => positionSeparations(Object.values(placements).flatMap((placement) => placement.positions)), [placements]);
+
   /** Ask the compiler for every record of the release, each at its own validity start, and draw all that can be placed. Nothing is placed by anything but its own subject's declaration. */
   async function placeAll() {
     if (placing) return;
@@ -388,7 +453,8 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
                     </li>
                   ))}
                 </ul>
-                <span style={faint}>Drawn where the source says the subject was over that interval, not where it is. The point’s colour is the declaring source’s interest; the ring is the stated uncertainty.</span></>}
+                <span style={faint}>Drawn where the source says the subject was over that interval, not where it is. The point’s colour is the declaring source’s interest; the ring is the stated uncertainty.</span>
+                <DeclaredPositionReading groups={positionSeparations(outcome.positions)} /></>}
               {outcome.state === 'UNAVAILABLE' && <><span className="mono" style={{ color: 'var(--status-refused)' }}>{outcome.code}</span><span style={muted}>{outcome.detail}</span><span style={faint}>{corpusLayer.draws}</span></>}
               {outcome.state === 'REFUSED' && <><span className="mono" style={{ color: 'var(--status-refused)' }}>{outcome.code}</span><span style={muted}>{outcome.detail}</span></>}
             </div>
@@ -406,6 +472,15 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
                 <div><span style={{ color: 'var(--check-passed)' }}>{placeSummary.placed} placed</span> at {placeSummary.positions} {placeSummary.positions === 1 ? 'position' : 'positions'} · <span style={{ color: 'var(--status-conditional)' }}>{placeSummary.unplaced.length} unplaced</span> · <span style={{ color: 'var(--status-refused)' }}>{placeSummary.refused.length} refused</span></div>
                 {placeSummary.unplaced.length > 0 && <div style={faint}>Unplaced, no declared position for the subject: <span className="mono break-all">{placeSummary.unplaced.join(', ')}</span></div>}
                 {placeSummary.refused.length > 0 && <div style={faint}>Refused by the compiler: {placeSummary.refused.map((r) => <span key={r.recordId} className="mono mr-2">{r.recordId} {r.code}</span>)}</div>}
+                {placedSeparations.length > 0 && (
+                  <div data-testid="placed-separations" data-disagreeing={placedSeparations.filter((group) => group.state === 'DISJOINT').length}>
+                    <span style={muted}>{placedSeparations.length} {placedSeparations.length === 1 ? 'subject has' : 'subjects have'} more than one declared position.</span>{' '}
+                    <span style={{ color: 'var(--status-refused)' }}>{placedSeparations.filter((group) => group.state === 'DISJOINT').length} cannot all be right</span>{' · '}
+                    <span style={{ color: 'var(--status-conditional)' }}>{placedSeparations.filter((group) => group.state === 'NOT_ASSESSABLE').length} not assessable</span>{' · '}
+                    <span style={muted}>{placedSeparations.filter((group) => group.state === 'OVERLAPPING').length} with no contradiction shown</span>
+                    <DeclaredPositionReading groups={placedSeparations} />
+                  </div>
+                )}
               </div>
             )}
             {Object.keys(placements).length > 0 && (

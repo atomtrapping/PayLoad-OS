@@ -67,3 +67,129 @@ describe('the Earth Twin as data', () => {
     expect(TWIN_NONCLAIMS.join(' ')).toMatch(/No position is invented/);
   });
 });
+
+/* ── What the declared positions imply ── */
+
+import { SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, geodesicSeparationM, positionSeparations } from './earth';
+import type { GeodeticPosition } from './earth';
+
+const LAT = 51.5, LON = -0.12;
+/** ~400 m north at this latitude, and ~12 m north. */
+const FAR = 0.0036, NEAR = 0.000108;
+
+function at(positionRecordId: string, latitude: number, horizontalUncertaintyM: number | null, over: Partial<GeodeticPosition> = {}): GeodeticPosition {
+  return {
+    recordId: `rec-of-${positionRecordId}`,
+    positionRecordId,
+    canonicalId: `urn:record:${positionRecordId}`,
+    subject: { subjectId: 'subject-a', canonicalId: 'urn:facility:one', subjectType: 'facility' },
+    point: { datum: 'WGS84', longitude: LON, latitude, horizontalUncertaintyM },
+    value: 'at the terminal',
+    basis: 'stated in the filing',
+    validity: { validFrom: '2026-01-01T00:00:00Z', validTo: null },
+    knownAt: '2026-01-02T00:00:00Z',
+    evidenceClass: { claimStrength: 'reported', productionClass: 'measured', interest: 'disinterested' },
+    source: { sourceId: 'src-one', sourceName: 'Registry One' },
+    statusAtKnownAt: 'CURRENT',
+    ...over,
+  };
+}
+
+describe('separation between declared positions', () => {
+  it('measures the WGS84 geodesic to the metre and names the metric it used', () => {
+    const meridian = geodesicSeparationM({ longitude: 0, latitude: 0 }, { longitude: 0, latitude: 1 });
+    const equator = geodesicSeparationM({ longitude: 0, latitude: 0 }, { longitude: 1, latitude: 0 });
+    expect(meridian.state).toBe('MEASURED');
+    expect(equator.state).toBe('MEASURED');
+    if (meridian.state !== 'MEASURED' || equator.state !== 'MEASURED') return;
+    // One degree of latitude and one of longitude at the equator on WGS84.
+    expect(meridian.metres).toBeCloseTo(110574.389, 0);
+    expect(equator.metres).toBeCloseTo(111319.491, 0);
+    expect(SEPARATION_METRIC).toBe('WGS84_ELLIPSOIDAL_GEODESIC');
+    expect(SEPARATION_METHOD).toMatch(/\.v1$/);
+  });
+
+  it('returns zero for coincident points and refuses where the solution does not converge, rather than returning the last iterate', () => {
+    expect(geodesicSeparationM({ longitude: LON, latitude: LAT }, { longitude: LON, latitude: LAT })).toEqual({ state: 'MEASURED', metres: 0 });
+    const antipodal = geodesicSeparationM({ longitude: 0, latitude: 0 }, { longitude: 179.7, latitude: 0.5 });
+    expect(antipodal.state).toBe('NOT_ASSESSABLE');
+    if (antipodal.state === 'NOT_ASSESSABLE') expect(antipodal.because).toMatch(/antipodal/);
+    const broken = geodesicSeparationM({ longitude: Number.NaN, latitude: 0 }, { longitude: 0, latitude: 0 });
+    expect(broken.state).toBe('NOT_ASSESSABLE');
+  });
+
+  it('calls two accounts disjoint only when the radii they state cannot contain one common point', () => {
+    const [group] = positionSeparations([at('p-a', LAT, 5), at('p-b', LAT + FAR, 5)]);
+    expect(group.state).toBe('DISJOINT');
+    expect(group.canonicalId).toBe('urn:facility:one');
+    expect(group.pairs).toHaveLength(1);
+    expect(group.pairs[0].combinedRadiusM).toBe(10);
+    expect(group.pairs[0].separation.state === 'MEASURED' && group.pairs[0].separation.metres).toBeGreaterThan(380);
+    expect(group.pairs[0].because).toMatch(/cannot contain one common point/);
+    expect(group.because).toMatch(/has not been settled/);
+  });
+
+  it('calls overlapping radii overlapping, and says in the loss that this is not agreement and not identity', () => {
+    const [group] = positionSeparations([at('p-a', LAT, 30), at('p-b', LAT + NEAR, 30)]);
+    expect(group.state).toBe('OVERLAPPING');
+    expect(group.pairs[0].because).toMatch(/can contain one common point/);
+    expect(group.because).toMatch(/whole of the finding/);
+    const loss = SEPARATION_LOSS.join(' ');
+    expect(loss).toMatch(/Overlapping radii are not agreement/);
+    expect(loss).toMatch(/never on its own a reason to treat two subjects as one/);
+    expect(loss).toMatch(/no probability is computed/);
+  });
+
+  it('assumes no radius for a declaration that states none, and leaves the whole set untested rather than consistent', () => {
+    const [group] = positionSeparations([at('p-a', LAT, null), at('p-b', LAT + NEAR, 30)]);
+    expect(group.state).toBe('NOT_ASSESSABLE');
+    expect(group.pairs[0].combinedRadiusM).toBeNull();
+    expect(group.pairs[0].because).toMatch(/p-a states no usable horizontal uncertainty/);
+    expect(group.pairs[0].because).toMatch(/No radius is assumed/);
+    // A negative radius is not a radius either.
+    const [nonsense] = positionSeparations([at('p-a', LAT, -5), at('p-b', LAT + NEAR, 30)]);
+    expect(nonsense.state).toBe('NOT_ASSESSABLE');
+  });
+
+  it('sets aside a withdrawn or superseded declaration before comparing anything, and names why', () => {
+    const groups = positionSeparations([
+      at('p-a', LAT, 5),
+      at('p-b', LAT + FAR, 5, { statusAtKnownAt: 'RETRACTED' }),
+      at('p-c', LAT + FAR, 5, { statusAtKnownAt: 'SUPERSEDED' }),
+    ]);
+    expect(groups).toHaveLength(1);
+    const [group] = groups;
+    expect(group.compared.map((p) => p.positionRecordId)).toEqual(['p-a']);
+    expect(group.setAside.map((s) => s.position.positionRecordId)).toEqual(['p-b', 'p-c']);
+    expect(group.setAside[0].because).toMatch(/must not be relied on at all/);
+    expect(group.setAside[1].because).toMatch(/already resolved and is not a contradiction/);
+    // Without the set-aside the two would read as a contradiction; with it, there is nothing to contradict.
+    expect(group.pairs).toHaveLength(0);
+    expect(group.state).toBe('NOT_ASSESSABLE');
+    expect(group.because).toMatch(/nothing standing for it to contradict/);
+  });
+
+  it('counts one declaration once however many records resolved it, groups by the resolved identity, and skips a subject with a single declaration', () => {
+    const twice = [at('p-a', LAT, 5), at('p-a', LAT, 5, { recordId: 'rec-second' }), at('p-b', LAT + FAR, 5)];
+    const [group] = positionSeparations(twice);
+    expect(group.compared).toHaveLength(2);
+    expect(group.pairs).toHaveLength(1);
+    expect(group.subjectIds).toEqual(['subject-a']);
+    expect(positionSeparations([at('p-a', LAT, 5)])).toEqual([]);
+    const other = at('p-z', LAT + FAR, 5, { subject: { subjectId: 'subject-b', canonicalId: 'urn:facility:two', subjectType: 'facility' } });
+    expect(positionSeparations([at('p-a', LAT, 5), other])).toEqual([]);
+  });
+
+  it('lets one disjoint pair decide the subject even when another pair could not be tested', () => {
+    const [group] = positionSeparations([at('p-a', LAT, 5), at('p-b', LAT + FAR, 5), at('p-c', LAT + NEAR, null)]);
+    expect(group.pairs.map((p) => p.state).sort()).toEqual(['DISJOINT', 'NOT_ASSESSABLE', 'NOT_ASSESSABLE']);
+    expect(group.state).toBe('DISJOINT');
+  });
+
+  it('writes metres at the precision the measurement carries', () => {
+    expect(formatMetres(0)).toBe('0.00 m');
+    expect(formatMetres(4.567)).toBe('4.57 m');
+    expect(formatMetres(400.3)).toBe('400 m');
+    expect(formatMetres(12345)).toBe('12.3 km');
+  });
+});

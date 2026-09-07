@@ -58,6 +58,48 @@ The twin has two clocks and labels both. **Known at** is the release cutoff: not
 
 A replacement viewer receives the latest selected world time before becoming `READY`. Runtime status, camera callbacks and asynchronous sub-solar results belong to one viewer instance; late work from a destroyed instance cannot update its replacement. Projection answers are bound to the entire serialized request, including source/release commitments and both clocks, so a previous release's answer is not shown under a new release.
 
+## What the drawn positions imply
+
+Drawing two points says nothing. The twin makes exactly one derivation over
+the geometry it draws, and it is deliberately the weakest claim the
+declarations support: **can the standing accounts of where a subject is all
+be right at once?**
+
+The declarations are grouped by the identity the compiler resolved, not by
+proximity — nothing here resolves an identity — and one declaration counts
+once however many selected records resolved it. Anything withdrawn or
+superseded at the asked-for knowledge instant is set aside first, and named:
+only what stands can contradict anything, and a difference a supersession
+already resolved is not a contradiction. Each remaining pair is then
+measured and tested.
+
+| | |
+|---|---|
+| Method | `notationsos.position-separation.v1` |
+| Metric | `WGS84_ELLIPSOIDAL_GEODESIC` — Vincenty's inverse solution on the WGS84 ellipsoid; it refuses rather than returning the last iterate where it does not converge |
+| Test | Whether the two stated uncertainty radii can contain one common point |
+
+Three answers, accented on the same two tiers as the rest of the estate.
+`DISJOINT` is a decision — these accounts cannot both be right, and where the
+subject is has not been settled — and is accented as one. `NOT_ASSESSABLE`
+is unresolved and takes amber: a declaration that states no horizontal
+uncertainty is not compared, and no radius is assumed to compare it, so one
+untestable pair leaves the whole set untested rather than consistent.
+`OVERLAPPING` is deliberately plain, not green: it is not a positive
+finding, and colouring it as one would say the sources agree.
+
+The surface prints what the answer is not, in full, beside it. The three
+that matter most: the separation is a geodesic and not a route or a travelled
+distance; the sources state a radius and no distribution, so no probability
+is computed and none is implied; and **overlapping radii are not agreement —
+a shared location is never on its own a reason to treat two subjects as
+one.** Co-location is evidence about where things are, never on its own an
+identity decision. A disagreement here is a question for adjudication, not
+an answer.
+
+Across everything placed, the count of subjects whose standing declarations
+cannot all be right is itself a finding, and is shown as one.
+
 ## Local engine package boundary
 
 `scripts/earth-assets.mjs` delegates to the server/build-only `src/earth/assets.mjs`. Preparation requires the installed and declared CesiumJS version to match the exact 1.124.0 pin. It inventories the module, workers, widgets, assets and third-party files, and copies `LICENSE.md`, `ThirdParty.json` and `ThirdParty.extra.json` alongside them. `public/cesium/VERSION.json` is a versioned manifest with sorted paths, byte lengths, per-file SHA-256 hashes, total bytes and a manifest digest.
@@ -94,6 +136,7 @@ Each stage needs a material choice or a backend contract (a fixture change, a so
 - No signal is live. The registry names sources and their terms; it collects nothing, and each entry says why it is not on the globe.
 - No key, no external request. The engine and its imagery are served from this origin; the test proves the absence of any other request.
 - The compiler decides. The twin holds no copy of the corpus and no second gate; it inherits refusals and shows their codes.
+- Geometry is read, never resolved. The one derivation over the drawn positions says whether standing accounts can all be right; it computes no probability, assumes no uncertainty a source did not state, and never treats a shared location as a reason to treat two subjects as one.
 
 ## Verification receipt, v1 (2026-09-05, frontend branch)
 

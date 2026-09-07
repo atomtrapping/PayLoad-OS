@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { inspectEarthAssets } from '@/earth/assets.mjs';
 import { EARTH_ENGINE } from '@/domain/earth';
 import { earthRecordChoices } from '@/earth/records';
+import { readInstrument } from '@/domain/operatorInstrument';
 import { describeProjectionSource } from '@/projection/source';
 import { EarthTwin } from '@/components/earth/EarthTwin';
 import { SpatialKeys } from '@/components/earth/SpatialKeys';
@@ -22,12 +23,16 @@ export default async function EarthPage() {
   const corpora = await getCorpusSource().listCorpora();
   const descriptor = describeProjectionSource(release.releaseId, corpora);
   const records = earthRecordChoices(corpus, release);
+  // The operator readout for the twin's fixed seat. UNKNOWN for the admission
+  // queue is the honest reading from a page: admission lives at the write
+  // boundary, and this page holds no store connection to it.
+  const instrument = readInstrument(corpus, release, 'UNKNOWN');
   const assetsReady = inspectEarthAssets().state === 'READY';
   
   return (
     <>
       <FixtureBanner note={`Corpus: live database release ${release.releaseId}. Globe: imagery bundled with ${EARTH_ENGINE.name}, served from this origin; no key, no live source.`} />
-      <EarthTwin release={{ releaseId: release.releaseId, corpusId: release.corpusId, knownAt: descriptor.knownAt }} source={descriptor.source} records={records} assetsReady={assetsReady} />
+      <EarthTwin release={{ releaseId: release.releaseId, corpusId: release.corpusId, knownAt: descriptor.knownAt }} source={descriptor.source} records={records} instrument={instrument} assetsReady={assetsReady} />
       <SpatialKeys corpus={corpus} releaseId={release.releaseId} />
     </>
   );

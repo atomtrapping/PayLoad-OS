@@ -226,3 +226,94 @@ The e2e that covered this had pinned the old landing — it asserted
 `data-outcome: UNAVAILABLE` and `0 placed` on arrival. The refusal is still
 tested, one selection away rather than as the state a reader meets: selecting a
 sample's moisture draws nothing and says why.
+
+## The operator instrument
+
+The globe is used twice, by two readers who need opposite things from it.
+
+The **display** renders adjudicated truth to a customer. Its failure mode is
+fabrication: a smoothed line or a filled gap becomes something a counterparty
+relies on, so it must never imply more than the corpus asserts, and refusal is a
+rendering state.
+
+The **instrument** renders the factory floor to whoever runs it — the admission
+queue, the contested subjects, the places the corpus is ignorant of. Its failure
+mode is wasted motion, which is recoverable, so it may be as dense and synthetic
+as helps an operator think. That is the same exemption internal tooling has from
+an SLO: nobody adjudicates from it.
+
+The exemption is from the display's epistemics and from nothing else, and two
+rules make the difference structural rather than cultural.
+
+**It never writes.** No admission, correction, merge or release is initiated
+from the cockpit; the instrument navigates and the rails decide. The rule is
+about the act, not the HTTP verb — the twin asks the projection compiler for a
+placement with a POST, and that is a read expressed as a request body.
+`src/domain/operatorInstrument.ts` imports nothing that can write, and its own
+test reads the module's source to hold it there, so the guarantee is checked
+rather than promised. At the surface the panel offers one kind of control: a
+button that selects a record. The component test asserts the whole set.
+
+**It labels its own conveniences.** An instrument may interpolate, smooth,
+aggregate and dead-reckon for legibility, and must say where it did — an
+operator reading a seamless picture is as misleadable as anyone else. So
+`convenience` is required on every layer, `NONE` is the claim that nothing was
+smoothed rather than a field somebody forgot, and the first layer that
+interpolates has to declare it to compile. Every layer reads `NONE` today, and
+the panel says so under *Conveniences taken* rather than leaving the heading out.
+
+There is a third property that is a consequence of the first rather than a rule
+of its own, and it is why the integrity blocks stayed where they were: **the
+instrument reads through the rights gate, not around it.** Every layer is
+counted over `deliverableRecords` for a seat — the twin's is
+`COUNTERPARTY_SHARED` — so it flies what a seat may see and is not a way past
+what it may not. An internal instrument that quietly read past the gate would be
+a rights bypass wearing a cockpit.
+
+### The five layers, and the one worth the exercise
+
+| layer | reads | on the Caravan release |
+| --- | --- | --- |
+| `positioned` | subjects with a standing position this seat can read | 2 |
+| `void` | subjects with records and no position | 5 |
+| `contested` | subjects with more than one standing declaration | 0 |
+| `restated` | records not `CURRENT` at the release's `knownAt` | 3 |
+| `admission-queue` | candidates waiting on the gate | `UNKNOWN` |
+
+The queue is `UNKNOWN` and not `0`, for the reason the compression derivation
+settled: admission lives at the write boundary, a page holds no store
+connection, and an unreadable count is not a zero. The count is a parameter, so
+a caller that can read the store passes one and the layer reports it.
+
+**`void` is the layer worth the whole exercise.** A subject the corpus positions
+can be flown to; a subject it does not is a hole you cannot fly to, and listing
+those holes is SILENCE-IS-NOT-ZERO rendered as terrain. Five of the seven
+selectable subjects are holes — every sample in the release has records and no
+position — so the reading an operator actually gets is *where this seat is
+ignorant*, not where the world is empty. The panel lists them rather than
+drawing them, because a hole has no coordinates, and each row still selects the
+subject's records: navigation, not admission.
+
+Reading through the gate costs that layer its certainty, and the layer says so
+instead of papering over it. From a given seat, a subject with no position may
+be one the release never positioned or one it positioned and does not deliver
+here. The instrument names both readings and resolves neither — resolving it
+would disclose the withholding it is not entitled to disclose.
+
+The concept is [God's Eye View](https://github.com/bilawalsidhu/gods-eye-view)'s,
+already credited and pinned in `EARTH_TWIN_ORIGIN` at commit `6d83bb6`. What is
+adopted here is the posture — a globe you fly rather than a globe you read — not
+its code or its signal feeds, which remain `NOT_INTEGRATED` for the reasons the
+registry gives.
+
+### Verification (2026-09-07, frontend branch, Linux container)
+
+Typecheck clean; ESLint clean at `--max-warnings=0`; 4,621 unit tests pass (183
+files, 6 skipped) — 13 of them new for the derivation and 6 for the panel,
+including the structural test that the module imports no store and the surface
+test that every button in the panel is a selection, with the page's props test
+extended to assert it hands down the same reading; `next build` clean; 178
+regular Playwright tests pass at desktop and Pixel 7, with a second axe pass
+taken with the section open (the page's own pass runs with it shut, so its
+contents are `display:none` and unexamined); screenshot
+`docs/screenshots/00m-earth-operator-instrument.png`.

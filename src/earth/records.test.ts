@@ -4,6 +4,7 @@ import EarthPage from '@/app/earth/page';
 import { EarthTwin, type EarthTwinProps } from '@/components/earth/EarthTwin';
 import { currentRelease, deliverableRecords, recordStatusAt } from '@/domain/corpus';
 import { globeSpec } from '@/domain/earth';
+import { readInstrument } from '@/domain/operatorInstrument';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { compileProjection } from '@/projection/compile';
 import { describeProjectionSource } from '@/projection/source';
@@ -37,6 +38,12 @@ describe('Earth record choices before client serialization', () => {
     expect(child.props.source).toEqual(descriptor.source);
     expect(child.props.release).toEqual({ releaseId: release.releaseId, corpusId: release.corpusId, knownAt: descriptor.knownAt });
     expect(JSON.stringify(child.props.records)).not.toMatch(/REC-0305|REC-0401|REC-0402/);
+    // The operator readout travels the same way: derived on the server for the
+    // twin's seat, and UNKNOWN for the queue a page cannot read.
+    expect(child.props.instrument).toEqual(readInstrument(CARAVAN_CORPUS, release, 'UNKNOWN'));
+    expect(child.props.instrument.writes).toBe('NONE');
+    expect(child.props.instrument.isEvidence).toBe(false);
+    expect(child.props.instrument.layers.find((entry) => entry.id === 'admission-queue')?.reading).toBe('UNKNOWN');
   });
 
   it('uses the existing delivery gate for every committed Caravan release and remains selectable by the exact-version compiler', () => {

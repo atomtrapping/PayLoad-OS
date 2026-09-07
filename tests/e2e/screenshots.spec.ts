@@ -61,6 +61,12 @@ test('desktop screenshots', async ({ page }) => {
   await expect(page.getByTestId('earth-camera')).toContainText('51.9497°, 4.0250°', { timeout: 20_000 });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${OUT}/00k-earth-twin-placed.png`, fullPage: false });
+  // The operator instrument opened: the corpus's own spatial state as a readout,
+  // with the void layer listing what cannot be flown to and why.
+  await page.getByTestId('earth-operator').locator('> summary').click();
+  await page.getByTestId('operator-voids').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/00m-earth-operator-instrument.png`, fullPage: false });
   await page.goto('/cases');
   await page.getByRole('table', { name: 'Case queue' }).waitFor();
   await page.screenshot({ path: `${OUT}/01-case-queue.png`, fullPage: true });

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
 import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { CONVENIENCE_MEANING, INSTRUMENT_RULES, conveniencesTaken, type InstrumentReading } from '@/domain/operatorInstrument';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -21,6 +22,12 @@ export interface EarthTwinProps {
   release: { releaseId: string; corpusId: string; knownAt: string };
   source: ProjectionSpec['source'];
   records: EarthRecord[];
+  /**
+   * The operator's readout of the release's own spatial state, computed on the
+   * server for the twin's seat. Read-only by construction: it is a value, and
+   * the component has no path from it to a write.
+   */
+  instrument: InstrumentReading;
   /** Whether the local engine asset package passed verification (scripts/earth-assets.mjs). */
   assetsReady: boolean;
   /** How the engine is obtained; the default loads its prebuilt module from this origin. Tests inject a fake. */
@@ -169,7 +176,7 @@ function readView(Cesium: CesiumModule, viewer: Viewer): TwinView {
  * what it does not do. Nothing here fetches from anywhere but this origin;
  * nothing here invents a position.
  */
-export function EarthTwin({ release, source, records, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
+export function EarthTwin({ release, source, records, instrument, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
   const container = useRef<HTMLDivElement>(null);
   const credits = useRef<HTMLDivElement>(null);
   const engine = useRef<EngineInstance | null>(null);
@@ -378,6 +385,12 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
   /** Across everything placed, which subjects have standing declarations that cannot all be right. One declaration counts once however many records resolved it. */
   const placedSeparations = useMemo(() => positionSeparations(Object.values(placements).flatMap((placement) => placement.positions)), [placements]);
 
+  // The operator readout, taken apart for rendering. `conveniencesTaken` is the
+  // rule-two filter: a layer that starts interpolating appears here without
+  // anyone remembering to add it to a list.
+  const conveniences = useMemo(() => conveniencesTaken(instrument), [instrument]);
+  const instrumentReading = useCallback((id: string) => String(instrument.layers.find((entry) => entry.id === id)?.reading ?? 'UNKNOWN'), [instrument]);
+
   /** Ask the compiler for every record of the release, each at its own validity start, and draw all that can be placed. Nothing is placed by anything but its own subject's declaration. */
   async function placeAll() {
     if (placing) return;
@@ -542,6 +555,53 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
                 {Object.entries(placements).map(([id, placement]) => <li key={id} className="flex flex-wrap items-baseline gap-x-2" data-placed-record={id}><button type="button" className="btn btn-sm btn-quiet" aria-pressed={id === recordId} onClick={() => { flyOnResolve.current = true; setRecordId(id); if (id === recordId && placement.positions[0]) flyTo({ longitude: placement.positions[0].point.longitude, latitude: placement.positions[0].point.latitude, ...PLACEMENT_VIEW }); }}>{id}</button><span style={muted}>{placement.title}</span><span style={faint}>{placement.positions.map((p) => p.subject.subjectId).join(', ')} · {fmtUtc(placement.validFrom)}</span></li>)}
               </ul>
             )}
+          </Part>
+
+          <Part title={`Operator instrument · ${instrumentReading('positioned')} flyable, ${instrumentReading('void')} void`} testId="earth-operator" folded>
+            <p className="m-0 text-[12px]" style={muted}>The release’s own spatial state from this seat, arranged to be flown rather than read. It is a way of looking and not a thing looked at: nothing here is evidence, and no ruling may cite it.</p>
+            <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Instrument layers" data-testid="operator-layers">
+              {instrument.layers.map((entry) => (
+                <li key={entry.id} className="surface-inset p-2 text-[12px] flex flex-col gap-0.5" data-operator-layer={entry.id} data-reading={String(entry.reading)} data-convenience={entry.convenience}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium" style={{ color: 'var(--text-heading)' }}>{entry.label}</span>
+                    <span className="mono" style={entry.reading === 'UNKNOWN' ? { color: 'var(--status-conditional)' } : { color: 'var(--text-heading)' }}>{entry.reading}</span>
+                  </div>
+                  <div style={muted}>{entry.shows}</div>
+                  <div style={faint}>{entry.because}</div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="text-[12px] flex flex-col gap-0.5" data-testid="operator-conveniences" data-taken={conveniences.length}>
+              <span className="label-sm">Conveniences taken</span>
+              {conveniences.length === 0
+                ? <span style={muted}>None. Every reading above is counted from the release as it stands: nothing was interpolated, smoothed, aggregated or carried forward.</span>
+                : <ul className="m-0 pl-4">{conveniences.map((entry) => <li key={entry.id} style={muted}><span className="mono">{entry.convenience.replace('_', ' ').toLowerCase()}</span> on {entry.label} — {CONVENIENCE_MEANING[entry.convenience]}</li>)}</ul>}
+            </div>
+
+            {instrument.voids.length > 0 && (
+              <div className="text-[12px] flex flex-col gap-1" data-testid="operator-voids" data-count={instrument.voids.length}>
+                <span className="label-sm">Where the instrument is blind</span>
+                <p className="m-0" style={muted}>Subjects this seat holds records about and no position for. There is nowhere to fly to, so they are listed instead of drawn — the records are still selectable.</p>
+                <ul className="m-0 p-0 list-none flex flex-col gap-0.5" aria-label="Subjects with no position">
+                  {instrument.voids.map((hole) => {
+                    const first = records.find((entry) => entry.subjectId === hole.subjectId);
+                    return (
+                      <li key={hole.canonicalId} className="flex flex-wrap items-baseline gap-x-2" data-void-subject={hole.subjectId}>
+                        <span className="mono" style={{ color: 'var(--text-heading)' }}>{hole.subjectId}</span>
+                        <span style={faint}>{hole.subjectType} · {hole.recordsHeld} {hole.recordsHeld === 1 ? 'record' : 'records'} · no position</span>
+                        {first && <button type="button" className="btn btn-sm btn-quiet" onClick={() => setRecordId(first.recordId)} data-void-select={hole.subjectId}>Select {first.recordId}</button>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <div className="text-[12px] flex flex-col gap-0.5" data-testid="operator-rules" data-writes={instrument.writes}>
+              <span className="label-sm">The two rules this instrument is held to</span>
+              <ol className="m-0 pl-4 flex flex-col gap-0.5" style={faint}>{INSTRUMENT_RULES.map((rule) => <li key={rule}>{rule}</li>)}</ol>
+            </div>
           </Part>
 
           <Part title={`World signals · ${GEV_SIGNAL_SOURCES.length} named, 0 integrated`} testId="earth-signals" folded>

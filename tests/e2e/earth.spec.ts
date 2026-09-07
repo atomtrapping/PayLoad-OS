@@ -184,3 +184,51 @@ test('the twin arrives with something on the globe, and folds what a reader woul
   await signals.locator('> summary').click();
   expect(await signals.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(true);
 });
+
+/**
+ * The instrument, on the built page. Two rules to see held: the panel writes
+ * nothing (its only control selects a record), and it reports the conveniences
+ * it took — which today is none, said rather than left out.
+ */
+test('the operator instrument reads the corpus back and offers no way to change it', async ({ page }) => {
+  await page.goto('/earth');
+  await page.waitForLoadState('load');
+  await expect(page.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY', { timeout: 20_000 });
+
+  const panel = page.getByTestId('earth-operator');
+  // Shut on arrival, with the reading that matters in the summary: the second
+  // number is where this seat is ignorant, not where the world is empty.
+  expect(await panel.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+  await expect(panel).toContainText('2 flyable, 5 void');
+  await panel.locator('> summary').click();
+  expect(await panel.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(true);
+
+  // Five layers, and the one a page cannot read says UNKNOWN rather than 0.
+  const layers = page.locator('[data-operator-layer]');
+  await expect(layers).toHaveCount(5);
+  await expect(page.locator('[data-operator-layer="admission-queue"]')).toHaveAttribute('data-reading', 'UNKNOWN');
+  await expect(page.locator('[data-operator-layer="positioned"]')).toHaveAttribute('data-reading', '2');
+  await expect(page.locator('[data-operator-layer="void"]')).toHaveAttribute('data-reading', '5');
+
+  // Rule two: nothing was smoothed, and the panel says so rather than omitting it.
+  await expect(page.getByTestId('operator-conveniences')).toHaveAttribute('data-taken', '0');
+  await expect(page.getByTestId('operator-conveniences')).toContainText('nothing was interpolated, smoothed, aggregated or carried forward');
+
+  // Rule one: every control in the panel is a selection.
+  await expect(page.getByTestId('operator-rules')).toHaveAttribute('data-writes', 'NONE');
+  const buttons = panel.getByRole('button');
+  await expect(buttons).toHaveCount(5);
+  for (const label of await buttons.allInnerTexts()) expect(label).toMatch(/^Select /);
+
+  // And a void row navigates: selecting a subject the corpus cannot place
+  // changes what is looked at, and the globe says why it draws nothing.
+  const voids = page.getByTestId('operator-voids');
+  await expect(voids).toHaveAttribute('data-count', '5');
+  await buttons.first().click();
+  await expect(page.getByTestId('earth-projection')).toHaveAttribute('data-outcome', 'UNAVAILABLE');
+
+  // The page's own axe pass runs with this section shut, so its contents are
+  // display:none and unexamined. Check them open, which is how they are read.
+  const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).exclude('.earth-canvas').analyze();
+  expect(accessibility.violations).toEqual([]);
+});

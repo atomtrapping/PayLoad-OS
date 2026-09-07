@@ -31,6 +31,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 
 - [[Notation Systems and Payload OS]] — `AUTHORITATIVE POSITIONING` — A systems and intelligence firm for the physical economy.
 - [[Domain products (Caravan, Tradewind, Landshark)]] — `CARAVAN ACTIVE · TWO MODULE SLOTS` — Three domain products over one platform.
+- [[Usage as telemetry]] — `MODELLED · NOTHING METERED · EVENT HALF ABSENT` — Every query and compute run is a lap; what a response would have to carry before a bill could point at it.
 - [[Customers and distribution channels]] — `DECLARED` — Physical-economy brokers, asset and portfolio managers, insurance and financing firms.
 
 ### Doctrine and governance (applies to every layer)

@@ -192,6 +192,23 @@ test('a retraction names what it reaches and what it cannot reach, and the recal
   await expect(page.getByTestId('recall-machinery')).toContainText('not a convenience of the schema');
 });
 
+test('the products page meters usage honestly: the content half is carried, the event half is not', async ({ page }) => {
+  await page.goto('/products');
+  // Four content fields are carried; five event fields are not, and the page says so.
+  await expect(page.locator('[data-receipt][data-receipt-state="CARRIED"]')).toHaveCount(4);
+  await expect(page.locator('[data-receipt="response_id"][data-receipt-state="ABSENT"]')).toBeVisible();
+  await expect(page.locator('[data-receipt="recipient_id"][data-receipt-state="ABSENT"]')).toBeVisible();
+  await expect(page.getByTestId('metering-readiness')).toContainText('not which response it is or who received it');
+  // No unit of usage is counted yet, and the page never implies one is.
+  await expect(page.locator('[data-usage-unit][data-counted="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-usage-unit]')).toHaveCount(4);
+  // The boundary is stated: meter the usage, do not become the rails.
+  await expect(page.getByTestId('metering-boundary')).toContainText('not like a payments network');
+  await expect(page.getByTestId('metering-boundary')).toContainText('Not settlement participant');
+  // The federation defence is stated as work to do, not as protection already held.
+  await expect(page.getByTestId('federation-risk')).toContainText('None of the three is implemented');
+});
+
 test('the information product states its question, fields, correction at two knowledge times, the ten-question contract and the acceptance target', async ({ page }) => {
   await page.goto('/products');
   await expect(page.getByRole('heading', { level: 1, name: 'Caravan lot state' })).toBeVisible();

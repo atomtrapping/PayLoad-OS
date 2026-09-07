@@ -93,6 +93,15 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-doctrine-rule]')).toHaveCount(7);
   await expect(page.getByTestId('operational-rule')).toContainText('shared information');
   await expect(page.locator('[data-engine="kepler.gl"][data-presence="ABSENT"]')).toHaveCount(1);
+  // OpenUSD is a projection target with no library installed, so it is routed to and absent.
+  await expect(page.locator('[data-engine="OpenUSD"][data-presence="ABSENT"]')).toHaveCount(1);
+  await expect(page.getByTestId('usd-role')).toContainText('strongest opinion wins');
+  await expect(page.locator('[data-usd-row="Admitted state only"][data-usd-state="BLOCKED"]')).toHaveCount(1);
+  await expect(page.locator('[data-usd-state="BLOCKED"]')).toHaveCount(2);
+  // The learned manifold is a tier below the corpus, and every arrow loses authority.
+  await expect(page.getByTestId('manifold-tier')).toContainText('corpus → learned manifold → render');
+  await expect(page.locator('[data-complex]')).toHaveCount(4);
+  await expect(page.locator('[data-manifold-trap="CONTINUOUS_FABRICATION"]')).toContainText('Void renders void');
   await expect(page.locator('[data-engine="records"][data-presence="FIXTURE"]')).toHaveCount(1);
   await expect(page.locator('[data-tier][data-reached="true"]')).toHaveCount(2);
   // Storage is declared as candidates with an honest present state: six classes, none held by a running service.

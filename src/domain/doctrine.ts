@@ -86,7 +86,7 @@ export const EXTRACTION_INTERFACE = {
 } as const;
 
 /** CesiumJS is present as the Earth Twin's engine (src/domain/earth.ts): installed, rendering a keyless globe, fed no fixture geometry yet. */
-export const PROJECTION_ENGINE_PRESENCE: Record<ProjectionEngine, Presence> = { 'kepler.gl': 'ABSENT', CesiumJS: 'PRESENT', 'Three.js': 'ABSENT', records: 'FIXTURE' };
+export const PROJECTION_ENGINE_PRESENCE: Record<ProjectionEngine, Presence> = { 'kepler.gl': 'ABSENT', CesiumJS: 'PRESENT', 'Three.js': 'ABSENT', OpenUSD: 'ABSENT', records: 'FIXTURE' };
 
 export const PROJECTION_ENGINES_IN_REPOSITORY = PROJECTION_ENGINES.map((engine) => ({ engine, ...ENGINE_ROLE[engine], presence: PROJECTION_ENGINE_PRESENCE[engine] }));
 

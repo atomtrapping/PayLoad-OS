@@ -5,6 +5,8 @@ import { DOCTRINE, EXTRACTION_INTERFACE, FABRICS, IDENTITY_CHAIN, INFORMATION_ST
 import { CROSS_LINE_JOIN, CORE_STATE_LABEL, FAMILY_STATE_LABEL, IDENTIFIER_FAMILIES, IDENTITY_CORE, JOIN_KEYS } from '@/domain/identity';
 import { STORAGE_CLASSES, STORAGE_PRESENT_STATE, STORAGE_SEQUENCE, STORAGE_STATE_LABEL, STORE_KIND_LABEL } from '@/domain/storage';
 import { SPATIAL_CAPABILITIES, SPATIAL_DERIVATIONS, SPATIAL_DISCIPLINE, SPATIAL_ROLES, SPATIAL_ROLE_STATE_LABEL, SPATIAL_SEQUENCE } from '@/domain/spatialDerivation';
+import { AS_OF_COMPOSITION, LAYER_CONVENTION, MAPPING_STATE_LABEL, UNCERTAINTY_ENCODING, USD_BOUNDARY, USD_MAPPING, USD_ROLE } from '@/domain/usdProjection';
+import { COMPLEX, HYPERBOLIC, LEARNED_LAYER, MANIFOLD_TRAPS, PROJECTION_TIER } from '@/domain/earthComplex';
 import { Section } from '@/components/primitives/Section';
 
 export const metadata: Metadata = { title: 'Operating model' };
@@ -302,7 +304,7 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
       </Section>
 
       <Section title="Projection fabric" id="pm-projection">
-        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Three instruments for three questions over one corpus, and the records view. A projection changes representation, never identity; it derives no relation from where things land; it has no path back into its source. The closed spec, the source-pinned compiler and the read-only preview endpoints are in <span className="mono">src/projection</span>; the routing table is in <span className="mono">src/domain/projection.ts</span>; the engines are routed to, not installed.</p>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Instruments for different questions over one corpus, and the records view. A projection changes representation, never identity; it derives no relation from where things land; it has no path back into its source. The closed spec, the source-pinned compiler and the read-only preview endpoints are in <span className="mono">src/projection</span>; the routing table is in <span className="mono">src/domain/projection.ts</span>; the engines are routed to, not installed.</p>
         <div className="surface overflow-x-auto" tabIndex={0}>
           <table className="ledger-table text-[12px]" aria-label="Projection engines">
             <thead><tr><th scope="col">Engine</th><th scope="col">Question</th><th scope="col">Role</th><th scope="col">Runtime</th><th scope="col">Here</th></tr></thead>
@@ -318,6 +320,45 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
         </div>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{WORKBENCH_RUNTIME.statement} Here: {WORKBENCH_RUNTIME.inThisRepository}</p>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{EXTRACTION_INTERFACE.statement} Here: {EXTRACTION_INTERFACE.inThisRepository}</p>
+
+        <h3 className="m-0 mt-2 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>OpenUSD: a target, never a store</h3>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="usd-role">{USD_ROLE.whyNotStore} {USD_ROLE.whyTarget}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{USD_ROLE.theRhyme}</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="The corpus-to-USD mapping">
+            <thead><tr><th scope="col">Corpus</th><th scope="col">USD</th><th scope="col">State</th><th scope="col">Here, and the mistake it invites</th></tr></thead>
+            <tbody>
+              {USD_MAPPING.map((row) => (
+                <tr key={row.corpus} data-usd-row={row.corpus} data-usd-state={row.state}>
+                  <td style={{ color: 'var(--text-heading)' }}>{row.corpus}</td>
+                  <td className="mono">{row.usd}</td>
+                  <td style={{ color: row.state === 'BLOCKED' ? 'var(--status-refused)' : row.state === 'PARTIAL' ? 'var(--status-conditional)' : 'var(--text-secondary)' }}>{MAPPING_STATE_LABEL[row.state]}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{row.here} <span style={{ color: 'var(--status-conditional)' }}>{row.hazard}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">The layer stack is the release ABI</span> {LAYER_CONVENTION.oneLayerPerRelease} {LAYER_CONVENTION.order} {LAYER_CONVENTION.correction}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Two clocks, two mechanisms</span> {AS_OF_COMPOSITION.knowledgeTime} {AS_OF_COMPOSITION.validTime} {AS_OF_COMPOSITION.refusal} {AS_OF_COMPOSITION.receipt}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }}><span className="label-sm">Uncertainty must reach the eye</span> {UNCERTAINTY_ENCODING.rule} {UNCERTAINTY_ENCODING.notThis} Nothing is decided yet.</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{USD_BOUNDARY.oneRow} {USD_BOUNDARY.notAVocabulary} {USD_BOUNDARY.separateFromTheGlobe}</p>
+
+        <h3 className="m-0 mt-2 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>The Earth as a complex, and the tier below the corpus</h3>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="manifold-tier">{PROJECTION_TIER.chain}. {PROJECTION_TIER.rule} {LEARNED_LAYER.neverAuthoritative}</p>
+        <ul className="m-0 p-0 list-none grid gap-1 sm:grid-cols-2" aria-label="The combinatorial structure">
+          {COMPLEX.map((part) => (
+            <li key={part.id} className="surface-inset p-2 text-[12px]" data-complex={part.id} data-complex-state={part.state}>
+              <span style={{ color: 'var(--text-heading)' }}>{part.title}</span> <span style={{ color: part.state === 'ABSENT' ? 'var(--status-refused)' : 'var(--status-conditional)' }}>{part.state === 'ABSENT' ? 'Absent' : 'Partly built'}</span>
+              <div style={{ color: 'var(--text-secondary)' }}>{part.here}</div>
+              <div style={{ color: 'var(--text-muted)' }}>Missing: {part.missing}</div>
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Why hyperbolic</span> {HYPERBOLIC.claim} {HYPERBOLIC.reading} <span style={{ color: 'var(--status-conditional)' }}>{HYPERBOLIC.hazard}</span> Here: {HYPERBOLIC.here}</p>
+        <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="What a learned manifold would get wrong">
+          {MANIFOLD_TRAPS.map((trap) => <li key={trap.id} data-manifold-trap={trap.id}>{trap.trap} <span style={{ color: 'var(--status-conditional)' }}>{trap.rule}</span></li>)}
+        </ul>
       </Section>
 
       <Section title="Verification tiers" id="pm-verification">

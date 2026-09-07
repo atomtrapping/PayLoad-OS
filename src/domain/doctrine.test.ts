@@ -40,10 +40,10 @@ describe('doctrine as data', () => {
   });
 
   it('states engine presence as the dependencies have it: CesiumJS installed for the Earth Twin, kepler.gl and Three.js absent, records over fixtures', () => {
-    expect(PROJECTION_ENGINES_IN_REPOSITORY.map((e) => [e.engine, e.presence])).toEqual([['kepler.gl', 'ABSENT'], ['CesiumJS', 'PRESENT'], ['Three.js', 'ABSENT'], ['records', 'FIXTURE']]);
+    expect(PROJECTION_ENGINES_IN_REPOSITORY.map((e) => [e.engine, e.presence])).toEqual([['kepler.gl', 'ABSENT'], ['CesiumJS', 'PRESENT'], ['Three.js', 'ABSENT'], ['OpenUSD', 'ABSENT'], ['records', 'FIXTURE']]);
     const pkg = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
     const installed = Object.keys(pkg.dependencies);
-    const packageOf = { 'kepler.gl': /kepler/, CesiumJS: /^cesium$/, 'Three.js': /^three$/ } as const;
+    const packageOf = { 'kepler.gl': /kepler/, CesiumJS: /^cesium$/, 'Three.js': /^three$/, OpenUSD: /^(usd-core|tinyusdz|@usd\/)/ } as const;
     for (const [engine, pattern] of Object.entries(packageOf)) {
       const present = PROJECTION_ENGINES_IN_REPOSITORY.find((e) => e.engine === engine)!.presence === 'PRESENT';
       expect(installed.some((dep) => pattern.test(dep)), `${engine} presence ${present ? 'PRESENT' : 'ABSENT'} must match package.json`).toBe(present);

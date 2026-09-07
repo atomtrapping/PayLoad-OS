@@ -96,6 +96,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 - [[Corpus feed API v1]] — `IMPLEMENTED · FIXTURE-BACKED` — Releases, records, manifests, as-of queries, retractions and rulings as JSON over the same payloads the screens use; the stream page shows the feed URL that reproduces every answer.
 - [[MCP server and tools]] — `IMPLEMENTED · STDIO` — Eight Model Context Protocol tools wrap the same payloads as the feed: list and get releases, manifests, records, as-of queries, retractions and rulings.
 - [[Earth Twin (CesiumJS)]] — `PRESENT · KEYLESS · OFFLINE` — A CesiumJS globe served from this origin with bundled imagery on the WGS84 ellipsoid, computed day and night at the twin's world time, and one point per geodetic position declared as a corpus record; the inspector names every layer's source and state.
+- [[Scene interchange and the learned tier]] — `ROUTED · NOTHING WRITTEN · NOTHING EMBEDDED` — OpenUSD as a scene target and never a store, the layer stack as the release ABI, and the learned hyperbolic manifold as the tier below the corpus.
 - [[Ruling projections and result manifests]] — `IMPLEMENTED · FIXTURE CASES` — The same case bundle projected for sponsor, internal reviewer, named counterparty or public; rulings commit to a result manifest with a commitment, evidence root and anchor, exported machine-readably with an API example.
 
 ### Application layer — the Payload OS workbench (Next.js)
@@ -189,6 +190,7 @@ flowchart TB
     feed["Corpus feed API v1"]
     mcp["MCP server and tools"]
     earth["Earth Twin (CesiumJS)"]
+    scenetier["Scene interchange and the learned tier"]
     workbenchproj["Ruling projections and result manifests"]
   end
   subgraph app["Application layer  the Payload OS workbench (Nextjs)"]
@@ -273,6 +275,9 @@ flowchart TB
   spatialkey -- "blocking key, never a resolution" --> spatialprog
   earth -- "the derivation beneath the globe" --> spatialkey
   spatialprog -- "imagery terms gate every derivation" --> rights
+  projspec -- "two more rows, one router" --> scenetier
+  scenetier -- "only admitted opinions compose" --> admission
+  spatialkey -- "the cells the complex nests" --> scenetier
   classDef absent fill:#7a1f1f,stroke:#e06666,color:#fff;
   class admission absent;
 ```

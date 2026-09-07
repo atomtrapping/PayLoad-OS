@@ -12,17 +12,18 @@ import { routeProjection, type ProjectionView } from '@/projection/spec';
 export type { ProjectionSpec, ProjectionView } from '@/projection/spec';
 export { routeProjection };
 
-export const PROJECTION_MODES = ['EVIDENCE', 'MAP', 'GLOBE', 'STRUCTURE'] as const satisfies readonly ProjectionView['mode'][];
-export const COORDINATE_SEMANTICS = ['NONE', 'GEODETIC', 'GRAPH_LAYOUT', 'INTRINSIC_PHYSICAL', 'FEATURE_SPACE', 'ARBITRARY_MODEL_SPACE'] as const satisfies readonly ProjectionView['coordinateSemantics'][];
-export const REPRESENTATIONS = ['RECORDS', 'POINT', 'DENSITY', 'GLOBAL_3D', 'GRAPH', 'MESH', 'FIELD'] as const satisfies readonly ProjectionView['representation'][];
+export const PROJECTION_MODES = ['EVIDENCE', 'MAP', 'GLOBE', 'STRUCTURE', 'SCENE'] as const satisfies readonly ProjectionView['mode'][];
+export const COORDINATE_SEMANTICS = ['NONE', 'GEODETIC', 'GRAPH_LAYOUT', 'INTRINSIC_PHYSICAL', 'FEATURE_SPACE', 'ARBITRARY_MODEL_SPACE', 'HYPERBOLIC'] as const satisfies readonly ProjectionView['coordinateSemantics'][];
+export const REPRESENTATIONS = ['RECORDS', 'POINT', 'DENSITY', 'GLOBAL_3D', 'GRAPH', 'MESH', 'FIELD', 'SCENE_GRAPH', 'MANIFOLD'] as const satisfies readonly ProjectionView['representation'][];
 
-export const PROJECTION_ENGINES = ['kepler.gl', 'CesiumJS', 'Three.js', 'records'] as const;
+export const PROJECTION_ENGINES = ['kepler.gl', 'CesiumJS', 'Three.js', 'OpenUSD', 'records'] as const;
 export type ProjectionEngine = (typeof PROJECTION_ENGINES)[number];
 
 export const ENGINE_ROLE: Record<ProjectionEngine, { question: string; role: string; runtime: string }> = {
   'kepler.gl': { question: 'Where is the pattern?', role: 'Analytical cartography over many geospatial observations: density, aggregation, flows, time filters.', runtime: 'Browser, deck.gl / WebGL' },
   CesiumJS: { question: 'Where does this exist, and how does it move through geographic space and time?', role: 'Geodetic realization on a WGS84 globe: terrain, imagery, 3D Tiles, trajectories.', runtime: 'Browser, WebGL' },
   'Three.js': { question: 'How is the system constituted, in whatever space it lives in?', role: 'Structural and computational geometry: meshes, fields, graphs, state spaces, Morpho.', runtime: 'Browser, WebGL / WebGPU' },
+  OpenUSD: { question: 'What does this look like as a scene another tool can open?', role: 'Interchange of an admitted release as a scene graph: prims on stable paths, quantities as time samples, declared relationships as USD relationships, one layer per release. A target, never a store — see src/domain/usdProjection.ts.', runtime: 'None here. A writer would run outside the browser; no USD library is installed.' },
   records: { question: 'What are the records?', role: 'Selected safe record payloads, the evidence view and the workbench default.', runtime: 'JSON, HTML' },
 };
 
@@ -40,6 +41,8 @@ export const PROJECTION_ROUTING: readonly ProjectionRoute[] = [
   { mode: 'MAP', coordinateSemantics: 'GEODETIC', representation: 'POINT', engine: 'kepler.gl', currentResult: 'READY', note: 'Declared positions of the selected records’ subjects (location.position records under the same gate); GEOMETRY_NOT_AVAILABLE when none resolves. No kepler.gl instance renders it.' },
   { mode: 'MAP', coordinateSemantics: 'GEODETIC', representation: 'DENSITY', engine: 'kepler.gl', currentResult: 'READY', note: 'The same declared positions; density is the engine’s to compute, and no engine is installed.' },
   { mode: 'GLOBE', coordinateSemantics: 'GEODETIC', representation: 'GLOBAL_3D', engine: 'CesiumJS', currentResult: 'READY', note: 'Declared positions of the selected records’ subjects, each with its own evidence class and source; GEOMETRY_NOT_AVAILABLE when none resolves. The Earth Twin at /earth draws them and shows the refusal for records without one.' },
+  { mode: 'SCENE', coordinateSemantics: 'INTRINSIC_PHYSICAL', representation: 'SCENE_GRAPH', engine: 'OpenUSD', currentResult: 'UNAVAILABLE', note: 'The interchange target: an admitted release composed as one USD layer, prims on stable paths from resolved identity, quantities as time samples. No writer exists and no fixture geometry does, so the compiler answers GEOMETRY_NOT_AVAILABLE. The mapping and its boundaries are data in src/domain/usdProjection.ts.' },
+  { mode: 'STRUCTURE', coordinateSemantics: 'HYPERBOLIC', representation: 'MANIFOLD', engine: 'Three.js', currentResult: 'UNAVAILABLE', note: 'The learned tier: a hyperbolic embedding of the containment hierarchy, drawn as a shell. It projects a computation over a release, not the release, so it never testifies and a region with no admitted record renders void. No model is trained and nothing is embedded; the structure and its traps are data in src/domain/earthComplex.ts.' },
   { mode: 'STRUCTURE', coordinateSemantics: 'INTRINSIC_PHYSICAL', representation: 'MESH', engine: 'Three.js', currentResult: 'UNAVAILABLE', note: 'No fixture geometry.' },
   { mode: 'STRUCTURE', coordinateSemantics: 'INTRINSIC_PHYSICAL', representation: 'FIELD', engine: 'Three.js', currentResult: 'UNAVAILABLE', note: 'No fixture geometry.' },
   { mode: 'STRUCTURE', coordinateSemantics: 'FEATURE_SPACE', representation: 'MESH', engine: 'Three.js', currentResult: 'UNAVAILABLE', note: 'No fixture geometry.' },

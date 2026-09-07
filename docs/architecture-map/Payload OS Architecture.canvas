@@ -679,6 +679,15 @@
    "y": 2072,
    "width": 340,
    "height": 230
+  },
+  {
+   "id": "00265400c4b95979",
+   "type": "text",
+   "text": "## Scene interchange and the learned tier\n`ROUTED · NOTHING WRITTEN · NOTHING EMBEDDED`\n\nUSD composition resolves opinions to one value; the corpus preserves disagreement — a strong output, an impossible store. The layer stack is the release ABI, and the learned manifold is the tier below the corpus where void renders void.\n\n[[Scene interchange and the learned tier]]",
+   "x": 416,
+   "y": 3150,
+   "width": 340,
+   "height": 230
   }
  ],
  "edges": [
@@ -1242,6 +1251,33 @@
    "toSide": "right",
    "toEnd": "arrow",
    "label": "imagery terms gate every derivation"
+  },
+  {
+   "id": "ea1a970c1d5c0f05",
+   "fromNode": "f8a888acca61118b",
+   "fromSide": "right",
+   "toNode": "00265400c4b95979",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "two more rows, one router"
+  },
+  {
+   "id": "d3db1b1ce0716ed7",
+   "fromNode": "00265400c4b95979",
+   "fromSide": "left",
+   "toNode": "f4a7b5533bc2614e",
+   "toSide": "right",
+   "toEnd": "arrow",
+   "label": "only admitted opinions compose"
+  },
+  {
+   "id": "69507f74038197eb",
+   "fromNode": "c9a1b38cb8cd6041",
+   "fromSide": "left",
+   "toNode": "00265400c4b95979",
+   "toSide": "right",
+   "toEnd": "arrow",
+   "label": "the cells the complex nests"
   }
  ]
 }

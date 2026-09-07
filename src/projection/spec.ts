@@ -8,9 +8,9 @@ export class ProjectionError extends Error {
 }
 
 export interface ProjectionView {
-  mode: 'EVIDENCE' | 'MAP' | 'GLOBE' | 'STRUCTURE';
-  coordinateSemantics: 'NONE' | 'GEODETIC' | 'GRAPH_LAYOUT' | 'INTRINSIC_PHYSICAL' | 'FEATURE_SPACE' | 'ARBITRARY_MODEL_SPACE';
-  representation: 'RECORDS' | 'POINT' | 'DENSITY' | 'GLOBAL_3D' | 'GRAPH' | 'MESH' | 'FIELD';
+  mode: 'EVIDENCE' | 'MAP' | 'GLOBE' | 'STRUCTURE' | 'SCENE';
+  coordinateSemantics: 'NONE' | 'GEODETIC' | 'GRAPH_LAYOUT' | 'INTRINSIC_PHYSICAL' | 'FEATURE_SPACE' | 'ARBITRARY_MODEL_SPACE' | 'HYPERBOLIC';
+  representation: 'RECORDS' | 'POINT' | 'DENSITY' | 'GLOBAL_3D' | 'GRAPH' | 'MESH' | 'FIELD' | 'SCENE_GRAPH' | 'MANIFOLD';
 }
 
 export interface ProjectionSpec {
@@ -33,10 +33,16 @@ function hash(value: unknown): string {
 }
 
 /** Routing declares the instrument; it neither executes a renderer nor asserts geometry exists. */
-export function routeProjection(view: ProjectionView): 'records' | 'kepler.gl' | 'CesiumJS' | 'Three.js' {
+export function routeProjection(view: ProjectionView): 'records' | 'kepler.gl' | 'CesiumJS' | 'Three.js' | 'OpenUSD' {
   if (view.mode === 'EVIDENCE' && view.coordinateSemantics === 'NONE' && view.representation === 'RECORDS') return 'records';
   if (view.mode === 'MAP' && view.coordinateSemantics === 'GEODETIC' && ['POINT', 'DENSITY'].includes(view.representation)) return 'kepler.gl';
   if (view.mode === 'GLOBE' && view.coordinateSemantics === 'GEODETIC' && view.representation === 'GLOBAL_3D') return 'CesiumJS';
+  // A scene is an interchange target, not a renderer: one stage of prims over the
+  // admitted records, in the stage's own physical units. It is never a store.
+  if (view.mode === 'SCENE' && view.coordinateSemantics === 'INTRINSIC_PHYSICAL' && view.representation === 'SCENE_GRAPH') return 'OpenUSD';
+  // A learned embedding is a projection of a projection: the corpus is not in a
+  // Poincaré ball, a computation over one release put a belief about it there.
+  if (view.mode === 'STRUCTURE' && view.coordinateSemantics === 'HYPERBOLIC' && view.representation === 'MANIFOLD') return 'Three.js';
   if (view.mode === 'STRUCTURE' && ((view.coordinateSemantics === 'GRAPH_LAYOUT' && view.representation === 'GRAPH') ||
       (['INTRINSIC_PHYSICAL', 'FEATURE_SPACE', 'ARBITRARY_MODEL_SPACE'].includes(view.coordinateSemantics) && ['MESH', 'FIELD'].includes(view.representation)))) return 'Three.js';
   throw new ProjectionError('INVALID_PROJECTION_SPEC', 'The mode, coordinate semantics and representation are incompatible.');

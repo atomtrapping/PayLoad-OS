@@ -48,10 +48,94 @@ These engine names describe assigned architectural roles. Routing does not load 
 | `MAP` | `GEODETIC` | `POINT` or `DENSITY` | `kepler.gl` | `READY` with `geometry.positions` when a selected record's subject has a declared position; otherwise `UNAVAILABLE` |
 | `GLOBE` | `GEODETIC` | `GLOBAL_3D` | `CesiumJS` | `READY` with `geometry.positions` when a selected record's subject has a declared position; otherwise `UNAVAILABLE`. Drawn by the [Earth Twin](EARTH_TWIN.md) |
 | `STRUCTURE` | `INTRINSIC_PHYSICAL`, `FEATURE_SPACE` or `ARBITRARY_MODEL_SPACE` | `MESH` or `FIELD` | `Three.js` | `UNAVAILABLE`: no fixture geometry |
+| `SCENE` | `INTRINSIC_PHYSICAL` | `SCENE_GRAPH` | `OpenUSD` | `UNAVAILABLE`: no writer, no library, no fixture geometry. The interchange target — see below |
+| `STRUCTURE` | `HYPERBOLIC` | `MANIFOLD` | `Three.js` | `UNAVAILABLE`: nothing is embedded. The learned tier — see below |
 
 All other combinations are rejected. In particular, the current graph mode is expressed as `STRUCTURE / GRAPH_LAYOUT / GRAPH`, not as a separately implemented GRAPH screen.
 
-kepler.gl is assigned analytical geospatial patterns, CesiumJS geographic-world realization, and Three.js intrinsic or computational structure. None is a separate information system. `GEODETIC` is not interchangeable with graph layout, feature-space coordinates or arbitrary model space. Missing coordinates stay absent; the compiler invents no latitude/longitude, mesh, field or spatial transform.
+kepler.gl is assigned analytical geospatial patterns, CesiumJS geographic-world realization, Three.js intrinsic or computational structure, and OpenUSD scene interchange. None is a separate information system. `GEODETIC` is not interchangeable with graph layout, feature-space coordinates or arbitrary model space. Missing coordinates stay absent; the compiler invents no latitude/longitude, mesh, field or spatial transform.
+
+## OpenUSD: a target, never a store
+
+USD's composition model is this architecture's photographic negative. Layers
+carry opinions, composition resolves them to a single value, the strongest
+opinion wins and the renderer receives one coherent world. The corpus refuses
+exactly that: disagreement is preserved, a belief can be multi-valued, and
+supersession is a recorded event. **A corpus stored as USD would collapse the
+disagreement layer without saying so** — the screen implying what the corpus does
+not assert.
+
+As an output it is a strong choice, because the layer stack embodies the release
+ABI.
+
+| Corpus | USD | State here |
+|---|---|---|
+| Entity, identity-resolved | Prim on a stable path | Partial — a path per subject is mintable; a path per *resolved entity* needs resolution, which is absent |
+| Measured quantity over a validity interval | Time-sampled attribute | Available — the interpolation mode is part of the mapping, not a renderer preference |
+| Declared relationship | USD relationship | Partial — one evidence-bearing predicate exists |
+| Corpus release | Layer in the sublayer stack | Available — release order is the only thing that may set layer strength |
+| As-of query | Sublayer stack truncated at that release | Available — and it answers **knowledge time only** |
+| Admitted state only | Only admitted opinions compose | **Blocked** — no admission authority, so a stage today would be empty by its own rule |
+| Uncertainty, provenance, rights, visibility | Custom metadata | **Blocked** — USD has no native concept, and metadata is droppable |
+
+Two clocks, two mechanisms, and they must not be conflated: truncating the
+sublayer stack reproduces knowledge time; valid time lives in the time samples
+inside a layer. A scene that used layer order for both would answer the wrong
+question convincingly. A valid instant outside every sample's interval is a
+refusal, not the nearest sample.
+
+**Uncertainty has to reach the eye.** A crisp scene asserts, visually, that the
+geometry is known, while the corpus may hold an estimate with metres of stated
+uncertainty. The rule is that no prim is emitted without its uncertainty
+encoding, and a stage that cannot carry the encoding refuses the prim rather
+than emitting a confident one. Putting the uncertainty in a metadata field only
+does not count: metadata does not reach the eye, and the eye is what a scene is
+for. No encoding is decided yet.
+
+OpenUSD enters as one row in the routing table with a defined role — not a new
+architecture, not a second corpus, and not a new vocabulary for corpus concepts.
+The Earth Twin and a USD stage are two projections of one spec, not one thing to
+be merged. The mapping, the conventions and the blockers are data in
+`src/domain/usdProjection.ts`, held by `src/domain/usdProjection.test.ts`.
+
+## The Earth as a complex, and the tier below the corpus
+
+The chain is **corpus → learned manifold → render**. Each arrow loses authority
+and none of them gains it: the corpus admits, the manifold derives, the render
+shows, and a refusal at any tier is carried forward rather than resolved by the
+next one.
+
+The combinatorial half is cheap and partly built. Nested partitions as cells,
+containment as the structure, boundary operators moving a signal between levels
+— and a geohash is already a nested partition whose prefix truncation *is* the
+upward boundary operator. What is missing is the administrative hierarchy anyone
+actually asks questions in, which needs boundaries as corpus objects, and any
+signal carried on the cells at all.
+
+The learned half is a projection. Hierarchy-dominant data is genuinely
+hyperbolic — a containment tree embeds in a Poincaré ball with far lower
+distortion than Euclidean space permits, depth becoming radius and siblings
+diverging angularly — so the instinct is sound. But an embedding is a compute run
+over one release, and by the fourth rule of doctrine a computation produces
+derived objects, not truth. It does not testify.
+
+Three traps, each with the rule that defuses it:
+
+- **Continuous fabrication.** A smooth manifold has a value at every point,
+  whether or not any admitted record backs it. *Void renders void*, and every
+  rendered value is attributable to the release that produced it.
+- **Bias as geography.** Learned geometry can encode model bias as a claim about
+  the world. Distortion against declared geography is audited and reported as a
+  disagreement; where they disagree, the declared position wins.
+- **Not bitemporal.** A model frozen at training time cannot be corrected, only
+  go stale while continuing to answer. The binding is the pair (model version,
+  corpus release), and a retraction against that release invalidates the
+  manifold rather than correcting it.
+
+A learned layer over one carrier is a curve fit. The value of a manifold scales
+with the corpus it embeds, so the combinatorial structure comes first and the
+embedding waits on volume and on the identity layer. `src/domain/earthComplex.ts`
+carries this as data.
 
 ## Exercise the preview
 

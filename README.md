@@ -169,6 +169,15 @@ does not have.
   refusal is about admissibility and not about truth. The rules arrived one at a
   time from unrelated problems, which is the argument for treating the shape as a
   rule rather than a preference.
+- **The settlement bridge** — the corpus says what is true and what it has since
+  had to unsay; a ledger says what was irrevocably done about it. Keccak-256 and
+  EIP-712 written out rather than imported, checked against the canonical vectors
+  and the specification's own worked example; a receipt built from a real ruling
+  that carries the admission standing, the terminal state, the clock provenance
+  and the measured basis for its declared window; and a contract that refuses
+  everything it cannot check — including every receipt this system can build
+  today, all of which are stamped DEMONSTRATION.
+  [`docs/SETTLEMENT_BRIDGE.md`](docs/SETTLEMENT_BRIDGE.md)
 - **What the additions cost** — one bullet per capability is not an inventory of
   what works. The preconditions each one waits on are declared, probed against
   the records where the corpus can decide them, and the fit is derived rather
@@ -351,6 +360,7 @@ src/mcp         MCP tools over the same feed payloads, and the stdio server
 src/domain/informationProduct.ts  the first information product as data, held to the corpus by its test: every field exists, every released record meets the stated evidence requirement, the customer question is answerable through the feed at two knowledge times
 src/domain/deliveredRecord.ts     the ten questions a delivered record answers, mapped to payload fields; its test holds every record the feed delivers to all ten
 src/domain/doctrine.ts   the architecture carried forward as data: five fabrics, three states of information, seven rules with where each is enforced and which tests prove it, verification tiers (docs/ARCHITECTURE.md is the prose; /model renders it)
+src/chain          keccak256, EIP-712 and the adjudication receipt: the digest a settlement contract verifies, built from a real ruling; contracts/ holds the escrow (docs/SETTLEMENT_BRIDGE.md)
 src/domain/negativeStates.ts  the kinds of no, kept apart: seven named rules, each with the fabrication its collapse produces and the module that enforces it
 src/domain/collateralVehicle.ts  hold, monitor, adjudicate, release: the condition evaluator that never holds the collateral, never warrants the outcome and never un-fires a release; the restatement exposure measured and refused as a rate (docs/CONDITIONAL_CUSTODY.md)
 src/domain/accommodation.ts  what each capability waits on, with the corpus probing every precondition it can decide; the fit is derived and never declared (docs/ACCOMMODATION.md)

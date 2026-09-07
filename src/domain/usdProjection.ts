@@ -198,3 +198,62 @@ export function usdReadiness(corpus: Corpus): UsdReadiness {
     statement: `The corpus could offer a writer ${new Set(records.map((r) => r.subjectCanonicalId)).size} prims over ${corpus.releases.length} layers, and it will not: ${blockers.length} things must exist first, beginning with an admission authority, because only admitted opinions may compose.`,
   };
 }
+
+/* ── Composition is adjudication ── */
+
+/**
+ * The recognition that changes what this target is.
+ *
+ * A USD opinion is a claim by a layer about a prim's attribute. Sources make
+ * claims about entities. Composition is an ordered, declared resolution of
+ * conflicting opinions — which is an adjudication policy, and this system has
+ * one too. The mechanism is the same; only the default differs. USD resolves
+ * silently to the strongest opinion; this corpus preserves the disagreement and
+ * requires a ruling.
+ *
+ * That is why the refusals written for this target read as USD-native rather
+ * than as external constraints imposed on it: they are this system's
+ * adjudication policy expressed in the medium's own grammar.
+ *
+ * The consequence is a promotion in role, not in authority. The scene grammar
+ * becomes the external interface to the deployed object world; the observation
+ * contract remains the internal one; and the compiler between them is still one
+ * row in the routing table. USD does not become the store, and nothing about
+ * the carrier-versus-authority line moves.
+ */
+export const COMPOSITION_IS_ADJUDICATION = {
+  recognition: 'USD composes many opinions about one addressable object into one answer, under a declared, ordered policy. That is adjudication, and both systems solve the same problem: many claims, one addressable state.',
+  differenceIsPolicy: 'USD resolves forward and silently to the strongest opinion. This corpus preserves the disagreement, keeps beliefs multi-valued and requires a ruling to settle one — the same mechanism under a different default.',
+  soTheRefusals: 'The refusals this target carries — authored intervals rather than interpolation, a boundary revision as a new layer, no prim without its uncertainty encoding — are this system’s policy stated in the medium’s grammar, not restrictions bolted onto it.',
+  role: 'EXTERNAL_ABI' as const,
+  notThis: 'A storage format, a second corpus, or a source of authority. The promotion is in role: the scene grammar is how this system speaks to other machines, and the observation contract is still how it speaks to itself.',
+} as const;
+
+/**
+ * The interop vocabulary, as data. If the scene grammar is the external
+ * interface then this table is the only place the two vocabularies meet, and it
+ * belongs in the registry rather than in prose scattered across producers.
+ */
+export interface VocabularyPair {
+  theirs: string;
+  ours: string;
+  why: string;
+}
+
+export const INTEROP_VOCABULARY: readonly VocabularyPair[] = [
+  { theirs: 'Prim on a stable path', ours: 'Entity in the identity space', why: 'Both are addressable and versioned rather than re-created, so a path and a canonical identity carry the same promise and break the same way.' },
+  { theirs: 'Opinion', ours: 'Observation with an evidence class', why: 'A claim by one layer about one attribute is a claim by one source about one quantity. Several opinions on one attribute is the disagreement layer, structurally.' },
+  { theirs: 'Layer in the sublayer stack', ours: 'Corpus release', why: 'Ordered, digestible and immutable once published; layer strength is release order and may be nothing else.' },
+  { theirs: 'Composition', ours: 'Adjudication policy', why: 'An ordered resolution of conflicting claims. The same mechanism under a different default, which is the whole of the correspondence.' },
+  { theirs: 'Time samples', ours: 'Valid-time observations', why: 'A value that holds over an interval, with the interpolation question settled by the corpus rather than by a renderer.' },
+  { theirs: 'Sublayer truncation', ours: 'Knowledge-time cutoff', why: 'Answering as of a release is composing the stack up to that layer and no further.' },
+  { theirs: 'References and payloads', ours: 'Cross-line joins through identity', why: 'A typed pointer resolved through an identity rather than through a name.' },
+  { theirs: 'Variants', ours: 'Alternative configurations of one subject', why: 'Named alternatives over one addressable thing, which is where a configuration quotient would sit if one existed.' },
+  { theirs: 'Custom-data namespace', ours: 'Provenance, receipts and the manifest', why: 'The extension a host may ignore and a holder of the specification may reconstruct — the carrier property, inside the scene.' },
+];
+
+export const VOCABULARY_HOME = {
+  rule: 'This table is the canonical mapping and the only place the two vocabularies meet. Every producer that emits into the scene grammar reads it here rather than restating a mapping of its own.',
+  why: 'Two palettes for one concept is how a vocabulary collision starts, and an interop grammar with several private mappings is the same failure wearing a standard’s name.',
+  standardsParticipation: 'Whether to offer these extensions to the body stewarding the grammar is a decision for the operator, and none is made or implied here. What is recorded is only that the extensions an enterprise provenance layer needs are the ones this system already had to write.',
+} as const;

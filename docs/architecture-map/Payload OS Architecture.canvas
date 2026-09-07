@@ -706,6 +706,24 @@
    "y": 994,
    "width": 340,
    "height": 230
+  },
+  {
+   "id": "1e5337a7b82b9a09",
+   "type": "text",
+   "text": "## Vessel state and the port set\n`TYPED · NOTHING ACQUIRED · NOTHING ADJUDICATED`\n\nThe vessel is the state the other four families were defined around, and a port is a time-indexed set whose membership is adjudicated. Dispatch is a prior, not an observation.\n\n[[Vessel state and the port set]]",
+   "x": 416,
+   "y": 1666,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "c2bd7f04993e3633",
+   "type": "text",
+   "text": "## The computation carrier and congruence\n`DOCTRINE · TWO OF FOUR · NOTHING EXPORTED`\n\nThe punch card, not the proof: credibility lives in the estate and the rulings, and the carrier only carries it. A manifest mirrors the model, which means it mirrors the model's errors.\n\n[[The computation carrier and congruence]]",
+   "x": 2124,
+   "y": 994,
+   "width": 340,
+   "height": 230
   }
  ],
  "edges": [
@@ -1350,6 +1368,33 @@
    "toSide": "right",
    "toEnd": "arrow",
    "label": "the contract change detection needs"
+  },
+  {
+   "id": "f546d44883f60375",
+   "fromNode": "93c0e38808bad8d3",
+   "fromSide": "right",
+   "toNode": "1e5337a7b82b9a09",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "the families that observe it"
+  },
+  {
+   "id": "fe75560f8293d7b7",
+   "fromNode": "1e5337a7b82b9a09",
+   "fromSide": "right",
+   "toNode": "05e0ead83a506ff1",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "every set operation needs resolution"
+  },
+  {
+   "id": "ff8c03eb011bec62",
+   "fromNode": "c2bd7f04993e3633",
+   "fromSide": "bottom",
+   "toNode": "00265400c4b95979",
+   "toSide": "top",
+   "toEnd": "arrow",
+   "label": "promotes the role, not the authority"
   }
  ]
 }

@@ -11,6 +11,11 @@ import { CONSTRAINT_IS_AN_OBSERVATION, ENFORCEMENT_METHODS, HARDNESS_RULE, HARVE
 import { ATTRIBUTED_ABSENCE, CONCEPT_MAPPING, REANALYSIS_IS_A_WITNESS, SENSOR_FAMILIES, TWO_CONVERGENCES, VERTICAL_DATUM_TRAP, WEATHER_ROLE } from '@/domain/sensorFamilies';
 import { FACTOR_KINDS, DISAGREEMENT_IS_REPRESENTABLE, REPRODUCIBILITY, SOLVER_ADOPTION, SOLVER_NEVER_DECIDES, THE_JOINT } from '@/domain/factorGraph';
 import { FILTER_TIERS, FRAME_RISKS, REFERENCE_CHANNEL, VERDICTS_ARE_THE_ESTATE } from '@/domain/invariantScoring';
+import { CLOSURE_IS_THE_MEASUREMENT, VESSEL_CHANNELS, VESSEL_JOINS, VESSEL_STATE } from '@/domain/vessel';
+import { MEMBERSHIP_IS_A_RULING, SET_OBJECTS, SET_PRODUCTS } from '@/domain/portSet';
+import { AUTHORITY_DIRECTION, CARD_PROPERTIES, CONGRUENCE, FROZEN_SIDE, GENERAL_PROVING, MIRRORS_THE_MODEL, NOT_CREDIBILITY } from '@/domain/computationCarrier';
+import { COMPOSITION_IS_ADJUDICATION, INTEROP_VOCABULARY } from '@/domain/usdProjection';
+import { CORRESPONDENCES, FIT_DEPTH_LABEL, MANDATE_INVERSION } from '@/domain/actuarial';
 import { Section } from '@/components/primitives/Section';
 
 export const metadata: Metadata = { title: 'Operating model' };
@@ -451,6 +456,98 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           ))}
         </ul>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="reference-firewall"><span className="label-sm">The reference channel</span> {REFERENCE_CHANNEL.role} {REFERENCE_CHANNEL.firewall} {REFERENCE_CHANNEL.posture} Here: {REFERENCE_CHANNEL.here} ({REFERENCE_CHANNEL.hereTier.tier} {REFERENCE_CHANNEL.hereTier.name}, not reached.)</p>
+      </Section>
+
+      <Section title="Caravan: the vessel is the state, the port is a set" id="pm-maritime">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>The vessel is not a fifth source: meteorology drives it, imagery and ranging see it, dispatch commands it, and until now the state space had no object at that centre. Nothing is acquired — no position feed, no imagery, no port-call record, no charter.</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="Channels that observe a vessel, and the one that does not">
+            <thead><tr><th scope="col">Channel</th><th scope="col">Kind</th><th scope="col">What it fixes</th><th scope="col">How it fails</th></tr></thead>
+            <tbody>
+              {VESSEL_CHANNELS.map((c) => (
+                <tr key={c.id} data-vessel-channel={c.id} data-channel-kind={c.kind}>
+                  <td style={{ color: 'var(--text-heading)' }}>{c.title}</td>
+                  <td style={{ color: c.kind === 'PRIOR' ? 'var(--status-conditional)' : 'var(--text-secondary)' }}>{c.kind === 'PRIOR' ? 'Prior, not an observation' : 'Observation'}</td>
+                  <td>{c.fixes}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{c.failureMode}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>State the corpus can carry today: {VESSEL_STATE.filter((c) => c.carried).map((c) => c.id).join(', ')}. Absent: {VESSEL_STATE.filter((c) => !c.carried).map((c) => c.id).join(', ')}.</p>
+        <ul className="m-0 p-0 list-none grid gap-1 sm:grid-cols-2" aria-label="The five joins">
+          {VESSEL_JOINS.map((j) => (
+            <li key={j.id} className="surface-inset p-2 text-[12px]" data-vessel-join={j.id}>
+              <span style={{ color: 'var(--text-heading)' }}>{j.with}</span>
+              <div style={{ color: 'var(--text-secondary)' }}>{j.operation}</div>
+              <div style={{ color: 'var(--status-conditional)' }}>{j.hazard}</div>
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="closure-measurement">{CLOSURE_IS_THE_MEASUREMENT.what} {CLOSURE_IS_THE_MEASUREMENT.whyItIsTheMoat} Here: {CLOSURE_IS_THE_MEASUREMENT.here}</p>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="membership-ruling">{MEMBERSHIP_IS_A_RULING.claim} {MEMBERSHIP_IS_A_RULING.supersession} {MEMBERSHIP_IS_A_RULING.bothClocks}</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="Set-level objects and what each prices">
+            <thead><tr><th scope="col">Set object</th><th scope="col">What it prices</th><th scope="col">As a state</th></tr></thead>
+            <tbody>
+              {SET_OBJECTS.map((o) => (
+                <tr key={o.id} data-set-object={o.id}>
+                  <td style={{ color: 'var(--text-heading)' }}>{o.title}</td><td>{o.prices}</td><td style={{ color: 'var(--text-muted)' }}>{o.asAState}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{SET_PRODUCTS.differentiator} {SET_PRODUCTS.notThis} {SET_PRODUCTS.archiveGated}</p>
+      </Section>
+
+      <Section title="The carrier: a punch card, not a proof" id="pm-carrier">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="not-credibility">{NOT_CREDIBILITY.whereCredibilityLives} {NOT_CREDIBILITY.soThen} {GENERAL_PROVING.what} is <span style={{ color: 'var(--status-refused)' }}>refused</span>: {GENERAL_PROVING.reasons.join(' ')}</p>
+        <ul className="m-0 p-0 list-none grid gap-1 sm:grid-cols-2" aria-label="What makes a card a card">
+          {CARD_PROPERTIES.map((p) => (
+            <li key={p.id} className="surface-inset p-2 text-[12px]" data-card-property={p.id} data-card-present={String(p.present)}>
+              <span style={{ color: 'var(--text-heading)' }}>{p.title}</span> <span style={{ color: p.present ? 'var(--check-passed)' : 'var(--status-refused)' }}>{p.present ? 'Present' : 'Absent'}</span>
+              <div style={{ color: 'var(--text-secondary)' }}>{p.what}</div>
+              <div style={{ color: 'var(--text-muted)' }}>{p.here}</div>
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Congruence</span> {CONGRUENCE.claim} {CONGRUENCE.unification} {FROZEN_SIDE.payoff} {FROZEN_SIDE.butStill}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }} data-testid="mirrors-the-model">{MIRRORS_THE_MODEL.limit} {MIRRORS_THE_MODEL.danger} {MIRRORS_THE_MODEL.therefore}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="authority-direction"><span className="label-sm">Interoperation</span> {AUTHORITY_DIRECTION.rightWay} {AUTHORITY_DIRECTION.residualIs} {AUTHORITY_DIRECTION.therefore}</p>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="composition-adjudication">{COMPOSITION_IS_ADJUDICATION.recognition} {COMPOSITION_IS_ADJUDICATION.differenceIsPolicy} {COMPOSITION_IS_ADJUDICATION.notThis}</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="The interop vocabulary, canonical">
+            <thead><tr><th scope="col">Scene grammar</th><th scope="col">Here</th><th scope="col">Why the pairing holds</th></tr></thead>
+            <tbody>
+              {INTEROP_VOCABULARY.map((pair) => (
+                <tr key={pair.ours} data-vocabulary-pair={pair.ours}>
+                  <td className="mono">{pair.theirs}</td><td style={{ color: 'var(--text-heading)' }}>{pair.ours}</td><td style={{ color: 'var(--text-muted)' }}>{pair.why}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section title="Where the doctrine is already someone's obligation" id="pm-actuarial">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="mandate-inversion">{MANDATE_INVERSION.claim} {MANDATE_INVERSION.because} {MANDATE_INVERSION.restraint}</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="The actuarial correspondence">
+            <thead><tr><th scope="col">Here</th><th scope="col">Theirs</th><th scope="col">Depth</th><th scope="col">Here, actually</th></tr></thead>
+            <tbody>
+              {CORRESPONDENCES.map((c) => (
+                <tr key={c.ours} data-correspondence={c.depth}>
+                  <td style={{ color: 'var(--text-heading)' }}>{c.ours}</td>
+                  <td>{c.theirs}</td>
+                  <td style={{ color: c.depth === 'IDENTICAL' ? 'var(--check-passed)' : c.depth === 'ADJACENT' ? 'var(--status-conditional)' : 'var(--text-secondary)' }}>{FIT_DEPTH_LABEL[c.depth]}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{c.here}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Section>
 
       <Section title="Verification tiers" id="pm-verification">

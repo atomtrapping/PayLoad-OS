@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { PROJECTION_ROUTING, routeFor, routeProjection } from './projection';
 import {
-  AS_OF_COMPOSITION, LAYER_CONVENTION, MAPPING_STATE_LABEL, UNCERTAINTY_ENCODING,
-  USD_BOUNDARY, USD_MAPPING, USD_ROLE, usdReadiness,
+  AS_OF_COMPOSITION, COMPOSITION_IS_ADJUDICATION, INTEROP_VOCABULARY, LAYER_CONVENTION,
+  MAPPING_STATE_LABEL, UNCERTAINTY_ENCODING, USD_BOUNDARY, USD_MAPPING, USD_ROLE,
+  VOCABULARY_HOME, usdReadiness,
 } from './usdProjection';
 
 describe('OpenUSD is a target and not a store', () => {
@@ -106,5 +107,33 @@ describe('what a writer would find in the corpus today', () => {
     expect(readiness.blockers.length).toBeGreaterThan(3);
     expect(readiness.blockers.join(' ')).toMatch(/No admission authority/);
     expect(readiness.statement).toMatch(/only admitted opinions may compose/);
+  });
+});
+
+describe('composition is adjudication, which promotes the role and not the authority', () => {
+  it('names the same mechanism under a different default', () => {
+    expect(COMPOSITION_IS_ADJUDICATION.recognition).toMatch(/many claims, one addressable state/);
+    expect(COMPOSITION_IS_ADJUDICATION.differenceIsPolicy).toMatch(/same mechanism under a different default/);
+    // The refusals are this system's policy in their grammar, not constraints bolted on.
+    expect(COMPOSITION_IS_ADJUDICATION.soTheRefusals).toMatch(/not restrictions bolted onto it/);
+  });
+
+  it('promotes the role to an external interface and leaves the store where it was', () => {
+    expect(COMPOSITION_IS_ADJUDICATION.role).toBe('EXTERNAL_ABI');
+    expect(COMPOSITION_IS_ADJUDICATION.notThis).toMatch(/storage format/);
+    // The store decision is unchanged by the promotion.
+    expect(USD_ROLE.asStore).toBe('REJECTED');
+    expect(USD_BOUNDARY.oneRow).toMatch(/one row in the routing table/);
+  });
+
+  it('keeps the mapping in one place, so a shared grammar does not grow private ones', () => {
+    expect(INTEROP_VOCABULARY.length).toBeGreaterThan(7);
+    for (const pair of INTEROP_VOCABULARY) expect(pair.why.trim().length).toBeGreaterThan(40);
+    expect(new Set(INTEROP_VOCABULARY.map((p) => p.ours)).size).toBe(INTEROP_VOCABULARY.length);
+    const composition = INTEROP_VOCABULARY.find((p) => p.theirs === 'Composition')!;
+    expect(composition.ours).toBe('Adjudication policy');
+    expect(VOCABULARY_HOME.why).toMatch(/Two palettes for one concept/);
+    // Standards participation is the operator's call, and this does not make it.
+    expect(VOCABULARY_HOME.standardsParticipation).toMatch(/none is made or implied here/);
   });
 });

@@ -38,6 +38,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 
 - [[Five fabrics and the architectural cycle]] — `DOCTRINE AS DATA` — Acquire → Preserve evidence → Compile corpus → Establish state → Project → Compute → Investigate → Act → Observe.
 - [[Seven doctrine rules and their enforcement]] — `BOUND · TESTED` — Evidence is not state; canonical state is not the entire corpus; inquiry is allowed to be wrong; computation produces derived objects; projection never mutates its source; identity survives representation; every promoted result crosses an explicit validation boundary.
+- [[The computation carrier and congruence]] — `DOCTRINE · TWO OF FOUR CARD PROPERTIES · NOTHING EXPORTED` — The punch card rather than the proof, the archival test, congruence as the name for three mechanisms already here, and the direction of authority in interoperation.
 - [[Semantic separations kept in every surface]] — `HOUSE VOCABULARY` — Evidence ≠ assertion.
 - [[Verification tiers V0–V5]] — `V0, V1 REACHED` — V0 provenance and V1 deterministic reproducibility are reached.
 
@@ -72,6 +73,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 - [[Corpus object model]] — `THE PRODUCT · FIXTURE-BACKED` — Releases with knowledge cutoffs and build records; records with stable `notation://` identity, subject, predicate, value, unit, basis, uncertainty bounds, validity bounds, two clocks, evidence class and provenance; retractions; rights schedules; governance.
 - [[Correction and recall machinery]] — `MODELLED · LEDGER SPECIFIED AND EMPTY` — For one retraction, which derived artifacts a corrected fact taints, and which cannot be decided.
 - [[Identity core and cross-line join]] — `MODELLED · JOIN ABSENT` — One identity core, three per-line identifier families, and the absent cross-line join with what it needs.
+- [[Vessel state and the port set]] — `TYPED · NOTHING ACQUIRED · NOTHING ADJUDICATED` — The vessel as state rather than feed, dispatch typed as a prior, and the port as a time-indexed set whose membership is a ruling with both clocks.
 - [[Certified release manifest and production record]] — `COMMITTED · UNSIGNED` — Each release carries a manifest (build, release digest, record count, retractions applied, sources with rights, certification, governance) whose commitment is the digest of its canonical JSON, and a production record across the twelve stages.
 - [[Information products]] — `SPECIFIED · FIXTURE-COVERED` — The first information product: a customer question, subjects, fields with evidence requirements and the corpus's coverage of them, freshness by release, permitted uses, correction as the same question at two knowledge times, and the delivered-record contract.
 
@@ -138,6 +140,7 @@ flowchart TB
     fabrics["Five fabrics and the architectural cycle"]
     rules["Seven doctrine rules and their enforcement"]
     separations["Semantic separations kept in every surface"]
+    carrier["The computation carrier and congruence"]
     tiers["Verification tiers V0V5"]
   end
   subgraph runtime["Runtimes, local stores and verification"]
@@ -169,6 +172,7 @@ flowchart TB
     candidates["Candidate builds and comparison"]
     corpusmodel["Corpus object model"]
     manifest["Certified release manifest and production record"]
+    maritime["Vessel state and the port set"]
     infoproducts["Information products"]
   end
   subgraph state["State Fabric  validation, admission and canonical versions"]
@@ -287,6 +291,8 @@ flowchart TB
   families -- "imagery terms are the strictest" --> rights
   families -- "the same discipline, spatial family" --> normalization
   spatialprog -- "the contract change detection needs" --> families
+  families -- "the families that observe it" --> maritime
+  carrier -- "promotes the role, not the authority" --> scenetier
   classDef absent fill:#7a1f1f,stroke:#e06666,color:#fff;
   class admission absent;
 ```

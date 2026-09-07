@@ -121,6 +121,22 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.getByTestId('weather-role')).toContainText('gates the sensors');
   await expect(page.getByTestId('vertical-datum')).toContainText('not yet reachable');
   await expect(page.locator('[data-mapping-stage]')).toHaveCount(4);
+  // Caravan: five channels, and the one that is a prior rather than an observation.
+  await expect(page.locator('[data-vessel-channel]')).toHaveCount(5);
+  await expect(page.locator('[data-vessel-channel="DISPATCH"][data-channel-kind="PRIOR"]')).toContainText('most common error in this domain');
+  await expect(page.getByTestId('closure-measurement')).toContainText('aggregators already sell');
+  await expect(page.getByTestId('membership-ruling')).toContainText('correction on the set');
+  await expect(page.locator('[data-set-object]')).toHaveCount(6);
+  // The carrier: two of four card properties, general proving refused, the model mirrored and not the world.
+  await expect(page.getByTestId('not-credibility')).toContainText('estate');
+  await expect(page.locator('[data-card-property][data-card-present="false"]')).toHaveCount(2);
+  await expect(page.getByTestId('mirrors-the-model')).toContainText('Two congruences, two guardians');
+  await expect(page.getByTestId('authority-direction')).toContainText('Never a silent overwrite');
+  await expect(page.getByTestId('composition-adjudication')).toContainText('many claims, one addressable state');
+  await expect(page.locator('[data-vocabulary-pair="Adjudication policy"]')).toHaveCount(1);
+  // The actuarial mapping: three correspondences are the same object under two names.
+  await expect(page.locator('[data-correspondence="IDENTICAL"]')).toHaveCount(3);
+  await expect(page.getByTestId('mandate-inversion')).toContainText('inventing a professional duty');
   await expect(page.locator('[data-engine="records"][data-presence="FIXTURE"]')).toHaveCount(1);
   await expect(page.locator('[data-tier][data-reached="true"]')).toHaveCount(2);
   // Storage is declared as candidates with an honest present state: six classes, none held by a running service.

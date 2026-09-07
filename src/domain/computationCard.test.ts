@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARD_LOSS, CARD_METHOD, DIVERGENCE_MEANING, GRADE_MEANING, cardGrade, divergenceOf, gradeAll, type ComputationArtifact } from './computationCard';
+import { CARD_LOSS, CARD_METHOD, DIVERGENCE_MEANING, GRADE_MEANING, cardGrade, divergenceOf, gradeAll, lineageGrade, type ComputationArtifact } from './computationCard';
 
 const D1 = 'a'.repeat(64), D2 = 'b'.repeat(64), OUT = 'c'.repeat(64);
 
@@ -118,5 +118,32 @@ describe('what a frozen artifact can and cannot isolate', () => {
     expect(silent.divergence).toBe('NONE');
     expect(silent.because).toMatch(/No fresh evidence was offered, so nothing is claimed about the world/);
     expect(divergenceOf(artifact(), replayed, true).divergence).toBe('NONE');
+  });
+});
+
+describe('a card is only as archivable as its weakest input', () => {
+  it('takes the chain down to its worst graded link', () => {
+    const two = artifact({ inputs: [
+      { id: 'in-a', digest: D1, reference: `sha256:${D1}` },
+      { id: 'in-b', digest: D2, reference: `sha256:${D2}` },
+    ] });
+    expect(cardGrade(two).grade).toBe('CARD_GRADE');
+    const chain = lineageGrade(two, { 'in-a': 'CARD_GRADE', 'in-b': 'REPLAYABLE_HERE' });
+    expect(chain.grade).toBe('REPLAYABLE_HERE');
+    expect(chain.weakest).toEqual({ inputId: 'in-b', grade: 'REPLAYABLE_HERE' });
+    expect(chain.because).toMatch(/only as archivable as its weakest input, however well it was frozen itself/);
+  });
+
+  it('does not raise a chain above the artifact itself', () => {
+    const floating = artifact({ arithmetic: 'FLOATING_POINT' });
+    expect(lineageGrade(floating, { 'in-a': 'CARD_GRADE' }).grade).toBe('REPLAYABLE_HERE');
+  });
+
+  it('treats an ungraded input as unknown rather than fine', () => {
+    const chain = lineageGrade(artifact(), {});
+    expect(chain.grade).toBe('LOG_ONLY');
+    expect(chain.unknown).toEqual(['in-a']);
+    expect(chain.because).toMatch(/An ungraded input is unknown rather than fine/);
+    expect(CARD_LOSS.join(' ')).toMatch(/unknown, never fine/);
   });
 });

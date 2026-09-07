@@ -127,4 +127,16 @@ describe('conditional custody: hold, monitor, adjudicate, release', () => {
     expect(VEHICLE_SEQUENCE.some((s) => s.includes('adversarial-oracle'))).toBe(true);
     expect(VEHICLE_SEQUENCE.some((s) => s.toLowerCase().includes('custody arrangement'))).toBe(true);
   });
+
+  it('carries the corpus\u2019s restatement exposure on the decision, so an audit reads the risk neighbourhood rather than reconstructing it', () => {
+    const decision = evaluateRelease(corpus, release!, TIGHT, '2026-08-20T00:00:00Z');
+    // The decision arrives with its own context: what this corpus had
+    // restated by the instant it decided.
+    expect(decision.exposureAtDecision).toBeDefined();
+    expect(decision.exposureAtDecision).toEqual(restatementExposure(corpus));
+    expect(typeof decision.exposureAtDecision.recordsCarried).toBe('number');
+    // Carried, never priced. The refusal travels with the decision so nobody
+    // multiplies a fixture-scale denominator by an exposure downstream.
+    expect(decision.exposureAtDecision.ratePriceable).toBe(false);
+  });
 });

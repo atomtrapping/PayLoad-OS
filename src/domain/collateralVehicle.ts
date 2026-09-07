@@ -162,6 +162,17 @@ export interface ReleaseDecision {
   /** Every record the verdict stood on, by id. A dispute begins here. */
   reliedOn: string[];
   releaseId: string;
+  /**
+   * The corpus's restatement exposure at the instant this was decided, so a
+   * later audit reads the decision's risk neighbourhood off the decision
+   * rather than reconstructing what it was. A decision made over a corpus
+   * that had never restated anything and one made over a corpus with a
+   * five-day observed lag are different decisions, and only the record says
+   * which this was. Carried, never priced: `ratePriceable` travels with it
+   * and is false, so nobody multiplies a fixture-scale denominator by an
+   * exposure and calls the product a risk.
+   */
+  exposureAtDecision: RestatementExposure;
   because: string;
 }
 
@@ -195,7 +206,10 @@ const TEST_PROSE: Record<ConditionTest, string> = {
  */
 export function evaluateRelease(corpus: Corpus, release: CorpusRelease, condition: ReleaseCondition, decidedAtKnowledge: ISODateTime): ReleaseDecision {
   const standing: DecisionStanding = 'DEMONSTRATION';
-  const base = { condition, decidedAtKnowledge, standing, releaseId: release.releaseId };
+  // Computed once, at the decision, and carried on it: a later audit reads
+  // the risk neighbourhood off the decision rather than reconstructing it.
+  const exposureAtDecision = restatementExposure(corpus);
+  const base = { condition, decidedAtKnowledge, standing, releaseId: release.releaseId, exposureAtDecision };
   const answer = queryAsOf(corpus, release, {
     subjectId: condition.subjectId,
     predicate: condition.predicate,

@@ -140,9 +140,51 @@ export const CARD_LOSS = [
   'The test is archival, not cryptographic: can this be re-run from the artifact and a spec, on a machine that does not exist yet? A hash chain answers a different question, about tampering, and answers it cheaply.',
   'Floating point does not fail loudly. It fails on another machine, years later, and this system has already seen it: identical inputs, different BLAS dispatch, different covariance bytes, identical means.',
   'Grading inspects the artifact and never the computation. An artifact can be card grade and describe a computation nobody should have run.',
+  'A grade is about one artifact. A chain is only as re-runnable as its weakest input, so lineageGrade takes the lineage as declared and an input naming no producing artifact makes the chain LOG_ONLY \u2014 unknown, never fine.',
   'A frozen trace isolates a divergence only partly. It separates changed inputs and unstable execution cleanly, and there it stops: with everything pinned and fresh evidence still disagreeing, a changed world and a wrong model look identical, because the artifact mirrors the model and not the world.',
   'Not everything should be a card. Reasoning paths that feed rulings earn one; projections and derived views are rebuilt from source instead, and paying card discipline for them buys nothing.',
 ] as const;
+
+/**
+ * A card is only as archivable as its weakest input.
+ *
+ * `cardGrade` asks whether *this* artifact can be re-run from itself. It says
+ * nothing about the artifacts its inputs came from, and a computation over
+ * inputs that are themselves only replayable-here is only replayable here:
+ * the chain is re-runnable to the depth its worst link supports. This is the
+ * pinning discipline applied recursively — pin the toolchain, not the top
+ * version — and without it a CARD_GRADE artifact can sit on a LOG_ONLY
+ * lineage and read as archival.
+ *
+ * Lineage is supplied by the caller and never inferred: an input whose
+ * producing artifact is not named is unknown, not fine.
+ */
+export function lineageGrade(
+  artifact: ComputationArtifact,
+  lineage: Readonly<Record<string, CardGrade | undefined>>,
+): { grade: CardGrade; weakest: { inputId: string; grade: CardGrade } | null; unknown: string[]; because: string } {
+  const own = cardGrade(artifact).grade;
+  const rank: Record<CardGrade, number> = { CARD_GRADE: 0, REPLAYABLE_HERE: 1, LOG_ONLY: 2 };
+
+  const unknown = artifact.inputs.filter((input) => !lineage[input.id]).map((input) => input.id).sort();
+  let weakest: { inputId: string; grade: CardGrade } | null = null;
+  for (const input of artifact.inputs) {
+    const grade = lineage[input.id];
+    if (!grade) continue;
+    if (!weakest || rank[grade] > rank[weakest.grade]) weakest = { inputId: input.id, grade };
+  }
+
+  if (unknown.length) {
+    return { grade: 'LOG_ONLY', weakest, unknown,
+      because: `${unknown.join(', ')} ${unknown.length === 1 ? 'names' : 'name'} no producing artifact, so the lineage cannot be graded. An ungraded input is unknown rather than fine, and a chain with an unknown link is re-runnable only as far as the link.` };
+  }
+  if (!weakest || rank[own] >= rank[weakest.grade]) {
+    return { grade: own, weakest, unknown,
+      because: `The artifact itself grades ${own}${weakest ? ` and no input grades worse` : ` and it has no graded inputs`}, so the chain grades ${own}.` };
+  }
+  return { grade: weakest.grade, weakest, unknown,
+    because: `The artifact grades ${own}, but ${weakest.inputId} grades ${weakest.grade}, so the chain grades ${weakest.grade}. A computation is only as archivable as its weakest input, however well it was frozen itself.` };
+}
 
 /* ── What a frozen artifact can and cannot isolate ── */
 

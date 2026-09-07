@@ -61,6 +61,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 - [[Source rights and use evaluation]] — `IMPLEMENTED` — One exact decision per purpose, operation and audience at one instant: ALLOWED, APPROVAL_REQUIRED or DENIED, with reasons.
 - [[Evidence capture and receipts]] — `IMPLEMENTED` — Bytes are bound to a source only under an allowed use, content-addressed, with a capture receipt and `sourceTruthClaimed: false`.
 - [[Source capture store and readback]] — `IMPLEMENTED · READ-ONLY ROUTE` — The operator's qualification root holds real captures.
+- [[Sensor families and the concept mapping]] — `CONTRACT ONLY · NOTHING REGISTERED · NOTHING FUSED` — Satellite, LiDAR and meteorology with their frames; the four-stage feature-to-concept mapping; and weather as the thing that both drives the state and gates the sensors.
 - [[Acquisition area of the workbench]] — `SURFACE` — The navigation area for coverage, sources, collection attempts and failures: the acquisitions section of the candidates rail and the evidence list across cases.
 
 ### Corpus Fabric — evidence → candidates, releases, products
@@ -88,6 +89,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 - [[Clearance value-of-information experiment]] — `IMPLEMENTED · SYNTHETIC PREVIEW` — Exact finite Bayesian decision analysis over a declared joint model: expected decision-loss reduction minus acquisition cost for a measurement, without executing any action.
 - [[Scalar Gaussian benchmark]] — `BASELINE · SYNTHETIC` — One conventional scalar linear-Gaussian estimator with an evidence-bound benchmark and held-out-reference metrics: the baseline every later model must beat on the same evidence.
 - [[GAT IFC audit instrument]] — `PINNED ENGINE · SPECIALIST` — A preserved IFC (Industry Foundation Classes) building-model artifact is audited by the exact pinned GAT engine; the original report, a separate safe projection and an immutable execution receipt keep distinct identities.
+- [[Estimation, constraints and invariant scoring]] — `SPECIFIED · NOTHING SOLVED · NOTHING SCORED` — Constraints as zero-noise observations, the factor graph as the joint they live in, and the four tiers of invariant scoring with the reference channel they must never feed.
 - [[Scientific model roles]] — `DOCTRINE` — Different methods answer different questions: factor graphs first for estimation, then physics-informed and operator models where they earn their place; a prediction never grants canonical admission or distribution rights.
 
 ### Projection Fabric — representations, APIs and instruments
@@ -158,6 +160,7 @@ flowchart TB
     capture["Evidence capture and receipts"]
     capturestore["Source capture store and readback"]
     acqarea["Acquisition area of the workbench"]
+    families["Sensor families and the concept mapping"]
   end
   subgraph corpus["Corpus Fabric  evidence → candidates, releases, products"]
     direction LR
@@ -183,6 +186,7 @@ flowchart TB
     benchmark["Scalar Gaussian benchmark"]
     gat["GAT IFC audit instrument"]
     modelroles["Scientific model roles"]
+    estimation["Estimation, constraints and invariant scoring"]
   end
   subgraph projection["Projection Fabric  representations, APIs and instruments"]
     direction LR
@@ -278,6 +282,11 @@ flowchart TB
   projspec -- "two more rows, one router" --> scenetier
   scenetier -- "only admitted opinions compose" --> admission
   spatialkey -- "the cells the complex nests" --> scenetier
+  corpusmodel -- "bounds become priors" --> estimation
+  estimation -- "V3 is the reference channel" --> tiers
+  families -- "imagery terms are the strictest" --> rights
+  families -- "the same discipline, spatial family" --> normalization
+  spatialprog -- "the contract change detection needs" --> families
   classDef absent fill:#7a1f1f,stroke:#e06666,color:#fff;
   class admission absent;
 ```

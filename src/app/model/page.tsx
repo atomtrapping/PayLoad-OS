@@ -7,6 +7,10 @@ import { STORAGE_CLASSES, STORAGE_PRESENT_STATE, STORAGE_SEQUENCE, STORAGE_STATE
 import { SPATIAL_CAPABILITIES, SPATIAL_DERIVATIONS, SPATIAL_DISCIPLINE, SPATIAL_ROLES, SPATIAL_ROLE_STATE_LABEL, SPATIAL_SEQUENCE } from '@/domain/spatialDerivation';
 import { AS_OF_COMPOSITION, LAYER_CONVENTION, MAPPING_STATE_LABEL, UNCERTAINTY_ENCODING, USD_BOUNDARY, USD_MAPPING, USD_ROLE } from '@/domain/usdProjection';
 import { COMPLEX, HYPERBOLIC, LEARNED_LAYER, MANIFOLD_TRAPS, PROJECTION_TIER } from '@/domain/earthComplex';
+import { CONSTRAINT_IS_AN_OBSERVATION, ENFORCEMENT_METHODS, HARDNESS_RULE, HARVEST_RULE, INEQUALITIES, VIOLATION_TAPE } from '@/domain/constraints';
+import { ATTRIBUTED_ABSENCE, CONCEPT_MAPPING, REANALYSIS_IS_A_WITNESS, SENSOR_FAMILIES, TWO_CONVERGENCES, VERTICAL_DATUM_TRAP, WEATHER_ROLE } from '@/domain/sensorFamilies';
+import { FACTOR_KINDS, DISAGREEMENT_IS_REPRESENTABLE, REPRODUCIBILITY, SOLVER_ADOPTION, SOLVER_NEVER_DECIDES, THE_JOINT } from '@/domain/factorGraph';
+import { FILTER_TIERS, FRAME_RISKS, REFERENCE_CHANNEL, VERDICTS_ARE_THE_ESTATE } from '@/domain/invariantScoring';
 import { Section } from '@/components/primitives/Section';
 
 export const metadata: Metadata = { title: 'Operating model' };
@@ -266,6 +270,31 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           {SPATIAL_SEQUENCE.map((step) => <li key={step}>{step}</li>)}
         </ul>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{SPATIAL_DISCIPLINE.buyTheCommodity} {SPATIAL_DISCIPLINE.uncertaintyCutsBothWays} {SPATIAL_DISCIPLINE.rightsBiteHardest} {SPATIAL_DISCIPLINE.displayIsNotDerivation}</p>
+
+        <h3 className="m-0 mt-2 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>Three families, and the convergence that is actually missing</h3>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="two-convergences">{TWO_CONVERGENCES.sensor.what} Blocked by: {TWO_CONVERGENCES.sensor.blockedBy} {TWO_CONVERGENCES.semantic.what} Blocked by: {TWO_CONVERGENCES.semantic.blockedBy}</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="Sensor families and the frames they live in">
+            <thead><tr><th scope="col">Family</th><th scope="col">Role</th><th scope="col">Constrains</th><th scope="col">Its own vocabulary</th><th scope="col">Frame fields</th><th scope="col">Here</th></tr></thead>
+            <tbody>
+              {SENSOR_FAMILIES.map((f) => (
+                <tr key={f.id} data-sensor-family={f.id} data-sensor-role={f.role}>
+                  <td style={{ color: 'var(--text-heading)' }}>{f.title}</td>
+                  <td style={{ color: f.role === 'FORCES_AND_GATES' ? 'var(--status-conditional)' : 'var(--text-secondary)' }}>{f.role === 'FORCES_AND_GATES' ? 'Forces and gates' : 'Observes structure'}</td>
+                  <td>{f.constrains}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{f.nativeVocabulary}</td>
+                  <td className="mono">{f.frameFields.join(', ')}</td>
+                  <td style={{ color: 'var(--status-refused)' }}>{f.here}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ol className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }} aria-label="The concept mapping, in four stages">
+          {CONCEPT_MAPPING.map((m) => <li key={m.stage} data-mapping-stage={m.stage}>{m.what} <span style={{ color: 'var(--text-muted)' }}>Same discipline as: {m.sameAs}</span></li>)}
+        </ol>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }} data-testid="weather-role"><span className="label-sm">Weather is not a third sensor</span> {WEATHER_ROLE.asymmetry} {WEATHER_ROLE.missedPoint} {ATTRIBUTED_ABSENCE.rule} {REANALYSIS_IS_A_WITNESS.rule}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }} data-testid="vertical-datum"><span className="label-sm">Before the first elevation</span> {VERTICAL_DATUM_TRAP.trap} {VERTICAL_DATUM_TRAP.rule} {VERTICAL_DATUM_TRAP.here}</p>
       </Section>
 
       <Section title="Where the corpus is stored" id="pm-storage">
@@ -359,6 +388,69 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
         <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="What a learned manifold would get wrong">
           {MANIFOLD_TRAPS.map((trap) => <li key={trap.id} data-manifold-trap={trap.id}>{trap.trap} <span style={{ color: 'var(--status-conditional)' }}>{trap.rule}</span></li>)}
         </ul>
+      </Section>
+
+      <Section title="Estimation: one joint, its constraints, and what may not decide identity" id="pm-estimation">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{THE_JOINT.statement} {THE_JOINT.why} Nothing here solves anything: no factor is declared, no constraint is enforced, no solver is installed.</p>
+        <ul className="m-0 p-0 list-none grid gap-1 sm:grid-cols-2" aria-label="Kinds of factor">
+          {FACTOR_KINDS.map((f) => (
+            <li key={f.id} className="surface-inset p-2 text-[12px]" data-factor={f.id} data-factor-state={f.state}>
+              <span style={{ color: 'var(--text-heading)' }}>{f.title}</span> <span style={{ color: f.state === 'ABSENT' ? 'var(--status-refused)' : 'var(--status-conditional)' }}>{f.state === 'ABSENT' ? 'Absent' : 'Material exists as data'}</span>
+              <div style={{ color: 'var(--text-secondary)' }}>{f.what}</div>
+              <div style={{ color: 'var(--text-muted)' }}>{f.from}</div>
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="constraint-identity">{CONSTRAINT_IS_AN_OBSERVATION.identity} {CONSTRAINT_IS_AN_OBSERVATION.consequence} {CONSTRAINT_IS_AN_OBSERVATION.neverLiterally}</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="How a constraint is enforced">
+            <thead><tr><th scope="col">Method</th><th scope="col">What it does</th><th scope="col">When</th><th scope="col">Verdict</th></tr></thead>
+            <tbody>
+              {ENFORCEMENT_METHODS.map((m) => (
+                <tr key={m.id} data-enforcement={m.id} data-verdict={m.verdict}>
+                  <td style={{ color: 'var(--text-heading)' }}>{m.title}</td>
+                  <td className="mono">{m.what}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{m.use}</td>
+                  <td style={{ color: m.verdict === 'FORBIDDEN' ? 'var(--status-refused)' : m.verdict === 'RECOMMENDED' ? 'var(--check-passed)' : 'var(--text-secondary)' }}>{m.verdict}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }} data-testid="harvest-rule"><span className="label-sm">{HARVEST_RULE.rule}</span> {HARVEST_RULE.why} {HARVEST_RULE.therefore} Hard is for {HARDNESS_RULE.HARD.charAt(0).toLowerCase()}{HARDNESS_RULE.HARD.slice(1)}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Violation tape</span> {VIOLATION_TAPE.meaning} {VIOLATION_TAPE.estate} {VIOLATION_TAPE.twoAnalyses}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}><span className="label-sm">Inequalities</span> {INEQUALITIES.truth} {INEQUALITIES.doNotConflate}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Disagreement is representable</span> {DISAGREEMENT_IS_REPRESENTABLE.claim} {DISAGREEMENT_IS_REPRESENTABLE.contrast} Here: {DISAGREEMENT_IS_REPRESENTABLE.here}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }} data-testid="solver-boundary"><span className="label-sm">Two disciplines, before the first solve</span> {REPRODUCIBILITY.hazard} {REPRODUCIBILITY.discipline[0]} {SOLVER_NEVER_DECIDES.rule} {SOLVER_NEVER_DECIDES.whatIsNot} {SOLVER_ADOPTION.candidate} is a candidate solver for the factor layer, {SOLVER_ADOPTION.role.charAt(0).toLowerCase()}{SOLVER_ADOPTION.role.slice(1)} It waits for {SOLVER_ADOPTION.waitsFor.charAt(0).toLowerCase()}{SOLVER_ADOPTION.waitsFor.slice(1)}</p>
+      </Section>
+
+      <Section title="Scoring by what a record survives, and the channel that cannot score" id="pm-scoring">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Data earns credence by surviving declared checks. Four tiers, and the fourth is the one that compounds: recording the verdicts turns scoring into an estate rather than a gate. {VERDICTS_ARE_THE_ESTATE.difference}</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="Filter tiers and what a pass is worth">
+            <thead><tr><th scope="col">Tier</th><th scope="col">What it checks</th><th scope="col">What a pass is worth</th><th scope="col">Here</th></tr></thead>
+            <tbody>
+              {FILTER_TIERS.map((t) => (
+                <tr key={t.id} data-filter-tier={t.id} data-filter-state={t.state}>
+                  <td style={{ color: 'var(--text-heading)' }}>{t.title}</td>
+                  <td>{t.what}</td>
+                  <td style={{ color: 'var(--status-conditional)' }}>{t.worth}</td>
+                  <td style={{ color: t.state === 'ABSENT' ? 'var(--status-refused)' : 'var(--text-muted)' }}>{t.here}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Where invariant scoring stops being sufficient">
+          {FRAME_RISKS.map((r) => (
+            <li key={r.id} className="surface-inset p-2 text-[12px]" data-frame-risk={r.id}>
+              <span style={{ color: 'var(--text-heading)' }}>{r.title}</span>
+              <div style={{ color: 'var(--text-secondary)' }}>{r.failure}</div>
+              <div style={{ color: 'var(--status-conditional)' }}>{r.discipline}</div>
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="reference-firewall"><span className="label-sm">The reference channel</span> {REFERENCE_CHANNEL.role} {REFERENCE_CHANNEL.firewall} {REFERENCE_CHANNEL.posture} Here: {REFERENCE_CHANNEL.here} ({REFERENCE_CHANNEL.hereTier.tier} {REFERENCE_CHANNEL.hereTier.name}, not reached.)</p>
       </Section>
 
       <Section title="Verification tiers" id="pm-verification">

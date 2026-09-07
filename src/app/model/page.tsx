@@ -12,7 +12,7 @@ import { ATTRIBUTED_ABSENCE, CONCEPT_MAPPING, REANALYSIS_IS_A_WITNESS, SENSOR_FA
 import { FACTOR_KINDS, DISAGREEMENT_IS_REPRESENTABLE, REPRODUCIBILITY, SOLVER_ADOPTION, SOLVER_NEVER_DECIDES, THE_JOINT } from '@/domain/factorGraph';
 import { FILTER_TIERS, FRAME_RISKS, REFERENCE_CHANNEL, VERDICTS_ARE_THE_ESTATE } from '@/domain/invariantScoring';
 import { CLOSURE_IS_THE_MEASUREMENT, VESSEL_CHANNELS, VESSEL_JOINS, VESSEL_STATE } from '@/domain/vessel';
-import { MEMBERSHIP_IS_A_RULING, SET_OBJECTS, SET_PRODUCTS } from '@/domain/portSet';
+import { PORT_SET_LOSS, SET_OBJECTS, SET_PRODUCTS } from '@/domain/portSet';
 import { AUTHORITY_DIRECTION, CARD_PROPERTIES, CONGRUENCE, FROZEN_SIDE, GENERAL_PROVING, MIRRORS_THE_MODEL, NOT_CREDIBILITY } from '@/domain/computationCarrier';
 import { COMPOSITION_IS_ADJUDICATION, INTEROP_VOCABULARY } from '@/domain/usdProjection';
 import { CORRESPONDENCES, FIT_DEPTH_LABEL, MANDATE_INVERSION } from '@/domain/actuarial';
@@ -486,7 +486,9 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           ))}
         </ul>
         <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="closure-measurement">{CLOSURE_IS_THE_MEASUREMENT.what} {CLOSURE_IS_THE_MEASUREMENT.whyItIsTheMoat} Here: {CLOSURE_IS_THE_MEASUREMENT.here}</p>
-        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="membership-ruling">{MEMBERSHIP_IS_A_RULING.claim} {MEMBERSHIP_IS_A_RULING.supersession} {MEMBERSHIP_IS_A_RULING.bothClocks}</p>
+        <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }} aria-label="What a port set is not" data-testid="membership-ruling">
+          {PORT_SET_LOSS.map((loss) => <li key={loss}>{loss}</li>)}
+        </ul>
         <div className="surface overflow-x-auto" tabIndex={0}>
           <table className="ledger-table text-[12px]" aria-label="Set-level objects and what each prices">
             <thead><tr><th scope="col">Set object</th><th scope="col">What it prices</th><th scope="col">As a state</th></tr></thead>

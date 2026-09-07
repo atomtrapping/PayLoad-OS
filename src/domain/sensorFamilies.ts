@@ -141,7 +141,7 @@ export const CONCEPT_MAPPING: readonly MappingStage[] = [
   { order: 1, stage: 'FEATURE', what: 'Detector outputs per source and per model version, as candidate observations with noise models. A sensor is a model, so a detection is an assertion by a producer.', sameAs: 'The extraction interface: a vision model is an adapter like any other.', state: 'ABSENT' },
   { order: 2, stage: 'CONCEPT_MAPPING', what: 'Source-specific feature vocabularies mapped onto corpus concepts, as versioned mappings with receipts. Facility, stockyard, berth, canopy: named once, reached from every family.', sameAs: 'The normalization adapters, which already turn a source’s vocabulary into the corpus’s and record the method and version that did it.', state: 'ABSENT' },
   { order: 3, stage: 'RECONCILIATION', what: 'Where two families disagree — imagery says one building, LiDAR says two — the disagreement is encoded, not averaged. Cross-family disagreement is unusually informative because the error physics are independent.', sameAs: 'The disagreement layer, and the geometric verdict that already reports two positions that cannot both be right.', state: 'ABSENT' },
-  { order: 4, stage: 'ADMISSION', what: 'Fused, concept-typed, uncertainty-carrying candidates cross the admission boundary, or they do not become facts.', sameAs: 'The admission authority, which does not exist.', state: 'ABSENT' },
+  { order: 4, stage: 'ADMISSION', what: 'Fused, concept-typed, uncertainty-carrying candidates cross the admission boundary, or they do not become facts.', sameAs: 'The admission ruling, which exists as a function and has never been called.', state: 'ABSENT' },
 ];
 
 export const CROSS_FAMILY_CORROBORATION = {

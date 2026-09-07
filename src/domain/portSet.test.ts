@@ -1,93 +1,158 @@
 import { describe, expect, it } from 'vitest';
-import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
-import { CLOSURE_LOSS } from './eventClosure';
-import {
-  COMPOSITIONAL_HIERARCHY, MEMBERSHIP_IS_A_RULING, MEMBERSHIP_MEANING, PORT_SET_SEQUENCE,
-  SETS_ARE_PROJECTIONS, SET_JOINS, SET_OBJECTS, SET_PRODUCTS, portSetStanding,
+import { MEMBERSHIP_CLASSES, MEMBERSHIP_MEANING, PORT_SET_LOSS, PORT_SET_METHOD, occupancySeries, portSetAt, type MembershipRuling,
+  COMPOSITIONAL_HIERARCHY, PORT_SET_SEQUENCE, SET_JOINS, SET_OBJECTS, SET_PRODUCTS, portSetStanding,
 } from './portSet';
 
-describe('membership is adjudicated, not observed', () => {
-  it('gives every membership class a meaning that says what it is not', () => {
-    const classes = Object.keys(MEMBERSHIP_MEANING);
-    expect(classes).toHaveLength(6);
-    for (const meaning of Object.values(MEMBERSHIP_MEANING)) expect(meaning.trim().length).toBeGreaterThan(50);
-    // The two most-confused calls carry their confusion explicitly.
-    expect(MEMBERSHIP_MEANING.IN_APPROACH).toMatch(/not yet an arrival/);
-    expect(MEMBERSHIP_MEANING.OUT).toMatch(/Departure is a ruling too/);
+function ruling(over: Partial<MembershipRuling> & Pick<MembershipRuling, 'rulingId' | 'vesselId'>): MembershipRuling {
+  return {
+    portId: 'port-a',
+    berthId: null,
+    membership: 'ANCHORAGE',
+    validFrom: '2026-09-07T06:00:00Z',
+    validTo: '2026-09-07T18:00:00Z',
+    knownAt: '2026-09-07T07:00:00Z',
+    adjudicatedBy: ['ais', 'berth-geometry'],
+    supersededByRulingId: null,
+    retractedByRetractionId: null,
+    ...over,
+  };
+}
+
+const NOON = '2026-09-07T12:00:00Z';
+const LATE = '2026-09-08T00:00:00Z';
+
+describe('a port is a time-indexed set whose membership is ruled', () => {
+  it('resolves the set at a world instant as it could have been ruled at a knowledge instant', () => {
+    const set = portSetAt([
+      ruling({ rulingId: 'r-1', vesselId: 'v-1', membership: 'ALONGSIDE', berthId: 'b-3' }),
+      ruling({ rulingId: 'r-2', vesselId: 'v-2', membership: 'QUEUE' }),
+      ruling({ rulingId: 'r-3', vesselId: 'v-3', membership: 'OUT' }),
+    ], { portId: 'port-a', validAt: NOON, knownAt: LATE });
+    expect(set.coverage).toBe('RULED');
+    expect(set.members.map((m) => m.vesselId)).toEqual(['v-1', 'v-2', 'v-3']);
+    expect(set.byClass.ALONGSIDE).toEqual(['v-1']);
+    expect(set.byClass.QUEUE).toEqual(['v-2']);
+    // OUT is a ruling about a vessel, not a membership of the set.
+    expect(set.occupancy).toBe(2);
+    expect(set.because).toMatch(/2 place a vessel in the set and 1 rule[s]? one out of it/);
+    expect(PORT_SET_METHOD).toMatch(/\.v1$/);
+    expect(MEMBERSHIP_CLASSES.every((key) => MEMBERSHIP_MEANING[key].length > 0)).toBe(true);
   });
 
-  it('supersedes a membership call rather than overwriting it', () => {
-    expect(MEMBERSHIP_IS_A_RULING.claim).toMatch(/ambiguous/);
-    expect(MEMBERSHIP_IS_A_RULING.supersession).toMatch(/correction on the set/);
-    expect(MEMBERSHIP_IS_A_RULING.state).toBe('ABSENT');
+  it('reports an unknown set as unknown and never as zero', () => {
+    // The refusal that matters most: queue depth zero is a claim about the
+    // world; the absence of an observation is not, and rendering one as the
+    // other is the calmest possible lie.
+    const unknown = portSetAt([], { portId: 'port-a', validAt: NOON, knownAt: LATE });
+    expect(unknown.coverage).toBe('UNKNOWN');
+    expect(unknown.occupancy).toBeNull();
+    expect(unknown.occupancy).not.toBe(0);
+    expect(unknown.because).toMatch(/unknown, not empty/);
+    expect(unknown.because).toMatch(/nothing here says no vessel was there/);
+    // A ruling that exists but covers no part of this instant is a real zero:
+    // the port was ruled on, and no vessel was in the set.
+    const ruled = portSetAt([ruling({ rulingId: 'r-1', vesselId: 'v-1', validFrom: '2026-09-01T00:00:00Z', validTo: '2026-09-02T00:00:00Z' })],
+      { portId: 'port-a', validAt: NOON, knownAt: LATE });
+    expect(ruled.coverage).toBe('RULED');
+    expect(ruled.occupancy).toBe(0);
+    expect(PORT_SET_LOSS.join(' ')).toMatch(/An unknown set is not an empty set/);
   });
 
-  it('stamps both clocks, which is what makes a set series backtestable', () => {
-    expect(MEMBERSHIP_IS_A_RULING.bothClocks).toMatch(/differ by hours/);
-    expect(MEMBERSHIP_IS_A_RULING.backtestable).toMatch(/stamped its own knowledge time/);
+  it('hides a ruling not yet knowable, so the as-of set is not the final set', () => {
+    const rulings = [
+      ruling({ rulingId: 'r-1', vesselId: 'v-1', membership: 'ALONGSIDE', knownAt: '2026-09-07T07:00:00Z' }),
+      ruling({ rulingId: 'r-2', vesselId: 'v-2', membership: 'QUEUE', knownAt: '2026-09-07T20:00:00Z' }),
+    ];
+    const early = portSetAt(rulings, { portId: 'port-a', validAt: NOON, knownAt: '2026-09-07T08:00:00Z' });
+    const final = portSetAt(rulings, { portId: 'port-a', validAt: NOON, knownAt: LATE });
+    // The same world instant, two knowledge instants, two different sets.
+    expect(early.occupancy).toBe(1);
+    expect(final.occupancy).toBe(2);
+    expect(PORT_SET_LOSS.join(' ')).toMatch(/only the first can be backtested/);
+  });
+
+  it('sets aside a withdrawn or superseded ruling before building the set, and names it', () => {
+    const set = portSetAt([
+      ruling({ rulingId: 'r-1', vesselId: 'v-1', membership: 'ALONGSIDE', supersededByRulingId: 'r-2' }),
+      ruling({ rulingId: 'r-2', vesselId: 'v-1', membership: 'ANCHORAGE', knownAt: '2026-09-07T09:00:00Z' }),
+      ruling({ rulingId: 'r-3', vesselId: 'v-9', retractedByRetractionId: 'ret-1' }),
+    ], { portId: 'port-a', validAt: NOON, knownAt: LATE });
+    expect(set.setAside.map((entry) => entry.rulingId).sort()).toEqual(['r-1', 'r-3']);
+    expect(set.setAside.find((e) => e.rulingId === 'r-3')!.because).toMatch(/must not be relied on at all/);
+    expect(set.setAside.find((e) => e.rulingId === 'r-1')!.because).toMatch(/a later ruling replaced this membership/);
+    // The vessel holds the successor's membership, not the superseded one.
+    expect(set.byClass.ANCHORAGE).toEqual(['v-1']);
+    expect(set.byClass.ALONGSIDE).toEqual([]);
+    expect(set.occupancy).toBe(1);
+  });
+
+  it('gives one vessel one membership, deterministically, when rulings overlap', () => {
+    const set = portSetAt([
+      ruling({ rulingId: 'r-a', vesselId: 'v-1', membership: 'QUEUE', knownAt: '2026-09-07T07:00:00Z' }),
+      ruling({ rulingId: 'r-b', vesselId: 'v-1', membership: 'BERTH', berthId: 'b-1', knownAt: '2026-09-07T09:00:00Z' }),
+    ], { portId: 'port-a', validAt: NOON, knownAt: LATE });
+    expect(set.members).toHaveLength(1);
+    expect(set.members[0]).toMatchObject({ membership: 'BERTH', berthId: 'b-1' });
+    expect(portSetAt([
+      ruling({ rulingId: 'r-b', vesselId: 'v-1', membership: 'BERTH', knownAt: '2026-09-07T09:00:00Z' }),
+      ruling({ rulingId: 'r-a', vesselId: 'v-1', membership: 'QUEUE', knownAt: '2026-09-07T09:00:00Z' }),
+    ], { portId: 'port-a', validAt: NOON, knownAt: LATE }).members[0].rulingId).toBe('r-b');
+  });
+
+  it('carries unknown through a derived series instead of drawing it as a floor', () => {
+    const rulings = [ruling({ rulingId: 'r-1', vesselId: 'v-1', membership: 'BERTH', validFrom: '2026-09-07T10:00:00Z', validTo: '2026-09-07T14:00:00Z' })];
+    const series = occupancySeries(rulings, {
+      portId: 'port-b', knownAt: LATE, instants: ['2026-09-07T09:00:00Z', NOON],
+    });
+    // A different port with no rulings: every point unknown, none zero.
+    expect(series.map((p) => p.coverage)).toEqual(['UNKNOWN', 'UNKNOWN']);
+    expect(series.map((p) => p.occupancy)).toEqual([null, null]);
+    const own = occupancySeries(rulings, { portId: 'port-a', knownAt: LATE, instants: ['2026-09-07T09:00:00Z', NOON] });
+    expect(own.map((p) => p.occupancy)).toEqual([0, 1]);
+    expect(PORT_SET_LOSS.join(' ')).toMatch(/Derived series are projections of the ruling ledger/);
+  });
+
+  it('refuses a query it cannot read, rather than answering it as empty', () => {
+    const bad = portSetAt([ruling({ rulingId: 'r-1', vesselId: 'v-1' })], { portId: 'port-a', validAt: 'Tuesday', knownAt: LATE });
+    expect(bad.coverage).toBe('UNKNOWN');
+    expect(bad.occupancy).toBeNull();
+    expect(bad.because).toMatch(/no set is resolved and none is reported as empty/);
+    expect(PORT_SET_LOSS.join(' ')).toMatch(/Membership is a ruling, not a test/);
+    expect(PORT_SET_LOSS.join(' ')).toMatch(/Nothing here observes a vessel/);
   });
 });
 
-describe('the set objects are series, and they are projections', () => {
-  it('gives each what it prices and how an estimator reads it', () => {
+describe('what the set is worth, and the grammar before the feeds', () => {
+  it('gives each set object what it prices and how an estimator reads it', () => {
     expect(SET_OBJECTS).toHaveLength(6);
     for (const o of SET_OBJECTS) {
       expect(o.prices.trim().length).toBeGreaterThan(40);
       expect(o.asAState.trim().length).toBeGreaterThan(40);
     }
     expect(SET_OBJECTS.find((o) => o.id === 'BERTH_OCCUPANCY')!.prices).toMatch(/rather than nameplate/);
-    expect(SET_OBJECTS.find((o) => o.id === 'QUEUE_DEPTH')!.asAState).toMatch(/innovation spectrum/);
     expect(SET_OBJECTS.find((o) => o.id === 'FLOW_BALANCE')!.asAState).toMatch(/stiff-soft/);
   });
 
-  it('derives the aggregates so a correction moves them', () => {
-    expect(SETS_ARE_PROJECTIONS.rule).toMatch(/not stored state/);
-    expect(SETS_ARE_PROJECTIONS.because).toMatch(/no longer follows from anything/);
-  });
-});
-
-describe('joins are set intersections in time, each with its own hazard', () => {
-  it('renders a coverage gap as coverage rather than as a finding', () => {
-    const imagery = SET_JOINS.find((j) => j.id === 'IMAGERY')!;
-    expect(imagery.yields).toMatch(/off-transponder economy/);
-    expect(imagery.hazard).toMatch(/render void as void/);
+  it('renders a coverage gap as coverage and refuses coincidence as attribution', () => {
+    expect(SET_JOINS).toHaveLength(5);
+    expect(SET_JOINS.find((j) => j.id === 'IMAGERY')!.hazard).toMatch(/render void as void/);
+    expect(SET_JOINS.find((j) => j.id === 'DOCUMENTS')!.hazard).toMatch(/manufactures causes/);
+    expect(SET_JOINS.find((j) => j.id === 'PORT_PAIR')!.hazard).toMatch(/resolution again/);
   });
 
-  it('refuses to read coincidence in time as attribution', () => {
-    const documents = SET_JOINS.find((j) => j.id === 'DOCUMENTS')!;
-    expect(documents.yields).toMatch(/cross-line join/);
-    expect(documents.hazard).toMatch(/manufactures causes/);
-    const pair = SET_JOINS.find((j) => j.id === 'PORT_PAIR')!;
-    expect(pair.hazard).toMatch(/resolution again/);
-  });
-});
-
-describe('the construction lifts, and the archive is the asset', () => {
-  it('names one grammar for four scales', () => {
+  it('lifts to four scales under one grammar, and locates the asset in time', () => {
     expect(COMPOSITIONAL_HIERARCHY.levels.map((l) => l.level)).toEqual(['Port', 'Corridor', 'Lane', 'Network']);
     expect(COMPOSITIONAL_HIERARCHY.why).toMatch(/rather than a bespoke model per scale/);
-  });
-
-  it('locates the differentiator in governance and the asset in time', () => {
     expect(SET_PRODUCTS.differentiator).toMatch(/inputs are commodities/);
-    expect(SET_PRODUCTS.notThis).toMatch(/established vendors already sell/);
     expect(SET_PRODUCTS.archiveGated).toMatch(/only time can buy/);
-    // The dependence rule is the implemented one, not a restatement.
-    expect(SET_PRODUCTS.dependence).toBe(CLOSURE_LOSS);
-  });
-
-  it('puts the grammar before the feeds, and says why', () => {
-    expect(PORT_SET_SEQUENCE[0]).toMatch(/membership event grammar first/);
     expect(PORT_SET_SEQUENCE[PORT_SET_SEQUENCE.length - 1]).toMatch(/rather than as a dot/);
   });
-});
 
-describe('what exists', () => {
   it('holds no port and no ruling, over a population that is not zero', () => {
-    const standing = portSetStanding(CARAVAN_CORPUS);
+    const standing = portSetStanding(2);
     expect(standing.ports).toBe(0);
     expect(standing.membershipRulings).toBe(0);
-    expect(standing.setSeries).toBe(0);
-    expect(standing.statement).toMatch(/a place a set would be defined over, and not yet a set/);
+    expect(standing.statement).toMatch(/no ruling exists/);
+    expect(standing.statement).toMatch(/not yet a set/);
   });
 });

@@ -55,12 +55,16 @@ Not a polygon. A membership function that evolves: which vessels are alongside,
 at berth, at anchorage, in the approach, in the queue, or out — at a stated
 instant, on both clocks.
 
-**Membership is a ruling.** Containment at an instant is ambiguous —
-approaching, manoeuvring, waiting — so a transition carries an evidence class, a
-confidence and the observations that decided it, and a later observation
-supersedes it rather than overwriting it. A vessel adjudicated at berth and
-later shown to have been anchored inside the berth zone is a correction on the
-set, and every aggregate computed under the old call is downstream of it.
+**Membership is a ruling, and it is computed.** `portSetAt` resolves a set from
+rulings at two instants; `occupancySeries` projects a series from it. Containment
+at an instant is ambiguous — berthed, manoeuvring, waiting — so a ruling names
+the channels that decided it, and a later observation supersedes rather than
+overwrites. A superseded or withdrawn ruling is set aside before the set is built,
+and named.
+
+**An unknown set is not an empty set.** A port with no knowable ruling reports
+unknown occupancy and never zero, because zero is a claim about the world and the
+absence of an observation is not.
 
 **Both clocks, and they differ by hours per channel.** The port state as of a
 knowledge instant is a distinct, reconstructable object from the final state, and

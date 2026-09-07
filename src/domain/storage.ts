@@ -81,7 +81,7 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
     fabric: 'corpus',
     here: { state: 'SERVICE', what: 'PostgreSQL is selected: src/db/schema.ts declares corpora, releases, records and retractions, and the corpus adapter reads them through drizzle when a database is configured. Where none is configured the committed demonstration answers instead, and the surface says which. A lakehouse remains a candidate for the columnar scans this does not serve.', where: '/stream' },
     invariant: 'Canonical state is not the entire corpus, and valid time is not knowledge time. A snapshot is a version, so table time travel must never be confused with the record\'s own two clocks.',
-    before: 'An admission authority, which does not exist. The tables arrived first, so this precondition is now owed rather than met: nothing yet stops an unadmitted candidate being written into a releases or records row as though it were a version, and that gate is what the store still needs.',
+    before: 'An admission authority. The ruling now exists as a pure function in src/domain/admission.ts, and nothing calls it, so the precondition is half met: the gate is written and the store is not yet behind it. Nothing stops an unadmitted candidate being written into a releases or records row as though it were a version.',
   },
   {
     id: 'text',
@@ -141,7 +141,7 @@ export const STORAGE_PRESENT_STATE = {
 /** The order a store earns its place, from the sequencing the classes state. */
 export const STORAGE_SEQUENCE: readonly string[] = [
   'Object storage first: it is the only class whose information already exists in volume and whose invariant is already enforced.',
-  'The records store arrived before the admission authority, not after. That is a live risk rather than a settled sequence: rows in the releases and records tables are canonical-shaped, so until admission exists something must keep an unadmitted candidate from being written there as though it were a version.',
+  'The records store arrived before the admission authority, not after. That is a live risk rather than a settled sequence: rows in the releases and records tables are canonical-shaped, and the admission ruling now exists without anything routing writes through it, so something must still keep an unadmitted candidate from being written there as though it were a version.',
   'Search and geospatial are projections of an admitted corpus and are rebuildable from it; they can arrive late and be rebuilt.',
   'The graph waits on one identity authority, and the vector store on declared models with recomputable inputs.',
 ];

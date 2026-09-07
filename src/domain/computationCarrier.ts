@@ -84,6 +84,7 @@ export type ArchivalGrade = 'PASSES' | 'DEGRADES' | 'FAILS';
 export const ARCHIVAL_TEST = {
   question: 'Is this artifact readable in thirty years with only its specification?',
   why: 'It is the punch-card test, and it sorts computation classes more usefully than any judgement about their importance.',
+  computedBy: 'cardGrade in ./computationCard, which grades one artifact CARD_GRADE, REPLAYABLE_HERE or LOG_ONLY. This states the classes; that decides an instance.',
   grades: [
     { subject: 'Fixed-point arithmetic over a frozen, minimal instruction set', grade: 'PASSES' as ArchivalGrade, because: 'The semantics are exhaustively specified and reimplementable from the specification, so the artifact does not depend on the original machine.' },
     { subject: 'Floating-point computation', grade: 'DEGRADES' as ArchivalGrade, because: 'The result depends on order of accumulation, library version and platform, so an artifact that does not pin all three names a number nobody can reproduce. This is the same disease as an unpinned elimination ordering.' },
@@ -169,7 +170,8 @@ export const CONGRUENCE = {
  */
 export const FROZEN_SIDE = {
   asymmetry: 'The world arrives with noise, gaps and, sometimes, an adversary, and it cannot be replayed. A deterministic trace is bit-exact and can be replayed forever. So one side of the comparison never jitters.',
-  payoff: 'A divergence between fresh evidence and a frozen computation isolates three ways rather than one: the world changed, which is an event; the input changed, which is a source problem; or nothing legitimate changed, which is a tamper signal. Three-way isolation, because one side is fixed.',
+  payoff: 'A divergence between fresh evidence and a frozen computation isolates rather than merely alarming: the inputs are no longer the inputs, the execution did not reproduce, or the world or the model moved. Isolation, because one side is fixed.',
+  computedBy: 'divergenceOf in ./computationCard, over the closed vocabulary NONE, INPUTS_CHANGED, EXECUTION_UNSTABLE and WORLD_OR_MODEL. This states why the isolation is possible; that performs it.',
   therefore: 'Adjudicated facts are the ones that earn a frozen computational geometry, so that every later observation measures against a reference that cannot be renegotiated.',
   butStill: 'The frozen trace testifies. It never decides, and a congruence failure enters the disagreement layer as a candidate rather than as a finding.',
 } as const;

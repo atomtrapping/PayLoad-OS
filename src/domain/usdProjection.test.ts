@@ -50,7 +50,9 @@ describe('the mapping, row by row, with its hazards', () => {
     const by = (corpus: string) => USD_MAPPING.find((r) => r.corpus.startsWith(corpus))!;
     // Only admitted opinions may compose, and nothing is admitted.
     expect(by('Admitted state only').state).toBe('BLOCKED');
-    expect(by('Admitted state only').here).toMatch(/would be empty/);
+    expect(by('Admitted state only').here).toMatch(/would still be empty/);
+    // The gate exists now; what is absent is anything calling it.
+    expect(by('Admitted state only').here).toMatch(/Nothing calls it/);
     // USD has no native concept for uncertainty, provenance, rights or visibility.
     expect(by('Uncertainty, provenance').state).toBe('BLOCKED');
     expect(by('Uncertainty, provenance').hazard).toMatch(/Metadata is droppable/);
@@ -105,7 +107,7 @@ describe('what a writer would find in the corpus today', () => {
     expect(readiness.positions.total).toBeGreaterThan(0);
     expect(readiness.positions.withStatedUncertainty).toBe(readiness.positions.total);
     expect(readiness.blockers.length).toBeGreaterThan(3);
-    expect(readiness.blockers.join(' ')).toMatch(/No admission authority/);
+    expect(readiness.blockers.join(' ')).toMatch(/exists as a function and no candidate has been put through it/);
     expect(readiness.statement).toMatch(/only admitted opinions may compose/);
   });
 });

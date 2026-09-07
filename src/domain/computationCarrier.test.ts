@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DIVERGENCE_MEANING, GRADE_MEANING } from './computationCard';
 import {
   ARCHIVAL_TEST, CARD_PROPERTIES, CONGRUENCE, CONGRUENCE_GUARDS, FROZEN_SIDE,
   AUTHORITY_DIRECTION, GENERAL_PROVING, INTEROPERATION, INTEROP_FAMILIES, INTEROP_GUARDS,
@@ -43,6 +44,12 @@ describe('what makes a card a card', () => {
     expect(by('Floating-point').because).toMatch(/unpinned elimination ordering/);
     // Weights are not the execution.
     expect(by('Learned-model').because).toMatch(/Weights are not the execution/);
+    // The class table states the grades; one artifact is graded by the module that implements it.
+    expect(ARCHIVAL_TEST.computedBy).toMatch(/cardGrade/);
+    for (const grade of ['CARD_GRADE', 'REPLAYABLE_HERE', 'LOG_ONLY'] as const) {
+      expect(ARCHIVAL_TEST.computedBy).toContain(grade);
+      expect(GRADE_MEANING[grade]).toBeTruthy();
+    }
   });
 
   it('applies the record waterline to computations', () => {
@@ -74,8 +81,13 @@ describe('the card as a geometry', () => {
 
   it('takes the payoff from the side that never jitters, three ways', () => {
     expect(FROZEN_SIDE.asymmetry).toMatch(/cannot be replayed/);
-    expect(FROZEN_SIDE.payoff).toMatch(/the world changed/);
-    expect(FROZEN_SIDE.payoff).toMatch(/tamper signal/);
+    expect(FROZEN_SIDE.payoff).toMatch(/the inputs are no longer the inputs/);
+    // The isolation is performed by the module that implements it, not restated here.
+    expect(FROZEN_SIDE.computedBy).toMatch(/divergenceOf/);
+    for (const key of ['NONE', 'INPUTS_CHANGED', 'EXECUTION_UNSTABLE', 'WORLD_OR_MODEL'] as const) {
+      expect(FROZEN_SIDE.computedBy).toContain(key);
+      expect(DIVERGENCE_MEANING[key]).toBeTruthy();
+    }
     expect(FROZEN_SIDE.therefore).toMatch(/cannot be renegotiated/);
     // And it still testifies rather than deciding.
     expect(FROZEN_SIDE.butStill).toMatch(/never decides/);

@@ -55,7 +55,7 @@ describe('what follows commercially, stated without inventing a duty', () => {
 
   it('states the triangle-shaped result as a shape with a precondition, not a promise', () => {
     expect(TRIANGLE_SHAPED_RESULT.state).toBe('ABSENT');
-    expect(TRIANGLE_SHAPED_RESULT.precondition).toMatch(/admission authority/);
+    expect(TRIANGLE_SHAPED_RESULT.precondition).toMatch(/admitted nothing/);
     expect(TRIANGLE_SHAPED_RESULT.because).toMatch(/reader’s own structure/);
   });
 });

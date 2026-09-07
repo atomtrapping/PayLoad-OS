@@ -125,7 +125,7 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-vessel-channel]')).toHaveCount(5);
   await expect(page.locator('[data-vessel-channel="DISPATCH"][data-channel-kind="PRIOR"]')).toContainText('most common error in this domain');
   await expect(page.getByTestId('closure-measurement')).toContainText('aggregators already sell');
-  await expect(page.getByTestId('membership-ruling')).toContainText('correction on the set');
+  await expect(page.getByTestId('membership-ruling')).toContainText('An unknown set is not an empty set');
   await expect(page.locator('[data-set-object]')).toHaveCount(6);
   // The carrier: two of four card properties, general proving refused, the model mirrored and not the world.
   await expect(page.getByTestId('not-credibility')).toContainText('estate');

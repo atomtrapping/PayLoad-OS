@@ -104,7 +104,7 @@ export const CORRESPONDENCES: readonly Correspondence[] = [
     theirs: 'The signing actuary, a defined authority who certifies an opinion under personal liability',
     depth: 'IDENTICAL',
     why: 'The authority architecture is the same architecture. A system whose computations never become facts without a human ruling is describing, in engineering terms, a role their profession defines in statute and in licence.',
-    here: 'The rulings are fixture-backed and the admission authority is absent, so nothing here has ever been certified by anyone.',
+    here: 'The rulings are fixture-backed, and the admission ruling exists as a function that nothing has yet called, so nothing here has ever been certified by anyone.',
   },
 ];
 
@@ -129,7 +129,7 @@ export const ENTRY_CAUTIONS = [
 export const TRIANGLE_SHAPED_RESULT = {
   intent: 'When a backtest exists, present it as a development shape: lead time expressed as a reduction in reporting lag, read in the grammar a reserving reader already reads.',
   because: 'A result presented in the reader’s own structure is evaluated on its merits. A result presented in the supplier’s structure is evaluated on whether the reader wants to learn the supplier’s structure.',
-  precondition: 'A backtest requires an outcome series to test against, which requires admitted records over a period, which requires an admission authority. None exists, so this is a shape to build toward and not a claim.',
+  precondition: 'A backtest requires an outcome series to test against, which requires admitted records over a period. The admission ruling now exists and has admitted nothing, so this is a shape to build toward and not a claim.',
   state: 'ABSENT' as const,
 } as const;
 

@@ -49,7 +49,11 @@ export default function ProductPage() {
   const decision = evaluateRelease(CARAVAN_CORPUS, vehicleRelease, condition, '2026-08-20T00:00:00Z');
   const exposure = exposureAfter(CARAVAN_CORPUS, vehicleRelease, decision, '2026-09-01T12:00:00Z');
   const window = restatementExposure(CARAVAN_CORPUS);
-  const compression = compressionAvailable(CARAVAN_CORPUS, 0);
+  // UNKNOWN rather than 0: this page is a server component over the committed
+  // fixtures with no store access, and admission lives at the write boundary.
+  // Reporting zero would be claiming a fact it did not check — the same mistake
+  // it renders a table about three sections down.
+  const compression = compressionAvailable(CARAVAN_CORPUS, 'UNKNOWN');
   return (
     <div className="p-3 sm:p-5 max-w-[1000px] mx-auto w-full flex flex-col gap-6">
       <header className="flex flex-col gap-2">

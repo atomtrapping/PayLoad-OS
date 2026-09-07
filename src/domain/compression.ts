@@ -130,12 +130,32 @@ export const WHAT_IS_BEING_CLAIMED = {
   theTest: 'For every step that collapses, name the artifact that replaces it. For every step that stays, name who is answerable. A step that collapses with no artifact named is a step somebody is still doing, uncounted.',
 } as const;
 
+/**
+ * How many records have been admitted — or that the caller cannot tell.
+ *
+ * Not a defaulted number, and deliberately not read from the corpus: admission
+ * lives at the write boundary and a Corpus value carries no admission status,
+ * so anything that reports a count has to have gone and looked. A caller with
+ * no store access must say UNKNOWN rather than passing zero, because "none have
+ * been admitted" and "I could not check" are different facts and only one of
+ * them is a claim about the world. This is the same rule the corpus applies to
+ * everything else, applied to the system's reporting about itself.
+ */
+export type AdmittedCount = number | 'UNKNOWN';
+
+export interface BlockedStep {
+  id: string;
+  needs: TrustGrade;
+  /** Why the grade is not supplied, which is not the same question as whether it is. */
+  because: string;
+}
+
 export interface CompressionStanding {
   translationSteps: number;
   judgmentSteps: number;
   /** Translation steps whose required grade the corpus currently supplies. */
   availableNow: number;
-  blocked: Array<{ id: string; needs: TrustGrade }>;
+  blocked: BlockedStep[];
   statement: string;
 }
 
@@ -143,18 +163,29 @@ export interface CompressionStanding {
  * Pure: how much of the translation stack actually collapses on what the corpus
  * holds today, rather than on what it is designed to hold.
  */
-export function compressionAvailable(corpus: Corpus, admittedRecords = 0): CompressionStanding {
+export function compressionAvailable(corpus: Corpus, admittedRecords: AdmittedCount): CompressionStanding {
+  const unknownAdmission = admittedRecords === 'UNKNOWN';
   const supplies: Record<TrustGrade, boolean> = {
     NOTHING: true,
     // A receipted observation needs records carrying provenance and both clocks.
     RECEIPTED_OBSERVATION: corpus.records.length > 0,
-    ADMITTED_RECORD: admittedRecords > 0,
+    // An unreadable count supplies nothing, and says so rather than reading as zero.
+    ADMITTED_RECORD: !unknownAdmission && admittedRecords > 0,
+  };
+  const reason = (grade: TrustGrade): string => {
+    if (grade === 'ADMITTED_RECORD') {
+      return unknownAdmission
+        ? 'the admitted count is not readable from here, and an unreadable count is not a zero'
+        : 'no record has been admitted';
+    }
+    if (grade === 'RECEIPTED_OBSERVATION') return 'the corpus carries no records';
+    return 'nothing';
   };
   const translation = STACK.filter((s) => s.layer === 'TRANSLATION');
   const judgment = STACK.filter((s) => s.layer === 'JUDGMENT');
   const blocked = translation
     .filter((s) => !supplies[s.requires ?? 'NOTHING'])
-    .map((s) => ({ id: s.id, needs: s.requires ?? 'NOTHING' }));
+    .map((s) => ({ id: s.id, needs: s.requires ?? 'NOTHING', because: reason(s.requires ?? 'NOTHING') }));
   const availableNow = translation.length - blocked.length;
   return {
     translationSteps: translation.length,
@@ -163,6 +194,6 @@ export function compressionAvailable(corpus: Corpus, admittedRecords = 0): Compr
     blocked,
     statement: blocked.length === 0
       ? `All ${translation.length} translation steps collapse on what the corpus holds, and the ${judgment.length} judgment steps remain by design.`
-      : `${availableNow} of ${translation.length} translation steps collapse on what the corpus holds; ${blocked.length} wait on evidence it does not have (${blocked.map((b) => `${b.id} needs ${b.needs}`).join(', ')}). The compression is a property of the trail rather than of the design, so it becomes available when the corpus does and not before. The ${judgment.length} judgment steps do not compress at any grade.`,
+      : `${availableNow} of ${translation.length} translation steps collapse on what the corpus holds; ${blocked.length} wait on evidence it does not have (${blocked.map((b) => `${b.id} needs ${b.needs}, and ${b.because}`).join('; ')}). The compression is a property of the trail rather than of the design, so it becomes available when the corpus does and not before. The ${judgment.length} judgment steps do not compress at any grade.`,
   };
 }

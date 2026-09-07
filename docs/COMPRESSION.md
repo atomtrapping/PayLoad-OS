@@ -55,7 +55,25 @@ the ambition.
 
 `compressionAvailable` computes it rather than asserting it. Over the committed
 corpus today: **3 of 5** translation steps collapse. Re-examination and multi-hop
-settlement are blocked, because both need an admitted record and there are none.
-The compression becomes available when the corpus does, and not before.
+settlement are blocked, because both need an admitted record. The compression
+becomes available when the corpus does, and not before.
+
+### The admitted count is not a defaulted zero
+
+`admittedRecords` is a **required** argument of type `number | 'UNKNOWN'`, and it
+is deliberately not read from the `Corpus` value — admission lives at the write
+boundary and a corpus carries no admission status, so anything reporting a count
+has to have gone and looked.
+
+A caller with no store access must pass `'UNKNOWN'`, not `0`. *"None have been
+admitted"* and *"I could not check"* are different facts and only one of them is
+a claim about the world. Both block the same steps, and the blocked reasons say
+which is which — `no record has been admitted` versus `the admitted count is not
+readable from here, and an unreadable count is not a zero`.
+
+`/model` is a server component over the committed fixtures with no store access,
+so it passes `'UNKNOWN'` and renders that. Removing the default is what stops the
+number rotting: a call site that acquires store access has to change the argument
+to compile, rather than silently continuing to report a stale zero.
 
 The three judgment steps do not compress at any grade.

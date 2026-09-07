@@ -149,8 +149,12 @@ reality. A perfectly self-consistent corpus can be uniformly wrong.
 - **Correlated failure masquerading as confirmation.** Five sources agreeing
   while syndicating one original measurement pass every cross-source invariant.
   *Weight corroboration by independent provenance paths, never by the count of
-  agreeing sources* — the corpus retains source lineage, which is what makes the
-  weighting computable and counting instead an unforced error.
+  agreeing sources.* That weighting needs an upstream lineage per source, and
+  this corpus has none: a record's provenance names the artifact **this** capture
+  came from, and a source registration names licence, purposes and retention.
+  Neither says whether one source republished another's measurement — so until
+  lineage exists, agreement between sources is not down-weighted, it is not
+  counted as evidence at all.
 - **The invariants are themselves beliefs.** A constraint stack, a corroboration
   threshold and a disagreement bound are declared models with versions. *They
   carry provenance, versions and their own violation tape, and every score

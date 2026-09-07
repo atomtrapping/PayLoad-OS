@@ -66,9 +66,9 @@ export const FILTER_TIERS: readonly FilterSpec[] = [
     title: 'Cross-source invariants',
     what: 'Disagreement bounds and corroboration between sources describing the same subject.',
     runBy: 'The disagreement layer, and the geometric verdict where the quantity is a position.',
-    worth: 'Agreement raises credence only to the extent the agreeing sources are independent. Counted without independence it is worth nothing, and worse than nothing when it looks like something.',
+    worth: 'Agreement raises credence only to the extent the agreeing sources are independent, and independence is not visible here. Counted without it, agreement is worth nothing, and worse than nothing when it looks like something.',
     state: 'PARTIAL',
-    here: 'Two declared positions that cannot both be right are already reported as such. Nothing scores a source from that outcome, and no source-independence is computed.',
+    here: 'Two declared positions that cannot both be right are already reported as such, and the Earth Twin counts the distinct sources behind a subject’s standing declarations separately from the declarations themselves, because several declarations from one source are one account restated. Nothing scores a source from that outcome, and no independence can be computed at all.',
   },
   {
     id: 'MODEL',
@@ -118,7 +118,7 @@ export const FRAME_RISKS: readonly FrameRisk[] = [
     id: 'CORRELATED_FAILURE',
     title: 'Correlated failure masquerading as confirmation',
     failure: 'Five sources agreeing about a facility’s capacity, all syndicating one original measurement, pass every cross-source invariant. Corroboration assumes independence, and the physical economy’s data supply chain is heavily syndicated, so the biggest syndicator becomes the most corroborated source.',
-    discipline: 'Weight corroboration by independent provenance paths, never by the count of agreeing sources. The corpus already retains source lineage, which is exactly what makes the weighting computable — and what makes counting instead of weighting an unforced error.',
+    discipline: 'Weight corroboration by independent provenance paths, never by the count of agreeing sources. That weighting needs an upstream lineage per source, and this corpus has none: a record’s provenance names the artifact this capture came from, and a source registration names licence, purposes and retention. Neither says whether one source republished another’s measurement. So until lineage exists, agreement between sources is not down-weighted — it is not counted as evidence at all.',
   },
   {
     id: 'INVARIANTS_ARE_BELIEFS',
@@ -156,6 +156,8 @@ export interface ScoringStanding {
   fittedReliabilities: number;
   declaredInvariantSets: number;
   independentReferences: number;
+  /** Whether a source can be shown to be independent of another. It cannot. */
+  sourceLineage: 'ABSENT';
   statement: string;
 }
 
@@ -169,6 +171,7 @@ export function scoringStanding(corpus: Corpus): ScoringStanding {
     fittedReliabilities: 0,
     declaredInvariantSets: 0,
     independentReferences: 0,
-    statement: `${corpus.records.length} records from ${sources.size} sources are the population a filter set would score. No invariant set is declared, no verdict is retained, no reliability is fitted, and no independent reference exists — so nothing here has been scored, and nothing here has been checked against the world.`,
+    sourceLineage: 'ABSENT',
+    statement: `${corpus.records.length} records from ${sources.size} sources are the population a filter set would score. No invariant set is declared, no verdict is retained, no reliability is fitted, and no independent reference exists — so nothing here has been scored, and nothing here has been checked against the world. No source declares an upstream either, so two of those ${sources.size} could be one measurement republished and nothing here would show it.`,
   };
 }

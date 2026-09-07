@@ -50,10 +50,14 @@ describe('the residual risk is frame validity', () => {
     }
   });
 
-  it('weights corroboration by independent provenance paths, not by agreeing sources', () => {
+  it('weights corroboration by independence, and says the corpus cannot see it', () => {
     const correlated = FRAME_RISKS.find((r) => r.id === 'CORRELATED_FAILURE')!;
     expect(correlated.failure).toMatch(/syndicat/);
     expect(correlated.discipline).toMatch(/never by the count of agreeing sources/);
+    // Neither a record's provenance nor a source registration carries an upstream,
+    // so the weighting is a requirement, not something already computable.
+    expect(correlated.discipline).toMatch(/this corpus has none/);
+    expect(correlated.discipline).toMatch(/not counted as evidence at all/);
   });
 
   it('treats the invariant set as a versioned belief with its own tape', () => {
@@ -93,6 +97,8 @@ describe('what exists', () => {
     expect(standing.fittedReliabilities).toBe(0);
     expect(standing.declaredInvariantSets).toBe(0);
     expect(standing.independentReferences).toBe(0);
+    expect(standing.sourceLineage).toBe('ABSENT');
     expect(standing.statement).toMatch(/nothing here has been checked against the world/);
+    expect(standing.statement).toMatch(/one measurement republished and nothing here would show it/);
   });
 });

@@ -8,6 +8,7 @@ function candidate(over: Partial<AdmissionCandidate> = {}): AdmissionCandidate {
   return {
     candidateId: 'cand-1', buildId: 'build-9', recordId: 'REC-1',
     subjectCanonicalId: 'notation://subject/facility-1', origin: 'MEASURED',
+    assertion: { subjectId: 'FACILITY-1', predicate: 'condition.moisture', value: 12.4, unit: '%', basis: 'As received' },
     evidenceClass: { claimStrength: 'reported', productionClass: 'measured', interest: 'unknown' },
     provenance: { artifactDigest: 'a'.repeat(64), capturedAt: '2026-09-07T06:00:00Z' },
     provenanceClass: 'LIVE_CAPTURE', sourceTime: '2026-09-07T05:30:00Z', conditions: [],

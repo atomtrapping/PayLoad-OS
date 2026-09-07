@@ -38,6 +38,7 @@ export type AdmissionCheck =
   | 'ORIGIN_ADMISSIBLE'
   | 'BOTH_CLOCKS'
   | 'SUBJECT_IDENTIFIED'
+  | 'ASSERTION_PRESENT'
   | 'RIGHTS_DECIDED'
   | 'AUTHORITY_IS_NOT_THE_PROCESS'
   | 'PROVENANCE_DECLARED'
@@ -50,6 +51,7 @@ export const CHECK_MEANING: Record<AdmissionCheck, string> = {
   ORIGIN_ADMISSIBLE: 'The claim’s epistemic origin is one that can be evidence at all. A declared assumption and a simulation are conditions a computation ran under, not observations of the world.',
   BOTH_CLOCKS: 'A world time and a knowledge time, and the knowledge time is not earlier than the capture it descends from. A record knowable before its evidence was captured is not a record.',
   SUBJECT_IDENTIFIED: 'The subject carries a canonical identity, so the record joins on identity rather than on a name.',
+  ASSERTION_PRESENT: 'The candidate states a subject, a predicate and a value, so there is a claim to admit. Provenance without a claim is a receipt for an empty envelope, and a gate that let one through would have to invent the claim downstream.',
   RIGHTS_DECIDED: 'A rights decision exists for the operation this admission performs. An undecided right is a refusal, never a default permission.',
   AUTHORITY_IS_NOT_THE_PROCESS: 'The ruling names an authority, and the authority is not this method. Promotion is an act; a process admitting on its own behalf is a write wearing a ruling’s clothes.',
   PROVENANCE_DECLARED: 'The candidate declares how it arrived — live capture or backfill — rather than leaving it to be worked out later. Provenance inferred from a clock gap is a guess about testimony, one waterline below testimony itself.',
@@ -60,12 +62,37 @@ export const CHECK_MEANING: Record<AdmissionCheck, string> = {
 /** Origins that may never become evidence, from the engine boundary mapping. */
 export const INADMISSIBLE_ORIGINS = ['ASSUMED', 'SIMULATED'] as const;
 
+/**
+ * What the candidate actually claims.
+ *
+ * Kept separate from the identity and the clocks because it is a different kind
+ * of thing: the rest of a candidate says where this came from and when, and
+ * this says what it asserts about the world. The gate needs both — a candidate
+ * with impeccable provenance and no claim is not a record, it is a receipt for
+ * an empty envelope.
+ *
+ * Its own subject id sits here rather than being derived from the canonical
+ * identity. They are different identifiers: the canonical one is what the
+ * corpus resolves across sources, the local one is what the source called it,
+ * and writing one into the other's column silently breaks every join.
+ */
+export interface CandidateAssertion {
+  /** What the source called the subject. Not the canonical identity. */
+  subjectId: string | null;
+  predicate: string | null;
+  value: string | number | null;
+  unit?: string;
+  basis?: string;
+}
+
 export interface AdmissionCandidate {
   candidateId: string;
   buildId: string | null;
   /** The proposed record's identity, which survives admission unchanged. */
   recordId: string;
   subjectCanonicalId: string | null;
+  /** What this candidate claims. A candidate that claims nothing is refused. */
+  assertion: CandidateAssertion | null;
   /** Epistemic origin as the producer declared it. */
   origin: string | null;
   evidenceClass: { claimStrength: string | null; productionClass: string | null; interest: string | null } | null;
@@ -166,6 +193,14 @@ function evaluate(candidate: AdmissionCandidate, authority: string): Array<{ che
 
   if (!readable(candidate.subjectCanonicalId)) fail('SUBJECT_IDENTIFIED', 'The subject carries no canonical identity, so this record would join on a name.');
 
+  // A candidate with no claim is not a record. Without this the write path has
+  // to invent a predicate to satisfy its own schema, which is the gate
+  // manufacturing the assertion it exists to rule on.
+  const assertion = candidate.assertion;
+  if (!assertion || !readable(assertion.subjectId) || !readable(assertion.predicate) || assertion.value === null || assertion.value === undefined || assertion.value === '') {
+    fail('ASSERTION_PRESENT', 'The candidate states no subject, predicate or value, so there is nothing to admit. Impeccable provenance over an empty claim is a receipt for an empty envelope.');
+  }
+
   if (candidate.rightsDecision !== 'PERMITTED') {
     fail('RIGHTS_DECIDED', `The rights decision is ${candidate.rightsDecision ?? 'absent'}. Only PERMITTED admits; undecided is a refusal and never a default permission.`);
   }
@@ -187,8 +222,8 @@ function evaluate(candidate: AdmissionCandidate, authority: string): Array<{ che
 
 const ALL_CHECKS: readonly AdmissionCheck[] = [
   'EVIDENCE_ARTIFACT_BOUND', 'EVIDENCE_CLASS_COMPLETE', 'ORIGIN_ADMISSIBLE',
-  'BOTH_CLOCKS', 'SUBJECT_IDENTIFIED', 'RIGHTS_DECIDED', 'AUTHORITY_IS_NOT_THE_PROCESS',
-  'PROVENANCE_DECLARED', 'SOURCE_CLOCK_COHERENT',
+  'BOTH_CLOCKS', 'SUBJECT_IDENTIFIED', 'ASSERTION_PRESENT', 'RIGHTS_DECIDED',
+  'AUTHORITY_IS_NOT_THE_PROCESS', 'PROVENANCE_DECLARED', 'SOURCE_CLOCK_COHERENT',
 ];
 
 /** Rule on one candidate. Refusal is the default and every failure is named. */
@@ -304,6 +339,13 @@ export function crossedTheGate(provenance: RecordProvenance): boolean {
 export interface AdmittedRow {
   recordId: string;
   subjectCanonicalId: string;
+  /** What the source called the subject, kept distinct from the canonical identity. */
+  subjectId: string;
+  predicate: string;
+  /** The claim itself, which the row exists to carry rather than to describe. */
+  value: string | number;
+  unit: string | null;
+  basis: string | null;
   validFrom: string;
   validTo: string | null;
   knownAt: string;
@@ -339,6 +381,11 @@ export function admittedRow(
     row: {
       recordId: candidate.recordId,
       subjectCanonicalId: candidate.subjectCanonicalId!,
+      subjectId: candidate.assertion!.subjectId!,
+      predicate: candidate.assertion!.predicate!,
+      value: candidate.assertion!.value!,
+      unit: candidate.assertion!.unit ?? null,
+      basis: candidate.assertion!.basis ?? null,
       validFrom: candidate.validFrom!,
       validTo: null,
       knownAt: candidate.knownAt!,

@@ -10,6 +10,7 @@ function candidate(over: Partial<AdmissionCandidate> = {}): AdmissionCandidate {
     buildId: 'build-9',
     recordId: 'REC-1',
     subjectCanonicalId: 'notation://subject/facility-1',
+    assertion: { subjectId: 'FACILITY-1', predicate: 'condition.moisture', value: 12.4, unit: '%', basis: 'As received' },
     origin: 'MEASURED',
     evidenceClass: { claimStrength: 'reported', productionClass: 'measured', interest: 'unknown' },
     provenance: { artifactDigest: 'a'.repeat(64), capturedAt: '2026-09-07T06:00:00Z' },
@@ -28,7 +29,7 @@ describe('the admission authority: the gate the store says it is owed', () => {
     const ruling = admit(candidate(), AUTHORITY, RULED_AT);
     expect(ruling.outcome).toBe('ADMITTED');
     expect(ruling.failed).toEqual([]);
-    expect(ruling.passed).toHaveLength(9);
+    expect(ruling.passed).toHaveLength(10);
     expect(ruling.authority).toBe(AUTHORITY);
     expect(ruling.because).toMatch(/does not say the claim is true/);
     expect(ADMISSION_LOSS.join(' ')).toMatch(/no number of passed checks makes it true/);
@@ -217,5 +218,42 @@ describe('the admission authority: the gate the store says it is owed', () => {
     const both = { releaseId: 'REL-1', note: 'from cand-1 in build-9' };
     expect(releaseLeaks(both, ancestry)).toEqual(['build-9', 'cand-1']);
     expect(ADMISSION_LOSS.join(' ')).toMatch(/which releaseLeaks checks rather than the comment claiming it/);
+  });
+
+  it('refuses a candidate that states no claim, however good its provenance', () => {
+    // Impeccable clocks, a real artifact digest, permitted rights — and nothing
+    // asserted. Before this check the write path invented a predicate to satisfy
+    // its own schema, which is the gate manufacturing what it exists to rule on.
+    const empty = admit(candidate({ assertion: null }), 'role:corpus-steward', RULED_AT);
+    expect(empty.outcome).toBe('REFUSED');
+    expect(empty.failed.map((f) => f.check)).toContain('ASSERTION_PRESENT');
+    expect(empty.failed.find((f) => f.check === 'ASSERTION_PRESENT')!.because).toContain('empty envelope');
+
+    // A partial claim is no better than none: each part is required.
+    for (const partial of [
+      { subjectId: null, predicate: 'p', value: 1 },
+      { subjectId: 'S', predicate: null, value: 1 },
+      { subjectId: 'S', predicate: 'p', value: null },
+    ] as const) {
+      const ruling = admit(candidate({ assertion: { ...partial } }), 'role:corpus-steward', RULED_AT);
+      expect(ruling.failed.map((f) => f.check)).toContain('ASSERTION_PRESENT');
+    }
+  });
+
+  it('carries the claim onto the admitted row, with the two subject identifiers kept apart', () => {
+    const c = candidate();
+    const ruling = admit(c, 'role:corpus-steward', RULED_AT);
+    const { row } = admittedRow(c, ruling);
+    expect(row).not.toBeNull();
+    // The local name and the canonical identity are different values in
+    // different fields; writing one into the other's column breaks every join.
+    expect(row!.subjectId).toBe('FACILITY-1');
+    expect(row!.subjectCanonicalId).toBe('notation://subject/facility-1');
+    expect(row!.subjectId).not.toBe(row!.subjectCanonicalId);
+    // And the row carries what the record claims, not only how it arrived.
+    expect(row!.predicate).toBe('condition.moisture');
+    expect(row!.value).toBe(12.4);
+    expect(row!.unit).toBe('%');
+    expect(row!.basis).toBe('As received');
   });
 });

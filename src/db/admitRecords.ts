@@ -72,18 +72,31 @@ export async function admitRecords(
     }
 
     for (const { candidate, row } of rows) {
+      // Every column comes off the admitted row. Nothing is defaulted and
+      // nothing is cast: a value the gate did not rule on has no business in a
+      // row the gate is supposed to have produced, and the predicate in
+      // particular used to be invented here when the candidate carried none.
       await tx.insert(records).values({
         recordId: row!.recordId,
         corpusId: input.corpusId,
-        subjectId: row!.subjectCanonicalId,
-        predicate: (candidate as { predicate?: string }).predicate ?? 'observation',
+        subjectId: row!.subjectId,
+        subjectCanonicalId: row!.subjectCanonicalId,
+        predicate: row!.predicate,
         validFrom: row!.validFrom,
         validTo: row!.validTo,
         knownAt: row!.knownAt,
         sourceTime: row!.sourceTime,
         acquisitionTime: row!.acquisitionTime,
         provenance: row!.provenance,
-        data: { admittedBy: row!.admittedBy, ruledAt: row!.ruledAt } as Record<string, unknown>,
+        conditions: row!.conditions,
+        data: {
+          value: row!.value,
+          unit: row!.unit,
+          basis: row!.basis,
+          admittedBy: row!.admittedBy,
+          ruledAt: row!.ruledAt,
+          outcome: row!.outcome,
+        } as Record<string, unknown>,
       }).onConflictDoNothing();
 
       // Outside the release, by rule 2, and only for what was admitted.

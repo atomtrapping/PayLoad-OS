@@ -36,6 +36,16 @@ export const records = pgTable('records', {
   // column is what keeps them from reading as admitted state. The gate
   // cannot emit DEMONSTRATION and the seeder cannot emit the other two.
   provenance: text('provenance').notNull(),
+  // The subject as the source named it, kept beside the canonical identity
+  // rather than in place of it. They are different identifiers and writing one
+  // into the other's column silently breaks every join that uses either.
+  subjectCanonicalId: text('subject_canonical_id'),
+  // Conditions a conditional admission attached, carried onto the row so a
+  // reader downstream cannot mistake it for an unconditional one. Empty means
+  // none were declared, which is not the same as none applying.
+  conditions: jsonb('conditions').notNull().default([]),
+  // The claim: value, unit, basis and the admission stamp. Not a summary of the
+  // ruling — the thing the record asserts about the world.
   data: jsonb('data').notNull(),
 });
 

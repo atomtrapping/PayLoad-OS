@@ -81,7 +81,7 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
     fabric: 'corpus',
     here: { state: 'SERVICE', what: 'PostgreSQL is selected: src/db/schema.ts declares corpora, releases, records and retractions, and the corpus adapter reads them through drizzle when a database is configured. Where none is configured the committed demonstration answers instead, and the surface says which. A lakehouse remains a candidate for the columnar scans this does not serve.', where: '/stream' },
     invariant: 'Canonical state is not the entire corpus, and valid time is not knowledge time. A snapshot is a version, so table time travel must never be confused with the record\'s own two clocks.',
-    before: 'An admission authority. The ruling exists in src/domain/admission.ts and the write boundary now carries an admission status, so the precondition is largely met: a row that never crossed the gate is refused by the response pipeline rather than served as corpus state. What remains is that nothing has been admitted, so the store is behind a gate no candidate has yet passed.'
+    before: 'An admission authority, which now exists and is installed. src/domain/admission.ts is the gate and src/db/admitRecords.ts is the one door: it writes an admitted row, its ruling and its ancestry in one transaction, records refusals as well as admissions, and never supplies its own authority. A structural test holds it to being the only writer of that table apart from the seeder, whose rows are stamped DEMONSTRATION and are refused by the response pipeline rather than served as corpus state. What remains is the act: nothing has been admitted, so the store is behind a gate no candidate has yet passed.'
   },
   {
     id: 'text',
@@ -141,7 +141,7 @@ export const STORAGE_PRESENT_STATE = {
 /** The order a store earns its place, from the sequencing the classes state. */
 export const STORAGE_SEQUENCE: readonly string[] = [
   'Object storage first: it is the only class whose information already exists in volume and whose invariant is already enforced.',
-  'The records store arrived before the admission authority, not after. That is a live risk rather than a settled sequence: rows in the releases and records tables are canonical-shaped, and the admission ruling now exists without anything routing writes through it, so something must still keep an unadmitted candidate from being written there as though it were a version.',
+  'The records store arrived before the admission authority, not after. That was a live risk while it lasted: rows in the releases and records tables are canonical-shaped, so an unadmitted candidate written there would be indistinguishable from a version. Writes now route through one door, a structural test holds it to being the only one, and the records table carries the entry stamp \u2014 source time, acquisition time and declared provenance \u2014 that tells an admitted row from a demonstration one. The ordering is still what it was; what changed is that it no longer leaves a hole.',
   'Search and geospatial are projections of an admitted corpus and are rebuildable from it; they can arrive late and be rebuilt.',
   'The graph waits on one identity authority, and the vector store on declared models with recomputable inputs.',
 ];

@@ -87,9 +87,13 @@ describe('polyglot persistence, as data', () => {
     expect(STORAGE_SEQUENCE.length).toBeGreaterThan(0);
     expect(STORAGE_SEQUENCE.join(' ')).toMatch(/admission/);
     expect(by(STORAGE_CLASSES, 'records').before).toMatch(/admission authority/i);
-    // The gate is written and installed at the write boundary; what remains is that nothing has passed it.
-    expect(by(STORAGE_CLASSES, 'records').before).toMatch(/the precondition is largely met/);
+    // The gate is now written AND routed to: one door writes canonical
+    // records, a structural test holds it to being the only one, and what
+    // remains is the act rather than the mechanism.
+    expect(by(STORAGE_CLASSES, 'records').before).toMatch(/one door/);
+    expect(by(STORAGE_CLASSES, 'records').before).toMatch(/never supplies its own authority/);
     expect(by(STORAGE_CLASSES, 'records').before).toMatch(/no candidate has yet passed/);
+    expect(STORAGE_SEQUENCE.join(' ')).toMatch(/it no longer leaves a hole/);
     expect(by(STORAGE_CLASSES, 'entities').before).toMatch(/identity authority/i);
   });
 });

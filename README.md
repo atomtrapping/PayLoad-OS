@@ -1,34 +1,159 @@
 # Payload OS · Notation Systems
 
-Notation Systems is a systems and intelligence firm for the physical economy. It builds computational representations of physical systems from authorized geospatial, remote-sensing, operational, and scientific source material. Its production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall. The corpora are the finished information inventory; APIs, feeds, reports, workbenches, and MCP tools distribute it; customers apply their own inference, models, agents, and workflows to the data streams.
+Notation Systems is a systems and intelligence firm for the physical economy. It
+builds computational representations of physical systems from authorized
+geospatial, remote-sensing, operational and scientific source material, and turns
+that material into provenance-bearing corpora through acquisition, extraction,
+normalization, identity, ontology, computation, storage, indexing, verification,
+release, correction and recall.
 
-This repository holds **Payload OS, Notation Systems' internal terminal**: the instrument the firm operates, monitors and navigates its backend from. It is not a product. The products are three APIs — **Caravan**, **Tradewind** and **Landshark** — each delivered as an HTTP feed and a set of MCP tools over one provenance-bearing corpus. Caravan alone has a corpus here, and it is a committed demonstration: the feed under `/api/v1` says `fixture_only: true` on every response, and Tradewind and Landshark are declared and empty. What the terminal shows over that demonstration corpus: The inventory: certified corpus releases with their production records, release manifests, sources and intelligence-rights schedules; records with value, unit, basis, machine-readable uncertainty and validity bounds, both clocks, provenance, evidence class and stable identity; as-of answers; push retractions (corrections and recalls). Distribution: a fixture-backed feed API under `/api/v1`, the stream, and MCP tools (`npm run mcp`). The application: the Caravan ruling workbench. Where a customer wants a prescribed control, it turns a claim, a declared use, a tolerance, a valid time, a knowledge-time cutoff and evidence into an inspectable ruling (`ADMITTED`, `ADMITTED_WITH_CONDITIONS`, `PENDING_EVIDENCE`, `REFUSED`, `SUPERSEDED`, `REVOKED`) and makes every part of that ruling inspectable. It is not required for the corpus to be valuable, and it is not a fourth public API. Positioning is set in `docs/ECONOMIC_ARCHITECTURE.md`, which the founder corrected on 2026-09-06: the three APIs are the flagship products and Payload OS is the terminal, not a platform sold above them.
+**The products are three APIs — Caravan, Tradewind and Landshark — each delivered
+as an HTTP feed and a set of MCP tools over one corpus.** This repository holds
+**Payload OS, the internal terminal** the firm operates, monitors and navigates
+its backend from. It is not a product and not a fourth API. Positioning is set in
+[`docs/ECONOMIC_ARCHITECTURE.md`](docs/ECONOMIC_ARCHITECTURE.md), corrected by the
+founder on 2026-09-06.
 
-The corpus and ruling workbench are fixture only. The `/api/v1` endpoints serve the committed demonstration corpus and every response says `fixture_only: true`. Every fixture-backed screen says so. Payload OS also has an agent and apparatus stable at `/agents` and a shared message board at `/board`. These open as read-only seed definitions and messages; the opt-in `LOCAL_SANDBOX` mode records local registrations, messages and acknowledgements separately from the immutable corpus fixtures. A participant inbox and JavaScript/Python clients let local processes use the board. Manually started deterministic workers can review declared input/output compatibility or inspect an exact local candidate-build reference, post a result and acknowledge the request. They change no corpus facts or rulings and execute no model or customer workload.
+## What is actually here
 
-A separate local evidence intake command evaluates an operator-declared source policy for exact `INTERNAL INGEST`, stores content-addressed bytes and an acquisition receipt, and reopens them for integrity checks. A subsequent local normalization command separately evaluates `INTERNAL DERIVE` and parses one fixed Caravan Carrier JSON contract into an unresolved, unadmitted candidate or a recorded quarantine. A local candidate builder now assembles an explicit, bounded set of those candidates under a definition and knowledge cutoff, with a separate build-time DERIVE check and recomputable membership root. These commands create no canonical domain state or corpus admission, activate no release and do not change the fixture API.
+Read this before anything else, because the rest of the repository is careful
+about it and a reader should be too.
 
-The opt-in [local production API](docs/LOCAL_PRODUCTION_WORKFLOW.md) connects corpus/source registration → byte capture → evidence inspection → fixed Carrier normalization → candidate-build inspection, with stage receipts and exact retries. The separate [pinned GAT IFC inspector](docs/GAT_INSPECTOR.md) checks preserved IFC evidence and current derivation permission, runs a bounded specialist audit, and retains its original report plus a safe frontend projection. Both are local backend interfaces, not public acquisition controls, managed customer compute or corpus admission.
+| | |
+|---|---|
+| Corpora with records | Caravan only. Tradewind and Landshark are declared and empty |
+| The Caravan corpus | 3 releases, 21 records, 2 retractions, 7 sources — committed, synthetic, `fixture_only: true` on every response |
+| Admitted records | **0.** The admission ruling exists, the write boundary carries an admission status, and the response pipeline refuses to serve a row that never crossed the gate. No candidate has been admitted |
+| Live sources | None acquired. Two connectors are implemented and operator-gated; collection needs an explicit flag the operator holds |
+| Independent verification | None. Verification here is internal recompute, stated on every release. V0 and V1 of six tiers are reached |
+| Customers, bills, deliveries | None. The delivery ledger is specified and empty |
 
-The observation replay surface at `/compute/observations` makes the recorded-observation contract readable: a linked frame diagram, a timeline of clocks and validity, and an inspector that connects each observation to its retained evidence, supplied estimate, computed placement and residual-only comparisons, over an in-memory synthetic preview that says so. The [production path](docs/PRODUCTION_PATH.md) at `/production` is one continuous path from a source observation to a versioned product: on a loopback origin with the local rail enabled it drives the rail step by step with the rail's own receipts, inspects every output by exact reference, reads the operator's real FMCSA capture back without collecting, and names the contracts that block notation references and release; anywhere else the committed demonstration stands on the path. The [Earth Twin](docs/EARTH_TWIN.md) at `/earth` is the projection fabric's geodetic instrument: a keyless CesiumJS globe served from this origin, built on [God's Eye View](https://github.com/notationsystems/gods-eye-view)'s globe stack, that names every layer's source and state, asks the projection compiler for records on the globe and draws each where its subject's own `location.position` record declares, or shows the refusal, carries the signal sources God's Eye View reads as a registry with their terms (none integrated), and makes no request that leaves the origin. Beneath the globe it now shows what the corpus can *derive* from those same positions rather than only draw: [space as a working dimension](docs/SPATIAL_DERIVATION.md) gives every declared position a cell key at the finest resolution its source's own stated uncertainty supports and no finer — refusing a key outright where none was stated — and decides, per pair, whether the evidence can tell two positions apart at all. Geometry refutes cheaply and confirms nothing on its own: an inseparable pair is a candidate for a resolution decision that does not exist yet, never a merge.
+Roughly 45 domain modules carry the system's own claims **as data with tests over
+them**, so that a claim about the system fails a test when it stops being true
+rather than quietly ageing in prose. The pattern throughout: every module states
+what exists, what does not, and the mistake the absence invites.
 
-A separate [local observation replay CLI](docs/RECORDED_OBSERVATION_REPLAY.md) verifies retained evidence, explicit nanosecond clock mappings, calibrated sensor/body/world transforms and supplied point estimates. It preserves uncertainty and reports residuals without claiming fusion, accuracy, admission or Earth placement. `npm run replay -- demo` uses explicitly synthetic inputs. [Boreas is a candidate dataset](docs/RECORDED_DATASET_QUALIFICATION.md), not yet imported; real recorded-data acceptance and a visual sensor inspector remain absent.
+## The corpus, and the contract over it
 
-A [local scientific baseline](docs/SCIENTIFIC_BASELINE.md) evaluates a fixed scalar linear-Gaussian model with evidence references, declared noise, joint covariance and separate held-out-reference metrics. `npm run benchmark -- demo` uses its own synthetic data; it adds no variances to existing replay history and performs no 3D fusion, neural training or admission. [Scientific model roles](docs/SCIENTIFIC_MODEL_ROLES.md) records specialist methods and their still-unmet physical validation prerequisites.
+Certified releases with production records, manifests, sources and
+intelligence-rights schedules. Records carrying value, unit, basis,
+machine-readable uncertainty, validity bounds, **both clocks**, provenance,
+evidence class and a stable `notation://` identity. As-of answers that refuse
+rather than guess. Push retractions for correction and recall.
 
-A [registration and access experiment](docs/REGISTRATION_ACCESS.md) adds weighted 3D rigid fitting, local covariance and withheld check-point discrepancies, alongside explicit Euclidean and permitted-network distances with passage-closure scenarios. `/compute/registration` inspects a synthetic example without reading operator history; `npm run spatial -- demo` retains a separate evidence-bound run. No real BIM/survey import, independently validated calibration, live routing, ellipsoid or mesh geodesics are claimed.
+Distribution is the fixture-backed feed under `/api/v1`, the stream, and twelve
+MCP tools (`npm run mcp`). The Caravan ruling workbench turns a claim, a declared
+use, a tolerance and two clocks into an inspectable ruling — `ADMITTED`,
+`ADMITTED_WITH_CONDITIONS`, `PENDING_EVIDENCE`, `REFUSED`, `SUPERSEDED`,
+`REVOKED` — and is optional: the corpus is valuable without it.
 
-The [clearance value-of-information experiment](docs/CLEARANCE_VOI.md) compares hypothetical measurements by expected reduction in decision loss minus cost, retaining a joint state/outcome model and shared alignment offset. `/compute/clearance` explains the synthetic prior, possible posterior outcomes and cheapest/variance/measure-all baselines. `npm run clearance -- demo` retains an evidence-bound local run. It neither executes measurements nor establishes active inference, a Markov blanket or independent physical validation.
+## The model, as data
 
-An operator-only [FMCSA Company Census connector](docs/LOCAL_SOURCE_CONNECTORS.md) now preserves bounded live source responses through that evidence rail. Its first request selects one U.S. corporate carrier, USDOT 80806, with 15 non-contact fields. Collection requires `PAYLOAD_SOURCE_COLLECTION=1`; historical inspection never reconnects. This is internal source qualification, not QCMobile, a fleet-wide feed, canonical admission or customer-distribution permission. The [21-source connection program](docs/SOURCE_CONNECTION_PROGRAM.md) records value-ranked scopes, readiness and rights/credential blockers for subsequent connectors.
+Each of these is a module with tests, rendered on `/model` or `/api`, and
+documented. None of them acquires anything or claims a capability the repository
+does not have.
 
-A separate [Samsara GPS-history adapter](docs/SAMSARA_CONNECTOR.md) is implemented and offline-tested: one authorized vehicle, at most 15 minutes, one page, explicit account region and current private-use/retention checks. `npm run samsara -- demo` retains three invented observations without reading a real token or contacting Samsara. Live fleet qualification, continuous synchronization, facility visits and customer delivery remain absent; real capture needs retained fleet permission and a securely supplied scoped token.
+- **Doctrine** — five fabrics, three states of information, seven rules with
+  where each is enforced and which test proves it, verification tiers.
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- **Storage** — six classes of information, the store each asks for, and the
+  invariant each store must not break. PostgreSQL is selected and wired for
+  records; the rest are local files and fixtures.
+  [`docs/STORAGE.md`](docs/STORAGE.md)
+- **Correction and identity** — downstream invalidation, the specified-and-empty
+  delivery ledger, one identity core with three per-line identifier families and
+  the absent cross-line join.
+  [`docs/CORRECTION_AND_IDENTITY.md`](docs/CORRECTION_AND_IDENTITY.md)
+- **Metering** — what a lap is, and the half of a response receipt that would
+  have to exist before a bill line could point at one.
+  [`docs/METERING.md`](docs/METERING.md)
+- **Space as a working dimension** — the display was the easy half. A cell key no
+  finer than the source's own stated uncertainty, a geodesic verdict on whether
+  two positions can be told apart, and the four other jobs space does once it
+  stops being a display attribute. Three sensor families, and the semantic
+  convergence that is the actual gap.
+  [`docs/SPATIAL_DERIVATION.md`](docs/SPATIAL_DERIVATION.md)
+- **Estimation** — a constraint is a measurement with `R = 0`, so constraints are
+  beliefs with provenance; certainty is harvested in proportion to declared
+  confidence; a violated constraint is evidence about the constraint; and a
+  solver informs the corpus but never decides an identity. With the four tiers of
+  invariant scoring and the reference channel they must never feed.
+  [`docs/ESTIMATION.md`](docs/ESTIMATION.md)
+- **The maritime layer** — the vessel as the state the sensor families were
+  defined around, dispatch typed as a *prior* so intent-versus-track stays
+  signal, and the port as a time-indexed set whose membership is a ruling with
+  both clocks, where an unknown set is never an empty one.
+  [`docs/MARITIME.md`](docs/MARITIME.md)
+- **The carrier, congruence and the serving boundary** — the punch card rather
+  than the proof: credibility lives in the estate, the rulings and the two
+  clocks, and no cryptography moves it. Plus what a transport can enforce that a
+  key cannot, and the three rules a reasoner over the surface is held to.
+  [`docs/CARRIER_AND_CONGRUENCE.md`](docs/CARRIER_AND_CONGRUENCE.md)
+- **Legacy trade as backfill** — the strongest thing the past can offer this
+  corpus, and why: records adversarially audited at creation, conserving mass and
+  money so the constraint stack can adjudicate history, carrying institutional
+  custody and printed vintages, sharing the live ontology natively, and absolutely
+  archive-gated. With the coverage bound, the claim-not-truth grade and the
+  extraction cost that falls with time.
+- **The projection fabric** — one router, one routing table, and every engine
+  routed to rather than installed. OpenUSD enters as a scene target and never a
+  store, because composition resolves opinions silently where this corpus
+  preserves them; the hyperbolic manifold enters as the tier below the corpus,
+  where void renders void.
+  [`docs/PROJECTION_FABRIC.md`](docs/PROJECTION_FABRIC.md)
 
-The [synthesized architecture](docs/SYNTHESIZED_ARCHITECTURE.md) organizes the system into Acquisition, Corpus, State, Compute/Decision and Projection fabrics without changing Payload OS or its domain products. Read-only `GET /api/projections/sources/[releaseId]` supplies an exact fixture source descriptor, including a full snapshot digest; `POST /api/projections/preview` consumes it with explicit record selection, both times and viewer. It returns rights-filtered evidence records or a record-to-subject incidence graph with stable identities; spatial requests declare kepler.gl, CesiumJS or Three.js routing but return missing geometry explicitly. No renderer dependency, instance or new visual workbench is installed. Local unadmitted evidence and builds are not served by this fixture path. An editable [architecture map](docs/architecture-map/Payload%20OS%20Architecture.md) (an Obsidian canvas with one note per part) draws the fabrics, layers and flows as they exist on the branch.
+An editable [architecture map](docs/architecture-map/Payload%20OS%20Architecture.md)
+— an Obsidian canvas with one note per part, 63 of them — draws the fabrics,
+layers and flows as they exist on the branch.
 
-A small [Rust notation state kernel](docs/LOCAL_NOTATION_STATE_KERNEL.md) now backs `/notations`: create a stable-ID notation, update it, undo/redo, save a local version and reload it through the frontend. Explicit notation relationships use the same command contract. Rust validates and replays the full history; TypeScript mediates the loopback API and create-only versioned storage. This is authored local workspace state, not canonical corpus state or the Bench's immutable entity registry. Bevy remains optional and uninstalled. The [notation workspace's frontend contract](docs/NOTATION_WORKSPACE.md) covers drafts that survive navigation and reload, the three states told apart, conflict recovery, capacity, and the evidence-reference contract the backend is asked for.
+## The surfaces
 
-Notation drafts are retained across in-app navigation within the same browser document. The workspace displays its finite command/save capacity and blocks previews that cannot be saved at the version ceiling. Checkpoint/archive and evidence-linked inquiry remain unimplemented; see the [replay benchmark](docs/STATE_KERNEL_BENCHMARK.md) and [dependency baseline audit](docs/CROSS_REPOSITORY_BASELINE.md).
+`/model` is the operating model as data. `/products`, `/releases`, `/stream`,
+`/retractions` and `/api` are the corpus and its distribution. `/cases`,
+`/rulings`, `/replay`, `/profiles` and `/evidence` are the workbench.
+`/production` and `/candidates` are the rail before admission. `/notations` is
+authored local state over a Rust kernel. `/agents` and `/board` are coordination.
+
+Four instruments are synthetic previews and say so on the page: the
+[Earth Twin](docs/EARTH_TWIN.md) at `/earth` (a keyless CesiumJS globe served
+from this origin, drawing each record where its subject's own `location.position`
+record declares — and, beneath the globe, what the corpus can *derive* from those
+same positions rather than only draw), Spatial Inquiry at `/spatial`,
+[registration and access](docs/REGISTRATION_ACCESS.md) at `/compute/registration`,
+[clearance value of information](docs/CLEARANCE_VOI.md) at `/compute/clearance`,
+and [observation replay](docs/RECORDED_OBSERVATION_REPLAY.md) at
+`/compute/observations`.
+
+## The local rails
+
+Opt-in, loopback-only, operator-driven, and none of them a public control.
+
+- The [production API](docs/LOCAL_PRODUCTION_WORKFLOW.md) connects corpus and
+  source registration → byte capture → evidence inspection → fixed Carrier
+  normalization → candidate-build inspection, with stage receipts and exact
+  retries. The [production path](docs/PRODUCTION_PATH.md) at `/production` drives
+  it and names every blocker.
+- [Evidence intake](docs/LOCAL_EVIDENCE_INTAKE.md),
+  [normalization](docs/LOCAL_NORMALIZATION.md) and
+  [candidate builds](docs/LOCAL_CANDIDATE_BUILDS.md) each evaluate their own
+  permission and produce unadmitted candidates or a recorded quarantine.
+- The [pinned GAT IFC inspector](docs/GAT_INSPECTOR.md) audits preserved IFC
+  evidence through an exactly pinned engine and keeps the original report, a safe
+  projection and an execution receipt as distinct identities.
+- The [FMCSA connector](docs/LOCAL_SOURCE_CONNECTORS.md) and the
+  [Samsara adapter](docs/SAMSARA_CONNECTOR.md) are operator-only and bounded.
+  Collection requires a flag the operator holds; historical inspection never
+  reconnects. The [21-source program](docs/SOURCE_CONNECTION_PROGRAM.md) records
+  what each subsequent connector is blocked on.
+- Local [observation replay](docs/RECORDED_OBSERVATION_REPLAY.md), the
+  [scalar benchmark](docs/SCIENTIFIC_BASELINE.md), the
+  [registration experiment](docs/REGISTRATION_ACCESS.md) and the
+  [clearance experiment](docs/CLEARANCE_VOI.md) run on explicitly synthetic
+  inputs and retain evidence-bound runs. None claims fusion, accuracy, admission
+  or field validation.
+- A [Rust notation state kernel](docs/LOCAL_NOTATION_STATE_KERNEL.md) backs
+  `/notations`: stable-ID notations, explicit relations, undo and redo, versioned
+  local saves. Authored workspace state, never canonical corpus state.
 
 ## Run
 
@@ -119,11 +244,21 @@ Playwright uses the environment's Chromium when `PW_CHROMIUM_PATH` is set (for e
 - `docs/CANDIDATE_BUILD_REVIEW_WORKER.md` — manually launched board-to-local-build inspection, bounded results, result-before-receipt recovery and authority limits.
 - `docs/INTERACTION_SPEC.md` — status transitions, refusal interaction, replay, supersession, visibility.
 - `docs/DEMO_CASE.md` — the fixtures, why they are synthetic, what they demonstrate, what is unvalidated.
+- `docs/STORAGE.md` — six classes of information, the store each asks for, the invariant each must not break, and the sequence in which one earns its place.
+- `docs/CORRECTION_AND_IDENTITY.md` — downstream invalidation per class of derived artifact, the delivery ledger, as-of as a contract feature, and the identity core with the absent cross-line join.
+- `docs/METERING.md` — the lap, the two halves of a response receipt, the metering boundary, and the federation risk stated as work to do.
+- `docs/SPATIAL_DERIVATION.md` — space as resolver, join key, validity clock and inference engine; the cell key bounded by stated uncertainty; the three sensor families and the semantic convergence that is the actual gap.
+- `docs/ESTIMATION.md` — constraints as observations with provenance, the factor graph they live in, the two disciplines written before the first solve, and the four tiers of invariant scoring with the reference channel they must never feed.
+- `docs/MARITIME.md` — the vessel as state rather than feed, dispatch as a prior, the port as a time-indexed set, and the closure residual that a single-channel holder cannot produce.
+- `docs/CARRIER_AND_CONGRUENCE.md` — the punch card rather than the proof, the archival test, congruence as one name for three mechanisms, the direction of authority in interoperation, the serving boundary, and the three rules a reasoner is held to.
 
 ## Layout
 
 ```
 src/domain      corpus types and as-of selectors (corpus.ts); the operating model as data (product.ts); workbench view model and selectors; domains
+                and the system's own claims as data with tests over them: doctrine, storage, correction, identity, metering, spatialKey, spatialDerivation,
+                sensorFamilies, earthComplex, usdProjection, constraints, factorGraph, invariantScoring, eventClosure, vessel, portSet, admission,
+                responsePipeline, computationCard, computationCarrier, servingBoundary, reasoningWitness, referenceGround, actuarial, legacyTrade
 src/adapter     CorpusSource and CaseSource seams; feed payload builders; fixture implementations only
 src/projection  closed ProjectionSpec, full fixture-source snapshot descriptor and replaceable records/graph compiler; engine routing only, no renderer dependencies
 native/state-kernel small Rust notation command/replay kernel; stable IDs, explicit relations and inverse history, no renderer or filesystem
@@ -144,12 +279,13 @@ src/architecture.test.ts structural doctrine: browser and page layers take only 
 src/fixtures/production  the candidate-production demonstration: pipeline.ts runs examples/ through the real local rails at fixed instants; demo.json is its committed output, drift-tested and separation-tested
 src/fixtures    Caravan corpus releases, records, retractions and rights; profile and cases; manifest builder; digest plan; committed digests
 src/components  primitives, case workspace, ruling viewer, replay, queue, intake, shell
-src/app         operating model: /model (/model redirects to it)
+src/app         operating model: /model (a permanent redirect from /product)
                 corpus: /releases, /releases/[releaseId], /stream, /retractions, /api, /api/v1/* (fixture feed)
                 workbench: /cases, /cases/new, /cases/[caseId], /rulings, /rulings/[rulingId], /replay/[caseId], /profiles, /evidence
                 coordination: /agents, /board, /api/coordination, /api/coordination/inbox (read-only fixtures or local sandbox)
                 product: /products (the first information product, caravan.lot-state.v0: customer question, subjects, fields with evidence requirements, freshness, permitted uses, correction at two knowledge times, the ten-question delivered-record contract, the acceptance target)
                 production: /candidates (the local rail's acquisitions, normalizations, candidate build and refusals, all UNADMITTED; reproduced from examples/ by npm run stamp:production)
                 projection: /api/projections/sources/[releaseId] (descriptor GET), /api/projections/preview (read-only POST over pinned fixture releases)
+                instruments: /earth (Earth Twin, with the derivation beneath the globe), /spatial, /compute/registration, /compute/clearance, /compute/observations, /replay, /frontier, /factoring, /dispatch-liability
 tests/e2e       Playwright smoke, accessibility, keyboard, mobile, overflow guard, screenshots
 ```

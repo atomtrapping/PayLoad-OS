@@ -87,8 +87,9 @@ describe('polyglot persistence, as data', () => {
     expect(STORAGE_SEQUENCE.length).toBeGreaterThan(0);
     expect(STORAGE_SEQUENCE.join(' ')).toMatch(/admission/);
     expect(by(STORAGE_CLASSES, 'records').before).toMatch(/admission authority/i);
-    // The gate is written and nothing routes through it: half met, and the test says which half.
-    expect(by(STORAGE_CLASSES, 'records').before).toMatch(/the precondition is half met/);
+    // The gate is written and installed at the write boundary; what remains is that nothing has passed it.
+    expect(by(STORAGE_CLASSES, 'records').before).toMatch(/the precondition is largely met/);
+    expect(by(STORAGE_CLASSES, 'records').before).toMatch(/no candidate has yet passed/);
     expect(by(STORAGE_CLASSES, 'entities').before).toMatch(/identity authority/i);
   });
 });

@@ -310,7 +310,7 @@ test('production path without the local rail: the committed demonstration stands
   await expect(page.getByTestId('source-readback')).toHaveAttribute('data-status', 'UNAVAILABLE');
   await expect(page.getByTestId('source-card')).toContainText('fmcsa-census-80806-2026-09-05-qualification');
   await expect(page.getByTestId('notation-card')).toContainText('ATTACH_EVIDENCE_REFERENCE');
-  await expect(page.getByTestId('release-card')).toContainText('No admission authority exists');
+  await expect(page.getByTestId('release-card')).toContainText('No candidate build has been put through it');
   // Nothing on this page reaches the rail: the disabled descriptor is the only answer it could get, and it is not asked.
   await page.getByRole('link', { name: 'See the demonstration' }).first().click();
   await expect(page).toHaveURL(/\/candidates/);

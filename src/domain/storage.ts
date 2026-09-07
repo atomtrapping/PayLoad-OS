@@ -81,7 +81,7 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
     fabric: 'corpus',
     here: { state: 'SERVICE', what: 'PostgreSQL is selected: src/db/schema.ts declares corpora, releases, records and retractions, and the corpus adapter reads them through drizzle when a database is configured. Where none is configured the committed demonstration answers instead, and the surface says which. A lakehouse remains a candidate for the columnar scans this does not serve.', where: '/stream' },
     invariant: 'Canonical state is not the entire corpus, and valid time is not knowledge time. A snapshot is a version, so table time travel must never be confused with the record\'s own two clocks.',
-    before: 'An admission authority. The ruling now exists as a pure function in src/domain/admission.ts, and nothing calls it, so the precondition is half met: the gate is written and the store is not yet behind it. Nothing stops an unadmitted candidate being written into a releases or records row as though it were a version.',
+    before: 'An admission authority. The ruling exists in src/domain/admission.ts and the write boundary now carries an admission status, so the precondition is largely met: a row that never crossed the gate is refused by the response pipeline rather than served as corpus state. What remains is that nothing has been admitted, so the store is behind a gate no candidate has yet passed.'
   },
   {
     id: 'text',

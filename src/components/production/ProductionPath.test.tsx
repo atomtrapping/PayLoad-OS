@@ -111,7 +111,7 @@ describe('ProductionPath', () => {
     expect(screen.getByTestId('source-normalization')).toHaveAttribute('data-status', 'UNAVAILABLE');
     expect(screen.getByTestId('source-build')).toHaveAttribute('data-status', 'UNAVAILABLE');
     expect(screen.getByTestId('notation-card')).toHaveTextContent('ATTACH_EVIDENCE_REFERENCE');
-    expect(screen.getByTestId('release-card')).toHaveTextContent('No admission authority exists');
+    expect(screen.getByTestId('release-card')).toHaveTextContent('installed at the write boundary');
     expect(screen.getByTestId('no-reference')).toBeInTheDocument();
     expect(rail.calls).not.toHaveBeenCalled();
   });

@@ -101,7 +101,7 @@ export const USD_MAPPING: readonly UsdMappingRow[] = [
     corpus: 'Admitted state only',
     usd: 'Only admitted opinions compose; candidates never enter the stack',
     state: 'BLOCKED',
-    here: 'The gate now exists as a pure ruling in ./admission — checks that refuse by default, an authority that is never the method itself, and an ancestry ledger the release does not carry. Nothing calls it, and nothing is admitted, so a stage built under this rule today would still be empty. That is the honest outcome and not a reason to relax the rule.',
+    here: 'The gate now exists as a pure ruling in ./admission — checks that refuse by default, an authority that is never the method itself, and an ancestry ledger the release does not carry — and it is installed at the write boundary, where the response pipeline refuses to serve a row that never crossed it. Nothing has been admitted, so a stage built under this rule today would still be empty. That is the honest outcome and not a reason to relax the rule.',
     hazard: 'A candidate composed into a layer is indistinguishable, once composed, from an admitted fact. The stack is the wrong place to discover that a record was never admitted.',
   },
   {
@@ -182,7 +182,7 @@ export function usdReadiness(corpus: Corpus): UsdReadiness {
   const records = releaseRecords(corpus, release);
   const positions = records.filter((r) => r.predicate === LOCATION_POSITION_PREDICATE && r.geometry);
   const blockers = [
-    'Nothing is admitted. The admission ruling exists as a function and no candidate has been put through it, and only admitted opinions may compose — so a stage written today would be empty by its own rule.',
+    'Nothing is admitted. The admission ruling exists and is installed at the write boundary, and no candidate has been put through it, and only admitted opinions may compose — so a stage written today would be empty by its own rule.',
     'No resolution decision object: prim paths would be minted per subject, and a later resolution would change a path that downstream references depend on.',
     'No encoding decided for uncertainty, provenance, rights or visibility, which USD has no native concept for.',
     'No writer, and no USD library installed. The routing table records the route as UNAVAILABLE and the compiler answers GEOMETRY_NOT_AVAILABLE.',

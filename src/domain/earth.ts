@@ -174,6 +174,69 @@ export function parseView(hash: string): TwinView | null {
   return { longitude, latitude, height, heading, pitch };
 }
 
+/**
+ * A selection is a link, and a link that cannot be honoured is refused.
+ *
+ * The view half has always been a link. The selection was not, so a shared
+ * link put a reader at the same place looking at a different record — the
+ * default one — with nothing saying so. That is the failure this closes, and
+ * the refusal is the part worth stating:
+ *
+ * **A link naming a record this release does not offer is not a link to some
+ * other record.** Falling back to the default would show a reader something
+ * other than what the link named while looking exactly like success, which is
+ * worse than refusing: the reader believes they are seeing the shared thing.
+ * So the twin says the link named a record it cannot show, and shows nothing
+ * in its place.
+ *
+ * A link with no `r=` is a view-only link, which is what every link written
+ * before this existed is. Those stay valid and select nothing.
+ */
+export interface TwinLink { view: TwinView; recordId: string | null }
+
+/** Record ids are opaque here; only their shape is checked, and a malformed one rejects the whole hash. */
+const RECORD_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+
+/** `#v=lon,lat,height,heading,pitch` and, when something is selected, `&r=<recordId>`. */
+export function formatLink(view: TwinView, recordId: string | null): string {
+  const base = formatView(view);
+  if (!recordId) return base;
+  if (!RECORD_ID.test(recordId)) throw new Error(`A record id that cannot be written into a link is not written into one: ${recordId}`);
+  return `${base}&r=${recordId}`;
+}
+
+/** Rejected whole, like the view: nothing is clamped, salvaged or half-read. */
+export function parseLink(hash: string): TwinLink | null {
+  const text = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (text.length > 176) return null;
+  const [viewPart, ...rest] = text.split('&r=');
+  if (rest.length > 1) return null;
+  const view = parseView(viewPart);
+  if (!view) return null;
+  if (!rest.length) return { view, recordId: null };
+  const recordId = rest[0];
+  return RECORD_ID.test(recordId) ? { view, recordId } : null;
+}
+
+export type SelectionStanding = 'SELECTED' | 'NOT_OFFERED' | 'NONE_NAMED';
+
+export const SELECTION_MEANING: Record<SelectionStanding, string> = {
+  SELECTED: 'The link named a record this release offers, and it is the one shown.',
+  NOT_OFFERED: 'The link named a record this release does not offer. Nothing is selected in its place: a default would look like success while showing something the link did not name.',
+  NONE_NAMED: 'The link named no record. It is a view, which is what every link written before selections were carried is.',
+};
+
+/** What a link's selection amounts to against what this release actually offers. */
+export function selectionFromLink(
+  link: TwinLink | null,
+  offered: readonly string[],
+): { standing: SelectionStanding; recordId: string | null; named: string | null; because: string } {
+  const named = link?.recordId ?? null;
+  if (!named) return { standing: 'NONE_NAMED', recordId: null, named: null, because: SELECTION_MEANING.NONE_NAMED };
+  if (offered.includes(named)) return { standing: 'SELECTED', recordId: named, named, because: SELECTION_MEANING.SELECTED };
+  return { standing: 'NOT_OFFERED', recordId: null, named, because: `${SELECTION_MEANING.NOT_OFFERED} The link named ${named}.` };
+}
+
 /* ═══ The corpus, asked for honestly ═══ */
 
 /** The GLOBE realization request for one explicit record, under the release's own commitments. */

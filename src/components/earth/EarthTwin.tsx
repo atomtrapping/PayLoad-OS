@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
-import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -155,7 +155,14 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
   const activeInstance = status.state === 'READY' && runtime?.session === session ? runtime.instance : null;
   const [view, setView] = useState<TwinView>(GLOBAL_VIEW);
   const [linkable, setLinkable] = useState(true);
-  const [recordId, setRecordId] = useState(records[0]?.recordId ?? '');
+  // A link may name a record. If this release does not offer it, nothing is
+  // selected in its place: a default would look like success while showing
+  // something the link did not name.
+  const linked = useMemo(() => selectionFromLink(
+    typeof window === 'undefined' ? null : parseLink(window.location.hash),
+    records.map((record) => record.recordId),
+  ), [records]);
+  const [recordId, setRecordId] = useState(linked.recordId ?? records[0]?.recordId ?? '');
   const [answer, setAnswer] = useState<{ key: string; outcome: ProjectionOutcome } | null>(null);
   const [sunResult, setSunResult] = useState<{ instance: symbol; validAt: string; point: SunPoint | null } | null>(null);
   const [copied, setCopied] = useState('');
@@ -358,7 +365,7 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
   }
 
   async function copyLink() {
-    const url = `${window.location.origin}/earth#${formatView(view)}`;
+    const url = `${window.location.origin}/earth#${formatLink(view, recordId || null)}`;
     try { await navigator.clipboard.writeText(url); setCopied('Link copied.'); } catch { setCopied(url); }
   }
 
@@ -440,6 +447,11 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
                 {record && <div className="text-[11.5px]" style={faint}>{record.subjectId} · {record.predicate} · valid from {fmtUtc(record.validFrom)}{record.validTo ? ` to ${fmtUtc(record.validTo)}` : ', open'}</div>}
               </div>
             ) : <p className="m-0 text-[12px]" style={faint}>The release carries no records.</p>}
+            {linked.standing === 'NOT_OFFERED' && (
+              <div className="surface-inset p-2 text-[12px]" style={{ color: 'var(--status-conditional)' }} data-testid="link-selection-refused" data-named={linked.named ?? undefined}>
+                {linked.because}
+              </div>
+            )}
             <div className="surface-inset p-2 text-[12px] flex flex-col gap-1" data-testid="earth-projection" data-outcome={outcome.state} data-code={'code' in outcome ? outcome.code : undefined}>
               {outcome.state === 'ASKING' && <span style={faint}>Asking the projection compiler…</span>}
               {outcome.state === 'NONE' && <span style={faint}>Nothing selected.</span>}

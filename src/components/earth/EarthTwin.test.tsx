@@ -532,4 +532,24 @@ describe('EarthTwin', () => {
     // A click on the globe does not move the camera: the viewer already looks at what was clicked.
     expect(flyTo).toHaveBeenCalledTimes(1);
   });
+
+  it('opens the record a link named, and refuses rather than defaulting when the release does not offer it', async () => {
+    api(() => unavailable);
+    // A link naming an offered record opens it.
+    window.history.replaceState(null, '', '/earth#v=4.0250,51.9497,1000000,0.0,-90.0&r=REC-2');
+    const { unmount } = render(<EarthTwin release={release} source={source} records={records} assetsReady loadEngine={loadEngine} />);
+    await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
+    expect((screen.getByLabelText('Record') as HTMLSelectElement).value).toBe('REC-2');
+    expect(screen.queryByTestId('link-selection-refused')).toBeNull();
+    unmount();
+
+    // A link naming a record this release does not offer selects nothing and
+    // says so. Silently showing the default would look like success.
+    window.history.replaceState(null, '', '/earth#v=4.0250,51.9497,1000000,0.0,-90.0&r=REC-NOT-HERE');
+    render(<EarthTwin release={release} source={source} records={records} assetsReady loadEngine={loadEngine} />);
+    await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
+    const refused = screen.getByTestId('link-selection-refused');
+    expect(refused).toHaveAttribute('data-named', 'REC-NOT-HERE');
+    expect(refused.textContent).toMatch(/a default would look like success/);
+  });
 });

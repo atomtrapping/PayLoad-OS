@@ -205,7 +205,8 @@ layers and flows as they exist on the branch.
 `/model` is the operating model as data. `/products`, `/releases`, `/stream`,
 `/retractions` and `/api` are the corpus and its distribution. `/cases`,
 `/rulings`, `/replay`, `/profiles` and `/evidence` are the workbench.
-`/production` and `/candidates` are the rail before admission. `/notations` is
+`/production` and `/candidates` are the rail before admission; `/harvester` is
+the one rail whose candidates reach the other side of it. `/notations` is
 authored local state over a Rust kernel. `/agents` and `/board` are coordination.
 
 Four instruments are synthetic previews and say so on the page: the
@@ -234,6 +235,16 @@ Opt-in, loopback-only, operator-driven, and none of them a public control.
 - The [pinned GAT IFC inspector](docs/GAT_INSPECTOR.md) audits preserved IFC
   evidence through an exactly pinned engine and keeps the original report, a safe
   projection and an execution receipt as distinct identities.
+- The [statutory filing harvester](docs/STATUTORY_HARVESTER.md) at `/harvester`
+  runs insurance-regulator filings from supplied bytes to admitted records:
+  capture under a digest computed at capture, extraction under a declared
+  per-jurisdiction header grammar (FL OIR, CA CDI, TX TDI), candidates under a
+  knowledge horizon, the admission gate, and two as-of questions kept apart. It
+  is the first rail here whose candidates reach `ADMITTED`, and not because a
+  check was relaxed: a regulator names an issued NAIC code and declares its own
+  effective date, so the two stages the census rail is missing arrive as
+  testimony rather than inference. It never collects — capture begins at bytes
+  the operator supplies, and a test asserts the absent network path.
 - The [FMCSA connector](docs/LOCAL_SOURCE_CONNECTORS.md) and the
   [Samsara adapter](docs/SAMSARA_CONNECTOR.md) are operator-only and bounded.
   Collection requires a flag the operator holds; historical inspection never
@@ -323,6 +334,7 @@ Playwright uses the environment's Chromium when `PW_CHROMIUM_PATH` is set (for e
 - `docs/PROJECTION_FABRIC.md` — exact fixture ProjectionSpec, read-only preview example, identity-preserving records/graph, rights/time gates and explicit missing geometry; no renderer implementation.
 - `docs/UX_ARCHITECTURE.md` — object model, navigation, projections, component boundaries, the authority boundary.
 - `docs/WORKSPACE_DESIGN.md` — the design language, the one shell, the inspector pattern, the notation and candidate-production slices built on it, and the verification receipt.
+- `docs/STATUTORY_HARVESTER.md` — the insurance-regulator rail: five stages from supplied bytes to admitted records, the declared per-jurisdiction header grammar, four presence states rather than two, what is a claim and what is a coordinate, why this is the first rail to reach `ADMITTED` without relaxing a check, and the two as-of questions kept apart.
 - `docs/PRODUCTION_PATH.md` — the production path: seven stages with states derived from the rail's receipts, identities and recovery, the real source readback, the notation and release blockers, and the receipt.
 - `docs/EARTH_TWIN.md` — the Payload OS Earth Twin: the projection fabric's CesiumJS instrument built on God's Eye View's globe stack, keyless and offline, with every layer's source and state, the corpus asked for honestly, the signal-source registry, the staged plan and the receipt.
 - `docs/AGENT_COORDINATION.md` — the shared agent/apparatus stable, scoped board and inbox, contract synastry, JavaScript/Python clients, local worker and Bench references.

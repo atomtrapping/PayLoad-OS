@@ -19,6 +19,7 @@ export const NAV_AREAS: readonly NavArea[] = [
   ] },
   { id: 'acquisition', label: 'Acquisition', activity: 'Coverage, sources, collection attempts and failures', items: [
     { href: '/candidates#cp-acquisitions', label: 'Acquisitions', match: /^\/candidates/ },
+    { href: '/harvester', label: 'Statutory Harvester', match: /^\/harvester/ },
     { href: '/evidence', label: 'Evidence', match: /^\/evidence/ },
   ] },
   { id: 'corpus', label: 'Corpus', activity: 'How a product\u2019s corpus is made: candidates, builds and the path', items: [

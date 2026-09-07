@@ -23,6 +23,12 @@ test('desktop screenshots', async ({ page }) => {
   await page.goto('/retractions');
   await page.getByRole('list', { name: 'Retraction feed' }).waitFor();
   await page.screenshot({ path: `${OUT}/00d-retractions.png`, fullPage: true });
+  await page.goto('/harvester');
+  await page.getByTestId('harvester-stages').waitFor();
+  await page.screenshot({ path: `${OUT}/00d2-harvester.png`, fullPage: true });
+  await page.getByTestId('harvester-filing-tx-tdi-2026-8871').getByRole('button').click();
+  await page.getByTestId('inspector').waitFor();
+  await page.screenshot({ path: `${OUT}/00d3-harvester-inspector.png`, fullPage: true });
   await page.goto('/candidates');
   await page.getByTestId('candidate-boundary').waitFor();
   await page.screenshot({ path: `${OUT}/00e-candidates.png`, fullPage: true });

@@ -6,6 +6,7 @@ import type { Corpus, CorpusRecord } from '@/domain/corpus';
 import { CLOCK_FOR_QUESTION, QUESTION_MEANING, currentRelease, queryAsOf, recordById, recordStatusAt, releaseById, releaseIndex } from '@/domain/corpus';
 import type { AsOfQuestion } from '@/domain/corpus';
 import { asOfBody, asOfUrl } from '@/adapter/feedShapes';
+import { streamLink } from '@/domain/streamLink';
 import { CopyButton } from '@/components/primitives/CopyButton';
 import { Section } from '@/components/primitives/Section';
 import { RecordCard, RecordStatusPill } from './RecordCard';
@@ -52,6 +53,14 @@ export function StreamExplorer({ corpus, initial }: { corpus: Corpus; initial: S
 
   const answer = useMemo(() => queryAsOf(corpus, release, { subjectId, predicate, validAt, knownAt, question }, { enforceRights: true }), [corpus, release, subjectId, predicate, validAt, knownAt, question]);
   const url = asOfUrl(release.releaseId, answer.query);
+  // The reading, as a link. The question is written even when it is the
+  // default: a link carrying an instant and no question means whatever the
+  // default happened to be when it was opened.
+  // No `record`: the page reads one from an incoming link to seed the subject
+  // and predicate, and then holds no notion of an open record. Carrying the
+  // seed back out would pin the link to a record the reading may no longer be
+  // about, which is a link claiming a reading it is not showing.
+  const reading = streamLink({ release: release.releaseId, subject: subjectId, predicate, validAt, knownAt: answer.query.knownAt, question });
   const rights = (sourceId: string) => release.sources.find((s) => s.sourceId === sourceId);
   const body = JSON.stringify({ fixture_only: true, release: { releaseId: release.releaseId, buildId: release.build.buildId, knownAt: release.knownAt, certification: release.certification }, ...asOfBody(answer, rights) }, null, 2);
   const subjects = index.subjects.some((s) => s.subjectId === subjectId) ? index.subjects : [...index.subjects, { subjectId, subjectType: '—' }];
@@ -159,6 +168,11 @@ export function StreamExplorer({ corpus, initial }: { corpus: Corpus; initial: S
       <Section title="Reproduce with the feed" id="st-api" aside={<CopyButton value={body} label="Copy JSON" />}>
         <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>The same reconstruction from the API. A customer&apos;s own model or agent reads this; nothing here depends on the workbench.</p>
         <p className="m-0"><a href={url} className="id" style={{ color: 'var(--info)' }} data-testid="asof-url">GET {url}</a></p>
+        <p className="m-0 flex flex-wrap items-baseline gap-2">
+          <a href={reading} className="id" style={{ color: 'var(--info)' }} data-testid="stream-reading-link">{reading}</a>
+          <CopyButton value={reading} label="Copy link" />
+        </p>
+        <p className="m-0 text-[11px]" style={{ color: 'var(--text-muted)' }} data-testid="stream-reading-note">This link reproduces the reading, including which as-of question was asked. The feed URL above reproduces the answer for a machine; neither substitutes for the other.</p>
         <pre tabIndex={0} className="m-0 surface-inset p-3 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)', maxHeight: 360 }}>{body}</pre>
       </Section>
     </div>

@@ -90,6 +90,12 @@ describe('the contract refuses what the doctrine refuses', () => {
     expect(fn('divertOnCorrection')).toContain('r.postRelease != POST_REVERSED_ON_CORRECTION');
   });
 
+  it('binds only on a proven adjudication, so the venue is a terminus and never an entry point', () => {
+    expect(fn('releasePrimary')).toContain('r.proofDigest == bytes32(0)');
+    expect(fn('_checkPostReleaseReceipt')).toContain('r.proofDigest == bytes32(0)');
+    expect(SOURCE).toContain('error Unproven()');
+  });
+
   it('checks post-release receipts against stored terms rather than calldata', () => {
     const check = fn('_checkPostReleaseReceipt');
     expect(check).toContain('r.exposureWindowSeconds != e.windowSeconds');

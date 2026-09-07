@@ -63,6 +63,16 @@ clocks meaning different things and arriving as the same `uint256` is the
 conflation the corpus refuses at the type level, re-imported by a wire format
 that flattened it. The contract accepts only `WHAT_WE_HELD`.
 
+**`proofDigest`** — a commitment to the proof that the adjudication ran as
+declared. The ordering is: physical evidence → adjudication → proof over the
+adjudication → and only then the settlement layer. The venue is the **terminus**
+of a verification chain, never an entry point to one, so there is no
+ingestion-side oracle surface at all: every on-chain event is downstream of a
+proof. The contract refuses a zero proof digest for anything binding, which makes
+that ordering structural rather than procedural. Nothing proves anything here
+yet, so every receipt this system builds carries zero — and is refused twice
+over, once for standing and once for proof.
+
 **`observedLongestLagSeconds`** beside the declared `exposureWindowSeconds` — the
 chain enforces whatever window is signed and cannot tell whether it is right.
 Carrying the measured basis beside the declared parameter means a reader sees
@@ -75,6 +85,7 @@ enforceable; only an estate makes it correct.
 | The contract refuses | Because |
 |---|---|
 | A receipt whose standing is not `BINDING` | Money must not move on a demonstration |
+| A binding receipt with a zero `proofDigest` | The settlement layer is the terminus of a verification chain; an unproven adjudication must never reach it |
 | A receipt whose clock is not the corpus knowledge time | This system cannot bound the source's clock, and settling on one nobody carries is fabrication |
 | A post-release receipt whose window, condition or nonce disagree with **stored** terms | Verifying a signature over calldata lets a signed struct and the agreement it claims to describe diverge |
 | Fewer than a threshold of **distinct** operator signatures | A single key is neither a commodity execution attestor nor an estate-bearing fact attestor — it is one point at which the whole estate can be forged |

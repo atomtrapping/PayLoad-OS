@@ -91,7 +91,7 @@ contract ConditionalCustodyEscrow {
     uint8 internal constant CLOCK_WHAT_WE_HELD = 0;
 
     bytes32 public constant RECEIPT_TYPEHASH = keccak256(
-        "AdjudicationReceipt(bytes32 tradeId,string conditionId,uint8 verdict,uint8 postRelease,uint8 standing,uint8 clockProvenance,uint256 validAt,uint256 decidedAtKnowledge,uint256 exposureWindowSeconds,uint256 observedLongestLagSeconds,bytes32 evidenceDigest,uint256 nonce)"
+        "AdjudicationReceipt(bytes32 tradeId,string conditionId,uint8 verdict,uint8 postRelease,uint8 standing,uint8 clockProvenance,uint256 validAt,uint256 decidedAtKnowledge,uint256 exposureWindowSeconds,uint256 observedLongestLagSeconds,bytes32 evidenceDigest,bytes32 proofDigest,uint256 nonce)"
     );
     bytes32 private constant DOMAIN_TYPEHASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
@@ -109,6 +109,7 @@ contract ConditionalCustodyEscrow {
         uint256 exposureWindowSeconds;
         uint256 observedLongestLagSeconds;
         bytes32 evidenceDigest;
+        bytes32 proofDigest;
         uint256 nonce;
     }
 
@@ -163,6 +164,7 @@ contract ConditionalCustodyEscrow {
     error NotReversal();
     error TransferFailed();
     error RotationNotReady();
+    error Unproven();
 
     constructor(address vault_, address governor_, address[] memory signers_, uint8 threshold_, uint256 rotationDelay_) {
         require(vault_ != address(0) && governor_ != address(0), "zero address");
@@ -206,6 +208,7 @@ contract ConditionalCustodyEscrow {
         if (r.standing != STANDING_BINDING) revert NotBinding();
         if (r.clockProvenance != CLOCK_WHAT_WE_HELD) revert WrongClock();
         if (r.verdict != VERDICT_GRANTED) revert NotGranted();
+        if (r.proofDigest == bytes32(0)) revert Unproven();
         if (r.exposureWindowSeconds == 0) revert TermsDiverge();
         if (r.nonce != e.nextNonce) revert TermsDiverge();
         _verify(r, signatures);
@@ -288,6 +291,7 @@ contract ConditionalCustodyEscrow {
     function _checkPostReleaseReceipt(Escrow storage e, Receipt calldata r, bytes[] calldata signatures) private {
         if (r.standing != STANDING_BINDING) revert NotBinding();
         if (r.clockProvenance != CLOCK_WHAT_WE_HELD) revert WrongClock();
+        if (r.proofDigest == bytes32(0)) revert Unproven();
         if (r.exposureWindowSeconds != e.windowSeconds) revert TermsDiverge();
         if (keccak256(bytes(r.conditionId)) != e.conditionHash) revert TermsDiverge();
         if (r.nonce != e.nextNonce) revert TermsDiverge();
@@ -299,7 +303,7 @@ contract ConditionalCustodyEscrow {
         bytes32 structHash = keccak256(abi.encode(
             RECEIPT_TYPEHASH, r.tradeId, keccak256(bytes(r.conditionId)), r.verdict, r.postRelease,
             r.standing, r.clockProvenance, r.validAt, r.decidedAtKnowledge,
-            r.exposureWindowSeconds, r.observedLongestLagSeconds, r.evidenceDigest, r.nonce
+            r.exposureWindowSeconds, r.observedLongestLagSeconds, r.evidenceDigest, r.proofDigest, r.nonce
         ));
         return keccak256(abi.encodePacked("\x19\x01", domainSeparatorValue, structHash));
     }

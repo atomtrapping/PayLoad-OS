@@ -3,7 +3,7 @@ import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { currentRelease } from '@/domain/corpus';
 import { evaluateRelease, exposureAfter, type ReleaseCondition } from '@/domain/collateralVehicle';
 import {
-  CLOCK_CODE, POST_RELEASE_CODE, RECEIPT_TYPES, ReceiptRefusal, STANDING_CODE, VERDICT_CODE,
+  CARD_FUNCTIONS, CLOCK_CODE, ZERO_DIGEST, POST_RELEASE_CODE, RECEIPT_TYPES, ReceiptRefusal, STANDING_CODE, VERDICT_CODE,
   buildReceipt, evidenceDigestOf,
 } from './adjudicationReceipt';
 
@@ -92,5 +92,29 @@ describe('the adjudication receipt', () => {
     const decision = evaluateRelease(corpus, release, TIGHT, '2026-08-20T00:00:00Z');
     const { receipt } = buildReceipt(corpus, decision, { tradeId: TRADE, domain: DOMAIN, exposureWindowSeconds: WINDOW, nonce: 0 });
     expect(RECEIPT_TYPES.AdjudicationReceipt.map((f) => f.name).sort()).toEqual(Object.keys(receipt).sort());
+  });
+
+  it('carries a zero proof today, which is what a correct contract refuses to bind on', () => {
+    const decision = evaluateRelease(corpus, release, TIGHT, '2026-08-20T00:00:00Z');
+    const unproven = buildReceipt(corpus, decision, { tradeId: TRADE, domain: DOMAIN, exposureWindowSeconds: WINDOW, nonce: 0 });
+    expect(unproven.receipt.proofDigest).toBe(ZERO_DIGEST);
+    expect(unproven.loss.some((l) => l.includes('terminus of a verification chain'))).toBe(true);
+
+    // A proof changes the digest, so the signature covers whether one existed.
+    const proven = buildReceipt(corpus, decision, { tradeId: TRADE, domain: DOMAIN, exposureWindowSeconds: WINDOW, nonce: 0, proofDigest: `0x${'ab'.repeat(32)}` });
+    expect(proven.receipt.proofDigest).not.toBe(ZERO_DIGEST);
+    expect(proven.digest).not.toBe(unproven.digest);
+  });
+
+  it('keeps the card\u2019s two functions apart, and points the archival one elsewhere', async () => {
+    const { existsSync } = await import('node:fs');
+    expect(existsSync(CARD_FUNCTIONS.asRecord.gradedIn)).toBe(true);
+    expect(CARD_FUNCTIONS.asRecord.question).toContain('does not exist yet');
+    expect(CARD_FUNCTIONS.asAuthorisation.question).toContain('without re-deriving');
+    // The authorisation conditions are the refusals this module actually enforces.
+    for (const term of ['BINDING', 'non-zero proof', 'stored terms', 'distinct signers', 'spent once']) {
+      expect(CARD_FUNCTIONS.asAuthorisation.gradedHere).toContain(term);
+    }
+    expect(CARD_FUNCTIONS.theRisk).toContain('invents a default');
   });
 });

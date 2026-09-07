@@ -43,6 +43,42 @@ import type { DecisionStanding, PostReleaseState, ReleaseDecision, ReleaseExposu
 import { restatementExposure } from '@/domain/collateralVehicle';
 import type { Corpus } from '@/domain/corpus';
 
+/**
+ * The two functions of a card, kept apart.
+ *
+ * The archival function — can this be re-run from the artifact and a spec, on a
+ * machine that does not exist yet — is graded elsewhere, in computationCard.ts.
+ * That is the card as record.
+ *
+ * This module is the other function, and historically it was the primary one. A
+ * tabulating card was not mainly a storage medium: it was the unit of completed
+ * processing that authorised a downstream action. A payroll run produced a card
+ * and the bank honoured the card; nobody re-derived the payroll from timecards
+ * at the teller's window. The artifact was final because the machinery was
+ * deterministic, and it was carried between parties who never met because its
+ * provenance was its form.
+ *
+ * A receipt sits in that slot. A settlement layer honours it without re-deriving
+ * the adjudication, for the same reason and under the same conditions: the
+ * processing was deterministic, the artifact is frozen, and it can be checked by
+ * any reader rather than only by the machine that made it.
+ *
+ * Which is why the refusals here are not fastidiousness. A card that authorises
+ * an action it was not entitled to authorise is worse than no card, because the
+ * whole arrangement rests on the downstream party not looking behind it.
+ */
+export const CARD_FUNCTIONS = {
+  asRecord: {
+    question: 'Can this be re-run from the artifact and a spec, on a machine that does not exist yet?',
+    gradedIn: 'src/domain/computationCard.ts',
+  },
+  asAuthorisation: {
+    question: 'May a downstream system act on this without re-deriving it?',
+    gradedHere: 'Only on a BINDING standing and a non-zero proof, over the corpus knowledge clock, against stored terms, from a threshold of distinct signers, with the evidence digest spent once.',
+  },
+  theRisk: 'A card honoured without re-derivation is only as good as what it was entitled to authorise, so every field the receipt omits is a field the honouring system invents a default for.',
+} as const;
+
 export const RECEIPT_METHOD = 'notationsos.adjudication-receipt.v1';
 
 /* ── Closed vocabularies, encoded as the contract sees them ── */
@@ -68,6 +104,7 @@ export const RECEIPT_TYPES: TypedTypes = {
     { name: 'exposureWindowSeconds', type: 'uint256' },
     { name: 'observedLongestLagSeconds', type: 'uint256' },
     { name: 'evidenceDigest', type: 'bytes32' },
+    { name: 'proofDigest', type: 'bytes32' },
     { name: 'nonce', type: 'uint256' },
   ],
 };
@@ -84,6 +121,13 @@ export interface AdjudicationReceipt {
   exposureWindowSeconds: number;
   observedLongestLagSeconds: number;
   evidenceDigest: string;
+  /**
+   * A commitment to the proof that the adjudication ran as declared. Zero means
+   * unproven, which a contract must refuse for a binding release: the venue is
+   * the terminus of a verification chain and never an entry point to one, so
+   * nothing unproven may reach the settlement layer at all.
+   */
+  proofDigest: string;
   nonce: number;
 }
 
@@ -95,6 +139,9 @@ export interface ReceiptBundle {
   /** What a reader must not take the receipt for. */
   loss: readonly string[];
 }
+
+/** Unproven. A contract must not bind on this, and today every receipt carries it. */
+export const ZERO_DIGEST = `0x${'0'.repeat(64)}`;
 
 const seconds = (iso: string): number => Math.floor(Date.parse(iso) / 1000);
 
@@ -123,6 +170,12 @@ export interface ReceiptRequest {
   exposureWindowSeconds: number;
   nonce: number;
   exposure?: ReleaseExposure;
+  /**
+   * The proof over the adjudication, when one exists. Absent today: no proving
+   * runs here, so receipts carry zero and a correct contract refuses to bind on
+   * them. That refusal is the ordering made structural rather than procedural.
+   */
+  proofDigest?: string;
 }
 
 /**
@@ -164,6 +217,7 @@ export function buildReceipt(corpus: Corpus, decision: ReleaseDecision, request:
     exposureWindowSeconds: request.exposureWindowSeconds,
     observedLongestLagSeconds: measured.longestLagDays === null ? 0 : Math.round(measured.longestLagDays * 86_400),
     evidenceDigest: evidenceDigestOf(decision),
+    proofDigest: request.proofDigest ?? ZERO_DIGEST,
     nonce: request.nonce,
   };
 
@@ -178,6 +232,7 @@ export function buildReceipt(corpus: Corpus, decision: ReleaseDecision, request:
       'A zero observed lag is an absence of observed corrections, not evidence that none was coming.',
       'The clock is the corpus knowledge time and answers what this system held. It does not answer what the source knew, and the receipt says which so the two cannot be read as one.',
       'validAt and decidedAtKnowledge coincide because the condition asks about the world at the instant it is decided. They are separate fields because they are separate questions.',
+      `proofDigest is ${request.proofDigest ? 'present' : 'zero, meaning unproven'}. The venue is the terminus of a verification chain rather than an entry point to one: an unproven adjudication must not reach settlement, and a correct contract refuses to bind on a zero proof.`,
       'Nothing here signs. The digest is the value a signature would be taken over, and producing one is an operator act with an operator key.',
     ],
   };

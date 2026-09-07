@@ -256,6 +256,8 @@ test('the model page separates translation from judgment, and counts what actual
   // And the count is derived, not claimed: two steps wait on an admitted record.
   await expect(page.getByTestId('compression-standing')).toContainText('3 of 5');
   await expect(page.getByTestId('compression-standing')).toContainText('a property of the trail rather than of the design');
+  // The page cannot reach the write boundary, so it says so rather than reporting a zero it did not check.
+  await expect(page.getByTestId('compression-standing')).toContainText('an unreadable count is not a zero');
 });
 
 test('the model page keeps the kinds of no apart, each with the mechanism that enforces it', async ({ page }) => {

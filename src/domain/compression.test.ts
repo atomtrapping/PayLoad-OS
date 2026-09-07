@@ -36,6 +36,7 @@ describe('what compresses and what must not', () => {
 
   it('derives what actually collapses today, and it is not everything', () => {
     const now = compressionAvailable(CARAVAN_CORPUS, 0);
+    expect(now.blocked.every((b) => b.because === 'no record has been admitted')).toBe(true);
     expect(now.judgmentSteps).toBe(3);
     expect(now.translationSteps).toBe(5);
     // The steps needing an admitted record are blocked, because there are none.
@@ -54,5 +55,17 @@ describe('what compresses and what must not', () => {
     // And an empty corpus collapses almost nothing.
     const empty = compressionAvailable({ ...CARAVAN_CORPUS, records: [] }, 0);
     expect(empty.availableNow).toBe(1);
+  });
+
+  it('will not let an unreadable admitted count render as a zero', () => {
+    const known = compressionAvailable(CARAVAN_CORPUS, 0);
+    const unknown = compressionAvailable(CARAVAN_CORPUS, 'UNKNOWN');
+    // The same steps are blocked either way — but for different reasons, and the
+    // difference is the whole point: not-checked is not the same as none.
+    expect(unknown.availableNow).toBe(known.availableNow);
+    expect(unknown.blocked.map((b) => b.id)).toEqual(known.blocked.map((b) => b.id));
+    expect(unknown.blocked.every((b) => b.because.includes('not readable from here'))).toBe(true);
+    expect(unknown.statement).toContain('an unreadable count is not a zero');
+    expect(known.statement).not.toContain('unreadable');
   });
 });

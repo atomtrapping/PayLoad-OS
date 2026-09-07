@@ -19,6 +19,7 @@ import { CORRESPONDENCES, FIT_DEPTH_LABEL, MANDATE_INVERSION } from '@/domain/ac
 import { CAPABILITIES, PRESSURE, THE_FINDING, accommodationStanding, fitOf } from '@/domain/accommodation';
 import { ATTESTOR_KINDS, LIABILITY_BOUNDARY, scalar, LIFECYCLE, NEVER, TRUST_ORDER, VEHICLE_ROLE, VEHICLE_SEQUENCE, VENUE_PROPERTIES, evaluateRelease, exposureAfter, restatementExposure, type ReleaseCondition } from '@/domain/collateralVehicle';
 import { NEGATIVE_RULES, WHY_ONE_IS_NOT_ENOUGH } from '@/domain/negativeStates';
+import { STACK, WHAT_IS_BEING_CLAIMED, compressionAvailable } from '@/domain/compression';
 import { currentRelease } from '@/domain/corpus';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { Section } from '@/components/primitives/Section';
@@ -48,6 +49,7 @@ export default function ProductPage() {
   const decision = evaluateRelease(CARAVAN_CORPUS, vehicleRelease, condition, '2026-08-20T00:00:00Z');
   const exposure = exposureAfter(CARAVAN_CORPUS, vehicleRelease, decision, '2026-09-01T12:00:00Z');
   const window = restatementExposure(CARAVAN_CORPUS);
+  const compression = compressionAvailable(CARAVAN_CORPUS, 0);
   return (
     <div className="p-3 sm:p-5 max-w-[1000px] mx-auto w-full flex flex-col gap-6">
       <header className="flex flex-col gap-2">
@@ -674,6 +676,34 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
         <ol className="m-0 pl-4 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="What is missing before any of this is real">
           {VEHICLE_SEQUENCE.map((step) => <li key={step}>{step}</li>)}
         </ol>
+      </Section>
+
+      <Section title="What compresses, and what must not" id="pm-compression">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+          <span style={{ color: 'var(--text-heading)' }}>{WHAT_IS_BEING_CLAIMED.is}</span> {WHAT_IS_BEING_CLAIMED.isNot} {WHAT_IS_BEING_CLAIMED.theTest}
+        </p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="compression-standing">{compression.statement}</p>
+        <div className="overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="The distrust stack, and which layer each step is in">
+            <thead><tr><th scope="col">Today</th><th scope="col">Layer</th><th scope="col">Disposition</th></tr></thead>
+            <tbody>
+              {STACK.map((step) => (
+                <tr key={step.id} data-stack-step={step.id} data-layer={step.layer}>
+                  <td style={{ color: 'var(--text-secondary)' }}>{step.today}</td>
+                  <td style={{ color: step.layer === 'JUDGMENT' ? 'var(--status-refused)' : 'var(--text-secondary)' }}>
+                    <span className="id">{step.layer}</span>
+                    {step.requires ? <div className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>needs {step.requires}</div> : null}
+                  </td>
+                  <td>
+                    <span style={{ color: 'var(--text-heading)' }}>{step.disposition}</span>
+                    <div className="text-[11.5px] mono" style={{ color: 'var(--text-muted)' }}>{step.compressedBy ?? `answerable: ${step.answerable}`}</div>
+                    {step.ifCompressed ? <div className="text-[11.5px]" style={{ color: 'var(--status-refused)' }}>{step.ifCompressed}</div> : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Section>
 
       <Section title="The kinds of no, kept apart" id="pm-negative">

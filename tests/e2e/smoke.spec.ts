@@ -245,6 +245,19 @@ test('the model page works a release through a correction, and never un-fires it
   await expect(page.getByTestId('custody-trust-order')).toContainText('Transport verification is not content testimony');
 });
 
+test('the model page separates translation from judgment, and counts what actually collapses', async ({ page }) => {
+  await page.goto('/model');
+  const section = page.locator('#pm-compression');
+  expect(await section.locator('[data-layer="TRANSLATION"]').count()).toBe(5);
+  expect(await section.locator('[data-layer="JUDGMENT"]').count()).toBe(3);
+  // The judgment steps name what compressing them would actually be.
+  await expect(section.locator('[data-stack-step="CLOSING"]')).toContainText('compel settlement');
+  await expect(section.locator('[data-stack-step="UNDERWRITING"]')).toContainText('Never the witness');
+  // And the count is derived, not claimed: two steps wait on an admitted record.
+  await expect(page.getByTestId('compression-standing')).toContainText('3 of 5');
+  await expect(page.getByTestId('compression-standing')).toContainText('a property of the trail rather than of the design');
+});
+
 test('the model page keeps the kinds of no apart, each with the mechanism that enforces it', async ({ page }) => {
   await page.goto('/model');
   const section = page.locator('#pm-negative');

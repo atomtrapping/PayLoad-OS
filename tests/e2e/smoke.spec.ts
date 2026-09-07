@@ -377,6 +377,14 @@ test('the products page meters usage honestly: the content half is carried, the 
   await expect(page.getByTestId('metering-boundary')).toContainText('Not settlement participant');
   // The federation defence is stated as work to do, not as protection already held.
   await expect(page.getByTestId('federation-risk')).toContainText('None of the three is implemented');
+
+  // A catalog slice states its own readiness: no store access here, so the
+  // admission grade is unreadable rather than zero, and unreadable does not sell.
+  const catalogSlice = page.getByTestId('catalog-slice');
+  await expect(catalogSlice).toContainText('NOT_FOR_SALE');
+  await expect(catalogSlice).toContainText('grade UNKNOWN');
+  await expect(catalogSlice).toContainText('an unchecked grade is not an admitted one');
+  await expect(page.getByTestId('slice-corrections')).toContainText('would be multiplied by a real portfolio');
 });
 
 test('the information product states its question, fields, correction at two knowledge times, the ten-question contract and the acceptance target', async ({ page }) => {

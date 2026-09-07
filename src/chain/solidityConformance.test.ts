@@ -118,4 +118,22 @@ describe('the contract refuses what the doctrine refuses', () => {
     // No arithmetic invents a rate; there is no APY, no rate and no accrual term.
     expect(/\b(apy|interestRate|accrue|ratePerSecond)\b/i.test(SOURCE)).toBe(false);
   });
+
+  it('models the third route state, so a route that never closes is not a deposit locked forever', () => {
+    expect(SOURCE).toContain('UNCLOSED }');
+    const reclaim = fn('reclaimUnclosed');
+    expect(reclaim).toContain('block.timestamp < e.closingDeadline');
+    expect(reclaim).toContain('msg.sender != e.depositor');
+    expect(reclaim).toContain('e.state = State.UNCLOSED');
+    expect(reclaim).toContain('vault.transfer(e.depositor');
+    // A deadline is mandatory, because a route without one has no way out.
+    expect(fn('deposit')).toContain('closingDeadline > block.timestamp');
+  });
+
+  it('requires both parties before a closing can fire, so the proof persuades rather than compels', () => {
+    expect(fn('accept')).toContain('msg.sender != e.beneficiary');
+    const release = fn('releasePrimary');
+    expect(release).toContain('!e.counterpartyAccepted');
+    expect(release).toContain('block.timestamp >= e.closingDeadline');
+  });
 });

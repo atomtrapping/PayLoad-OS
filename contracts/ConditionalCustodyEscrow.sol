@@ -47,6 +47,22 @@ pragma solidity ^0.8.24;
  *    that question and a contract that accepted it would settle on a clock
  *    nobody carries.
  *
+ * A ROUTE HAS THREE STATES, NOT TWO
+ *
+ * OPEN, CLOSED, and the one systems lose: UNCLOSED. A deadline passes with no
+ * closing, the deposit returns, and what the parties keep is the adjudication —
+ * a private instrument between exactly those two, with no finality and no
+ * audience beyond them. That is the mechanism's fallback rather than its
+ * failure, and modelling it is what stops a route with no closing from being a
+ * deposit locked forever.
+ *
+ * Closing takes both parties. The proof can be produced by either side; the
+ * closing executes an arrangement both of them wired, and this contract never
+ * supplies the missing consent. A closing that fired on one party's say-so
+ * would let whoever holds the receipt compel settlement, and a witness that can
+ * be used to compel is no longer neutral between the two parties who both have
+ * to trust it.
+ *
  * WHAT IT DOES NOT DO
  *
  * It does not price the exposure window. The window is declared by the operator
@@ -113,7 +129,7 @@ contract ConditionalCustodyEscrow {
         uint256 nonce;
     }
 
-    enum State { NONE, HELD, PRIMARY_RELEASED, FROZEN_PENDING_RULING, SETTLED, DIVERTED }
+    enum State { NONE, HELD, PRIMARY_RELEASED, FROZEN_PENDING_RULING, SETTLED, DIVERTED, UNCLOSED }
 
     struct Escrow {
         address depositor;
@@ -125,6 +141,8 @@ contract ConditionalCustodyEscrow {
         bytes32 conditionHash;  // keccak of the conditionId fixed at Stage 1
         uint256 windowSeconds;  // fixed at Stage 1; later receipts must match
         uint256 expiry;
+        uint256 closingDeadline; // after this, with no closing, the route is UNCLOSED
+        bool counterpartyAccepted;
         uint256 nextNonce;
         State state;
     }
@@ -142,7 +160,9 @@ contract ConditionalCustodyEscrow {
     mapping(bytes32 => Escrow) public escrows;
     mapping(bytes32 => bool) public evidenceUsed;
 
-    event Deposited(bytes32 indexed tradeId, address indexed depositor, uint256 shares);
+    event Deposited(bytes32 indexed tradeId, address indexed depositor, uint256 shares, uint256 closingDeadline);
+    event CounterpartyAccepted(bytes32 indexed tradeId, address indexed beneficiary);
+    event Unclosed(bytes32 indexed tradeId, uint256 sharesReturned);
     event PrimaryReleased(bytes32 indexed tradeId, uint256 shares, uint256 assets, uint256 expiry);
     event Settled(bytes32 indexed tradeId, uint256 shares, uint256 assets, uint256 yieldAssets);
     event Diverted(bytes32 indexed tradeId, uint256 shares, uint256 assets, bytes32 evidenceDigest);
@@ -165,6 +185,11 @@ contract ConditionalCustodyEscrow {
     error TransferFailed();
     error RotationNotReady();
     error Unproven();
+    error NotAccepted();
+    error NotCounterparty();
+    error DeadlinePassed();
+    error DeadlineNotReached();
+    error NotDepositor();
 
     constructor(address vault_, address governor_, address[] memory signers_, uint8 threshold_, uint256 rotationDelay_) {
         require(vault_ != address(0) && governor_ != address(0), "zero address");
@@ -187,17 +212,58 @@ contract ConditionalCustodyEscrow {
 
     /* ── Deposit ── */
 
-    function deposit(bytes32 tradeId, address beneficiary, address corrector, uint256 shares, uint16 primaryBps) external {
+    function deposit(bytes32 tradeId, address beneficiary, address corrector, uint256 shares, uint16 primaryBps, uint256 closingDeadline) external {
         if (escrows[tradeId].state != State.NONE) revert BadState();
         require(beneficiary != address(0) && corrector != address(0), "zero address");
         require(primaryBps >= 5000 && primaryBps <= 9500, "primary out of range");
+        // A route with no deadline is not open; it is a deposit with no way out.
+        require(closingDeadline > block.timestamp, "deadline in the past");
         if (!vault.transferFrom(msg.sender, address(this), shares)) revert TransferFailed();
         escrows[tradeId] = Escrow({
             depositor: msg.sender, beneficiary: beneficiary, corrector: corrector,
             sharesHeld: shares, sharesReleased: 0, primaryBps: primaryBps,
-            conditionHash: bytes32(0), windowSeconds: 0, expiry: 0, nextNonce: 0, state: State.HELD
+            conditionHash: bytes32(0), windowSeconds: 0, expiry: 0,
+            closingDeadline: closingDeadline, counterpartyAccepted: false, nextNonce: 0, state: State.HELD
         });
-        emit Deposited(tradeId, msg.sender, shares);
+        emit Deposited(tradeId, msg.sender, shares, closingDeadline);
+    }
+
+    /**
+     * The counterparty's half of the consent.
+     *
+     * A closing is a settlement event and not a verification event: the proof
+     * can be produced by either side, but the closing executes an arrangement
+     * both of them wired. Without this, whoever holds a valid receipt could
+     * compel settlement, and a witness that can be used to compel is no longer
+     * neutral between the parties who both have to trust it.
+     */
+    function accept(bytes32 tradeId) external {
+        Escrow storage e = escrows[tradeId];
+        if (e.state != State.HELD) revert BadState();
+        if (msg.sender != e.beneficiary) revert NotCounterparty();
+        e.counterpartyAccepted = true;
+        emit CounterpartyAccepted(tradeId, msg.sender);
+    }
+
+    /**
+     * The route did not close.
+     *
+     * The deadline passed with no release, so the deposit returns and the state
+     * is recorded as UNCLOSED rather than as a failure. What the parties keep is
+     * the adjudication itself, which is a private instrument between them: this
+     * contract has no opinion about it and never acquires one, because a route
+     * that does not close says something about the parties and nothing about
+     * the cargo.
+     */
+    function reclaimUnclosed(bytes32 tradeId) external {
+        Escrow storage e = escrows[tradeId];
+        if (e.state != State.HELD) revert BadState();
+        if (block.timestamp < e.closingDeadline) revert DeadlineNotReached();
+        if (msg.sender != e.depositor) revert NotDepositor();
+        e.state = State.UNCLOSED;
+        uint256 shares = e.sharesHeld;
+        if (!vault.transfer(e.depositor, shares)) revert TransferFailed();
+        emit Unclosed(tradeId, shares);
     }
 
     /* ── Stage 1: the primary tranche, on a GRANTED and BINDING ruling ── */
@@ -209,6 +275,8 @@ contract ConditionalCustodyEscrow {
         if (r.clockProvenance != CLOCK_WHAT_WE_HELD) revert WrongClock();
         if (r.verdict != VERDICT_GRANTED) revert NotGranted();
         if (r.proofDigest == bytes32(0)) revert Unproven();
+        if (!e.counterpartyAccepted) revert NotAccepted();
+        if (block.timestamp >= e.closingDeadline) revert DeadlinePassed();
         if (r.exposureWindowSeconds == 0) revert TermsDiverge();
         if (r.nonce != e.nextNonce) revert TermsDiverge();
         _verify(r, signatures);

@@ -97,6 +97,48 @@ Signer rotation is timelocked and emits before it takes effect, because the firs
 real deposit makes this contract load-bearing and the migration story has to
 exist before that, not after.
 
+## A route has three states, not two
+
+`src/domain/routeClosure.ts`.
+
+**OPEN** — evidence flowing, adjudication live, nothing final.
+**CLOSED** — proof verified, settlement executed, terminal.
+**UNCLOSED** — the verification ran and the proof exists, and the closing never
+fired.
+
+Systems that model two states treat the third as an error, a timeout or a
+dangling row. It is none of those. An unclosed route is a **bilateral
+instrument**: a verified, signed, replayable adjudication of two parties'
+contested facts, whose validity is now defined between exactly those two rather
+than by any machinery. It is what a card that was punched but never run through
+the counterparty's tabulator became — an inter-company claim, settled by
+correspondence or by a court, not by the machine.
+
+| | CLOSED | UNCLOSED |
+|---|---|---|
+| Finality | Enforced by the medium | None, and it never acquires any |
+| Audience | Anyone, including strangers | Exactly two parties |
+| Corrections | Cannot reach the closing; the buffer absorbs | Apply in full; nothing was committed |
+| Money | Settled by the venue | Returns to the depositor after the deadline |
+
+**Closing takes both parties.** The proof can be produced unilaterally — either
+side may ask for the adjudication, and the answer does not depend on who asked.
+The closing cannot: `accept()` is the counterparty's half, and `releasePrimary`
+refuses without it. A closing that fired on one party's say-so would let whoever
+holds the receipt compel settlement, and a witness that can be used to compel is
+no longer neutral between the two parties who both have to trust it. Non-coercion
+is not politeness here; it is what lets both counterparties keep using the same
+witness.
+
+**And a route with no deadline is not open — it is a deposit with no way out.**
+`deposit` requires a closing deadline; after it passes with no release,
+`reclaimUnclosed` returns the shares and records the state. Without that path the
+first version of this contract locked funds forever whenever a condition simply
+never fired, which is the commonest outcome and was the one it could not express.
+
+An unclosed route is not a defect of the evidence. It says something about the
+parties and nothing about the cargo.
+
 ## Yield, stated honestly
 
 The escrow holds **vault shares**, not a balance it invents yield on. Yield is

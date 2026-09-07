@@ -104,6 +104,15 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-identifier-state="IN_USE"]')).toHaveCount(2);
   await expect(page.locator('[data-join-key="RESOLVED_ENTITY"][data-join-state="ABSENT"]')).toContainText('matching name is not a resolution');
   await expect(page.getByTestId('cross-line-join')).toContainText('A join built per line is not a join');
+  // The cell key is computed now, and the hazard it carries is unchanged.
+  await expect(page.locator('[data-join-key="SPATIAL_CELL"][data-join-state="PRESENT"]')).toContainText('never what the comparison concludes');
+  // Space: six roles with their honest state, five derivations ranked, the display the only built one.
+  await expect(page.locator('[data-spatial-role]')).toHaveCount(6);
+  await expect(page.locator('[data-spatial-role="DISPLAY"][data-spatial-state="BUILT"]')).toContainText('windshield, not the engine');
+  await expect(page.locator('[data-spatial-role="INFERENCE"][data-spatial-state="ABSENT"]')).toHaveCount(1);
+  await expect(page.locator('[data-derivation]')).toHaveCount(5);
+  await expect(page.locator('[data-derivation="FLOW_GEOMETRY"]')).toContainText('loosest uncertainty in the chain');
+  await expect(page.locator('#pm-spatial')).toContainText('not a spatial database');
   await expect(page.locator('[data-storage]')).toHaveCount(6);
   // Exactly one class is a running service: PostgreSQL holds the corpus tables.
   // The invariant is that a SERVICE class has a dependency behind it, not that none exists.

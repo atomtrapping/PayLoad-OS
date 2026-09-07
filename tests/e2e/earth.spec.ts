@@ -118,3 +118,27 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   expect(external).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test('the derivation beneath the globe keys each position no finer than its evidence and refuses to confirm', async ({ page }) => {
+  await page.goto('/earth');
+  const panel = page.getByTestId('spatial-keys');
+  await expect(panel).toBeVisible();
+
+  // Two subjects declare a position; both state an uncertainty, so both are keyed.
+  await expect(panel.locator('[data-key-record]')).toHaveCount(2);
+  await expect(panel.locator('[data-key-record][data-keyed="true"]')).toHaveCount(2);
+  const berth = panel.locator('[data-key-record="REC-0207"]');
+  await expect(berth).toContainText('u14ze9');
+  // The cell is never shown without the claim that bounded its resolution.
+  await expect(berth).toContainText('±250 m');
+  await expect(berth).toContainText('No finer');
+  await expect(panel.locator('[data-key-record="REC-0306"]')).toContainText('6gxpdp');
+
+  // The one cross-subject pair: the cells differ, and the metric verdict refutes.
+  const pair = panel.locator('[data-pair="REC-0207-REC-0306"]');
+  await expect(pair).toHaveAttribute('data-verdict', 'DISTINGUISHABLE');
+  await expect(pair).toContainText('750 m of combined stated uncertainty');
+  await expect(pair).toContainText('different places');
+  await expect(panel.locator('[data-verdict="INDISTINGUISHABLE"]')).toHaveCount(0);
+  await expect(panel).toContainText('Containment is the join that would matter, and it is absent');
+});

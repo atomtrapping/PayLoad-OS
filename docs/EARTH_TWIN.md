@@ -19,6 +19,17 @@ Everything the twin is as data lives in `src/domain/earth.ts`: the origin pin, t
 
 The engine version is Payload OS's explicit pin, not a claim to reproduce the upstream dependency lock: God's Eye View declares `^1.124.0`, but its [lockfile at the pinned commit](https://github.com/notationsystems/gods-eye-view/blob/6d83bb6008738db2aa067284586be04ea0c5eabb/package-lock.json) resolves CesiumJS 1.138.0. The registry carries the 21 rows of that commit's live-source table, not an exhaustive census of its runtime; NASA FIRMS is described elsewhere in the same source document. The upstream simplified Natural Earth **vector datasets** are not the engine's bundled Natural Earth II **imagery**, and neither supplies precise corpus geometry.
 
+## The derivation beneath the globe
+
+The twin draws positions; it does not read them. `src/components/earth/SpatialKeys.tsx`,
+rendered below the globe from the same release, is the first thing in this
+repository that derives from space rather than displaying it: a geohash cell key
+for every declared position at the finest resolution the source's own stated
+horizontal uncertainty supports and no finer, a refusal where the source stated
+none, and a verdict per cross-subject pair on whether the two positions can be
+told apart at all. The design, the disciplines and what is deliberately absent
+are in [Space as a working dimension](SPATIAL_DERIVATION.md).
+
 ## What it accompanies
 
 The five fabrics each meet the twin in a specific way, and today only two of them have anything to draw.

@@ -41,8 +41,11 @@ describe('one identity core, per-line identifier families, one join', () => {
   it('gives every join key its hazard, so a cheap join is not mistaken for a real one', () => {
     for (const key of JOIN_KEYS) expect(key.hazard.trim().length).toBeGreaterThan(40);
     const spatial = JOIN_KEYS.find((k) => k.id === 'SPATIAL_CELL')!;
-    expect(spatial.state).toBe('ABSENT');
+    // The cell is computed now, and that changes nothing about what it means:
+    // a blocking key decides which pairs are worth comparing, never the answer.
+    expect(spatial.state).toBe('PRESENT');
     expect(spatial.hazard).toMatch(/not a relationship/);
+    expect(spatial.hazard).toMatch(/never what the comparison concludes/);
     const resolved = JOIN_KEYS.find((k) => k.id === 'RESOLVED_ENTITY')!;
     expect(resolved.hazard).toMatch(/matching name is not a resolution/);
     // Time is the one key the corpus can already compute, because both clocks exist.

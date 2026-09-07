@@ -4,6 +4,7 @@ import { CUSTOMER_CATEGORIES, DISTRIBUTION_MECHANISMS, ECONOMIC_ARCHITECTURE, EN
 import { DOCTRINE, EXTRACTION_INTERFACE, FABRICS, IDENTITY_CHAIN, INFORMATION_STATES, OPERATIONAL_RULE, PROJECTION_ENGINES_IN_REPOSITORY, VERIFICATION_TIERS, WORKBENCH_RUNTIME } from '@/domain/doctrine';
 import { CROSS_LINE_JOIN, CORE_STATE_LABEL, FAMILY_STATE_LABEL, IDENTIFIER_FAMILIES, IDENTITY_CORE, JOIN_KEYS } from '@/domain/identity';
 import { STORAGE_CLASSES, STORAGE_PRESENT_STATE, STORAGE_SEQUENCE, STORAGE_STATE_LABEL, STORE_KIND_LABEL } from '@/domain/storage';
+import { SPATIAL_CAPABILITIES, SPATIAL_DERIVATIONS, SPATIAL_DISCIPLINE, SPATIAL_ROLES, SPATIAL_ROLE_STATE_LABEL, SPATIAL_SEQUENCE } from '@/domain/spatialDerivation';
 import { Section } from '@/components/primitives/Section';
 
 export const metadata: Metadata = { title: 'Operating model' };
@@ -211,6 +212,58 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           </table>
           <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{CROSS_LINE_JOIN.discipline}</p>
         </div>
+      </Section>
+
+      <Section title="Space: the display was the easy half" id="pm-spatial">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Space is the one dimension that runs through every line, and until now it was a display attribute here: surfaces that draw positions and derive nothing from them. It has four other jobs. It is the resolver — geometry refutes an identity claim more cheaply than any name match. It is the join key, so a flow and a parcel meet with no shared identifier. It is a validity clock, because a boundary is a claim with two times and almost nobody versions geometry. It is an inference engine, because a scene is a source and a detector is an extraction adapter. The <Link href="/earth" style={{ color: 'var(--info)' }}>Earth Twin</Link> now shows the first derivation beneath the globe.</p>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="What space is used for">
+            <thead><tr><th scope="col">Job</th><th scope="col">What it would do</th><th scope="col">State</th><th scope="col">Here</th></tr></thead>
+            <tbody>
+              {SPATIAL_ROLES.map((r) => (
+                <tr key={r.id} data-spatial-role={r.id} data-spatial-state={r.state}>
+                  <td style={{ color: 'var(--text-heading)' }}>{r.title}</td>
+                  <td>{r.job}</td>
+                  <td style={{ color: r.state === 'ABSENT' ? 'var(--status-refused)' : r.state === 'PARTIAL' ? 'var(--status-conditional)' : 'var(--check-passed)' }}>{SPATIAL_ROLE_STATE_LABEL[r.state]}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{r.here}{r.missing ? <> <span style={{ color: 'var(--status-conditional)' }}>Missing: {r.missing}</span></> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {SPATIAL_DERIVATIONS.map((d) => (
+            <article key={d.id} className="surface p-3 flex flex-col gap-1.5" aria-labelledby={`spatial-${d.id}`} data-derivation={d.id} data-derivation-state={d.state}>
+              <h3 id={`spatial-${d.id}`} className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}><span className="mono" style={{ color: 'var(--text-muted)' }}>{d.rank}</span> {d.title} <span style={{ color: d.state === 'ABSENT' ? 'var(--status-refused)' : 'var(--status-conditional)' }}>{d.state === 'ABSENT' ? 'Absent' : 'Partly built'}</span></h3>
+              <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{d.what}</p>
+              <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Why here</span> {d.whyHere}</p>
+              <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}><span className="label-sm">Here</span> {d.here}</p>
+              <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label={`What ${d.title} needs`}>
+                {d.needs.map((n) => <li key={n}>{n}</li>)}
+              </ul>
+              <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }}><span className="label-sm">Hazard</span> {d.hazard}</p>
+            </article>
+          ))}
+        </div>
+        <div className="surface overflow-x-auto" tabIndex={0}>
+          <table className="ledger-table text-[12px]" aria-label="Spatial capabilities and where they live">
+            <thead><tr><th scope="col">Capability</th><th scope="col">Component</th><th scope="col">State</th><th scope="col">Note</th></tr></thead>
+            <tbody>
+              {SPATIAL_CAPABILITIES.map((c) => (
+                <tr key={c.capability} data-spatial-capability={c.state}>
+                  <td style={{ color: 'var(--text-heading)' }}>{c.capability}</td>
+                  <td className="mono">{c.component}</td>
+                  <td style={{ color: c.state === 'ABSENT' ? 'var(--status-refused)' : c.state === 'PARTIAL' ? 'var(--status-conditional)' : 'var(--check-passed)' }}>{SPATIAL_ROLE_STATE_LABEL[c.state]}</td>
+                  <td style={{ color: 'var(--text-muted)' }}>{c.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="Spatial build order">
+          {SPATIAL_SEQUENCE.map((step) => <li key={step}>{step}</li>)}
+        </ul>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{SPATIAL_DISCIPLINE.buyTheCommodity} {SPATIAL_DISCIPLINE.uncertaintyCutsBothWays} {SPATIAL_DISCIPLINE.rightsBiteHardest} {SPATIAL_DISCIPLINE.displayIsNotDerivation}</p>
       </Section>
 
       <Section title="Where the corpus is stored" id="pm-storage">

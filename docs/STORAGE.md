@@ -3,7 +3,7 @@
 Six classes of information in a provenance-bearing corpus have different access
 patterns, so they ask for different stores. This document records the plan as a
 plan. **Nothing here is installed.** `src/domain/storage.ts` carries the same
-content as data, `/product` renders it, and `src/domain/storage.test.ts` fails
+content as data, `/model` renders it, and `src/domain/storage.test.ts` fails
 if this repository ever gains a store dependency while the data still says
 nothing is installed.
 

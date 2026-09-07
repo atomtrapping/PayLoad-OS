@@ -4,7 +4,7 @@ Two pieces of machinery get expensive to retrofit: the correction and as-of
 machinery, and the cross-vertical identity model. Both are modelled here as
 data with the state that is true in this repository, so that adopting either is
 a decision made against a stated constraint. `src/domain/correction.ts` and
-`src/domain/identity.ts` carry them; `/retractions` and `/product` render them.
+`src/domain/identity.ts` carry them; `/retractions` and `/model` render them.
 
 ## Correction and recall
 

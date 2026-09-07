@@ -4,6 +4,7 @@ import { EARTH_ENGINE } from '@/domain/earth';
 import { earthRecordChoices } from '@/earth/records';
 import { describeProjectionSource } from '@/projection/source';
 import { EarthTwin } from '@/components/earth/EarthTwin';
+import { SpatialKeys } from '@/components/earth/SpatialKeys';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { getCorpusSource } from '@/adapter/corpusSource';
 import { notFound } from 'next/navigation';
@@ -27,6 +28,7 @@ export default async function EarthPage() {
     <>
       <FixtureBanner note={`Corpus: live database release ${release.releaseId}. Globe: imagery bundled with ${EARTH_ENGINE.name}, served from this origin; no key, no live source.`} />
       <EarthTwin release={{ releaseId: release.releaseId, corpusId: release.corpusId, knownAt: descriptor.knownAt }} source={descriptor.source} records={records} assetsReady={assetsReady} />
+      <SpatialKeys corpus={corpus} releaseId={release.releaseId} />
     </>
   );
 }

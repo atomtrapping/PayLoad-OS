@@ -615,6 +615,70 @@
    "y": -300,
    "width": 796,
    "height": 200
+  },
+  {
+   "id": "9d8ca27ef943b99f",
+   "type": "text",
+   "text": "## Usage as telemetry\n`MODELLED · NOTHING METERED · EVENT HALF ABSENT`\n\nEvery query, compute run and agent invocation is a lap. A response says what the corpus was and not which response it is or who received it; the missing half is named field by field.\n\n[[Usage as telemetry]]",
+   "x": 2124,
+   "y": 322,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "5fd36ba63af1cffd",
+   "type": "text",
+   "text": "## Storage (polyglot persistence)\n`ONE STORE SELECTED · FIVE DECLARED`\n\nSix classes of information ask for six kinds of store. PostgreSQL is selected and wired for records; the rest are content-addressed local files and fixtures, each carrying the invariant its store must not break.\n\n[[Storage (polyglot persistence)]]",
+   "x": 2124,
+   "y": 1666,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "de4c912d091eaf63",
+   "type": "text",
+   "text": "## Correction and recall machinery\n`MODELLED · LEDGER SPECIFIED AND EMPTY`\n\nFor one retraction, which derived artifacts a corrected fact taints and which cannot be decided because no producer retained the reference. As-of answering as a contract feature.\n\n[[Correction and recall machinery]]",
+   "x": 792,
+   "y": 1400,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "05e0ead83a506ff1",
+   "type": "text",
+   "text": "## Identity core and cross-line join\n`MODELLED · JOIN ABSENT`\n\nResolution, provenance, bitemporality and linkage solved once for every line, with a per-line identifier family beneath. The cross-line join is the moat and it is absent.\n\n[[Identity core and cross-line join]]",
+   "x": 1168,
+   "y": 1400,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "7daa310448b5d449",
+   "type": "group",
+   "label": "Space as a working dimension (cuts across every layer)",
+   "x": 1708,
+   "y": 2016,
+   "width": 796,
+   "height": 326,
+   "color": "6"
+  },
+  {
+   "id": "c9a1b38cb8cd6041",
+   "type": "text",
+   "text": "## Spatial key and geometric verdict\n`BUILT · POINTS ONLY · NO RESOLUTION DECISION`\n\nA cell key no finer than the source's own stated uncertainty, and a metric verdict on whether two positions can be told apart. The key blocks; it never concludes.\n\n[[Spatial key and geometric verdict]]",
+   "x": 1748,
+   "y": 2072,
+   "width": 340,
+   "height": 230
+  },
+  {
+   "id": "330dddd03d6a63d6",
+   "type": "text",
+   "text": "## Spatial derivation programme\n`STATED · ONE OF SIX BUILT`\n\nThe display was built first and derives nothing. Space as resolver, join key, validity clock and inference engine, with five derivations ranked and costed.\n\n[[Spatial derivation programme]]",
+   "x": 2124,
+   "y": 2072,
+   "width": 340,
+   "height": 230
   }
  ],
  "edges": [
@@ -1124,6 +1188,60 @@
    "toSide": "top",
    "toEnd": "arrow",
    "label": "Python, pinned"
+  },
+  {
+   "id": "dc51811aec9eb17e",
+   "fromNode": "aea369fb89a8cb9c",
+   "fromSide": "right",
+   "toNode": "c9a1b38cb8cd6041",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "declared positions"
+  },
+  {
+   "id": "0d739e4edfff1c6f",
+   "fromNode": "c9a1b38cb8cd6041",
+   "fromSide": "left",
+   "toNode": "05e0ead83a506ff1",
+   "toSide": "right",
+   "toEnd": "arrow",
+   "label": "blocking key"
+  },
+  {
+   "id": "e90fa9925a3bde12",
+   "fromNode": "c9a1b38cb8cd6041",
+   "fromSide": "right",
+   "toNode": "330dddd03d6a63d6",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "the one built"
+  },
+  {
+   "id": "42b5d549250eb382",
+   "fromNode": "330dddd03d6a63d6",
+   "fromSide": "left",
+   "toNode": "de4c912d091eaf63",
+   "toSide": "right",
+   "toEnd": "arrow",
+   "label": "a revised boundary is a correction"
+  },
+  {
+   "id": "7cbb4b9a41e88d48",
+   "fromNode": "435e54a7d14701ec",
+   "fromSide": "right",
+   "toNode": "c9a1b38cb8cd6041",
+   "toSide": "left",
+   "toEnd": "arrow",
+   "label": "the derivation beneath the globe"
+  },
+  {
+   "id": "651982a4537ba9f8",
+   "fromNode": "330dddd03d6a63d6",
+   "fromSide": "left",
+   "toNode": "a033456ef5f309ba",
+   "toSide": "right",
+   "toEnd": "arrow",
+   "label": "imagery terms gate every derivation"
   }
  ]
 }

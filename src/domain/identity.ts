@@ -50,7 +50,7 @@ export const IDENTITY_CORE: readonly CoreFacility[] = [
     title: 'Resolution',
     obligation: 'Decide, for two identifiers, whether they name the same thing, and record the decision as evidence rather than as a merge.',
     state: 'ABSENT',
-    here: 'Every record carries a stable notation:// identity for its subject, and identity links are authored as records rather than inferred. Nothing resolves two identifiers into one.',
+    here: 'Every record carries a stable notation:// identity for its subject, and identity links are authored as records rather than inferred. Geometry now refutes: two declared positions are compared against their combined stated uncertainty, so the corpus can say two records are not about the same place. Nothing resolves two identifiers into one.',
     missing: 'A resolution decision object: the two identifiers, the evidence, the method and version, the decision, and both clocks. Without it, resolution is either absent or silently irreversible.',
   },
   {
@@ -142,9 +142,9 @@ export const JOIN_KEYS: readonly JoinKey[] = [
     id: 'SPATIAL_CELL',
     title: 'Spatial cell',
     what: 'A discrete cell identifier at a stated resolution, so a trajectory and a parcel meet without bespoke geometry glue.',
-    state: 'ABSENT',
-    here: 'Positions are declared as corpus records with geodetic coordinates; no cell index is computed and no cell identifier is carried.',
-    hazard: 'A shared cell is co-location at a resolution, not a relationship. Two things in one cell have been placed near each other, and nothing more has been established.',
+    state: 'PRESENT',
+    here: 'Computed. Every declared position that states its horizontal uncertainty is keyed to a geohash cell at the finest resolution that uncertainty supports and no finer, and two keys block at the coarser of their two resolutions. A position whose source stated no uncertainty is refused a key rather than given a default one. See ./spatialKey.',
+    hazard: 'A shared cell is co-location at a resolution, not a relationship. Two things in one cell have been placed near each other, and nothing more has been established. The cell is a blocking key: it decides which pairs are worth comparing, never what the comparison concludes.',
   },
   {
     id: 'TIME_INTERVAL',
@@ -171,7 +171,7 @@ export const CROSS_LINE_JOIN = {
   requires: [
     'A resolution decision object, so that two identifiers from two lines are carried to one subject by evidence with a method, a version and both clocks, and can be undone without rewriting history.',
     'A link vocabulary richer than one predicate, so a join names what kind of relationship it is and what evidence that kind demands.',
-    'A line-agnostic key for the cases where no identifier is shared: a spatial cell at a declared resolution and an interval overlap in valid time, each carrying its own hazard.',
+    'Areal geometry, so the line-agnostic keys reach containment rather than proximity. The spatial cell and the valid-time interval both exist now, and a point inside a cell is still only a point near another point.',
   ],
   /** Why it is worth stating before it exists. */
   why: 'A join built per line is not a join. If resolution, provenance and bitemporality are solved once for Caravan alone, the second line pays the whole cost again and the third pays it a third time, and the cross-line answer is never reachable from any of them.',

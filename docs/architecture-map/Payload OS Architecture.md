@@ -44,7 +44,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 ### Runtimes, local stores and verification
 
 - [[Runtimes and local stores]] — `NODE · RUST · PYTHON` — Node.js/TypeScript is the facade and workbench; Rust is the deterministic notation state kernel; Python runs the pinned GAT engine.
-- [[Storage (polyglot persistence)]] — `DECLARED · NOTHING INSTALLED` — Six classes of information ask for six kinds of store; the technologies named are candidates and none is installed.
+- [[Storage (polyglot persistence)]] — `ONE STORE SELECTED · FIVE DECLARED` — Six classes of information ask for six kinds of store; PostgreSQL is selected and wired for records, the other five are local files and fixtures.
 - [[Verification harness]] — `GREEN ON THE BRANCH` — Vitest unit and component tests, three Playwright configurations (regular desktop and Pixel 7, production rail with a real worker, real Rust kernel), axe accessibility checks, horizontal-overflow guards and regenerated screenshots.
 - [[Sibling repositories and vendored contracts]] — `PINNED · READ-ONLY` — The control-plane result-manifest and canonical-URI code is vendored verbatim from Notations-Ecosystem at a pinned commit, used only by tests.
 
@@ -107,7 +107,12 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 - [[Case workbench]] — `IMPLEMENTED · FIXTURE CASES` — The optional prescribed control over the corpus: CASE → USE → CLAIMS → EVIDENCE → CHECKS → RULING → REMEDIATION → RELEASE → MONITORING, with staged intake, a decision rail, lineage from artifact to ruling, bitemporal replay and admission profiles.
 - [[Observation replay surface]] — `IMPLEMENTED · SYNTHETIC PREVIEW` — The recorded-observation contract made understandable: a linked frame diagram (sensor → calibration → body → pose → world), a timeline of clock alignments, calibration validity, stamps and pose mismatches, an observation register, and an inspector connecting a selection to its evidence, estimate, placement and comparisons.
 - [[Inquiry instrument pages]] — `IMPLEMENTED · SYNTHETIC PREVIEWS` — Spatial Inquiry (/spatial), Registration and access (/compute/registration), Clearance (/compute/clearance) and the Earth Twin (/earth): each a page over one compute or projection contract, marked as synthetic preview where it is one.
-- [[Corpus and product pages]] — `IMPLEMENTED` — /product (the operating model as data), /products, /releases and release detail with certification and rights, /stream (as-of), /retractions and /api (endpoints with live examples).
+- [[Corpus and product pages]] — `IMPLEMENTED` — /model (the operating model as data), /products, /releases and release detail with certification and rights, /stream (as-of), /retractions and /api (endpoints with live examples).
+
+### Space as a working dimension (cuts across every layer)
+
+- [[Spatial key and geometric verdict]] — `BUILT · POINTS ONLY · NO RESOLUTION DECISION` — A cell key no finer than the source's own stated horizontal uncertainty, and a metric verdict on whether two declared positions can be told apart at all; the key blocks, it never concludes.
+- [[Spatial derivation programme]] — `STATED · ONE OF SIX BUILT` — Space as resolver, join key, validity clock and inference engine rather than a display attribute, with five derivations ranked, costed and hazarded.
 
 ### Coordination layer — participants, requests, results
 
@@ -197,6 +202,11 @@ flowchart TB
     inquirysurfaces["Inquiry instrument pages"]
     corpussurfaces["Corpus and product pages"]
   end
+  subgraph spatial_dim["Space as a working dimension (cuts across every layer)"]
+    direction LR
+    spatialkey["Spatial key and geometric verdict"]
+    spatialprog["Spatial derivation programme"]
+  end
   subgraph coordination["Coordination layer  participants, requests, results"]
     direction LR
     stable["Stable (agents and apparatus)"]
@@ -259,6 +269,10 @@ flowchart TB
   siblings -- "vendored parser pins the contract" --> manifest
   runtimes -- "Rust" --> kernel
   runtimes -- "Python, pinned" --> gat
+  corpusmodel -- "declared positions" --> spatialkey
+  spatialkey -- "blocking key, never a resolution" --> spatialprog
+  earth -- "the derivation beneath the globe" --> spatialkey
+  spatialprog -- "imagery terms gate every derivation" --> rights
   classDef absent fill:#7a1f1f,stroke:#e06666,color:#fff;
   class admission absent;
 ```

@@ -93,24 +93,52 @@ export interface FanOut {
 }
 
 /**
+ * The prepared adjacency, built once and queried many times.
+ *
+ * Separated from the walk because of what a benchmark showed: rebuilding the
+ * map inside every fan-out made the cost of one correction scale with the size
+ * of the whole graph rather than with its own closure. Reaching fourteen
+ * dependents out of a million edges took the better part of a second, and
+ * almost all of it was spent constructing an adjacency that the previous
+ * correction had already constructed.
+ *
+ * That is the difference between a scan and an index, and it is the whole
+ * reason an index exists: a correction should cost what its own reach costs.
+ */
+export interface DependencyIndex {
+  /** record -> the things standing on it. */
+  readonly standing: ReadonlyMap<string, readonly DependencyEdge[]>;
+  readonly edgeCount: number;
+}
+
+/** Prepare the forward adjacency once. Callers hold this and query it. */
+export function buildDependencyIndex(edges: readonly DependencyEdge[]): DependencyIndex {
+  const standing = new Map<string, DependencyEdge[]>();
+  for (const edge of edges) {
+    const existing = standing.get(edge.dependsOn);
+    // Push rather than rebuild: spreading here made index construction
+    // quadratic in the number of dependents on any one record.
+    if (existing) existing.push(edge);
+    else standing.set(edge.dependsOn, [edge]);
+  }
+  return { standing, edgeCount: edges.length };
+}
+
+/**
  * Pure: everything that declared a dependency on the restated records, and on
  * anything reached from them.
  *
  * Cycle-safe by construction: a dependent is visited once, at the shallowest
  * depth it is reached, so a derived record that transitively depends on itself
- * terminates instead of looping.
+ * terminates instead of looping. Costs the size of the closure, not the size of
+ * the graph.
  */
 export function fanOut(
-  edges: readonly DependencyEdge[],
+  index: DependencyIndex,
   restated: readonly string[],
   kind: Restatement,
 ): FanOut {
-  // Forward adjacency: record -> the things standing on it.
-  const standing = new Map<string, DependencyEdge[]>();
-  for (const edge of edges) {
-    standing.set(edge.dependsOn, [...(standing.get(edge.dependsOn) ?? []), edge]);
-  }
-
+  const standing = index.standing;
   const consequence: Consequence = kind === 'WITHDRAWAL' ? 'UNSUPPORTED' : 'RESTATED';
   const seen = new Map<string, Reached>();
   let frontier: Array<{ recordId: string; through: string[]; depth: number }> =
@@ -149,7 +177,7 @@ export function fanOut(
     kind,
     reached,
     maxDepth,
-    coverage: `This is the closure over ${edges.length} declared ${edges.length === 1 ? 'edge' : 'edges'}. Something that depends on one of these records and never declared it is not here, cannot be reached, and is not shown to be absent either — an index that implied completeness would turn an unknown into a clean bill, which is worse than having no index at all.`,
+    coverage: `This is the closure over ${index.edgeCount} declared ${index.edgeCount === 1 ? 'edge' : 'edges'}. Something that depends on one of these records and never declared it is not here, cannot be reached, and is not shown to be absent either — an index that implied completeness would turn an unknown into a clean bill, which is worse than having no index at all.`,
     because: reached.length === 0
       ? `Nothing declared a dependency on ${[...new Set(restated)].join(', ')}. That is a statement about the declared edges and not about the world.`
       : `${reached.length} ${reached.length === 1 ? 'dependent' : 'dependents'} stand on ${[...new Set(restated)].length} restated ${[...new Set(restated)].length === 1 ? 'record' : 'records'}, at up to ${maxDepth} ${maxDepth === 1 ? 'hop' : 'hops'}. Each is ${consequence}, which is a consequence to act on rather than a verdict about it.`,

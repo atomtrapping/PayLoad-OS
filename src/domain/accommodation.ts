@@ -71,6 +71,8 @@ export type PreconditionId =
   | 'SOURCE_LINEAGE'
   | 'DECLARED_SOURCE_TIME'
   | 'A_DENOMINATOR'
+  | 'IDENTITY_RESOLUTION'
+  | 'ESTABLISHED_WORLD_TIME'
   | 'AREAL_GEOMETRY'
   | 'HISTORICAL_DEPTH'
   | 'STATED_UNCERTAINTY'
@@ -189,6 +191,22 @@ export const PRECONDITIONS: readonly Precondition[] = [
     met: false,
     because: 'The corpus has restated two records, the longest arriving eighteen days after the record became knowable. That measures a window and does not estimate a frequency: a handful of events over one synthetic corpus supports an anecdote. Anything that prices a hold, a reserve or a confidence needs a denominator this corpus has not run long enough to have.',
     probe: (corpus) => corpus.retractions.length >= 30 && corpus.records.length >= 500,
+  },
+  {
+    id: 'IDENTITY_RESOLUTION',
+    what: 'A stage that turns a source record id into a canonical subject.',
+    kind: 'A_METHOD',
+    met: false,
+    because: 'Both normalization rails state identity.state UNRESOLVED and canonicalId null, which is the rail being honest rather than incomplete. Nothing resolves them, so every candidate the rail can produce is refused by the gate on SUBJECT_IDENTIFIED — correctly, because a record admitted on a source-local name would join on a name.',
+    provenBy: 'src/data-os/local-normalization.ts, src/acquisition/census-normalization.ts',
+  },
+  {
+    id: 'ESTABLISHED_WORLD_TIME',
+    what: 'A stage that establishes when a fact became true, as distinct from when a register was read.',
+    kind: 'A_METHOD',
+    met: false,
+    because: 'The census adapter states validTimeMeaning NOT_ESTABLISHED_BY_SNAPSHOT: a snapshot says what a register held when it was read and not when the fact became true. Carrying that through means the gate refuses on BOTH_CLOCKS, which is the second absent stage rather than a defect in the projection.',
+    provenBy: 'src/acquisition/census-normalization.ts, src/domain/candidateProjection.ts',
   },
   {
     id: 'SOURCE_LINEAGE',
@@ -456,6 +474,13 @@ export const CAPABILITIES: readonly Capability[] = [
     module: 'src/domain/collateralVehicle.ts',
     needs: ['A_DENOMINATOR'],
     ifMistaken: 'The window is measured, not estimated: two restatements over twenty-one records, the longest arriving eighteen days later. That is an anecdote and the module refuses to make it a rate.',
+  },
+  {
+    id: 'RAIL_TO_GATE',
+    what: 'A normalized rail candidate becoming admission candidates the gate can rule on.',
+    module: 'src/domain/candidateProjection.ts',
+    needs: ['IDENTITY_RESOLUTION', 'ESTABLISHED_WORLD_TIME'],
+    ifMistaken: 'The projection runs today and produces candidates the gate refuses — on SUBJECT_IDENTIFIED and BOTH_CLOCKS, and on nothing the projection invented. That is the hop working and the two stages behind it being absent, which is a different thing from the hop being broken.',
   },
   {
     id: 'RESPONSE_PIPELINE',

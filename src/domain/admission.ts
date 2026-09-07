@@ -41,7 +41,8 @@ export type AdmissionCheck =
   | 'RIGHTS_DECIDED'
   | 'AUTHORITY_IS_NOT_THE_PROCESS'
   | 'PROVENANCE_DECLARED'
-  | 'SOURCE_CLOCK_COHERENT';
+  | 'SOURCE_CLOCK_COHERENT'
+  | 'SUPERSESSION_IS_ABOUT_THIS_RECORD';
 
 export const CHECK_MEANING: Record<AdmissionCheck, string> = {
   EVIDENCE_ARTIFACT_BOUND: 'The candidate names the retained artifact it was extracted from, by content digest. A candidate that cannot point at bytes is an assertion, not an extraction.',
@@ -53,6 +54,7 @@ export const CHECK_MEANING: Record<AdmissionCheck, string> = {
   AUTHORITY_IS_NOT_THE_PROCESS: 'The ruling names an authority, and the authority is not this method. Promotion is an act; a process admitting on its own behalf is a write wearing a ruling’s clothes.',
   PROVENANCE_DECLARED: 'The candidate declares how it arrived — live capture or backfill — rather than leaving it to be worked out later. Provenance inferred from a clock gap is a guess about testimony, one waterline below testimony itself.',
   SOURCE_CLOCK_COHERENT: 'The source’s own publication time is present and not later than the moment this system obtained it. A record acquired before its source published it did not arrive the way it claims to have arrived, whatever it is labelled.',
+  SUPERSESSION_IS_ABOUT_THIS_RECORD: 'A ruling named as superseded is about the same record. A ruling replaces a ruling about the same record or it replaces nothing, because a supersession pointing elsewhere would silently retire a decision nobody revisited.',
 };
 
 /** Origins that may never become evidence, from the engine boundary mapping. */
@@ -77,15 +79,40 @@ export interface AdmissionCandidate {
   provenanceClass: 'LIVE_CAPTURE' | 'BACKFILLED' | null;
   /** When the source published it. Distinct from when this system obtained it. */
   sourceTime: string | null;
+  /**
+   * Conditions the rights decision or the source registration attached, as
+   * declared. Never inferred, and never summarised: a condition this gate
+   * paraphrased would be a condition nobody agreed to. An empty list means
+   * none were declared, which is not the same as none applying.
+   */
+  conditions: readonly string[];
   validFrom: string | null;
   knownAt: string | null;
   rightsDecision: 'PERMITTED' | 'PROHIBITED' | 'UNDECIDED' | null;
 }
 
+/**
+ * The ruling vocabulary the workbench already speaks, so a corpus admission
+ * and a customer ruling say the same words. `ADMITTED_WITH_CONDITIONS` is
+ * not a weaker admission: it is an admission whose conditions travel with it,
+ * and a consumer that drops them has read it as the wrong word.
+ */
+export type AdmissionOutcome = 'ADMITTED' | 'ADMITTED_WITH_CONDITIONS' | 'REFUSED';
+
+export const ADMITTING_OUTCOMES: readonly AdmissionOutcome[] = ['ADMITTED', 'ADMITTED_WITH_CONDITIONS'];
+
+export function isAdmitting(outcome: AdmissionOutcome): boolean {
+  return (ADMITTING_OUTCOMES as readonly string[]).includes(outcome);
+}
+
 export interface AdmissionRuling {
   candidateId: string;
   recordId: string;
-  outcome: 'ADMITTED' | 'REFUSED';
+  outcome: AdmissionOutcome;
+  /** Carried verbatim from the candidate when the outcome is conditional; empty otherwise. */
+  conditions: string[];
+  /** A prior ruling on this same record that this one replaces, or null. */
+  supersedesRulingId: string | null;
   authority: string;
   ruledAt: string;
   passed: AdmissionCheck[];
@@ -165,22 +192,36 @@ const ALL_CHECKS: readonly AdmissionCheck[] = [
 ];
 
 /** Rule on one candidate. Refusal is the default and every failure is named. */
-export function admit(candidate: AdmissionCandidate, authority: string, ruledAt: string): AdmissionRuling {
+export function admit(
+  candidate: AdmissionCandidate,
+  authority: string,
+  ruledAt: string,
+  supersedes: { rulingId: string; recordId: string } | null = null,
+): AdmissionRuling {
   const failed = evaluate(candidate, authority);
+  // A ruling replaces a ruling about the same record or it replaces nothing.
+  if (supersedes && supersedes.recordId !== candidate.recordId) {
+    failed.push({ check: 'SUPERSESSION_IS_ABOUT_THIS_RECORD', because: `The ruling named as superseded is about ${supersedes.recordId} and this candidate is about ${candidate.recordId}. A ruling replaces a ruling about the same record or it replaces nothing.` });
+  }
   const failedChecks = new Set(failed.map((entry) => entry.check));
   const passed = ALL_CHECKS.filter((check) => !failedChecks.has(check));
-  const outcome = failed.length ? 'REFUSED' : 'ADMITTED';
+  const conditions = failed.length ? [] : [...candidate.conditions];
+  const outcome: AdmissionOutcome = failed.length ? 'REFUSED' : conditions.length ? 'ADMITTED_WITH_CONDITIONS' : 'ADMITTED';
   return {
     candidateId: candidate.candidateId,
     recordId: candidate.recordId,
     outcome,
+    conditions,
+    supersedesRulingId: failed.length ? null : supersedes?.rulingId ?? null,
     authority,
     ruledAt,
     passed,
     failed,
     because: failed.length
       ? `Refused on ${failed.length} of ${ALL_CHECKS.length} ${failed.length === 1 ? 'check' : 'checks'}: ${failed.map((entry) => entry.check).join(', ')}. Nothing is admitted because the rest passed.`
-      : `Admitted by ${authority} on all ${ALL_CHECKS.length} checks. This says the candidate may become a version; it does not say the claim is true.`,
+      : conditions.length
+        ? `Admitted by ${authority} on all ${ALL_CHECKS.length} checks, under ${conditions.length} declared ${conditions.length === 1 ? 'condition' : 'conditions'} that travel with it. Dropping them reads this as the wrong word. This says the candidate may become a version; it does not say the claim is true.`
+        : `Admitted by ${authority} on all ${ALL_CHECKS.length} checks. This says the candidate may become a version; it does not say the claim is true.`,
   };
 }
 
@@ -193,7 +234,7 @@ export function admitInto(
 ): { rulings: AdmissionRuling[]; ancestry: AncestryEntry[] } {
   const rulings = candidates.map((candidate) => admit(candidate, authority, ruledAt));
   const ancestry = rulings
-    .filter((ruling) => ruling.outcome === 'ADMITTED')
+    .filter((ruling) => isAdmitting(ruling.outcome))
     .map((ruling) => {
       const candidate = candidates.find((entry) => entry.candidateId === ruling.candidateId)!;
       return { recordId: ruling.recordId, releaseId: release.releaseId, candidateId: ruling.candidateId, buildId: candidate.buildId, ruledAt, authority };
@@ -224,6 +265,7 @@ export const ADMISSION_LOSS = [
   'The ancestry ledger is not part of the release. A correction reaches the build through the ledger, and the release carries no candidate, build or run identifier — which releaseLeaks checks rather than the comment claiming it.',
   'The entry stamp is not reconstructable. Source time, acquisition time and declared provenance are fixed by the admission that produced the row, because a record\u2019s honesty is decided when it enters and cannot be worked out about it later.',
   'Provenance is declared and never inferred. No threshold here reads a gap between the clocks as backfill, because provenance inferred from metadata is a guess about testimony rather than testimony.',
+  'ADMITTED_WITH_CONDITIONS is not a weaker admission. Its conditions travel onto the row, and a consumer that drops them has read the ruling as the wrong word.',
   'A refusal is a record too. A candidate refused here has not been deleted, hidden or made unavailable; it stays on the rail with the reasons it failed.',
 ] as const;
 
@@ -273,6 +315,9 @@ export interface AdmittedRow {
   provenance: 'LIVE_CAPTURE' | 'BACKFILLED';
   admittedBy: string;
   ruledAt: string;
+  outcome: AdmissionOutcome;
+  /** Declared conditions, carried onto the row so downstream cannot lose them. */
+  conditions: string[];
 }
 
 /**
@@ -287,7 +332,7 @@ export function admittedRow(
   if (ruling.candidateId !== candidate.candidateId) {
     return { row: null, because: `The ruling is for ${ruling.candidateId} and the candidate is ${candidate.candidateId}. A ruling does not travel between candidates.` };
   }
-  if (ruling.outcome !== 'ADMITTED') {
+  if (!isAdmitting(ruling.outcome)) {
     return { row: null, because: `${ruling.candidateId} was refused, so there is no row. ${ruling.because}` };
   }
   return {
@@ -302,6 +347,11 @@ export function admittedRow(
       provenance: candidate.provenanceClass!,
       admittedBy: ruling.authority,
       ruledAt: ruling.ruledAt,
+      outcome: ruling.outcome,
+      // Conditions are stamped at entry like every other part of the row's
+      // honesty. A conditional admission whose conditions did not reach the
+      // row would read, downstream, as an unconditional one.
+      conditions: [...ruling.conditions],
     },
     because: `Stamped at entry by ${ruling.authority}: three clocks and a declared provenance, fixed at the moment of admission rather than worked out afterwards.`,
   };

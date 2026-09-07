@@ -17,7 +17,7 @@ tags:
 
 ## What it is
 
-- Three customer categories, declared as data and shown on `/product`.
+- Three customer categories, declared as data and shown on `/model`.
 - Five distribution mechanisms: APIs, feeds, reports, workbenches, MCP tools.
 - Economic engines: data systems and products; hosting and compute over authorized corpora; separately governed principal-capital trading.
 

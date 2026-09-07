@@ -25,7 +25,7 @@ tags:
 ## Where it lives
 
 - `src/domain/identity.ts`, `src/domain/identity.test.ts`
-- `/product` — "Identity: one core, three families, one join"
+- `/model` — "Identity: one core, three families, one join"
 - `docs/CORRECTION_AND_IDENTITY.md`
 
 ## Boundaries

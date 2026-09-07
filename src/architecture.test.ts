@@ -84,6 +84,8 @@ async function projectEverything() {
     list_releases: {}, get_release: { releaseId: RELEASE }, get_release_manifest: { releaseId: RELEASE }, list_records: { releaseId: RELEASE },
     query_as_of: { releaseId: RELEASE, subject: ASOF.subjectId, predicate: ASOF.predicate, validAt: ASOF.validAt, knownAt: ASOF.knownAt },
     list_retractions: {}, get_ruling: { rulingId: 'RUL-7C104-r2' }, get_ruling_manifest: { rulingId: 'RUL-7C104-r2' },
+    get_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' }, verify_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' },
+    get_dispatch_event: { decisionId: 'DISP-EVT-2026-0803' }, replay_dispatch_liability: { decisionId: 'DISP-EVT-2026-0803' },
   };
   const tools: Record<string, unknown> = {};
   for (const t of MCP_TOOLS) tools[t.name] = await runMcpTool(t.name, args[t.name]);

@@ -13,6 +13,8 @@ export const FIXTURE_STATE_DOI_FILINGS: readonly StateDoiFilingRecord[] = [
     actionType: 'FULL_MARKET_WITHDRAWAL',
     primaryPeril: 'WILDFIRE',
     filingDate: '2026-07-10T14:30:00Z',
+    // Admitted the day after the department published the filing.
+    knowledgeTime: '2026-07-11T14:30:00Z',
     effectiveDate: '2026-10-15T00:00:00Z',
     targetGeographies: [
       {
@@ -47,6 +49,8 @@ export const FIXTURE_STATE_DOI_FILINGS: readonly StateDoiFilingRecord[] = [
     actionType: 'COUNTY_MORATORIUM_DECLARED',
     primaryPeril: 'COASTAL_HURRICANE_SURGE',
     filingDate: '2026-08-01T11:00:00Z',
+    // Admitted the day after the department published the filing.
+    knowledgeTime: '2026-08-02T11:00:00Z',
     effectiveDate: '2026-08-01T00:00:00Z',
     targetGeographies: [
       {
@@ -81,6 +85,8 @@ export const FIXTURE_STATE_DOI_FILINGS: readonly StateDoiFilingRecord[] = [
     actionType: 'MANDATORY_DEDUCTIBLE_SPIKE',
     primaryPeril: 'SEVERE_CONVECTIVE_STORM_HAIL',
     filingDate: '2026-08-15T16:00:00Z',
+    // Admitted the day after the department published the filing.
+    knowledgeTime: '2026-08-16T16:00:00Z',
     effectiveDate: '2026-10-01T00:00:00Z',
     targetGeographies: [
       {

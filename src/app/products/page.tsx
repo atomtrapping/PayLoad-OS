@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { asOfPayload } from '@/adapter/feed';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
+import { DOMAINS } from '@/domain/domains';
+import { FLAGSHIP_PRODUCTS } from '@/domain/product';
+import { FEDERATION_RISK, INTEGRATION, METERING_BOUNDARY, RECEIPT_FIELDS, TELEMETRY_PILLARS, USAGE_UNITS, meteringReadiness } from '@/domain/metering';
 import { Section } from '@/components/primitives/Section';
 import { DELIVERED_RECORD_CONTRACT, ENVELOPE_FIELDS } from '@/domain/deliveredRecord';
 import { CARAVAN_LOT_STATE as product } from '@/domain/informationProduct';
@@ -9,7 +12,7 @@ import { CUSTOMER_CATEGORIES } from '@/domain/product';
 import { CARAVAN_CORPUS, CARAVAN_RELEASES } from '@/fixtures/caravan/release';
 import { fmtUtc } from '@/lib/format';
 
-export const metadata: Metadata = { title: 'Information product' };
+export const metadata: Metadata = { title: 'Products' };
 
 /** The first information product, and the promise every delivered record makes. Both are held to the corpus by tests; the page states what they state. */
 export default async function ProductsPage() {
@@ -31,7 +34,86 @@ export default async function ProductsPage() {
       <FixtureBanner note="The specification is data in src/domain/informationProduct.ts; informationProduct.test.ts holds it to the demonstration corpus. Fixture clock: 2026-09-01." />
       <div className="p-3 sm:p-5 max-w-[1100px] mx-auto w-full flex flex-col gap-6">
         <header className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 flex-wrap"><span className="label-sm">Information product</span><span className="label-sm">{product.domain}</span><span className="id">{product.productId}</span><span className="label-sm">{product.schema}</span></div>
+          <span className="label-sm">Notation Systems \u00b7 the three products</span>
+          <h1 className="m-0 text-[20px] font-semibold leading-snug" style={{ color: 'var(--text-heading)' }}>Caravan, Tradewind and Landshark</h1>
+          <p className="m-0 text-[13.5px]" style={{ color: 'var(--text-secondary)' }}>{FLAGSHIP_PRODUCTS.statement}</p>
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }} data-testid="products-state">{FLAGSHIP_PRODUCTS.here}</p>
+        </header>
+
+        <Section title="The three products" id="ip-products">
+          <ul className="m-0 p-0 list-none grid gap-3 sm:grid-cols-3">
+            {DOMAINS.map((d) => (
+              <li key={d.id} className="surface p-3 flex flex-col gap-1.5" data-flagship={d.id} data-corpus={d.enabled ? 'PRESENT' : 'ABSENT'} style={{ borderStyle: d.enabled ? 'solid' : 'dashed' }}>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-[14px] font-semibold" style={{ color: d.enabled ? 'var(--text-heading)' : 'var(--text-muted)' }}>{d.label}</span>
+                  <span className="label-sm">{d.delivery}</span>
+                </div>
+                <div className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{d.scope}</div>
+                <div className="text-[11.5px]" style={{ color: d.enabled ? 'var(--text-muted)' : 'var(--status-conditional)' }}>{d.note}</div>
+              </li>
+            ))}
+          </ul>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>Payload OS, the terminal you are reading this in, is not among them. It operates, monitors and navigates the backend these are produced from. <Link href="/model" style={{ color: 'var(--info)' }}>The operating model</Link> states the rest.</p>
+        </Section>
+
+        <Section title="Usage, and what a bill could point at" id="ip-metering">
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Every query against a corpus, every compute run over it and every agent invocation through it is a lap. A lap is billable by construction only when the response it produced can be pointed at afterwards, so what a response carries is the whole question.</p>
+          <div className="surface overflow-x-auto" tabIndex={0}>
+            <table className="ledger-table text-[12px]" aria-label="What a response carries, and what a bill line needs">
+              <thead><tr><th scope="col">Field</th><th scope="col">Half</th><th scope="col">Why a bill needs it</th><th scope="col">State</th></tr></thead>
+              <tbody>
+                {RECEIPT_FIELDS.map((f) => (
+                  <tr key={f.field} data-receipt={f.field} data-receipt-state={f.state}>
+                    <td className="mono">{f.field}</td>
+                    <td>{f.half === 'CONTENT' ? 'What the corpus was' : 'Which response, and to whom'}</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>{f.why}</td>
+                    <td style={{ color: f.state === 'CARRIED' ? 'var(--check-passed)' : 'var(--status-refused)' }}>{f.state === 'CARRIED' ? 'Carried' : 'Absent'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--status-conditional)' }} data-testid="metering-readiness">{meteringReadiness().statement}</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <article className="surface p-3 flex flex-col gap-1.5">
+              <h3 className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>The units</h3>
+              <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }}>
+                {USAGE_UNITS.map((u) => <li key={u.id} data-usage-unit={u.id} data-counted={String(u.counted)}><span style={{ color: 'var(--text-heading)' }}>{u.title}</span> — {u.what} <span style={{ color: 'var(--text-muted)' }}>{u.here}</span></li>)}
+              </ul>
+            </article>
+            <article className="surface p-3 flex flex-col gap-1.5" data-testid="metering-boundary">
+              <h3 className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>Meter the usage; do not become the rails</h3>
+              <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{METERING_BOUNDARY.posture}</p>
+              <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }}>
+                {METERING_BOUNDARY.notThis.map((n) => <li key={n.role}><span style={{ color: 'var(--status-refused)' }}>Not {n.role.toLowerCase()}</span> — {n.why}</li>)}
+              </ul>
+              <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{METERING_BOUNDARY.instead}</p>
+            </article>
+          </div>
+          <div className="surface p-3 flex flex-col gap-1.5" data-testid="federation-risk">
+            <h3 className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>If customers federate</h3>
+            <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{FEDERATION_RISK.risk}</p>
+            <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{FEDERATION_RISK.defence}</p>
+            <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }}>
+              {FEDERATION_RISK.whatCannotBePooled.map((x) => <li key={x}>{x}</li>)}
+            </ul>
+            <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }}>{FEDERATION_RISK.here}</p>
+          </div>
+          <div className="surface overflow-x-auto" tabIndex={0}>
+            <table className="ledger-table text-[12px]" aria-label="One asset, three ways">
+              <thead><tr><th scope="col">Pillar</th><th scope="col">Sells</th><th scope="col">Here</th></tr></thead>
+              <tbody>
+                {TELEMETRY_PILLARS.map((p) => (
+                  <tr key={p.pillar} data-pillar={p.pillar}><td style={{ color: 'var(--text-heading)' }}>{p.pillar}</td><td>{p.sells}</td><td style={{ color: 'var(--text-muted)' }}>{p.here}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}><span className="label-sm">Where the firm plugs in</span> {INTEGRATION.dependency.role} {INTEGRATION.dependency.what} It is absent: {INTEGRATION.dependency.needs} The inverse — {INTEGRATION.provider.what.toLowerCase()} — is rejected, because {INTEGRATION.provider.why.toLowerCase()}</p>
+        </Section>
+
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 flex-wrap"><span className="label-sm">What Caravan delivers</span><span className="label-sm">{product.domain}</span><span className="id">{product.productId}</span><span className="label-sm">{product.schema}</span></div>
           <h1 className="m-0 text-[20px] font-semibold leading-snug" style={{ color: 'var(--text-heading)' }}>{product.title}</h1>
           <p className="m-0 text-[14px]" style={{ color: 'var(--text-primary)' }} data-testid="customer-question">{product.customerQuestion}</p>
           <ul className="m-0 p-0 list-none flex flex-wrap gap-2" aria-label="Customer categories">

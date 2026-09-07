@@ -50,9 +50,11 @@ Notation Systems Ecosystem
       → Landshark: parcels, zoning, entitlements, and development state
 ```
 
-Payload OS is the shared information-production system. Caravan, Tradewind,
-and Landshark are the domain distribution products. They do not turn Payload
-OS into a fourth customer-facing API or a universal domain database.
+Caravan, Tradewind and Landshark are the flagship products: three APIs,
+delivered as HTTP feeds and MCP tools. Payload OS is the internal terminal that
+operates, monitors and navigates the backend those three are produced from. It
+is not sold, it is not a fourth customer-facing API, and it is not a universal
+domain database. (Founder correction, 2026-09-06.)
 
 ## Prototype boundary
 

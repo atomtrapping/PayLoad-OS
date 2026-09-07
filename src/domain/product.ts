@@ -11,14 +11,22 @@ import { MATERIAL_CLASSES, MATERIAL_LABEL, PRODUCTION_STAGES, STAGE_LABEL, type 
 export const THESIS = {
   firm: 'Notation Systems is a systems and intelligence firm for the physical economy. It builds computational representations of physical systems from authorized geospatial, remote-sensing, operational, and scientific source material.',
   production: 'Its internal production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.',
-  inventory: 'The corpora are the finished information inventory. APIs, feeds, reports, workbenches, and MCP tools distribute it. Customers apply their own inference, models, agents, and workflows to the data streams.',
+  inventory: 'The corpora are the finished information inventory. Customers apply their own inference, models, agents, and workflows to the data streams.',
   separation: 'Customer evidence, customer workloads, and proprietary-capital activity remain separated.',
-  platform: 'Payload OS is the shared production layer, not a fourth customer API. Caravan, Tradewind, and Landshark are the bounded domain products.',
+  platform: 'Caravan, Tradewind and Landshark are the flagship products: three APIs, delivered as HTTP feeds and MCP tools. Payload OS is the internal terminal the firm operates, monitors and navigates that backend from. It is not sold, and it is not a fourth API.',
   layers: [
-    { layer: 'Corpus + API / feed', role: 'The product' },
+    { layer: 'Caravan, Tradewind, Landshark — API and MCP', role: 'The three flagship products' },
+    { layer: 'Payload OS terminal', role: 'Internal: operates, monitors and navigates the backend that produces them' },
     { layer: 'Inference, model, agent', role: 'Customer computation, or hosted computation over authorized releases' },
-    { layer: 'Ruling, admission profile, case workbench', role: 'Optional application layer over the corpus' },
+    { layer: 'Ruling, admission profile, case workbench', role: 'Optional application layer over a corpus' },
   ],
+} as const;
+
+/** The three flagship products, and how each is delivered. */
+export const FLAGSHIP_PRODUCTS = {
+  statement: 'Three APIs are the products. Each is delivered as an HTTP feed and a set of MCP tools over one provenance-bearing corpus.',
+  delivery: ['HTTP feed', 'MCP tools'] as const,
+  here: 'Caravan alone has a corpus here, served by the fixture feed under /api/v1 and the MCP tools; every response says fixture_only. Tradewind and Landshark are declared and empty. Nothing here is a live customer API.',
 } as const;
 
 export const DISTRIBUTION_MECHANISMS = ['APIs', 'Feeds', 'Reports', 'Workbenches', 'MCP tools'] as const;

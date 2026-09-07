@@ -93,6 +93,8 @@ describe('candidate production is separate from the corpus, the feed and the too
       list_releases: {}, get_release: { releaseId }, get_release_manifest: { releaseId }, list_records: { releaseId },
       query_as_of: { releaseId, subject: 'LOT-5B-221', predicate: 'quantity.gross', validAt: '2026-08-17T16:00:00Z', knownAt: '2026-09-01T12:00:00Z' },
       list_retractions: {}, get_ruling: { rulingId: 'RUL-7C104-r2' }, get_ruling_manifest: { rulingId: 'RUL-7C104-r2' },
+      get_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' }, verify_factoring_receipt: { receiptId: 'RCP-FACT-2026-0901' },
+      get_dispatch_event: { decisionId: 'DISP-EVT-2026-0803' }, replay_dispatch_liability: { decisionId: 'DISP-EVT-2026-0803' },
     };
     for (const tool of MCP_TOOLS) {
       expect(args, `arguments for ${tool.name}`).toHaveProperty(tool.name);

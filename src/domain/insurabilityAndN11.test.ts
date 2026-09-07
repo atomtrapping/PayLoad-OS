@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluatePortfolioCollateralShock } from './insurabilityDynamics';
-import { optimizeInspectionTasking, MEASUREMENT_INSTRUMENTS } from './n11MeasurementEconomy';
+import { optimizeInspectionTasking, BASELINE_MEASUREMENT_INSTRUMENTS } from './n11MeasurementEconomy';
 import {
   FIXTURE_STATE_DOI_FILINGS,
   FIXTURE_LOAN_PORTFOLIO,
@@ -34,8 +34,8 @@ describe('Track 3: Insurability Dynamics & Collateral Repricing', () => {
 
 describe('Track 4: N11 Value of Information (VOI) Tasking Optimizer', () => {
   it('loads instrument profiles with valid Bayesian sensitivity parameters', () => {
-    expect(MEASUREMENT_INSTRUMENTS.length).toBeGreaterThanOrEqual(5);
-    for (const inst of MEASUREMENT_INSTRUMENTS) {
+    expect(BASELINE_MEASUREMENT_INSTRUMENTS.length).toBeGreaterThanOrEqual(5);
+    for (const inst of BASELINE_MEASUREMENT_INSTRUMENTS) {
       expect(inst.defectDetectionSensitivity).toBeGreaterThan(0.7);
       expect(inst.falseAlarmRate).toBeLessThan(0.25);
       expect(inst.latencyHours).toBeGreaterThan(0);
@@ -46,7 +46,7 @@ describe('Track 4: N11 Value of Information (VOI) Tasking Optimizer', () => {
     const drawContext = FIXTURE_PROJECT_DRAWS[0]; // Potomac Gateway Hyperscale
     const schedule = optimizeInspectionTasking(drawContext);
 
-    expect(schedule.evaluations.length).toBe(MEASUREMENT_INSTRUMENTS.length);
+    expect(schedule.evaluations.length).toBe(BASELINE_MEASUREMENT_INSTRUMENTS.length);
     expect(schedule.recommendedInstrument).toBeDefined();
     expect(schedule.recommendedInstrument.recommendationStatus).toBe('OPTIMAL_SELECTION');
     expect(schedule.recommendedInstrument.netMeasurementSurplusCents).toBeGreaterThan(0);

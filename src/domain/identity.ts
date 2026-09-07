@@ -2,7 +2,8 @@
  * Identity is line-agnostic; the verticals are not.
  *
  * One identity core — resolution, provenance, bitemporality — with a family of
- * identifiers per domain product beneath it. The moat is the cross-line join:
+ * identifiers per product beneath it. The three products are the Caravan,
+ * Tradewind and Landshark APIs. The moat is the cross-line join:
  * a Tradewind position resolved to a Landshark parcel exposure through a
  * Caravan flow. No single-vertical competitor assembles that cheaply, and no
  * amount of per-line work produces it if the core was built per line.
@@ -10,7 +11,7 @@
  * This module states the core, the identifier families, and the join, each
  * with the state that is true here. Caravan is the only line with records, so
  * it is the only family with anything PRESENT; the other two are declared and
- * empty, which is what a module slot means. The join is stated as ABSENT with
+ * empty. The join is stated as ABSENT with
  * the exact three things it needs, because it is the part that gets expensive
  * to retrofit and the part most easily faked by matching labels.
  */

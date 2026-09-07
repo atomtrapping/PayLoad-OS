@@ -6,9 +6,9 @@ import { CROSS_LINE_JOIN, CORE_STATE_LABEL, FAMILY_STATE_LABEL, IDENTIFIER_FAMIL
 import { STORAGE_CLASSES, STORAGE_PRESENT_STATE, STORAGE_SEQUENCE, STORAGE_STATE_LABEL, STORE_KIND_LABEL } from '@/domain/storage';
 import { Section } from '@/components/primitives/Section';
 
-export const metadata: Metadata = { title: 'Product model' };
+export const metadata: Metadata = { title: 'Operating model' };
 
-/** What the firm is, what it makes, how it distributes it, whom it serves, and what exists here. The text is the founder's; the presence flags are facts about this repository. */
+/** What the firm is, what it makes, how it distributes it, whom it serves, and what exists here. The three APIs are the products; this terminal is not one. The text is the founder's; the presence flags are facts about this repository. */
 export default function ProductPage() {
   return (
     <div className="p-3 sm:p-5 max-w-[1000px] mx-auto w-full flex flex-col gap-6">
@@ -87,12 +87,13 @@ export default function ProductPage() {
 
       <Section title="Product architecture" id="pm-architecture">
         <pre className="m-0 surface-inset p-3 text-[12.5px] mono overflow-x-auto" aria-label="Product architecture tree" tabIndex={0}>{`${PRODUCT_ARCHITECTURE.company}
-└─ ${PRODUCT_ARCHITECTURE.platform} — ${PRODUCT_ARCHITECTURE.platformRole.toLowerCase()}
-${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `   ${i === a.length - 1 ? '└─' : '├─'} ${d.label} — ${d.scope.toLowerCase()}`).join('\n')}`}</pre>
+${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─' : '├─'} ${d.label} — ${d.delivery} — ${d.scope.toLowerCase()}`).join('\n')}
+
+   ${PRODUCT_ARCHITECTURE.terminal} — ${PRODUCT_ARCHITECTURE.terminalRole.toLowerCase()}`}</pre>
         <ul className="m-0 p-0 list-none grid gap-2 sm:grid-cols-3">
           {PRODUCT_ARCHITECTURE.domains.map((d) => (
             <li key={d.id} className="surface-inset p-3 text-[12.5px]" style={{ borderStyle: d.enabled ? 'solid' : 'dashed' }}>
-              <div className="font-medium" style={{ color: d.enabled ? 'var(--text-heading)' : 'var(--text-muted)' }}>{d.label} {!d.enabled && <span className="label-sm">slot</span>}</div>
+              <div className="font-medium" style={{ color: d.enabled ? 'var(--text-heading)' : 'var(--text-muted)' }}>{d.label} <span className="label-sm">{d.delivery}</span> {!d.enabled && <span className="label-sm">declared</span>}</div>
               <div style={{ color: 'var(--text-secondary)' }}>{d.scope}</div>
               {d.note && <div className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{d.note}</div>}
             </li>

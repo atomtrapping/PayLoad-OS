@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const ROUTES = ['/product', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
+const ROUTES = ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
 
 for (const route of ROUTES) {
   test(`renders ${route} without console errors`, async ({ page }) => {
@@ -17,7 +17,7 @@ for (const route of ROUTES) {
 }
 
 test('axe: releases, stream, case workspace and ruling viewer have no serious or critical violations', async ({ page }) => {
-  for (const route of ['/product', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/cases/CASE-CAR-7C104', '/rulings/RUL-7C104-r2', '/cases']) {
+  for (const route of ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/cases/CASE-CAR-7C104', '/rulings/RUL-7C104-r2', '/cases']) {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
     const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
@@ -54,6 +54,8 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
   const releases = await request.get('/api/v1/releases');
   expect(releases.status()).toBe(200);
   expect(releases.headers()['x-payload-fixture-only']).toBe('true');
+  // next.config.ts sets this for every route; a live fetch proves it for all 27.
+  expect(releases.headers()['x-content-type-options']).toBe('nosniff');
   const list = await releases.json();
   expect(list.fixture_only).toBe(true);
   expect(list.releases[0].status).toBe('CURRENT');
@@ -73,12 +75,16 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
 });
 
 test('the product page states the firm, the twelve stages, the three customer categories and the four-step economic architecture', async ({ page }) => {
-  await page.goto('/product');
+  await page.goto('/model');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('systems and intelligence firm for the physical economy');
   await expect(page.locator('[data-stage]')).toHaveCount(12);
   await expect(page.locator('[data-customer]')).toHaveCount(3);
   await expect(page.locator('[data-step]')).toHaveCount(4);
-  await expect(page.getByLabel('Product architecture tree')).toContainText('Landshark — parcels, zoning, entitlements, development state');
+  // The three APIs are the products; Payload OS is the terminal, listed apart from them.
+  const tree = page.getByLabel('Product architecture tree');
+  await expect(tree).toContainText('Landshark — API and MCP — parcels, zoning, entitlements, development state');
+  await expect(tree).toContainText('Payload OS — internal terminal');
+  await expect(page.locator('#pm-architecture')).toContainText('flagship products');
   await expect(page.locator('[data-fabric]')).toHaveCount(5);
   await expect(page.locator('[data-fabric="state"][data-presence="PRESENT"]')).toHaveCount(1);
   await expect(page.locator('[data-fabric="compute"][data-presence="PRESENT"]')).toContainText('benchmark demonstration is synthetic');
@@ -99,7 +105,10 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-join-key="RESOLVED_ENTITY"][data-join-state="ABSENT"]')).toContainText('matching name is not a resolution');
   await expect(page.getByTestId('cross-line-join')).toContainText('A join built per line is not a join');
   await expect(page.locator('[data-storage]')).toHaveCount(6);
-  await expect(page.locator('[data-storage][data-state="SERVICE"]')).toHaveCount(0);
+  // Exactly one class is a running service: PostgreSQL holds the corpus tables.
+  // The invariant is that a SERVICE class has a dependency behind it, not that none exists.
+  await expect(page.locator('[data-storage][data-state="SERVICE"]')).toHaveCount(1);
+  await expect(page.locator('[data-storage="records"][data-state="SERVICE"]')).toContainText('PostgreSQL, selected and wired');
   await expect(page.locator('[data-storage="embeddings"][data-state="ABSENT"]')).toContainText('Qdrant, Milvus, pgvector');
   await expect(page.getByRole('heading', { name: 'Where the corpus is stored' })).toBeVisible();
   await expect(page.locator('#pm-storage')).toContainText('candidates, not selections');
@@ -108,7 +117,7 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await page.getByRole('link', { name: /^Local weighted rigid registration/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Registration and access' })).toBeVisible();
   await expect(page.getByTestId('registration-boundary')).toContainText('not a surveyed building');
-  await page.goto('/product');
+  await page.goto('/model');
   await page.getByRole('link', { name: /^Local clearance value-of-information/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Clearance measurement design' })).toBeVisible();
   await expect(page.getByTestId('clearance-boundary')).toContainText('Synthetic demonstration');
@@ -181,6 +190,23 @@ test('a retraction names what it reaches and what it cannot reach, and the recal
   await expect(page.getByTestId('recall-absent')).toContainText('delivery ledger');
   await expect(page.getByTestId('delivery-ledger')).toContainText('specified and empty');
   await expect(page.getByTestId('recall-machinery')).toContainText('not a convenience of the schema');
+});
+
+test('the products page meters usage honestly: the content half is carried, the event half is not', async ({ page }) => {
+  await page.goto('/products');
+  // Four content fields are carried; five event fields are not, and the page says so.
+  await expect(page.locator('[data-receipt][data-receipt-state="CARRIED"]')).toHaveCount(4);
+  await expect(page.locator('[data-receipt="response_id"][data-receipt-state="ABSENT"]')).toBeVisible();
+  await expect(page.locator('[data-receipt="recipient_id"][data-receipt-state="ABSENT"]')).toBeVisible();
+  await expect(page.getByTestId('metering-readiness')).toContainText('not which response it is or who received it');
+  // No unit of usage is counted yet, and the page never implies one is.
+  await expect(page.locator('[data-usage-unit][data-counted="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-usage-unit]')).toHaveCount(4);
+  // The boundary is stated: meter the usage, do not become the rails.
+  await expect(page.getByTestId('metering-boundary')).toContainText('not like a payments network');
+  await expect(page.getByTestId('metering-boundary')).toContainText('Not settlement participant');
+  // The federation defence is stated as work to do, not as protection already held.
+  await expect(page.getByTestId('federation-risk')).toContainText('None of the three is implemented');
 });
 
 test('the information product states its question, fields, correction at two knowledge times, the ten-question contract and the acceptance target', async ({ page }) => {

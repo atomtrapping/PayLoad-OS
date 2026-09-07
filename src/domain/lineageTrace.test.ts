@@ -94,8 +94,7 @@ describe('The Verification Ladder: Rung 3 - End-to-End Lineage Trace', () => {
   });
 
   it('self-attests system verification rung and data class at GET /api/v1/status', async () => {
-    const req = new NextRequest('http://localhost:3000/api/v1/status');
-    const res = await statusRoute(req);
+    const res = await statusRoute();
     expect(res.status).toBe(200);
 
     // Headers must self-attest

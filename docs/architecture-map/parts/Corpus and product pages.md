@@ -14,7 +14,7 @@ tags:
 **Group:** Application layer — the Payload OS workbench (Next.js)  
 **Map:** [[Payload OS Architecture]]
 
-> /product (the operating model as data), /products, /releases and release detail with certification and rights, /stream (as-of), /retractions and /api (endpoints with live examples).
+> /model (the operating model as data), /products (the three products, then what Caravan delivers), /releases and release detail with certification and rights, /stream (as-of), /retractions and /api (endpoints with live examples).
 
 ## What it is
 
@@ -22,7 +22,7 @@ tags:
 
 ## Where it lives
 
-- `src/app/product`, `products`, `releases`, `stream`, `retractions`, `api`; `src/components/corpus/`
+- `src/app/model`, `products`, `releases`, `stream`, `retractions`, `api`; `src/components/corpus/`
 
 ## Boundaries
 

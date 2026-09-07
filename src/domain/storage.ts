@@ -1,11 +1,12 @@
 /**
  * Polyglot persistence for the corpus, as data. Six classes of information
  * with different access patterns need different stores; naming a technology
- * here is a candidate, never a selection, and never a claim that anything is
- * installed. Nothing in this list exists in this repository: every class is
- * held today by local content-addressed files under operator-selected
- * `.payload/` roots and by committed fixtures, and `package.json` carries no
- * database, index, object-store or vector-store dependency at all.
+ * here is a candidate until it is selected, and the state below says which.
+ * One is now selected: PostgreSQL holds the corpus tables and the corpus
+ * adapter reads them when a database is configured, falling back to the
+ * committed demonstration when none is. The other five classes are still held
+ * by local content-addressed files under operator-selected `.payload/` roots
+ * and by committed fixtures.
  *
  * The reason to write it down is that a store choice is where the doctrine is
  * easiest to lose. Each class therefore carries the invariant its store must
@@ -76,11 +77,11 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
     dataClass: 'Structured records, normalized candidates and observations, with both clocks',
     kind: 'LAKEHOUSE',
     why: 'Columnar scans over versions and time ranges, with schema evolution and snapshot isolation, so that an as-of answer is a query rather than a rebuild.',
-    candidates: ['Apache Iceberg or Delta Lake on object storage', 'queried through Trino, Spark or DuckDB'],
+    candidates: ['PostgreSQL, selected and wired', 'Apache Iceberg or Delta Lake on object storage, for the columnar scans a relational store answers slowly', 'queried through Trino, Spark or DuckDB'],
     fabric: 'corpus',
-    here: { state: 'FIXTURE', what: 'Committed demonstration releases answer as-of queries in memory; the rail writes UNADMITTED candidates and builds as local files.', where: '/stream' },
+    here: { state: 'SERVICE', what: 'PostgreSQL is selected: src/db/schema.ts declares corpora, releases, records and retractions, and the corpus adapter reads them through drizzle when a database is configured. Where none is configured the committed demonstration answers instead, and the surface says which. A lakehouse remains a candidate for the columnar scans this does not serve.', where: '/stream' },
     invariant: 'Canonical state is not the entire corpus, and valid time is not knowledge time. A snapshot is a version, so table time travel must never be confused with the record\'s own two clocks.',
-    before: 'An admission authority. Without one there is no canonical version to store, and a lakehouse would hold candidates while implying they were admitted.',
+    before: 'An admission authority, which does not exist. The tables arrived first, so this precondition is now owed rather than met: nothing yet stops an unadmitted candidate being written into a releases or records row as though it were a version, and that gate is what the store still needs.',
   },
   {
     id: 'text',
@@ -111,7 +112,7 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
     why: 'Approximate nearest-neighbour retrieval for candidate generation, where an exact index has no answer to give.',
     candidates: ['Qdrant', 'Milvus', 'pgvector'],
     fabric: 'compute',
-    here: { state: 'ABSENT', what: 'No embedding is computed anywhere in this repository, and no model is trained or served.', where: '/product' },
+    here: { state: 'ABSENT', what: 'No embedding is computed anywhere in this repository, and no model is trained or served.', where: '/model' },
     invariant: 'Computation produces derived objects, not truth. Embedding similarity is not a canonical relation: a neighbour is a candidate for a human or a validation boundary to judge, never an admitted link.',
     before: 'A declared model, version and input scope per embedding, so a vector can be traced to what produced it and recomputed. Customers apply their own inference to the corpus; this store would serve retrieval, not sell a model.',
   },
@@ -130,15 +131,17 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
 
 /** Nothing above is installed. Stated once, so no surface has to imply it separately. */
 export const STORAGE_PRESENT_STATE = {
-  summary: 'None of these stores exists here. Every class is held by local content-addressed files under operator-selected roots and by committed fixtures.',
+  summary: 'One store is selected and wired: PostgreSQL holds the corpus tables, and the corpus adapter reads them when a database is configured. The other five classes are still held by local content-addressed files under operator-selected roots and by committed fixtures.',
   roots: '.payload/*, selected per command by the operator; never a deployment path',
-  dependencies: 'package.json declares no database, object store, search index, graph, vector or geospatial dependency.',
+  dependencies: 'package.json declares pg and drizzle-orm for the corpus tables. It declares no object store, search index, graph, vector or geospatial dependency.',
+  /** Which store kinds a dependency exists for. The test below holds this true. */
+  wired: ['LAKEHOUSE'] as const,
 } as const;
 
 /** The order a store earns its place, from the sequencing the classes state. */
 export const STORAGE_SEQUENCE: readonly string[] = [
   'Object storage first: it is the only class whose information already exists in volume and whose invariant is already enforced.',
-  'The lakehouse follows admission, not the other way round: without an admission authority there is no canonical version to store.',
+  'The records store arrived before the admission authority, not after. That is a live risk rather than a settled sequence: rows in the releases and records tables are canonical-shaped, so until admission exists something must keep an unadmitted candidate from being written there as though it were a version.',
   'Search and geospatial are projections of an admitted corpus and are rebuildable from it; they can arrive late and be rebuilt.',
   'The graph waits on one identity authority, and the vector store on declared models with recomputable inputs.',
 ];

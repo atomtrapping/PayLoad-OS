@@ -26,7 +26,7 @@ tags:
 
 - `docs/ECONOMIC_ARCHITECTURE.md` (authoritative, founder-set), `docs/COMPANY_MANDATE.md`
 - `src/domain/product.ts` — the operating model as data (thesis, distribution mechanisms, customer categories, economic architecture, engines, production system)
-- `/product` — the page that renders that model
+- `/model` — the page that renders that model
 
 ## Boundaries
 

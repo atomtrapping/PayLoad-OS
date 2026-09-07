@@ -10,13 +10,13 @@ The customer categories remain physical-economy brokers, asset and portfolio man
 
 ```text
 Notation Systems
-└─ Payload OS — shared information-production and operating platform
+└─ Payload OS — the internal terminal over the backend (not a product)
    ├─ Caravan — logistics, freight, cargo and supply-chain movement
    ├─ Tradewind — markets, instruments, pricing and risk
    └─ Landshark — parcels, zoning, entitlements and development state
 ```
 
-The synthesis calls historical `PayloadOS` an ancestor of the five fabrics. That historical mapping is retained below; it is not an instruction to rename this repository's current shared **Payload OS** platform or create a fourth public API. Domain ownership, existing API routes and historical entity ids/digests remain unchanged until an explicit migration or rename is approved.
+The synthesis calls historical `PayloadOS` an ancestor of the five fabrics. That historical mapping is retained below; it is not an instruction to rename this repository's **Payload OS** terminal or create a fourth public API. Payload OS is the internal terminal, not a product: the products are the Caravan, Tradewind and Landshark APIs (founder correction, 2026-09-06). Domain ownership, existing API routes and historical entity ids/digests remain unchanged until an explicit migration or rename is approved.
 
 ## Five fabrics over one substrate
 
@@ -97,7 +97,7 @@ These mappings preserve the supplied synthesis without silently promoting old co
 | Oracle | Query/compute service role |
 | Odyssey | Exploration/inquiry workflow |
 | Librarian | Operator/interface role |
-| PayloadOS | Historical ancestor wording in the synthesis; current Payload OS remains the shared platform for Caravan, Tradewind and Landshark |
+| PayloadOS | Historical ancestor wording in the synthesis; current Payload OS is the internal terminal over the backend behind the Caravan, Tradewind and Landshark APIs |
 | DAF | Acquisition Fabric |
 | EvidencePool | Evidence substrate |
 | Immutable graph | Structural representation of the corpus, not the whole corpus or a universal canonical database |

@@ -5,7 +5,7 @@ const OUT = 'docs/screenshots';
 mkdirSync(OUT, { recursive: true });
 
 test('desktop screenshots', async ({ page }) => {
-  await page.goto('/product');
+  await page.goto('/model');
   await page.getByRole('heading', { level: 1 }).waitFor();
   await page.screenshot({ path: `${OUT}/000-product-model.png`, fullPage: true });
   await page.goto('/releases');

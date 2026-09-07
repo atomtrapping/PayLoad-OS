@@ -1,6 +1,6 @@
 ---
 title: "Domain products (Caravan, Tradewind, Landshark)"
-status: "CARAVAN ACTIVE · TWO MODULE SLOTS"
+status: "THE THREE FLAGSHIP PRODUCTS · CARAVAN ONLY HAS A CORPUS"
 group: "Firm, domain products and customers"
 tags:
   - architecture-map
@@ -9,16 +9,17 @@ tags:
 
 # Domain products (Caravan, Tradewind, Landshark)
 
-**State:** `CARAVAN ACTIVE · TWO MODULE SLOTS`  
+**State:** `THE THREE FLAGSHIP PRODUCTS · CARAVAN ONLY HAS A CORPUS`  
 **Group:** Firm, domain products and customers  
 **Map:** [[Payload OS Architecture]]
 
-> Three domain products over one platform. Caravan (logistics, freight, cargo, supply-chain movement) is the reference implementation; Tradewind (markets, pricing, risk) and Landshark (parcels, zoning, entitlements) are declared, disabled slots.
+> The three flagship products, each an API delivered as an HTTP feed and MCP tools over one provenance-bearing corpus. Caravan (logistics, freight, cargo, supply-chain movement) is the only one with a corpus here, and it is a committed demonstration; Tradewind (markets, pricing, risk) and Landshark (parcels, zoning, entitlements) are declared and empty. Payload OS is not among them: it is the internal terminal over the backend.
 
 ## What it is
 
 - Caravan carries every fixture: the `caravan.specialty-cargo` demonstration corpus (three releases, nineteen records, two retractions, seven sources) and the Carrier candidate contract.
-- Tradewind and Landshark exist as module slots in the domain-product control so their absence is stated, not implied.
+- Tradewind and Landshark appear in the product control so their absence is stated, not implied.
+- Founder correction, 2026-09-06: Payload OS is the internal terminal that operates, monitors and navigates the backend. It is not a platform sold above the three, and it is not a fourth API.
 
 ## Where it lives
 
@@ -28,7 +29,7 @@ tags:
 
 ## Boundaries
 
-- No fourth public API; historical `PayloadOS` naming is an ancestor, not a rename instruction.
+- Payload OS is not a product and is not sold. Historical `PayloadOS` naming is an ancestor, not a rename instruction.
 - Cross-domain connections require explicit evidence-bearing mappings, never matching labels.
 
 ## Connects to

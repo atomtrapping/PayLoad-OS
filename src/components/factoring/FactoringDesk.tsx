@@ -119,7 +119,16 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
                 background: 'rgba(var(--accent-rgb), 0.08)',
               }}
             >
-              {isVerified === true ? '✓ Notary Seal Verified' : 'Verify Attestation Integrity'}
+              {/*
+                What the route behind this button does is recompute the receipt's
+                SHA-256 over its own normalized shape and compare. That detects
+                tampering with the receipt, and it is a self-consistency check:
+                the digest it compares against was produced by the same function
+                over the same fixture. It is not notarization, and the
+                "NotationsOS Notary Attestation Service v1.2" the fixture names
+                has no implementation anywhere in src/.
+              */}
+              {isVerified === true ? '✓ Digest matches' : 'Recompute receipt digest'}
             </button>
           </div>
         </div>

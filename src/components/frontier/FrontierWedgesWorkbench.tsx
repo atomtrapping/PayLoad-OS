@@ -38,7 +38,7 @@ export function FrontierWedgesWorkbench({
   const selectedCapex = capexVerifications.find((c) => c.verificationId === selectedCapexId) ?? capexVerifications[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ color: '#171717' }}>
       {/* Strategic Header */}
       <div className="border border-neutral-200 bg-white p-6 shadow-sm rounded-lg">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -70,7 +70,7 @@ export function FrontierWedgesWorkbench({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-neutral-200 mt-6 -mb-6">
+        <div className="flex flex-wrap border-b border-neutral-200 mt-6 -mb-6">
           <button
             onClick={() => setActiveTab('assurance')}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
@@ -149,7 +149,7 @@ export function FrontierWedgesWorkbench({
               ))}
             </div>
 
-            <div className="p-4 border border-blue-100 bg-blue-50/60 rounded text-xs text-blue-900 space-y-1.5">
+            <div className="p-4 border border-blue-100 bg-blue-50 rounded text-xs text-blue-900 space-y-1.5">
               <div className="font-semibold">The Productization Gate</div>
               <p>
                 <strong>Sells:</strong> Assurance substrate & raw primary evidence packs to Big 4 verifiers.
@@ -202,7 +202,7 @@ export function FrontierWedgesWorkbench({
 
                 <div className="p-3 bg-neutral-50 rounded border border-neutral-100">
                   <div className="text-[11px] text-neutral-500 font-medium">Uncertainty Bound</div>
-                  <div className="text-lg font-bold font-mono text-emerald-700 mt-0.5">
+                  <div className="text-lg font-bold font-mono text-emerald-800 mt-0.5">
                     ±{(selectedPack.metrics.uncertaintyMarginRatio * 100).toFixed(1)}%
                   </div>
                   <div className="text-[10px] text-neutral-500 font-mono">Continuous CEMS metrology</div>
@@ -235,7 +235,7 @@ export function FrontierWedgesWorkbench({
               </div>
 
               {/* Boundary & Auditor Readiness */}
-              <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded text-xs text-amber-900 space-y-1">
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 space-y-1">
                 <div className="font-semibold flex items-center justify-between">
                   <span>Auditor Target: {selectedPack.auditReadiness.targetAuditorTier} ({selectedPack.auditReadiness.assuranceStandard})</span>
                   <span className="font-mono text-[10px]">Scope: {selectedPack.systemBoundary.scope}</span>
@@ -320,7 +320,7 @@ export function FrontierWedgesWorkbench({
               ))}
             </div>
 
-            <div className="p-4 border border-amber-100 bg-amber-50/60 rounded text-xs text-amber-900 space-y-1.5">
+            <div className="p-4 border border-amber-100 bg-amber-50 rounded text-xs text-amber-900 space-y-1.5">
               <div className="font-semibold">The Productization Gate</div>
               <p>
                 <strong>Sells:</strong> Insurability change feed from public state DOI filings + Landshark parcel overlays.
@@ -474,7 +474,7 @@ export function FrontierWedgesWorkbench({
               ))}
             </div>
 
-            <div className="p-4 border border-emerald-100 bg-emerald-50/60 rounded text-xs text-emerald-900 space-y-1.5">
+            <div className="p-4 border border-emerald-100 bg-emerald-50 rounded text-xs text-emerald-900 space-y-1.5">
               <div className="font-semibold">The Productization Gate</div>
               <p>
                 <strong>Sells:</strong> Verified physical milestone progress states + N11 value-of-information measurement decisions.
@@ -534,7 +534,7 @@ export function FrontierWedgesWorkbench({
                 <div className="p-3 bg-neutral-50 rounded border border-neutral-100">
                   <div className="text-[11px] text-neutral-500 font-medium">Milestone Variance</div>
                   <div className={`text-lg font-bold font-mono mt-0.5 ${
-                    selectedCapex.milestone.variancePct >= -1.0 ? 'text-emerald-700' : 'text-rose-700'
+                    selectedCapex.milestone.variancePct >= -1.0 ? 'text-emerald-800' : 'text-rose-700'
                   }`}>
                     {selectedCapex.milestone.variancePct > 0 ? '+' : ''}{selectedCapex.milestone.variancePct}%
                   </div>
@@ -559,7 +559,7 @@ export function FrontierWedgesWorkbench({
                   </div>
                   <div className="p-2 bg-white rounded border border-neutral-100">
                     <span className="text-neutral-500 text-[10px] block">EXPECTED VOI</span>
-                    <span className="font-semibold text-emerald-700">${(selectedCapex.measurementEconomics.expectedValueOfInformationCents / 1e8).toFixed(2)}M</span>
+                    <span className="font-semibold text-emerald-800">${(selectedCapex.measurementEconomics.expectedValueOfInformationCents / 1e8).toFixed(2)}M</span>
                   </div>
                 </div>
               </div>
@@ -585,7 +585,7 @@ export function FrontierWedgesWorkbench({
             </p>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="min-w-full divide-y divide-neutral-200 text-xs text-left">
               <thead className="bg-neutral-50 text-neutral-700 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
@@ -597,21 +597,21 @@ export function FrontierWedgesWorkbench({
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                <tr className="bg-emerald-50/40">
+                <tr className="bg-emerald-50">
                   <td className="py-2.5 px-3 font-semibold text-neutral-900">1. Assurance Economy</td>
                   <td className="py-2.5 px-3">Big 4 & ESG Auditors</td>
                   <td className="py-2.5 px-3 font-medium text-emerald-900">Evidence packs & emissions substrate</td>
                   <td className="py-2.5 px-3 font-medium text-rose-900">Registry of record (standards body)</td>
                   <td className="py-2.5 px-3 font-mono font-semibold text-emerald-800">Anchor Customer (Immediate)</td>
                 </tr>
-                <tr className="bg-emerald-50/40">
+                <tr className="bg-emerald-50">
                   <td className="py-2.5 px-3 font-semibold text-neutral-900">2. Insurability Dynamics</td>
                   <td className="py-2.5 px-3">Lenders, Brokers, Municipalities</td>
                   <td className="py-2.5 px-3 font-medium text-emerald-900">State DOI withdrawal & change feeds</td>
                   <td className="py-2.5 px-3 font-medium text-rose-900">Carrier / actuarial underwriting shop</td>
                   <td className="py-2.5 px-3 font-mono font-semibold text-emerald-800">Anchor Customer (Immediate)</td>
                 </tr>
-                <tr className="bg-emerald-50/40">
+                <tr className="bg-emerald-50">
                   <td className="py-2.5 px-3 font-semibold text-neutral-900">3. Progress Verification</td>
                   <td className="py-2.5 px-3">Project Finance Agents</td>
                   <td className="py-2.5 px-3 font-medium text-emerald-900">Verified progress states + N11 VOI</td>

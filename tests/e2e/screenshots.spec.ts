@@ -103,6 +103,19 @@ test('desktop screenshots', async ({ page }) => {
   await page.goto('/cases/new');
   await page.getByTestId('new-case-intake').waitFor();
   await page.screenshot({ path: `${OUT}/08-new-case-intake.png`, fullPage: false });
+
+  // The three frontier workbenches, which had no screenshot and no browser
+  // coverage until the fixture banner and the session-only labelling landed.
+  await page.goto('/frontier');
+  await page.getByRole('button', { name: '3. Capex Progress (N11 VOI)' }).click();
+  await page.getByRole('button', { name: '+ Add outcome to this session' }).waitFor();
+  await page.screenshot({ path: `${OUT}/12-frontier-tasking-optimizer.png`, fullPage: true });
+  await page.goto('/factoring');
+  await page.getByRole('button', { name: 'Recompute receipt digest' }).waitFor();
+  await page.screenshot({ path: `${OUT}/13-factoring-desk.png`, fullPage: true });
+  await page.goto('/dispatch-liability');
+  await page.getByRole('note', { name: 'Demonstration fixture' }).waitFor();
+  await page.screenshot({ path: `${OUT}/14-dispatch-liability.png`, fullPage: true });
 });
 
 test('mobile ruling viewer screenshot', async ({ browser }) => {

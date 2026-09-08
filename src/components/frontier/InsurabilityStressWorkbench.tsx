@@ -28,7 +28,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
   const selectedLoan = initialLoans.find((l) => l.loanId === selectedLoanId) ?? initialLoans[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ color: '#171717' }}>
       {/* Sub-view Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 pb-3">
         <div className="flex gap-2">
@@ -62,6 +62,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
         <div className="flex items-center gap-2 text-xs">
           <span className="text-neutral-500 font-medium">As-Of Knowledge Time:</span>
           <select
+            aria-label="As-of knowledge time"
             value={asOfHorizon}
             onChange={(e) => setAsOfHorizon(e.target.value)}
             className="bg-white border border-neutral-300 rounded px-2.5 py-1 text-xs font-mono font-semibold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900"
@@ -108,7 +109,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
                 <div className="text-xl font-bold font-mono text-rose-700 mt-0.5">
                   {stressResult.portfolioSummary.loansDirectlyImpacted} of {stressResult.portfolioSummary.totalLoansEvaluated}
                 </div>
-                <div className="text-[10px] text-rose-600 font-mono font-medium">Withdrawal / Moratorium corridor</div>
+                <div className="text-[10px] text-rose-800 font-mono font-medium">Withdrawal / Moratorium corridor</div>
               </div>
 
               <div className="p-3 bg-neutral-50 rounded border border-neutral-100">
@@ -131,7 +132,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
             {/* Cryptographic Computation Receipt Bar */}
             <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between text-[11px] text-neutral-600 gap-2 font-mono">
               <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-semibold">
+                <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded font-semibold">
                   Zero Data Contamination
                 </span>
                 <span>Receipt: <strong className="text-neutral-900">{stressResult.computationReceipt.receiptId}</strong></span>
@@ -161,7 +162,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
                       onClick={() => setSelectedLoanId(loan.loanId)}
                       className={`p-4 rounded-lg border cursor-pointer transition-all ${
                         isSelected
-                          ? 'border-neutral-900 bg-neutral-50/70 shadow-sm'
+                          ? 'border-neutral-900 bg-neutral-50 shadow-sm'
                           : 'border-neutral-200 bg-white hover:border-neutral-300'
                       }`}
                     >
@@ -183,18 +184,18 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
 
                       <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-neutral-100 text-xs">
                         <div>
-                          <div className="text-[10px] text-neutral-400">Balance</div>
+                          <div className="text-[10px] text-neutral-600">Balance</div>
                           <div className="font-mono font-semibold">${(loan.outstandingLoanBalanceCents / 1e8).toFixed(1)}M</div>
                         </div>
                         <div>
-                          <div className="text-[10px] text-neutral-400">Baseline DSCR</div>
+                          <div className="text-[10px] text-neutral-600">Baseline DSCR</div>
                           <div className="font-mono font-semibold">
                             {(loan.currentAnnualNoiCents / loan.annualDebtServiceCents).toFixed(2)}x
                           </div>
                         </div>
                         <div>
-                          <div className="text-[10px] text-neutral-400">Stressed DSCR</div>
-                          <div className={`font-mono font-bold ${impact?.financialShock.dscrBreach ? 'text-rose-600' : 'text-neutral-700'}`}>
+                          <div className="text-[10px] text-neutral-600">Stressed DSCR</div>
+                          <div className={`font-mono font-bold ${impact?.financialShock.dscrBreach ? 'text-rose-800' : 'text-neutral-700'}`}>
                             {impact ? `${impact.financialShock.stressedDscr.toFixed(2)}x` : '—'}
                           </div>
                         </div>
@@ -226,7 +227,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
                   {selectedImpact ? (
                     <div className="space-y-4">
                       {/* Shock Metrics */}
-                      <div className="p-4 bg-rose-50/60 border border-rose-200 rounded-lg space-y-3">
+                      <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-rose-900">Forced-Place Rate Surge Applied</span>
                           <span className="text-xs font-mono font-bold text-rose-700">
@@ -235,25 +236,25 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-xs">
                           <div>
-                            <span className="text-neutral-500 block text-[10px]">Annual Insurance Delta</span>
+                            <span className="text-neutral-700 block text-[10px]">Annual Insurance Delta</span>
                             <span className="font-mono font-bold text-neutral-900">
                               +${((selectedImpact.financialShock.estimatedForcedPlacePremiumCents - selectedLoan.currentInsurancePremiumCents) / 100).toLocaleString()} / yr
                             </span>
                           </div>
                           <div>
-                            <span className="text-neutral-500 block text-[10px]">Collateral Devaluation</span>
+                            <span className="text-neutral-700 block text-[10px]">Collateral Devaluation</span>
                             <span className="font-mono font-bold text-rose-700">
                               -{selectedImpact.financialShock.projectedCollateralDevaluationPct}%
                             </span>
                           </div>
                           <div>
-                            <span className="text-neutral-500 block text-[10px]">Debt Service Coverage Ratio</span>
+                            <span className="text-neutral-700 block text-[10px]">Debt Service Coverage Ratio</span>
                             <span className={`font-mono font-bold ${selectedImpact.financialShock.dscrBreach ? 'text-rose-700' : 'text-neutral-900'}`}>
                               {selectedImpact.financialShock.baselineDscr}x → {selectedImpact.financialShock.stressedDscr}x
                             </span>
                           </div>
                           <div>
-                            <span className="text-neutral-500 block text-[10px]">Lead Time to Repricing</span>
+                            <span className="text-neutral-700 block text-[10px]">Lead Time to Repricing</span>
                             <span className="font-mono font-bold text-amber-800">
                               {selectedImpact.estimatedLeadTimeToRepricingDays} Days Ahead
                             </span>
@@ -280,7 +281,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
                       </div>
                     </div>
                   ) : (
-                    <div className="p-6 text-center text-xs text-neutral-500 bg-neutral-50 rounded-lg border border-neutral-200">
+                    <div className="p-6 text-center text-xs text-neutral-700 bg-neutral-50 rounded-lg border border-neutral-200">
                       No active carrier withdrawal or moratorium match for this collateral as of {fmtUtc(asOfHorizon)}.
                     </div>
                   )}
@@ -315,21 +316,21 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
 
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100 text-xs">
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">As-Of Knowledge Time</span>
+                    <span className="text-neutral-600 block text-[10px]">As-Of Knowledge Time</span>
                     <span className="font-mono font-medium">{fmtUtc(report.asOfKnowledgeTime)}</span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">Observable Debt Repricing</span>
+                    <span className="text-neutral-600 block text-[10px]">Observable Debt Repricing</span>
                     <span className="font-mono font-medium">{fmtUtc(report.observableRepricingDate)}</span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">Demonstrated Lead Time</span>
-                    <span className="font-mono font-bold text-emerald-700 text-sm">
+                    <span className="text-neutral-600 block text-[10px]">Demonstrated Lead Time</span>
+                    <span className="font-mono font-bold text-emerald-800 text-sm">
                       {report.leadTimeDaysAheadOfRepricing} Days
                     </span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">Feed Signal Timeliness</span>
+                    <span className="text-neutral-600 block text-[10px]">Feed Signal Timeliness</span>
                     <span className="font-mono font-bold text-neutral-800">
                       {report.feedSignaledTimely ? 'Verified Ahead' : 'Lagging'}
                     </span>
@@ -363,7 +364,7 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-neutral-200 rounded-lg bg-white">
+          <div className="overflow-x-auto border border-neutral-200 rounded-lg bg-white" tabIndex={0}>
             <table className="w-full text-left text-xs">
               <thead className="bg-neutral-50 text-neutral-600 font-semibold border-b border-neutral-200">
                 <tr>
@@ -376,10 +377,10 @@ export function InsurabilityStressWorkbench({ filings, initialLoans }: Insurabil
               </thead>
               <tbody className="divide-y divide-neutral-100 font-mono">
                 {Object.values(paramSet.parameters).map((param) => (
-                  <tr key={param.key} className="hover:bg-neutral-50/50">
+                  <tr key={param.key} className="hover:bg-neutral-50">
                     <td className="p-3 font-medium text-neutral-900 font-sans">
                       {param.name}
-                      <div className="text-[10px] text-neutral-400 font-mono">{param.key}</div>
+                      <div className="text-[10px] text-neutral-600 font-mono">{param.key}</div>
                     </td>
                     <td className="p-3 font-bold text-neutral-800">
                       {param.value.toString()} {param.unit}

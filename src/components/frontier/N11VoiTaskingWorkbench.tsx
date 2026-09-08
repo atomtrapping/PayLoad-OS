@@ -26,14 +26,13 @@ function createCompletedTaskingOrder(
 ): TaskingOrderRecord {
   const timestamp = 1786500000000 + orderSeq * 3600000;
   return {
-    orderId: `N11-TASK-LIVE-${orderSeq.toString().padStart(4, '0')}`,
+    orderId: `N11-TASK-SESSION-${orderSeq.toString().padStart(4, '0')}`,
     projectId,
     targetMilestone,
     instrumentId,
-    status: 'CALIBRATED',
+    status: 'OBSERVED',
     dispatchedAt: new Date(timestamp - 48 * 3600000).toISOString(),
     observedAt: new Date(timestamp).toISOString(),
-    calibrationRunAt: new Date(timestamp).toISOString(),
     priors: {
       assumedSensitivity: sensitivity,
       assumedFalseAlarmRate: falseAlarmRate,
@@ -92,7 +91,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ color: '#171717' }}>
       {/* Top Banner & Scenario Switcher */}
       <div className="border border-neutral-200 bg-white p-5 rounded-lg shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-neutral-100 gap-4">
@@ -101,8 +100,8 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               <h3 className="text-base font-bold text-neutral-900">
                 N11 Value-of-Information (VOI) Tasking Optimizer
               </h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-100 text-emerald-800 font-bold">
-                CLOSED-LOOP CALIBRATED
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-100 text-amber-900 font-bold">
+                SESSION ONLY — NOT PERSISTED
               </span>
             </div>
             <p className="text-xs text-neutral-500 font-mono mt-0.5">
@@ -112,6 +111,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
           <div className="flex items-center gap-2">
             <span className="text-xs text-neutral-500 font-medium">Megaproject Draw:</span>
             <select
+              aria-label="Megaproject draw"
               value={selectedContextId}
               onChange={(e) => setSelectedContextId(e.target.value)}
               className="text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded px-2.5 py-1 text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900"
@@ -133,6 +133,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               <span className="font-mono font-bold">${(activeContext.requestedDrawAmountCents / 1e8).toFixed(1)}M USD</span>
             </div>
             <input
+              aria-label="Requested draw size, as a multiple of the declared draw"
               type="range"
               min="0.5"
               max="2.5"
@@ -141,7 +142,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               onChange={(e) => setDrawAmountMultiplier(parseFloat(e.target.value))}
               className="w-full accent-neutral-900 h-1.5 bg-neutral-200 rounded-lg cursor-pointer"
             />
-            <div className="text-[10px] text-neutral-400 mt-1">
+            <div className="text-[10px] text-neutral-600 mt-1">
               Defect cost at risk: ${(activeContext.estimatedDefectCostAtRiskCents / 1e8).toFixed(2)}M
             </div>
           </div>
@@ -152,6 +153,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               <span className="font-mono font-bold">{priorProbabilityPct}%</span>
             </div>
             <input
+              aria-label="Prior defect probability, percent"
               type="range"
               min="1"
               max="45"
@@ -160,7 +162,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               onChange={(e) => setPriorProbabilityPct(parseInt(e.target.value, 10))}
               className="w-full accent-neutral-900 h-1.5 bg-neutral-200 rounded-lg cursor-pointer"
             />
-            <div className="text-[10px] text-neutral-400 mt-1">
+            <div className="text-[10px] text-neutral-600 mt-1">
               Subcontractor baseline defect rate prior to metrology inspection
             </div>
           </div>
@@ -172,7 +174,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
             </div>
             <div className="text-xs text-neutral-600 bg-neutral-50 p-2.5 rounded border border-neutral-200">
               Dispute Delay Penalty: <strong className="font-mono">${((activeContext.requestedDrawAmountCents * 0.015) / 1e5).toFixed(1)}k</strong>
-              <span className="block text-[10px] text-neutral-400 mt-0.5">CFMA Prior: 1.5% draw interest carry</span>
+              <span className="block text-[10px] text-neutral-600 mt-0.5">CFMA Prior: 1.5% draw interest carry</span>
             </div>
           </div>
         </div>
@@ -180,8 +182,12 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
         {/* Computation Receipt Strip */}
         <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between text-[11px] text-neutral-600 gap-2 font-mono">
           <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-semibold">
-              Receipt Notarized
+            {/* Not notarized. generateComputationReceipt hashes the inputs and
+                the output of this page's own computation; the digests below are
+                what a reader can recompute, and no third party has attested
+                anything. */}
+            <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-700 border border-neutral-300 rounded font-semibold">
+              Receipt digested
             </span>
             <span>ID: <strong className="text-neutral-900">{schedule.computationReceipt.receiptId}</strong></span>
           </div>
@@ -194,11 +200,11 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
       </div>
 
       {/* Recommended Pareto Instrument Hero Card */}
-      <div className="border border-emerald-300 bg-emerald-50/40 p-6 rounded-lg shadow-sm">
+      <div className="border border-emerald-300 bg-emerald-50 p-6 rounded-lg shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-emerald-200 gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-600 text-white uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-800 text-white uppercase tracking-wider">
                 Optimal VOI Instrument
               </span>
               <span className="text-xs text-emerald-800 font-mono font-semibold">
@@ -215,7 +221,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
 
           <div className="flex flex-col items-end">
             <div className="text-xs text-neutral-500 font-medium">Net Measurement Surplus</div>
-            <div className="text-3xl font-extrabold font-mono text-emerald-700">
+            <div className="text-3xl font-extrabold font-mono text-emerald-800">
               +${(recommended.netMeasurementSurplusCents / 1e5).toFixed(1)}k
             </div>
             <div className="text-[11px] font-mono text-emerald-800 font-bold">
@@ -226,7 +232,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
 
         {/* Bayesian Loss Delta Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-xs font-mono">
-          <div className="bg-white/80 p-3 rounded border border-emerald-200">
+          <div className="bg-white p-3 rounded border border-emerald-200">
             <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Prior Expected Loss L₀</div>
             <div className="text-base font-bold text-neutral-900 mt-0.5">
               ${(recommended.priorExpectedLossCents / 1e5).toFixed(1)}k
@@ -234,15 +240,15 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
             <div className="text-[10px] text-neutral-500">Unmitigated risk</div>
           </div>
 
-          <div className="bg-white/80 p-3 rounded border border-emerald-200">
+          <div className="bg-white p-3 rounded border border-emerald-200">
             <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Posterior Loss L₁</div>
-            <div className="text-base font-bold text-emerald-700 mt-0.5">
+            <div className="text-base font-bold text-emerald-800 mt-0.5">
               ${(recommended.posteriorExpectedLossCents / 1e5).toFixed(1)}k
             </div>
             <div className="text-[10px] text-neutral-500">Post-sensor residual</div>
           </div>
 
-          <div className="bg-white/80 p-3 rounded border border-emerald-200">
+          <div className="bg-white p-3 rounded border border-emerald-200">
             <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Authorized Cost</div>
             <div className="text-base font-bold text-neutral-800 mt-0.5">
               ${(recommended.instrument.unitCostCents / 1e5).toFixed(1)}k
@@ -250,12 +256,12 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
             <div className="text-[10px] text-neutral-500">Vendor tasking fee</div>
           </div>
 
-          <div className="bg-white/80 p-3 rounded border border-emerald-200">
+          <div className="bg-white p-3 rounded border border-emerald-200">
             <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Turnaround Window</div>
             <div className="text-base font-bold text-neutral-800 mt-0.5">
               {recommended.instrument.latencyHours}h / {activeContext.maxAllowedLatencyHours}h
             </div>
-            <div className="text-[10px] text-emerald-700 font-bold">Within lender bound</div>
+            <div className="text-[10px] text-emerald-800 font-bold">Within lender bound</div>
           </div>
         </div>
       </div>
@@ -275,13 +281,13 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
             onClick={() => setShowLogModal(true)}
             className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded text-xs font-semibold transition-colors"
           >
-            + Record Ground Truth Outcome
+            + Add outcome to this session
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0}>
           <table className="w-full text-left text-xs">
-            <thead className="bg-neutral-100/75 text-neutral-600 font-semibold border-b border-neutral-200">
+            <thead className="bg-neutral-100 text-neutral-600 font-semibold border-b border-neutral-200">
               <tr>
                 <th className="p-3">Instrument</th>
                 <th className="p-3">Category</th>
@@ -300,12 +306,12 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
                   <tr
                     key={evalItem.instrument.id}
                     className={`transition-colors ${
-                      isOptimal ? 'bg-emerald-50/70 font-medium' : 'hover:bg-neutral-50'
+                      isOptimal ? 'bg-emerald-50 font-medium' : 'hover:bg-neutral-50'
                     }`}
                   >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-neutral-400 font-bold">#{idx + 1}</span>
+                        <span className="font-mono text-neutral-600 font-bold">#{idx + 1}</span>
                         <div>
                           <div className="font-semibold text-neutral-900">{evalItem.instrument.label}</div>
                           <div className="text-[10px] text-neutral-500 font-mono">
@@ -328,7 +334,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
                     </td>
                     <td className="p-3 font-mono">
                       <span className={`font-bold ${
-                        evalItem.netMeasurementSurplusCents > 0 ? 'text-emerald-700' : 'text-rose-700'
+                        evalItem.netMeasurementSurplusCents > 0 ? 'text-emerald-800' : 'text-rose-700'
                       }`}>
                         {evalItem.netMeasurementSurplusCents > 0 ? '+' : ''}
                         ${(evalItem.netMeasurementSurplusCents / 1e5).toFixed(1)}k
@@ -359,13 +365,15 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
         <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
           <div>
             <h5 className="font-bold text-neutral-900 text-sm">
-              Empirical Sensor Calibration Loop ({ordersHistory.length} Completed Orders)
+              Tasking history ({ordersHistory.length} completed {ordersHistory.length === 1 ? 'order' : 'orders'})
             </h5>
             <p className="text-xs text-neutral-500">
-              Observation history updating sensor noise and sensitivity beyond initial vendor spec guesses
+              Each instrument&rsquo;s sensitivity and false-alarm rate is re-estimated from the outcomes below, where they
+              support it. One completed order per instrument is not an empirical calibration, and the status column above
+              says PROVISIONAL_FROM_HISTORY rather than CALIBRATED_EMPIRICAL for exactly that reason.
             </p>
           </div>
-          <span className="text-xs font-mono text-neutral-500">The Calibration Moat</span>
+          <span className="text-xs font-mono text-neutral-500">Committed fixture · {FIXTURE_TASKING_ORDERS.length} orders</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
@@ -373,7 +381,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
             <div key={ord.orderId} className="p-3 bg-neutral-50 rounded border border-neutral-200 space-y-1">
               <div className="flex justify-between font-mono text-[10px]">
                 <strong className="text-neutral-900">{ord.orderId}</strong>
-                <span className="text-emerald-700 font-bold">{ord.status}</span>
+                <span className="text-emerald-800 font-bold">{ord.status}</span>
               </div>
               <div className="text-neutral-700 font-medium truncate">{ord.targetMilestone}</div>
               <div className="text-[10px] text-neutral-500 font-mono">
@@ -381,7 +389,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               </div>
               {ord.observationOutcome && (
                 <div className="text-[10px] text-neutral-600 pt-1 border-t border-neutral-200">
-                  Defect Existed: <strong className={ord.observationOutcome.defectActuallyExisted ? 'text-rose-600' : 'text-emerald-600'}>
+                  Defect Existed: <strong className={ord.observationOutcome.defectActuallyExisted ? 'text-rose-800' : 'text-emerald-800'}>
                     {ord.observationOutcome.defectActuallyExisted ? 'YES' : 'NO'}
                   </strong> • Detected: <strong>{ord.observationOutcome.instrumentDetectedDefect ? 'YES' : 'NO'}</strong>
                 </div>
@@ -404,21 +412,21 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
           <div>
-            <span className="text-neutral-500 block">TARGET MILESTONE</span>
+            <span className="text-neutral-400 block">TARGET MILESTONE</span>
             <span className="text-neutral-200 font-semibold">{schedule.measurementOrderDraft.targetMilestone}</span>
           </div>
           <div>
-            <span className="text-neutral-500 block">DISPATCHED INSTRUMENT</span>
+            <span className="text-neutral-400 block">DISPATCHED INSTRUMENT</span>
             <span className="text-emerald-300 font-semibold">{schedule.measurementOrderDraft.dispatchedInstrument}</span>
           </div>
           <div>
-            <span className="text-neutral-500 block">AUTHORIZED BUDGET</span>
+            <span className="text-neutral-400 block">AUTHORIZED BUDGET</span>
             <span className="text-neutral-200 font-semibold">
               ${(schedule.measurementOrderDraft.budgetAuthorizedCents / 1e5).toFixed(2)}k USD
             </span>
           </div>
           <div>
-            <span className="text-neutral-500 block">PROJECTED SURPLUS VALUE</span>
+            <span className="text-neutral-400 block">PROJECTED SURPLUS VALUE</span>
             <span className="text-emerald-300 font-semibold">
               +${(schedule.measurementOrderDraft.expectedSurplusGeneratedCents / 1e5).toFixed(2)}k USD
             </span>
@@ -435,9 +443,11 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
       {showLogModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full space-y-4 shadow-xl text-xs">
-            <h4 className="text-base font-bold text-neutral-900">Record Ground Truth Inspection Outcome</h4>
+            <h4 className="text-base font-bold text-neutral-900">Add a ground-truth inspection outcome</h4>
             <p className="text-neutral-600">
-              Close the N11 loop by recording ground-truth physical verification. This updates the empirical calibration of the instrument.
+              This recomputes the tasking optimizer against the committed history plus the outcome below. The entry lives in
+              this page only: nothing is sent to a server, nothing is stored, and it is gone on reload. Closing the N11 loop
+              would mean writing the outcome somewhere, and there is nowhere in this system a tasking order is written.
             </p>
 
             <div className="space-y-3">
@@ -486,7 +496,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
                 onClick={handleRecordObservation}
                 className="px-3 py-1.5 bg-neutral-900 text-white rounded font-semibold hover:bg-neutral-800"
               >
-                Commit & Recalibrate
+                Recompute for this session
               </button>
             </div>
           </div>

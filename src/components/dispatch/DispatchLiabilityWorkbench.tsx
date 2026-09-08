@@ -54,7 +54,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" style={{ color: '#171717' }}>
       {/* Stream Verification Banner */}
       <div
         className="p-3 rounded surface flex flex-col sm:flex-row sm:items-center justify-between gap-2 border"

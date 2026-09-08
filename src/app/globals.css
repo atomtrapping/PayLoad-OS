@@ -160,11 +160,22 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* Links inside running text are distinguishable without colour (WCAG 1.4.1). */
 p a, dd a, li > span a, li > div a, .prose a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); }
 
-button, input, select, textarea { font: inherit; color: inherit; border-radius: 0; }
+/* `color: inherit` sits in the base layer so that a Tailwind `text-*` utility
+   written on a button wins, which is what anyone writing one expects. Unlayered
+   it did the opposite: every `text-neutral-500` on a button in the frontier
+   workbenches was overridden back to --text-primary, which is #e8e6e0 — cream
+   on the white cards those components draw. The tab strip on /frontier was
+   rendering at a contrast ratio of 1.24:1, invisible, and nothing caught it
+   because those three routes were the only ones missing from the axe sweep.
+   The rest of this reset stays unlayered deliberately. */
+@layer base {
+  button, input, select, textarea { color: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+}
+button, input, select, textarea { font: inherit; border-radius: 0; }
 /* Tailwind's `rounded` and `rounded-full` compile to literal radii rather
    than to the tokens above; this unlayered rule outranks the utility layer. */
 .rounded, .rounded-sm, .rounded-md, .rounded-full { border-radius: 0; }
-button { cursor: pointer; background: none; border: 0; padding: 0; }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 
 /* Visible focus on everything, keyboard-only where the browser supports it */

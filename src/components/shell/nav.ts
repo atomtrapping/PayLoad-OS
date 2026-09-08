@@ -57,3 +57,79 @@ export function locate(pathname: string): { area: NavArea; item: NavItem } | nul
   for (const area of NAV_AREAS) for (const item of area.items) if (item.match.test(pathname)) return { area, item };
   return null;
 }
+
+/* ── Moving between destinations ── */
+
+/** One destination, with the area it belongs to. The flat order the rail reads in. */
+export interface NavDestination { href: string; label: string; area: NavArea['label']; areaId: NavArea['id']; match: RegExp }
+
+/**
+ * Every destination in rail order, anchors excluded.
+ *
+ * An anchor (`/candidates#cp-acquisitions`) is a second way into a page that is
+ * already in this list, so including it would make "next" visit the same page
+ * twice and a search offer the same page under two names.
+ */
+export const NAV_DESTINATIONS: readonly NavDestination[] = NAV_AREAS.flatMap((area) =>
+  area.items
+    .filter((item) => !item.href.includes('#'))
+    .map((item) => ({ href: item.href, label: item.label, area: area.label, areaId: area.id, match: item.match })),
+);
+
+/** Where a path sits in the flat order, or -1. */
+export function indexOf(pathname: string): number {
+  return NAV_DESTINATIONS.findIndex((entry) => entry.match.test(pathname));
+}
+
+/**
+ * The destination `delta` steps away, wrapping.
+ *
+ * Wrapping rather than stopping because the rail is a ring of places to be
+ * rather than a list with an end: someone stepping past the last area wants the
+ * first, not nothing happening.
+ */
+export function step(pathname: string, delta: number): NavDestination | null {
+  if (NAV_DESTINATIONS.length === 0) return null;
+  const at = indexOf(pathname);
+  const from = at < 0 ? 0 : at;
+  const next = (from + delta) % NAV_DESTINATIONS.length;
+  return NAV_DESTINATIONS[next < 0 ? next + NAV_DESTINATIONS.length : next];
+}
+
+export interface NavMatch { destination: NavDestination; score: number }
+
+const norm = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * Rank destinations for a typed query.
+ *
+ * Four tiers, and the order is the point: an exact label wins over a prefix,
+ * a prefix over a word start, a word start over anything the area name happens
+ * to contain. Someone typing "rel" wants Releases first and Dispatch Liability
+ * never, so a bare substring match on the area is ranked last rather than
+ * mixed in with the label matches.
+ */
+export function searchNav(query: string, destinations: readonly NavDestination[] = NAV_DESTINATIONS): NavMatch[] {
+  const q = norm(query);
+  if (q === '') return destinations.map((destination, index) => ({ destination, score: 1000 - index }));
+  const matches: NavMatch[] = [];
+  for (const destination of destinations) {
+    const label = norm(destination.label);
+    const area = norm(destination.area);
+    const href = norm(destination.href);
+    let score = 0;
+    if (label === q) score = 100;
+    else if (label.startsWith(q)) score = 80;
+    else if (label.split(' ').some((word) => word.startsWith(q))) score = 60;
+    else if (href.includes(q)) score = 45;
+    else if (label.includes(q)) score = 40;
+    else if (area.startsWith(q)) score = 20;
+    else if (area.includes(q)) score = 10;
+    if (score > 0) matches.push({ destination, score });
+  }
+  // Ties keep rail order, so the list never reshuffles for equally good matches.
+  return matches
+    .map((match, index) => ({ match, index }))
+    .sort((a, b) => (b.match.score - a.match.score) || (a.index - b.index))
+    .map((entry) => entry.match);
+}

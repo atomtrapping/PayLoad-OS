@@ -24,6 +24,8 @@ import {
 import type { Registration } from '@/domain/identityResolution';
 import type { AdmittedRow } from '@/domain/admission';
 import { serveAdmittedAsOf, serveInForceAsOf } from '@/domain/statutoryServing';
+import { intakeStatus } from '@/domain/statutoryIntake';
+import { notRequested, persistenceVerdict, type PersistenceState } from './statutoryPersistence';
 import {
   NAIC_REGISTRY,
   STATUTORY_SPECIMENS,
@@ -87,8 +89,16 @@ export function runSpecimenHarvest(knownThrough: string = STATUTORY_SPECIMEN_HOR
   );
 }
 
-/** What the run produced, shaped once so no two readers of it disagree. */
-export function reportHarvest(run: HarvestRun, asOfKnowledgeTime: string, inForceAt: string | null) {
+/**
+ * What the run produced, shaped once so no two readers of it disagree.
+ *
+ * `persistence` and `intake` are here rather than optional because their
+ * absence was the misleading part. A payload reporting `admitted: 5` with no
+ * statement about writing invites a reader to assume the canonical count moved,
+ * and one with no statement about collection invites them to assume something
+ * fetched. Both are stated, and both currently say no.
+ */
+export function reportHarvest(run: HarvestRun, asOfKnowledgeTime: string, inForceAt: string | null, persistence: PersistenceState = notRequested()) {
   const served: AdmittedRow[] = inForceAt
     ? serveInForceAsOf(run.receipt.rows, asOfKnowledgeTime, inForceAt)
     : serveAdmittedAsOf(run.receipt.rows, asOfKnowledgeTime);
@@ -112,6 +122,17 @@ export function reportHarvest(run: HarvestRun, asOfKnowledgeTime: string, inForc
       crossedTheGate: run.receipt.counts.admitted > 0,
       detail: 'Two independent facts. `crossedTheGate` says these rows passed all ten admission checks on the merits. `beganAs` says what the supplier declared the bytes to be. A drafted specimen that passes the gate is a correct admission of a drafted document, and neither fact excuses omitting the other.',
     },
+    /**
+     * Whether the canonical record count moved. It is a third independent fact
+     * from the two above: admitting a candidate and writing a row are two acts,
+     * and reporting the first without the second reads as the second.
+     */
+    persistence: {
+      ...persistence,
+      wouldBe: persistenceVerdict(run)?.outcome ?? 'ELIGIBLE',
+    },
+    /** How much of the intake collects. Currently none, said rather than implied. */
+    intake: intakeStatus(),
     captureRefusals: run.captureRefusals,
     excluded: run.build.excluded,
     filings: run.build.members.map((member) => ({

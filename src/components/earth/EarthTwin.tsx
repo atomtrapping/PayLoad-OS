@@ -3,16 +3,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
 import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { CONVENIENCE_MEANING, INSTRUMENT_RULES, conveniencesTaken, type InstrumentReading } from '@/domain/operatorInstrument';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
 type Viewer = import('cesium').Viewer;
 
-export interface EarthRecord { recordId: string; title: string; subjectId: string; predicate: string; validFrom: string; validTo?: string }
+export interface EarthRecord {
+  recordId: string; title: string; subjectId: string; predicate: string; validFrom: string; validTo?: string;
+  /**
+   * The release declares a position record for this record's subject. A hint
+   * for which record to open on, never a promise that the compiler will place
+   * it — the compiler decides, on the exact version and the asked-for clocks.
+   */
+  positionDeclared?: boolean;
+}
 export interface EarthTwinProps {
   release: { releaseId: string; corpusId: string; knownAt: string };
   source: ProjectionSpec['source'];
   records: EarthRecord[];
+  /**
+   * The operator's readout of the release's own spatial state, computed on the
+   * server for the twin's seat. Read-only by construction: it is a value, and
+   * the component has no path from it to a write.
+   */
+  instrument: InstrumentReading;
   /** Whether the local engine asset package passed verification (scripts/earth-assets.mjs). */
   assetsReady: boolean;
   /** How the engine is obtained; the default loads its prebuilt module from this origin. Tests inject a fake. */
@@ -44,8 +59,26 @@ const faint = { color: 'var(--text-muted)' };
 
 const KEY_LABEL = { NONE: 'no key', FREE_KEY: 'free key', OPTIONAL_KEY: 'optional key', METERED_KEY: 'metered key' } as const;
 
-function Part({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+/**
+ * One inspector section.
+ *
+ * `folded` makes it a disclosure that starts closed. Two sections earn it —
+ * the layer list and the twenty-one-source registry — because between them
+ * they were most of the column's height, and a reader arriving to look at a
+ * globe had to scroll past both to reach what is on it. Folding them loses
+ * nothing: the summary carries the count, so the registry still says
+ * twenty-one named and none integrated with the section shut.
+ */
+function Part({ title, children, testId, folded }: { title: string; children: ReactNode; testId?: string; folded?: boolean }) {
   const id = `earth-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  if (folded) {
+    return (
+      <details className="inspector-section inspector-fold" data-testid={testId}>
+        <summary><h3 id={id}>{title}</h3></summary>
+        <div className="inspector-fold-body">{children}</div>
+      </details>
+    );
+  }
   return <section className="inspector-section" aria-labelledby={id} data-testid={testId}><h3 id={id}>{title}</h3>{children}</section>;
 }
 
@@ -143,7 +176,7 @@ function readView(Cesium: CesiumModule, viewer: Viewer): TwinView {
  * what it does not do. Nothing here fetches from anywhere but this origin;
  * nothing here invents a position.
  */
-export function EarthTwin({ release, source, records, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
+export function EarthTwin({ release, source, records, instrument, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
   const container = useRef<HTMLDivElement>(null);
   const credits = useRef<HTMLDivElement>(null);
   const engine = useRef<EngineInstance | null>(null);
@@ -162,7 +195,17 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
     typeof window === 'undefined' ? null : parseLink(window.location.hash),
     records.map((record) => record.recordId),
   ), [records]);
-  const [recordId, setRecordId] = useState(linked.recordId ?? records[0]?.recordId ?? '');
+  /*
+   * With no link naming one, open on a record whose subject the release
+   * positions. The twin's whole question is where a record's subject was, and
+   * landing on one the release cannot place showed an empty globe under a red
+   * refusal — a true statement about that record, and a poor first question to
+   * have asked on the reader's behalf. `positionDeclared` only says a position
+   * record exists for the subject; the compiler still decides, so when nothing
+   * is positioned this falls back to the first record and the refusal stands.
+   */
+  const opensOn = records.find((entry) => entry.positionDeclared)?.recordId ?? records[0]?.recordId ?? '';
+  const [recordId, setRecordId] = useState(linked.recordId ?? opensOn);
   const [answer, setAnswer] = useState<{ key: string; outcome: ProjectionOutcome } | null>(null);
   const [sunResult, setSunResult] = useState<{ instance: symbol; validAt: string; point: SunPoint | null } | null>(null);
   const [copied, setCopied] = useState('');
@@ -342,6 +385,12 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
   /** Across everything placed, which subjects have standing declarations that cannot all be right. One declaration counts once however many records resolved it. */
   const placedSeparations = useMemo(() => positionSeparations(Object.values(placements).flatMap((placement) => placement.positions)), [placements]);
 
+  // The operator readout, taken apart for rendering. `conveniencesTaken` is the
+  // rule-two filter: a layer that starts interpolating appears here without
+  // anyone remembering to add it to a list.
+  const conveniences = useMemo(() => conveniencesTaken(instrument), [instrument]);
+  const instrumentReading = useCallback((id: string) => String(instrument.layers.find((entry) => entry.id === id)?.reading ?? 'UNKNOWN'), [instrument]);
+
   /** Ask the compiler for every record of the release, each at its own validity start, and draw all that can be placed. Nothing is placed by anything but its own subject's declaration. */
   async function placeAll() {
     if (placing) return;
@@ -414,7 +463,7 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
             <ul className="m-0 p-0 list-none flex flex-col gap-0.5 text-[11.5px]" style={faint} aria-label="What the twin does not claim" data-testid="earth-nonclaims">{TWIN_NONCLAIMS.map((n) => <li key={n}><span aria-hidden="true">✕</span> {n}</li>)}</ul>
           </Part>
 
-          <Part title="Layers" testId="earth-layers">
+          <Part title="Layers" testId="earth-layers" folded>
             <ul className="m-0 p-0 list-none flex flex-col gap-1.5">
               {TWIN_LAYERS.map((layer) => (
                 <li key={layer.id} className="surface-inset p-2 text-[12px] flex flex-col gap-0.5" data-layer={layer.id} data-state={layer.state}>
@@ -508,7 +557,54 @@ export function EarthTwin({ release, source, records, assetsReady, loadEngine = 
             )}
           </Part>
 
-          <Part title={`World signals · ${GEV_SIGNAL_SOURCES.length} named, 0 integrated`} testId="earth-signals">
+          <Part title={`Operator instrument · ${instrumentReading('positioned')} flyable, ${instrumentReading('void')} void`} testId="earth-operator" folded>
+            <p className="m-0 text-[12px]" style={muted}>The release’s own spatial state from this seat, arranged to be flown rather than read. It is a way of looking and not a thing looked at: nothing here is evidence, and no ruling may cite it.</p>
+            <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Instrument layers" data-testid="operator-layers">
+              {instrument.layers.map((entry) => (
+                <li key={entry.id} className="surface-inset p-2 text-[12px] flex flex-col gap-0.5" data-operator-layer={entry.id} data-reading={String(entry.reading)} data-convenience={entry.convenience}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium" style={{ color: 'var(--text-heading)' }}>{entry.label}</span>
+                    <span className="mono" style={entry.reading === 'UNKNOWN' ? { color: 'var(--status-conditional)' } : { color: 'var(--text-heading)' }}>{entry.reading}</span>
+                  </div>
+                  <div style={muted}>{entry.shows}</div>
+                  <div style={faint}>{entry.because}</div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="text-[12px] flex flex-col gap-0.5" data-testid="operator-conveniences" data-taken={conveniences.length}>
+              <span className="label-sm">Conveniences taken</span>
+              {conveniences.length === 0
+                ? <span style={muted}>None. Every reading above is counted from the release as it stands: nothing was interpolated, smoothed, aggregated or carried forward.</span>
+                : <ul className="m-0 pl-4">{conveniences.map((entry) => <li key={entry.id} style={muted}><span className="mono">{entry.convenience.replace('_', ' ').toLowerCase()}</span> on {entry.label} — {CONVENIENCE_MEANING[entry.convenience]}</li>)}</ul>}
+            </div>
+
+            {instrument.voids.length > 0 && (
+              <div className="text-[12px] flex flex-col gap-1" data-testid="operator-voids" data-count={instrument.voids.length}>
+                <span className="label-sm">Where the instrument is blind</span>
+                <p className="m-0" style={muted}>Subjects this seat holds records about and no position for. There is nowhere to fly to, so they are listed instead of drawn — the records are still selectable.</p>
+                <ul className="m-0 p-0 list-none flex flex-col gap-0.5" aria-label="Subjects with no position">
+                  {instrument.voids.map((hole) => {
+                    const first = records.find((entry) => entry.subjectId === hole.subjectId);
+                    return (
+                      <li key={hole.canonicalId} className="flex flex-wrap items-baseline gap-x-2" data-void-subject={hole.subjectId}>
+                        <span className="mono" style={{ color: 'var(--text-heading)' }}>{hole.subjectId}</span>
+                        <span style={faint}>{hole.subjectType} · {hole.recordsHeld} {hole.recordsHeld === 1 ? 'record' : 'records'} · no position</span>
+                        {first && <button type="button" className="btn btn-sm btn-quiet" onClick={() => setRecordId(first.recordId)} data-void-select={hole.subjectId}>Select {first.recordId}</button>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <div className="text-[12px] flex flex-col gap-0.5" data-testid="operator-rules" data-writes={instrument.writes}>
+              <span className="label-sm">The two rules this instrument is held to</span>
+              <ol className="m-0 pl-4 flex flex-col gap-0.5" style={faint}>{INSTRUMENT_RULES.map((rule) => <li key={rule}>{rule}</li>)}</ol>
+            </div>
+          </Part>
+
+          <Part title={`World signals · ${GEV_SIGNAL_SOURCES.length} named, 0 integrated`} testId="earth-signals" folded>
             <p className="m-0 text-[12px]" style={muted}>The public signals {EARTH_TWIN_ORIGIN.name} reads, with their terms as its source list records them. Each would enter Payload OS through the acquisition rail under a registration and a rights decision. None has.</p>
             <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Signal sources">
               {GEV_SIGNAL_SOURCES.map((s) => (

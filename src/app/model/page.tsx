@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getCorpusSource } from '@/adapter/corpusSource';
 import Link from 'next/link';
 import { CUSTOMER_CATEGORIES, DISTRIBUTION_MECHANISMS, ECONOMIC_ARCHITECTURE, ENGINES, MATERIAL_CLASSES_IN_CORPUS, PRESENCE_LABEL, PRODUCTION_SYSTEM, PRODUCT_ARCHITECTURE, REFERENCE_IMPLEMENTATION, THESIS, VALUE_PROPOSITION } from '@/domain/product';
 import { DOCTRINE, EXTRACTION_INTERFACE, FABRICS, IDENTITY_CHAIN, INFORMATION_STATES, OPERATIONAL_RULE, PROJECTION_ENGINES_IN_REPOSITORY, VERIFICATION_TIERS, WORKBENCH_RUNTIME } from '@/domain/doctrine';
@@ -34,7 +35,7 @@ const FIT_LABEL = {
   SEVERAL_THINGS_AWAY: 'Several things away',
 } as const;
 
-export default function ProductPage() {
+export default async function ProductPage() {
   const capabilityFits = CAPABILITIES.map((capability) => fitOf(capability, CARAVAN_CORPUS));
   const accommodation = accommodationStanding(CARAVAN_CORPUS);
 
@@ -49,11 +50,12 @@ export default function ProductPage() {
   const decision = evaluateRelease(CARAVAN_CORPUS, vehicleRelease, condition, '2026-08-20T00:00:00Z');
   const exposure = exposureAfter(CARAVAN_CORPUS, vehicleRelease, decision, '2026-09-01T12:00:00Z');
   const window = restatementExposure(CARAVAN_CORPUS);
-  // UNKNOWN rather than 0: this page is a server component over the committed
-  // fixtures with no store access, and admission lives at the write boundary.
-  // Reporting zero would be claiming a fact it did not check — the same mistake
-  // it renders a table about three sections down.
-  const compression = compressionAvailable(CARAVAN_CORPUS, 'UNKNOWN');
+  // Derived, never asserted. The count comes from the store the adapter can
+  // reach: a live store answers with the rows the admission gate stamped, and a
+  // process with no store answers UNKNOWN. Neither answers zero on a guess —
+  // which is the mistake this page renders a table about three sections down.
+  const admitted = await getCorpusSource().admittedRecords();
+  const compression = compressionAvailable(CARAVAN_CORPUS, admitted.count);
   return (
     <div className="p-3 sm:p-5 max-w-[1000px] mx-auto w-full flex flex-col gap-6">
       <header className="flex flex-col gap-2">
@@ -687,6 +689,10 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           <span style={{ color: 'var(--text-heading)' }}>{WHAT_IS_BEING_CLAIMED.is}</span> {WHAT_IS_BEING_CLAIMED.isNot} {WHAT_IS_BEING_CLAIMED.theTest}
         </p>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="compression-standing">{compression.statement}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="admitted-standing" data-admitted={String(admitted.count)}>
+          <span className="label-sm">Admitted records</span>{' '}
+          <span className="mono" style={{ color: admitted.count === 'UNKNOWN' ? 'var(--status-conditional)' : 'var(--text-heading)' }}>{admitted.count}</span>{' — '}{admitted.because}
+        </p>
         <div className="overflow-x-auto" tabIndex={0}>
           <table className="ledger-table text-[12px]" aria-label="The distrust stack, and which layer each step is in">
             <thead><tr><th scope="col">Today</th><th scope="col">Layer</th><th scope="col">Disposition</th></tr></thead>

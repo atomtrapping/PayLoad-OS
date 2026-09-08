@@ -61,6 +61,24 @@ describe('GET /api/v1/insurability/harvester', () => {
     for (const filing of body.filings) expect(filing.because.length).toBeGreaterThan(0);
   });
 
+  /** The three independent facts, none of which can be inferred from the others. */
+  it('states that nothing was written and that nothing collects', async () => {
+    const body = await (await get('?asOf=2026-05-01T00:00:00.000Z')).json();
+    expect(body.records.admitted).toBe(5);
+    expect(body.persistence.outcome).toBe('NOT_REQUESTED');
+    expect(body.persistence.canonicalStateMutated).toBe(false);
+    // And what would happen if a caller did ask, which is the warning that matters.
+    expect(body.persistence.wouldBe).toBe('REFUSED_DRAFTED_SPECIMEN');
+    expect(body.intake.collecting).toBe(0);
+    expect(body.intake.because).toContain('none collects');
+  });
+
+  it('names, per jurisdiction, what an operator must settle before a connector is legitimate', async () => {
+    const body = await (await get()).json();
+    expect(body.intake.unregistered.map((entry: { jurisdiction: string }) => entry.jurisdiction).sort()).toEqual(['CA_CDI', 'FL_OIR', 'TX_TDI']);
+    for (const entry of body.intake.unregistered) expect(entry.operatorPreconditions.length).toBeGreaterThan(0);
+  });
+
   it('refuses an unreadable instant rather than quietly using now', async () => {
     const res = await get('?asOf=last%20April');
     expect(res.status).toBe(400);
@@ -146,6 +164,22 @@ describe('POST /api/v1/insurability/harvester', () => {
     const res = await POST(new NextRequest('http://127.0.0.1:3111/api/v1/insurability/harvester', { method: 'POST', body: '{not json' }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe('UNREADABLE_BODY');
+  });
+
+  it('writes nothing unless a write is asked for', async () => {
+    const body = await (await post(base)).json();
+    expect(body.records.admitted).toBe(10);
+    expect(body.persistence.outcome).toBe('NOT_REQUESTED');
+    expect(body.persistence.canonicalStateMutated).toBe(false);
+  });
+
+  /** Asking is not enough: these specimens declare DRAFTED_SPECIMEN, and the door refuses on the capture. */
+  it('refuses to write a drafted specimen even when a write is asked for', async () => {
+    const body = await (await post({ ...base, persist: { corpusId: 'corpus-1', releaseId: 'release-1' } })).json();
+    expect(body.persistence.outcome).toBe('REFUSED_DRAFTED_SPECIMEN');
+    expect(body.persistence.written).toBe(0);
+    expect(body.persistence.canonicalStateMutated).toBe(false);
+    expect(body.persistence.because).toContain('indistinguishable in the records table');
   });
 
   it('reproduces the same receipt digest for the same request', async () => {

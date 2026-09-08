@@ -91,6 +91,25 @@ describe('StatutoryHarvester', () => {
     expect(screen.queryByTestId('harvester-rows-empty')).not.toBeInTheDocument();
   });
 
+  /** The omission the served payload also had: admitted is not written, and nothing collected. */
+  it('states that canonical state is unchanged and that nothing collected', () => {
+    mount();
+    const boundaries = screen.getByTestId('harvester-boundaries');
+    expect(boundaries).toHaveTextContent('Canonical state unchanged');
+    expect(boundaries).toHaveTextContent('admitting a candidate and writing a row are two acts');
+    expect(boundaries).toHaveTextContent('REFUSED_DRAFTED_SPECIMEN');
+    expect(boundaries).toHaveTextContent('indistinguishable from one descending from a real filing');
+    expect(boundaries).toHaveTextContent('0 of 1 registered sources collect');
+  });
+
+  it('names what an operator must settle for each jurisdiction before a connector is legitimate', () => {
+    mount();
+    const boundaries = screen.getByTestId('harvester-boundaries');
+    for (const jurisdiction of ['FL_OIR', 'CA_CDI', 'TX_TDI']) expect(boundaries).toHaveTextContent(jurisdiction);
+    expect(boundaries).toHaveTextContent('terms of use');
+    expect(boundaries).toHaveTextContent('admission authority');
+  });
+
   it('opens an inspector distinguishing a field the document omitted from one it stated unreadably', async () => {
     const user = userEvent.setup();
     mount();

@@ -35,6 +35,13 @@ test('statutory harvester: the funnel, the two clocks as separate questions, and
   await expect(page.getByTestId('harvester-tally')).toContainText('BOTH_CLOCKS');
   await expect(page.getByTestId('harvester-tally')).toContainText('SUBJECT_IDENTIFIED');
 
+  // Admitted is not written, and nothing collected. Both stated on the page.
+  const boundaries = page.getByTestId('harvester-boundaries');
+  await expect(boundaries).toContainText('Canonical state unchanged');
+  await expect(boundaries).toContainText('REFUSED_DRAFTED_SPECIMEN');
+  await expect(boundaries).toContainText('0 of 1 registered sources collect');
+  await expect(boundaries).toContainText('terms of use');
+
   // Knowledge time: before the corpus could have known it, it holds nothing.
   const asOf = page.getByTestId('harvester-as-of');
   const earliest = await asOf.locator('option').first().getAttribute('value');

@@ -1,0 +1,17 @@
+{
+  "schema": "payload.statutory-capture-plan.v1",
+  "schedule": {
+    "schema": "payload.capture-schedule.v1",
+    "scheduleId": "tx-tdi-orders-weekly",
+    "sourceId": "tx-tdi-statutory-filing",
+    "minimumIntervalHours": 168,
+    "notBefore": "2026-09-08T00:00:00.000Z",
+    "notAfter": "2026-10-08T00:00:00.000Z",
+    "maxRuns": 4,
+    "enabled": false
+  },
+  "target": {
+    "jurisdiction": "TX_TDI",
+    "documentPath": "/REPLACE/with/the/document/path/the/operator/declares.txt"
+  }
+}

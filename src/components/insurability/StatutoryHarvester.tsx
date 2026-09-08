@@ -226,6 +226,39 @@ export function StatutoryHarvester({ report, extractions, specimens, knowledgeIn
             </div>
           </Section>
 
+                  <Section title="What did not happen" id="hv-boundaries">
+            <div className="surface p-3 flex flex-col gap-3" data-testid="harvester-boundaries">
+              <div className="flex flex-col gap-1">
+                <span className="label-sm" style={{ color: 'var(--status-refused)' }}>
+                  Canonical state unchanged — {report.persistence.outcome}
+                </span>
+                <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{report.persistence.because}</p>
+                {report.persistence.wouldBe !== 'ELIGIBLE' && (
+                  <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }}>
+                    Asking for a write would return <span className="mono">{report.persistence.wouldBe}</span>. A specimen may be
+                    extracted, ruled on, admitted and served — each a true statement about a drafted document — and may never be
+                    written, because its candidates declare <span className="mono">BACKFILLED</span> and a row from bytes typed here
+                    would sit in the records table indistinguishable from one descending from a real filing.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="label-sm" style={{ color: 'var(--status-refused)' }}>
+                  Nothing collected — {report.intake.collecting} of {report.intake.registered} registered sources collect
+                </span>
+                <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{report.intake.because}</p>
+                <ul className="m-0 pl-4 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }}>
+                  {report.intake.unregistered.map((entry) => (
+                    <li key={entry.jurisdiction}>
+                      <span className="mono">{entry.jurisdiction}</span> — {entry.regulator}. The operator settles:{' '}
+                      {entry.operatorPreconditions.join(' ')}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Section>
+
           <Section title="Why the gate refused" id="hv-refusals">
             <div className="surface p-3 flex flex-col gap-2" data-testid="harvester-tally">
               {report.refusalTally.length === 0

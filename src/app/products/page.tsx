@@ -7,6 +7,7 @@ import { FLAGSHIP_PRODUCTS } from '@/domain/product';
 import { FEDERATION_RISK, INTEGRATION, METERING_BOUNDARY, RECEIPT_FIELDS, TELEMETRY_PILLARS, USAGE_UNITS, meteringReadiness } from '@/domain/metering';
 import { Section } from '@/components/primitives/Section';
 import { DELIVERED_RECORD_CONTRACT, ENVELOPE_FIELDS } from '@/domain/deliveredRecord';
+import { buildSlice, gradeFrom } from '@/domain/catalogSlice';
 import { CARAVAN_LOT_STATE as product } from '@/domain/informationProduct';
 import { CUSTOMER_CATEGORIES } from '@/domain/product';
 import { CARAVAN_CORPUS, CARAVAN_RELEASES } from '@/fixtures/caravan/release';
@@ -121,6 +122,69 @@ export default async function ProductsPage() {
             {categories.map((c) => <li key={c.id} className="pill text-[11px] px-2" data-customer-category={c.id}>{c.title}</li>)}
           </ul>
         </header>
+
+        <Section title="A catalog slice, and why this one is not for sale" id="ip-slice">
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+            A closed catalog sells bounded extracts, and the manifest is the whole surface a buyer reads before paying and an
+            auditor reads afterwards — so every figure on it is derived from the records it describes. This is that manifest over
+            the current release. The admission grade is not read from the corpus, because a corpus value carries none: it is
+            supplied, three-valued, and <span className="mono">UNKNOWN</span> does not sell either.
+          </p>
+          {(() => {
+            // No store access here, so the count is unreadable rather than zero —
+            // the same argument the compression derivation settles.
+            const built = buildSlice(CARAVAN_CORPUS, {
+              sliceId: 'caravan.lot-state.demonstration',
+              title: 'Caravan lot state — current release',
+              question: product.customerQuestion,
+              releaseId: current.releaseId,
+            }, gradeFrom('UNKNOWN'));
+            // `records` is the discriminant. This page never ships bytes, so it
+            // reads the description either way — but an unsellable slice has no
+            // records to read, which is the boundary rather than a caveat.
+            if (built.records === null && built.manifest === null) return <p className="m-0 text-[12.5px]">{built.because}</p>;
+            const manifest = built.manifest!;
+            const cut = built.records !== null;
+            return (
+              <div className="flex flex-col gap-3" data-testid="catalog-slice">
+                <div className="surface p-3 flex flex-col gap-1">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="label-sm" style={{ color: manifest.readiness === 'SELLABLE' ? 'var(--status-admitted)' : 'var(--status-refused)' }}>{manifest.readiness}</span>
+                    <span className="label-sm">grade {manifest.admissionGrade}</span>
+                    <span className="label-sm">{manifest.recordCount} records {cut ? 'cut' : 'described, not cut'}</span>
+                    <span className="label-sm">cutoff {fmtUtc(manifest.release.knowledgeCutoff)}</span>
+                  </div>
+                  <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{manifest.because}</p>
+                  <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }} data-testid="slice-corrections">{manifest.corrections.because}</p>
+                  <p className="m-0 text-[11.5px] hash break-all" style={{ color: 'var(--text-muted)' }}>{manifest.digest}</p>
+                </div>
+                <div className="surface overflow-x-auto" tabIndex={0}>
+                  <table className="w-full text-[12.5px] border-collapse min-w-[520px]">
+                    <thead>
+                      <tr className="text-left" style={{ color: 'var(--text-muted)' }}>
+                        <th scope="col" className="px-3 py-2 font-semibold">Predicate carried</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-right">Records</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-right">Subjects</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {manifest.coverage.map((entry) => (
+                        <tr key={entry.predicate} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                          <td className="px-3 py-2 mono">{entry.predicate}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{entry.records}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{entry.subjects}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <ul className="m-0 pl-4 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }}>
+                  {manifest.loss.map((entry) => <li key={entry}>{entry}</li>)}
+                </ul>
+              </div>
+            );
+          })()}
+        </Section>
 
         <Section title="Subjects" id="ip-subjects">
           <ul className="m-0 p-0 list-none grid gap-2 sm:grid-cols-2" aria-label="Subjects">

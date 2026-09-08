@@ -243,8 +243,13 @@ Opt-in, loopback-only, operator-driven, and none of them a public control.
   is the first rail here whose candidates reach `ADMITTED`, and not because a
   check was relaxed: a regulator names an issued NAIC code and declares its own
   effective date, so the two stages the census rail is missing arrive as
-  testimony rather than inference. It never collects — capture begins at bytes
-  the operator supplies, and a test asserts the absent network path.
+  testimony rather than inference. It collects nothing and writes nothing, and
+  the payload says both rather than leaving either to be inferred:
+  `intake.collecting` is 0 of 1 registered source, and
+  `persistence.canonicalStateMutated` is false. A drafted specimen is refused at
+  the capture, because its candidates declare `BACKFILLED` and a row from bytes
+  typed here would be indistinguishable in the records table from one descending
+  from a real filing.
 - The [FMCSA connector](docs/LOCAL_SOURCE_CONNECTORS.md) and the
   [Samsara adapter](docs/SAMSARA_CONNECTOR.md) are operator-only and bounded.
   Collection requires a flag the operator holds; historical inspection never
@@ -334,7 +339,7 @@ Playwright uses the environment's Chromium when `PW_CHROMIUM_PATH` is set (for e
 - `docs/PROJECTION_FABRIC.md` — exact fixture ProjectionSpec, read-only preview example, identity-preserving records/graph, rights/time gates and explicit missing geometry; no renderer implementation.
 - `docs/UX_ARCHITECTURE.md` — object model, navigation, projections, component boundaries, the authority boundary.
 - `docs/WORKSPACE_DESIGN.md` — the design language, the one shell, the inspector pattern, the notation and candidate-production slices built on it, and the verification receipt.
-- `docs/STATUTORY_HARVESTER.md` — the insurance-regulator rail: five stages from supplied bytes to admitted records, the declared per-jurisdiction header grammar, four presence states rather than two, what is a claim and what is a coordinate, why this is the first rail to reach `ADMITTED` without relaxing a check, and the two as-of questions kept apart.
+- `docs/STATUTORY_HARVESTER.md` — the insurance-regulator rail: the declared per-jurisdiction header grammar and its four presence states, why a filing supplies the two stages the census rail is missing, what is a claim and what is a coordinate, the two as-of questions, and the two boundaries the payload states rather than implies — nothing collected, nothing written.
 - `docs/PRODUCTION_PATH.md` — the production path: seven stages with states derived from the rail's receipts, identities and recovery, the real source readback, the notation and release blockers, and the receipt.
 - `docs/EARTH_TWIN.md` — the Payload OS Earth Twin: the projection fabric's CesiumJS instrument built on God's Eye View's globe stack, keyless and offline, with every layer's source and state, the corpus asked for honestly, the signal-source registry, the staged plan and the receipt.
 - `docs/AGENT_COORDINATION.md` — the shared agent/apparatus stable, scoped board and inbox, contract synastry, JavaScript/Python clients, local worker and Bench references.

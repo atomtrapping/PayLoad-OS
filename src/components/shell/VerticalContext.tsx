@@ -33,8 +33,8 @@ export const SCOPED_ROUTES: readonly string[] = ['/releases', '/retractions'];
 /** The frame with no scope read: what renders before the URL is known. */
 export function VerticalContextFrame({ active }: { active?: Domain }) {
   return (
-    <div className="shrink-0 flex items-center gap-1" role="group" aria-label="Product" data-testid="product-control">
-      <span className="label-sm hidden md:inline mr-1">Product</span>
+    <div className="terminal-products" role="group" aria-label="Product" data-testid="product-control">
+      <span className="terminal-products-label">Product</span>
       {DOMAINS.map((d) => {
         const on = d.id === active;
         return (
@@ -45,12 +45,7 @@ export function VerticalContextFrame({ active }: { active?: Domain }) {
             data-domain={d.id}
             data-scoped={String(on)}
             title={`${d.scope}. ${d.note ?? ''}`.trim()}
-            className="px-2 py-1 rounded-[var(--radius-md)] text-[12px] font-medium border"
-            style={{
-              borderColor: on ? 'var(--border-accent)' : 'var(--border-subtle)',
-              color: on ? 'var(--accent-strong)' : 'var(--text-muted)',
-              background: on ? 'rgba(var(--accent-rgb), 0.08)' : 'transparent',
-            }}
+            className="terminal-product"
           >
             {d.label}
           </Link>

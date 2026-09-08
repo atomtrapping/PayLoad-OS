@@ -3,8 +3,9 @@
  * segmented meter and a provenance stamp.
  *
  * Five pieces, because the references get their density from repeating a few
- * marks rather than from inventing a widget per panel. Everything here is
- * line-work over the void ground; nothing fills, glows or animates.
+ * marks rather than from inventing a widget per panel. Evidence uses drawn
+ * frames; labelled controls and measured meter segments may fill. No glow or
+ * ambient animation is needed to communicate a reading.
  *
  * The one rule these enforce rather than describe: a value that is UNKNOWN is
  * drawn as UNKNOWN whatever the caller said. `Readout` derives that state from

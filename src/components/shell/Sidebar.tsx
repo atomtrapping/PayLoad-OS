@@ -32,7 +32,8 @@ function keepInView(container: HTMLElement | null, active: HTMLElement | null, s
   // animates — so placing the current tab on arrival left the rail mid-flight
   // at roughly zero. Arriving is instant; moving under the arrow keys keeps the
   // animation, because there the motion is the feedback.
-  const behavior: ScrollBehavior = smooth ? 'smooth' : ('instant' as ScrollBehavior);
+  const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const behavior: ScrollBehavior = smooth && !reduced ? 'smooth' : 'instant';
   if (overflowsX) {
     const centred = container.scrollLeft + (box.left - frame.left) - (frame.width - box.width) / 2;
     container.scrollTo({ left: Math.max(0, Math.min(centred, container.scrollWidth - container.clientWidth)), behavior });
@@ -65,8 +66,8 @@ function keepInView(container: HTMLElement | null, active: HTMLElement | null, s
 export function Sidebar() {
   const pathname = usePathname() ?? '/';
   const router = useRouter();
-  const domain = DOMAINS.find((d) => d.enabled)!;
   const draft = useNotationDraftStatus();
+  const sidebar = useRef<HTMLElement>(null);
   const scroller = useRef<HTMLUListElement>(null);
 
   const links = useCallback(
@@ -74,10 +75,17 @@ export function Sidebar() {
     [],
   );
 
+  const reveal = useCallback((active: HTMLElement | null, smooth = false) => {
+    const rail = scroller.current;
+    // The narrow strip scrolls horizontally; on desktop its parent owns the
+    // vertical scroll, including the section bands and the context footer.
+    const container = rail && rail.scrollWidth > rail.clientWidth + 1 ? rail : sidebar.current;
+    keepInView(container, active, smooth);
+  }, []);
+
   useEffect(() => {
-    const container = scroller.current;
-    keepInView(container, container?.querySelector<HTMLElement>('a.nav-link[aria-current="page"]') ?? null);
-  }, [pathname]);
+    reveal(scroller.current?.querySelector<HTMLElement>('a.nav-link[aria-current="page"]') ?? null);
+  }, [pathname, reveal]);
 
   /** Alt+Left / Alt+Right step through the rail in order, from anywhere on the page. */
   useEffect(() => {
@@ -110,7 +118,7 @@ export function Sidebar() {
     const from = at < 0 ? 0 : at;
     const next = (from + delta + all.length) % all.length;
     all[next].focus();
-    keepInView(scroller.current, all[next], true);
+    reveal(all[next], true);
   };
 
   // Exactly one link is tabbable, so the rail is one stop rather than
@@ -122,13 +130,14 @@ export function Sidebar() {
   const tabbable = currentHref ?? firstHref;
 
   return (
-    <aside className="app-sidebar" aria-label="Navigation and context">
+    <aside ref={sidebar} className="app-sidebar" aria-label="Navigation and context">
+      <div className="nav-index" aria-hidden="true"><span>Workspace index</span><span>{String(NAV_AREAS.length).padStart(2, '0')}</span></div>
       <nav aria-label="Primary">
         <ul className="nav-areas list-none m-0 p-0" ref={scroller} onKeyDown={onRailKey} data-testid="nav-rail">
-          {NAV_AREAS.map((area) => (
+          {NAV_AREAS.map((area, index) => (
             <li key={area.id} className="nav-area" data-area={area.id}>
-              <div className="nav-area-head">
-                <span className="label-sm">{area.label}</span>
+              <div className="nav-area-head" title={area.activity}>
+                <span className="label-sm"><span className="nav-area-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{area.label}</span>
                 <span className="nav-area-activity">{area.activity}</span>
               </div>
               <ul className="nav-links" aria-label={area.label}>
@@ -156,7 +165,7 @@ export function Sidebar() {
         <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move in the rail · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> step pages · <kbd>⌘K</kbd> jump
       </p>
       <div className="app-context" data-testid="shell-context">
-        <span><span className="label-sm">Product</span> {domain.label} · {domain.delivery} · {domain.scope}</span>
+        <span><span className="label-sm">Product lines</span> {DOMAINS.map((domain) => domain.label).join(' / ')}</span>
         <span><span className="label-sm">Data</span> Committed demonstration fixtures; local rails where enabled. Every screen says which.</span>
       </div>
     </aside>

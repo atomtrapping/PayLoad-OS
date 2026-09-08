@@ -1,20 +1,39 @@
-# Workspace design: one shell, one inspector pattern, two slices
+# Workspace design: one terminal, shared instruments
 
-NotationsOS is one workspace, not a set of pages. This document records the design language, the interaction pattern every surface shares, the two slices built on it so far, the truths the design is not allowed to bend, and the verification receipt. Everything here is present tense: what the code does today.
+NotationsOS is the firm's internal workspace for preparing its data products. This document records the shared design language and interaction patterns, the surfaces built on them, and the truths the design must preserve. The dated verification receipts describe the version tested at that time, not a guarantee about subsequent changes.
 
 ## The design language
 
-Tokens live in `src/app/globals.css`; nothing else defines a colour, a size or a duration.
+Shared tokens live in `src/app/globals.css`. Existing specialist views also contain local sizing; this iteration does not claim to have migrated every page-local style.
 
-- **Type.** A seven-step scale (`--text-2xs` 10 px … `--text-2xl` 22 px) over a 14 px body. Values in mono sit one step below their label. Identifiers, digests and times are always mono; prose never is.
-- **Space and surfaces.** Three depth levels: hairline surfaces (`.surface`, `.surface-inset`), `--shadow-1` for a panel that sits beside the page (the inspector), `--shadow-2` only for what floats. The 48 px top bar and the 232 px rail are the only fixed chrome.
-- **Colour.** One accent (the Notation Systems gold) for selection and primary action. Status colours mean status and nothing else: passed, pending, conditional, refused. Text has four roles: heading, primary, secondary, muted.
-- **Controls.** `.btn` with `-sm`, `-primary`, `-quiet`; rows that can be selected carry `.row-selectable` with `aria-pressed`, `aria-selected` or `data-selected`; keyboard hints are `.kbd`; first use is `.empty-state`.
+- **Type.** A seven-step rem scale, 12–24 px at the default root size, with a 16 px body. Shared controls and section labels use 14 px; metadata uses 12–13 px. Monospace identifies values, digests, timestamps and instrument labels; explanations remain proportional text.
+- **Space and surfaces.** Blue-black opaque surfaces, fine evidence frames and corner registration marks. Broad, desaturated cyan section bands and curved outer ends belong to navigation; evidence panels remain square. A faint unscaled grid is decorative, never a coordinate system. Desktop chrome uses an 80 px minimum header and a 232 px rail; below 768 px the header becomes three rows with a 9 rem minimum, and below 1024 px navigation becomes a horizontal strip.
+- **Colour.** Existing semantic status and epistemic hues are unchanged. Gold marks selection and primary action. The separate `--chrome-*` tokens group navigation and frame inspectors; they do not assert observation, verification or runtime health. Text has four roles: heading, primary, secondary, muted. Static contrast tests cover all four on the six opaque grounds, semantic label colours, and the selected palette row; these are not a rendered accessibility audit.
+- **Controls.** `.btn` with `-sm`, `-primary`, `-quiet`; rows that can be selected carry `.row-selectable` with `aria-pressed`, `aria-selected` or `data-selected`; keyboard hints are `.kbd`; first use is `.empty-state`. Product links read their selected state from supported route/query contracts, not a hardcoded Caravan selection. Section headers can wrap their actions instead of squeezing their title.
 - **Motion.** `--motion-fast` (120 ms) for controls, `--motion-base` (180 ms, ease-out) for a panel entering, `--motion-slow` (260 ms) for a one-off flash. Nothing animates while the system waits: progress is named in the status line, not spun. `prefers-reduced-motion` disables all of it.
 
 ## The shell
 
-`src/components/shell/AppShell.tsx`: a skip link, the top bar (brand, where you are as area · page, the domain-product control), then the body: the one primary navigation as a left rail from 1024 px and a horizontal strip beneath the bar below that, and the main surface. Navigation is data (`nav.ts`): five activity areas over the unchanged routes and product names, Acquisition, Corpus, Notations, Inquiry, Coordination, each stating the activity it serves. The rail also carries what never changes on a screen: the domain product and what the data is.
+`src/components/shell/AppShell.tsx`: a skip link, the sticky top bar (brand, area / page, page search and product links), then the body: one primary navigation and the main surface. Navigation is data (`nav.ts`): Products, Acquisition, Corpus, Notations, Inquiry and Coordination. Numbered section bands and their total are derived from that registry, so another area does not require another navigation implementation. The rail names all three product lines and explains the fixture/local-rail boundary. The home link targets `/`, allowing the root console to accompany these changes without hardwiring another landing page.
+
+The horizontal list owns scrolling on narrow screens; the containing sidebar owns vertical scrolling on desktop. Navigation and arrow-key focus reveal the destination in that actual owner. Product links scope Releases and Retractions only; a product query on Earth or another unscoped instrument does not light a misleading selection.
+
+## Reference synthesis (2026-09-08)
+
+The founder's eighteen references are design inputs, not datasets, interface specifications or source licences. No supplied image is bundled into the application. The GIF was considered from its supplied still, not reviewed frame by frame.
+
+| Reference family | Applied to this terminal | Boundary |
+| --- | --- | --- |
+| LCARS grouping and workstation windows | Numbered navigation bands, limited curved chrome, stable named panels | No fictional controls or ornamental serial numbers |
+| Cyan HUDs and scientific blueprints | Dark grounds, clear section rules, compact mono metadata and drawn instrument frames | No bloom, background video or animated loading theatre |
+| Amber radar and retro scientific terminals | Amber selection and action, strong visual separation from the cyan frame | Existing status vocabulary remains authoritative |
+| Globe, orbital and geographic displays | Earth remains the main spatial instrument, with a framed, wrapping readout and adjacent inspector | No new layer, coordinate or live-feed claim |
+| Air-traffic, LiDAR and graph views | Keep labels, coordinate meanings, source standing and uncertainty close to their existing representations | No invented trajectories, elevation scales or observations |
+| Monochrome workstation and terrain references | Repeat a small set of controls and readable panes; keep provenance inspectable | No separate cosmetic dashboard or second shell |
+
+This is an additive shared-shell iteration on `codex/payload-os-foundation`, based on `4a2a2c4`. Claude's frontend branch was inspected at `4febe19`: its newer root console and geometry changes were not merged or rewritten here. Shared tokens, `Section`, `Inspector` and the existing HUD primitives let that console and the specialist instruments inherit the same language. No runtime dependency, acquisition connector, corpus record, geometry contract, schema or sealed digest changes in this iteration.
+
+**Verification for this iteration.** The full Vitest run passed 4,973 tests across 209 files; six optional GAT runtime tests remained skipped. After the final reduced-motion scrolling fix, the focused shell/HUD/primitives/palette run passed 109 tests, including the two new motion-preference cases. Typecheck, lint, production build and runtime trace checks passed. Loopback HTTP status checks returned 200 for `/`, `/product`, `/releases`, `/candidates`, `/notations`, `/earth` and `/production` (following redirects). The temporary preview/probe servers were stopped. No browser interaction, screenshot, responsive visual inspection or rendered accessibility audit was performed for this iteration; those checks remain pending explicit opt-in. Earlier browser receipts below are historical and must not be attributed to this theme.
 
 ## The interaction pattern
 

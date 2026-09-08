@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getCorpusSource } from '@/adapter/corpusSource';
 import { Panel, Readout, Rule } from '@/components/hud/Instrument';
+import { WorkspaceAtlas } from '@/components/shell/WorkspaceAtlas';
 import { CONSOLE_LOSS, CONSOLE_STATE_MEANING, LOCAL_RAILS, readConsole, type ConsoleRow, type ConsoleState } from '@/domain/console';
 import { EPISTEMIC_OF_CONSOLE } from '@/domain/epistemic';
 import { fmtUtc } from '@/lib/format';
@@ -64,6 +65,12 @@ export default async function ConsolePage() {
           <Link href="/releases" style={{ color: 'var(--info)' }}>Releases</Link>; this page is the backend they are produced from.
         </p>
       </header>
+
+      {/* What this terminal can see about itself begins with what it consists
+          of. The rail is a good list and a poor map; the atlas is the same
+          registry as a figure, and it is here because this is where someone
+          who does not yet know what is in this system arrives. */}
+      <WorkspaceAtlas />
 
       <div className="grid gap-3 lg:grid-cols-3">
         {console_.panels.map((panel) => (

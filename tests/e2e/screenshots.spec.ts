@@ -10,6 +10,13 @@ test('desktop screenshots', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('heading', { name: 'NotationsOS console' }).waitFor();
   await page.screenshot({ path: `${OUT}/0000-console.png`, fullPage: true });
+  // The atlas on its own: the figure is a design artefact and a full-page
+  // console shot is too small to read the band sizes off. Clipped out of a
+  // full-page render rather than taken off the element, because an element
+  // shot scrolls the panel under the sticky top bar and loses its own rule.
+  const atlas = (await page.getByTestId('workspace-atlas').boundingBox())!;
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${OUT}/0000b-workspace-atlas.png`, fullPage: true, clip: { ...atlas, x: atlas.x - 8, y: atlas.y - 8, width: atlas.width + 16, height: atlas.height + 16 } });
   await page.goto('/model');
   await page.getByRole('heading', { level: 1 }).waitFor();
   await page.screenshot({ path: `${OUT}/000-product-model.png`, fullPage: true });

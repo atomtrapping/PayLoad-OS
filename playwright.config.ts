@@ -16,7 +16,9 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop', testIgnore: /screenshots\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
-    { name: 'mobile', testIgnore: /screenshots\.spec\.ts/, use: { ...devices['Pixel 7'] } },
+    // breakpoints.spec.ts sets its own viewport at each named transition; running
+    // it inside a phone emulation would measure the emulation, not the breakpoint.
+    { name: 'mobile', testIgnore: /(screenshots|breakpoints)\.spec\.ts/, use: { ...devices['Pixel 7'] } },
     { name: 'screenshots', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }, testMatch: /screenshots\.spec\.ts/ },
   ],
   webServer: {

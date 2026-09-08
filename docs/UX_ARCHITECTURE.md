@@ -57,11 +57,13 @@ Every status, check result and assurance value is read from the bundle. The mani
 
 ## Navigation
 
-One shell (`src/components/shell/AppShell.tsx`): a 48 px top bar that says where you are (area · page) with the product control (all three lines carry a demonstration corpus and are enabled in `src/domain/domains.ts`), and one primary navigation declared as data in `src/components/shell/nav.ts` and rendered once by `Sidebar.tsx`: a left rail from 1024 px, a horizontal strip beneath the top bar below that. Six activity areas, led by the products because the products are what the firm sells: **Products** (`Products`, `API`, `Stream`, `Releases`, `Retractions`, `Operating model`), **Acquisition** (`Acquisitions` → the acquisition section of the rail page, `Evidence`), **Corpus** (`Production`, `Candidates`), **Notations** (`Notations`), **Inquiry** (`Cases`, `Rulings`, `Replay`, `Profiles`, `Earth Twin`, `Spatial Inquiry`, `Observations`), and **Coordination** (`Stable`, `Board`). Each area states the activity it serves; the rail also carries the context that never changes on a screen (which product's corpus, what the data is). `/` opens the releases. Coordination is shared by NotationsOS: its participants declare their own domains and the screens show the coordination scope.
+One shell (`src/components/shell/AppShell.tsx`): a top bar with an 80 px minimum that says where you are (area · page) with the product control (all three lines carry a demonstration corpus and are enabled in `src/domain/domains.ts`), and one primary navigation declared as data in `src/components/shell/nav.ts` and rendered once by `Sidebar.tsx`: a left rail from 1024 px, a horizontal strip beneath the top bar below that. Below 768 px the top bar becomes three rows with a 9 rem minimum.
+
+Seven activity areas, led by the terminal itself, because this is a control system and the first question on opening one is about the system rather than the catalogue: **System** (`Console`), **Products** (`Products`, `Landshark`, `Tradewind`, `API`, `Stream`, `Releases`, `Retractions`, `Operating model`), **Acquisition** (`Acquisitions` → the acquisition section of the rail page, `Statutory Harvester`, `Evidence`), **Corpus** (`Production`, `Candidates`), **Notations** (`Notations`), **Inquiry** (`Frontier Wedges`, `Cases`, `Rulings`, `Factoring Desk`, `Dispatch Liability`, `Replay`, `Profiles`, `Earth Twin`, `Spatial Inquiry`, `Observations`, `Registration`, `Clearance`) and **Coordination** (`Stable`, `Board`). Each area states the activity it serves; the rail also carries the context that never changes on a screen (which product's corpus, what the data is). `/` is the console — it used to redirect into the release catalogue, which put a product listing where the system belonged. Coordination is shared by NotationsOS: its participants declare their own domains and the screens show the coordination scope.
 
 ### Getting between them
 
-Twenty-six destinations across six areas is a good map and a slow journey, so the rail is now something to move around in rather than something to get past. Three things were measured before any of it was written.
+Twenty-eight destinations across seven areas is a good map and a slow journey, so the rail is now something to move around in rather than something to get past. Three things were measured before any of it was written.
 
 | | Before | After |
 | --- | --- | --- |
@@ -77,6 +79,18 @@ Twenty-six destinations across six areas is a good map and a slow journey, so th
 - **The keys are stated where the rail is** (`nav-keys`), on the wide layout only, because a shortcut nobody is told about is a shortcut nobody has.
 
 Soft navigation between pages measured 73–185 ms; `/earth` is 1080 ms, which is CesiumJS starting. Speed was not the problem and was left alone.
+
+### Knowing what is there: the workspace atlas
+
+The rail answers *where do I go from here*, one screenful at a time. It does not answer *what is here*, and on twenty-eight destinations across seven areas that is the question someone arriving actually has — the palette only helps once you can already name the page you want. `src/components/shell/WorkspaceAtlas.tsx` answers it in one figure on the console, derived from the same registry the rail reads (`atlas.ts` → `nav.ts`), so the two can never disagree about what exists and an eighth area needs no drawing code of its own.
+
+The geometry carries exactly one quantity. Every cell is the same size and there is one per destination, so an area's block is as large as the number of places in it and the ragged right edge of the figure is the shape of this system rather than a composition. Reading order — along a band, then down — is registry order, which is the order the rail reads and the order `Alt`+<kbd>←</kbd>/<kbd>→</kbd> steps in, so the number on a cell *is* its step position: the figure is a picture of the movement rather than a second arrangement of the same names. The column count is a layout choice and carries nothing; it is the most cells that fit while a name still reads without breaking mid-word, and it steps down with the viewport while bands wrap, so the block stays the count at every width.
+
+Nothing else is encoded. The only hues are the navigation chrome and the selection gold, and `ATLAS_LOSS` states on the surface what the drawing is not: a band's size is a count of pages and not an importance, adjacency is an order and not a workflow, and the figure reads no store, no rail and no clock, so no cell reports whether its destination is reachable, holds data or is working. A cell is a place in this terminal and says nothing more — which is the whole of what the `--chrome-*` tokens mean.
+
+Moving in it follows the rail's discipline: twenty-eight links are one tab stop, not twenty-eight. Inside it <kbd>←</kbd><kbd>→</kbd> move along the destinations and <kbd>↑</kbd><kbd>↓</kbd> move between bands, because here — unlike the rail, which is one list in two layouts — the two axes are genuinely different things. A vertical move keeps your place along the band where the next one is long enough and lands on its last cell where it is not, so a short band never swallows the movement. The area's activity line, which the rail has nowhere to put, is shown on each band head. Beneath the figure: your position in the order, and the two destinations `Alt` with an arrow reaches from here — or, on a page the rail does not name, the statement that there is no position and therefore no step, rather than a plausible one.
+
+![The workspace atlas](screenshots/0000b-workspace-atlas.png)
 
 ### The export boundary, made mechanical
 

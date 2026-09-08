@@ -12,6 +12,11 @@ for (const path of PAGES) {
   test(`no horizontal document overflow on ${path}, disclosures open`, async ({ page }) => {
     await page.goto(path);
     await page.waitForLoadState('load');
+    // Text metrics decide these widths, so the fonts have to have settled
+    // before anything is measured. Without this the same page measured 412 on
+    // one run and 421 on the next, and the guard was a coin toss rather than a
+    // check.
+    await page.evaluate(() => document.fonts.ready);
     const measure = () => page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
     const closed = await measure();
     expect(closed.scroll, `closed disclosures: scrollWidth ${closed.scroll} > clientWidth ${closed.client}`).toBeLessThanOrEqual(closed.client);

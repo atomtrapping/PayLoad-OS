@@ -312,7 +312,7 @@ function readView(Cesium: CesiumModule, viewer: Viewer): TwinView {
  */
 export function EarthTwin({ release, source, records, instrument, located, eventsAvailable = true, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
   const container = useRef<HTMLDivElement>(null);
-  const credits = useRef<HTMLDivElement>(null);
+  const credits = useRef<HTMLElement>(null);
   const engine = useRef<EngineInstance | null>(null);
   const session = useMemo(() => ({ assetsReady, loadEngine }), [assetsReady, loadEngine]);
   const [runtime, setRuntime] = useState<{ session: typeof session; status: Status; instance: symbol | null } | null>(null);
@@ -641,7 +641,10 @@ export function EarthTwin({ release, source, records, instrument, located, event
             <p className="m-0 text-[12.5px]" style={muted}>{status.remedy}</p>
           </div>
         )}
-        <div ref={credits} className="earth-credits" aria-label="Engine and imagery credits" />
+        {/* A named region rather than a labelled div: the engine writes the
+            licence attribution in here, and an aria-label on a plain div names
+            nothing an assistive technology is allowed to read. */}
+        <section ref={credits} className="earth-credits" aria-label="Engine and imagery credits" />
       </div>
 
       <aside className="inspector earth-inspector" aria-labelledby="earth-inspector-title" data-testid="earth-inspector">

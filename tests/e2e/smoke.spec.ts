@@ -445,3 +445,35 @@ test('notations without the local kernel: the workspace says DISABLED and the ev
   for (const state of ['RESOLVED', 'CHANGED', 'UNAVAILABLE', 'UNRESOLVED']) await expect(page.locator(`[data-reference-id][data-resolution="${state}"]`).first()).toBeVisible();
   await expect(page.getByTestId('interpretation').first()).toContainText('Authored interpretation');
 });
+
+test('the product control scopes the corpus surfaces to one line, and says what it hid', async ({ page }) => {
+  await page.goto('/releases');
+  // Three lines are served, and with no scope applied nothing in the control is pressed.
+  await expect(page.locator('table[aria-label^="Releases of"]')).toHaveCount(3);
+  const control = page.getByTestId('product-control');
+  await expect(control.locator('[data-scoped="true"]')).toHaveCount(0);
+  await expect(page.getByTestId('line-scope-hidden')).toHaveCount(0);
+
+  // Choosing a line from the top bar narrows the page and lights that line.
+  await control.locator('[data-domain="TRADEWIND"]').click();
+  await expect(page).toHaveURL(/\/releases\?domain=TRADEWIND/);
+  await expect(page.locator('table[aria-label^="Releases of"]')).toHaveCount(1);
+  await expect(page.getByRole('table', { name: 'Releases of tradewind.freight-rates' })).toBeVisible();
+  await expect(control.locator('[data-domain="TRADEWIND"][data-scoped="true"]')).toHaveCount(1);
+  await expect(control.locator('[data-scoped="true"]')).toHaveCount(1);
+
+  // Filtered is not absent, and the page says so with the count.
+  await expect(page.getByTestId('line-scope-hidden')).toContainText('filtered out of this view, not absent from the corpus');
+
+  // Landshark's withdrawal is the only retraction its line carries.
+  await page.goto('/retractions?domain=LANDSHARK');
+  await expect(page.locator('[data-retraction-id]')).toHaveCount(1);
+  await expect(page.locator('[data-retraction-id="RET-LS-0001"]')).toBeVisible();
+  await expect(page.getByTestId('line-scope-hidden')).toContainText('Filtered is not withdrawn and not absent');
+
+  // Clearing the scope restores every line: two Caravan retractions, one each
+  // from Tradewind and Landshark.
+  await page.getByTestId('line-scope').locator('[data-scope="ALL"]').click();
+  await expect(page.locator('[data-retraction-id]')).toHaveCount(4);
+  await expect(page.getByTestId('line-scope-hidden')).toHaveCount(0);
+});

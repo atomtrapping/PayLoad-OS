@@ -3,16 +3,23 @@ import Link from 'next/link';
 import { getCorpusSource } from '@/adapter/corpusSource';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { AS_OF_CONTRACT, DELIVERY_LEDGER, TAINT_LABEL, TRACEABILITY_LABEL, correctionImpact } from '@/domain/correction';
+import { DOMAINS } from '@/domain/domains';
 import { fmtUtc } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Retractions' };
 
 /** The push-retraction feed: what changed, what it affects, what replaces it. */
-export default async function RetractionsPage({ searchParams }: { searchParams: Promise<{ since?: string }> }) {
-  const { since } = await searchParams;
+export default async function RetractionsPage({ searchParams }: { searchParams: Promise<{ since?: string; domain?: string }> }) {
+  const { since, domain } = await searchParams;
   const source = getCorpusSource();
-  const list = await source.retractions(since || undefined, 'COUNTERPARTY_SHARED');
+  const everything = await source.retractions(since || undefined, 'COUNTERPARTY_SHARED');
   const corpora = await source.listCorpora();
+  // The product control's scope. It narrows the feed and says by how much: a
+  // filtered retraction is out of view, never withdrawn and never absent.
+  const scope = DOMAINS.find((d) => d.id === domain)?.id;
+  const lineOf = (retractionId: string) => corpora.find((c) => c.retractions.some((t) => t.retractionId === retractionId))?.domain;
+  const list = scope ? everything.filter((t) => lineOf(t.retractionId) === scope) : everything;
+  const hidden = everything.length - list.length;
   const recordTitle = (id: string) => corpora.flatMap((c) => c.records).find((r) => r.recordId === id);
   // The blast radius per retraction, computed over what the corpus records. A class it cannot decide is named, not hidden.
   const impactOf = (retractionId: string) => {
@@ -30,8 +37,17 @@ export default async function RetractionsPage({ searchParams }: { searchParams: 
           <form className="flex items-end gap-2 flex-wrap" method="get">
             <label className="flex flex-col gap-1"><span className="label-sm">Issued after (UTC)</span><input name="since" type="text" defaultValue={since ?? ''} placeholder="2026-08-26T00:00:00Z" className="surface-inset px-2 py-1 mono text-[12.5px]" /></label>
             <button type="submit" className="btn btn-sm">Filter</button>
+            {scope && <input type="hidden" name="domain" value={scope} />}
             <Link href={`/api/v1/retractions${since ? `?since=${encodeURIComponent(since)}` : ''}`} className="btn btn-sm" style={{ color: 'var(--info)' }}>Same query as JSON</Link>
           </form>
+          <nav className="flex items-center gap-2 flex-wrap text-[12.5px]" aria-label="Scope by line" data-testid="line-scope">
+            <span className="label-sm">Lines</span>
+            <Link href={`/retractions${since ? `?since=${encodeURIComponent(since)}` : ''}`} aria-current={scope ? undefined : 'true'} data-scope="ALL" className="pill px-2 py-0.5" style={{ color: scope ? 'var(--text-muted)' : 'var(--accent-strong)', borderColor: scope ? 'var(--border-subtle)' : 'var(--border-accent)' }}>All three</Link>
+            {DOMAINS.map((d) => (
+              <Link key={d.id} href={`/retractions?domain=${d.id}${since ? `&since=${encodeURIComponent(since)}` : ''}`} aria-current={scope === d.id ? 'true' : undefined} data-scope={d.id} className="pill px-2 py-0.5" style={{ color: scope === d.id ? 'var(--accent-strong)' : 'var(--text-muted)', borderColor: scope === d.id ? 'var(--border-accent)' : 'var(--border-subtle)' }}>{d.label}</Link>
+            ))}
+            {hidden > 0 && <span style={{ color: 'var(--text-muted)' }} data-testid="line-scope-hidden">{hidden} {hidden === 1 ? 'retraction is' : 'retractions are'} filtered out of this view by the line scope. Filtered is not withdrawn and not absent.</span>}
+          </nav>
         </header>
         <ol className="m-0 p-0 list-none flex flex-col gap-2" aria-label="Retraction feed">
           {list.length === 0 && <li className="text-[12.5px]" style={{ color: 'var(--text-muted)' }}>No retractions {since ? `issued after ${since}` : 'recorded'}.</li>}

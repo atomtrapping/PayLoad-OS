@@ -2,20 +2,41 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getCorpusSource } from '@/adapter/corpusSource';
 import { releaseRecords, releaseRetractions } from '@/domain/corpus';
+import { DOMAINS } from '@/domain/domains';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { Digest } from '@/components/primitives/ManifestCommitment';
 import { fmtUtc } from '@/lib/format';
 
 export const metadata: Metadata = { title: 'Releases' };
 
-/** The product: corpora and their release history. */
-export default async function ReleasesPage() {
+/**
+ * The product: corpora and their release history.
+ *
+ * `?domain=` scopes the page to one line, and the product control in the top
+ * bar is what sets it. The scope narrows what is shown and nothing else: a
+ * line that is out of scope is filtered from the view, never described as
+ * absent, and the count of what was filtered is stated so the reader knows the
+ * page is showing them less than the corpus holds.
+ */
+export default async function ReleasesPage({ searchParams }: { searchParams: Promise<{ domain?: string }> }) {
+  const { domain } = await searchParams;
   const source = getCorpusSource();
-  const corpora = await source.listCorpora();
+  const all = await source.listCorpora();
+  const scope = DOMAINS.find((d) => d.id === domain)?.id;
+  const corpora = scope ? all.filter((c) => c.domain === scope) : all;
+  const hidden = all.length - corpora.length;
   return (
     <>
       {source.origin.kind === 'FIXTURE' && <FixtureBanner note={`${source.origin.label}. Fixture clock: 2026-09-01 12:00 UTC.`} />}
       <div className="p-3 sm:p-4 max-w-[1400px] mx-auto w-full flex flex-col gap-5">
+        <nav className="flex items-center gap-2 flex-wrap text-[12.5px]" aria-label="Scope by line" data-testid="line-scope">
+          <span className="label-sm">Lines</span>
+          <Link href="/releases" aria-current={scope ? undefined : 'true'} data-scope="ALL" className="pill px-2 py-0.5" style={{ color: scope ? 'var(--text-muted)' : 'var(--accent-strong)', borderColor: scope ? 'var(--border-subtle)' : 'var(--border-accent)' }}>All three</Link>
+          {DOMAINS.map((d) => (
+            <Link key={d.id} href={`/releases?domain=${d.id}`} aria-current={scope === d.id ? 'true' : undefined} data-scope={d.id} className="pill px-2 py-0.5" style={{ color: scope === d.id ? 'var(--accent-strong)' : 'var(--text-muted)', borderColor: scope === d.id ? 'var(--border-accent)' : 'var(--border-subtle)' }}>{d.label}</Link>
+          ))}
+          {hidden > 0 && <span style={{ color: 'var(--text-muted)' }} data-testid="line-scope-hidden">Showing {corpora.length} of {all.length} corpora. {hidden} {hidden === 1 ? 'line is' : 'lines are'} filtered out of this view, not absent from the corpus.</span>}
+        </nav>
         {corpora.map((corpus) => {
           const releases = [...corpus.releases].sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1));
           return (

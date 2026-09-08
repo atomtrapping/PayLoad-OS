@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { CommandPalette } from './CommandPalette';
 import { NotationMark } from './NotationMark';
-import { VerticalContext } from './VerticalContext';
+import { VerticalContext, VerticalContextFrame } from './VerticalContext';
 import { locate } from './nav';
 
 export { NAV_AREAS, PRIMARY_NAV } from './nav';
@@ -36,7 +37,7 @@ export function TopNav() {
         ) : <span className="label-sm">NotationsOS</span>}
       </div>
       <CommandPalette />
-      <VerticalContext />
+      <Suspense fallback={<VerticalContextFrame />}><VerticalContext /></Suspense>
     </header>
   );
 }

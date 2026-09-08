@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COORDINATE_SEMANTICS, ENGINE_ROLE, PROJECTION_ENGINES, PROJECTION_MODES, PROJECTION_NONCLAIMS, PROJECTION_ROUTING, REPRESENTATIONS, routeFor, routeProjection } from './projection';
+import { COORDINATE_SEMANTICS, ENGINE_ROLE, PROJECTION_ENGINES, PROJECTION_MODES, PROJECTION_NONCLAIMS, PROJECTION_ROUTING, REPRESENTATIONS, STRUCTURE_SOURCE, routeFor, routeProjection } from './projection';
 import { ProjectionError } from '@/projection/spec';
 import { compileProjection } from '@/projection/compile';
 import { describeProjectionSource } from '@/projection/source';
@@ -35,5 +35,34 @@ describe('projection routing table', () => {
       expect(Object.keys(result.nonclaims).sort()).toEqual([...PROJECTION_NONCLAIMS].sort());
       for (const key of PROJECTION_NONCLAIMS) expect(result.nonclaims[key]).toBe(false);
     }
+  });
+});
+
+describe('the seat the pinned engine would fill, named rather than routed to', () => {
+  it('names the engine, its pin and every reason it cannot fill the seat here', () => {
+    expect(STRUCTURE_SOURCE.engine).toBe('BIM State Transformer Engine');
+    expect(STRUCTURE_SOURCE.pin).toBe('src/gat/engine-pin.json');
+    expect(STRUCTURE_SOURCE.blockedBy).toHaveLength(3);
+    // The runtime pin, the provenance rule and the never-testifies discipline.
+    expect(STRUCTURE_SOURCE.blockedBy.join(' ')).toMatch(/Windows x64/);
+    expect(STRUCTURE_SOURCE.blockedBy.join(' ')).toMatch(/mayBecomeARecord: false/);
+    expect(STRUCTURE_SOURCE.blockedBy.join(' ')).toMatch(/never-testifies/);
+  });
+
+  it('leaves every STRUCTURE route exactly as unavailable as it was', () => {
+    // Naming an engine is not routing to one. If this ever flips, the compiler
+    // has gained a path into src/gat and that is a decision, not a refactor.
+    const structure = PROJECTION_ROUTING.filter((route) => route.mode === 'STRUCTURE' && route.representation !== 'GRAPH');
+    expect(structure).toHaveLength(7);
+    for (const route of structure) expect(route.currentResult).toBe('UNAVAILABLE');
+    expect(STRUCTURE_SOURCE.notThis).toMatch(/Nothing in the compiler reaches src\/gat/);
+  });
+
+  it('no longer says the corpus has no geometry, because it has', () => {
+    // The record contract carries POLYGON and EXTENT. What these routes lack
+    // is a surface, and saying otherwise would be a stale refusal.
+    const notes = PROJECTION_ROUTING.map((route) => route.note).join(' ');
+    expect(notes).not.toMatch(/No fixture geometry\./);
+    expect(notes).toMatch(/blocked on the corpus having no surface/);
   });
 });

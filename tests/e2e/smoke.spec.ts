@@ -141,6 +141,15 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-correspondence="IDENTICAL"]')).toHaveCount(3);
   await expect(page.getByTestId('mandate-inversion')).toContainText('inventing a professional duty');
   await expect(page.locator('[data-engine="records"][data-presence="FIXTURE"]')).toHaveCount(1);
+  // The routing table decided what the fabric serves and no surface had ever
+  // shown it. Thirteen routes, five READY, and the seat the pinned engine
+  // would fill named with every reason it cannot fill it here.
+  const routing = page.getByTestId('projection-routing');
+  await expect(routing.locator('[data-route-mode]')).toHaveCount(13);
+  await expect(routing.locator('[data-route-result="READY"]')).toHaveCount(5);
+  await expect(routing).toContainText('5 READY · 8 UNAVAILABLE');
+  await expect(page.getByTestId('structure-seat')).toContainText('BIM State Transformer Engine');
+  await expect(page.getByTestId('structure-seat')).toContainText('Naming the engine is not routing to it');
   await expect(page.locator('[data-tier][data-reached="true"]')).toHaveCount(2);
   // Storage is declared as candidates with an honest present state: six classes, none held by a running service.
   // Identity: one core, three families, one absent join with its hazards named.

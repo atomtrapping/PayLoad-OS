@@ -6,6 +6,7 @@ import { CUSTOMER_CATEGORIES, DISTRIBUTION_MECHANISMS, ECONOMIC_ARCHITECTURE, EN
 import { DOCTRINE, EXTRACTION_INTERFACE, FABRICS, IDENTITY_CHAIN, INFORMATION_STATES, OPERATIONAL_RULE, PROJECTION_ENGINES_IN_REPOSITORY, VERIFICATION_TIERS, WORKBENCH_RUNTIME } from '@/domain/doctrine';
 import { CROSS_LINE_JOIN, CORE_STATE_LABEL, FAMILY_STATE_LABEL, IDENTIFIER_FAMILIES, IDENTITY_CORE, JOIN_KEYS } from '@/domain/identity';
 import { BLOCKING_MEANING, CROSS_LINE_LOSS, crossLineStanding } from '@/domain/crossLineJoin';
+import { COORDINATE_SEMANTICS, PROJECTION_MODES, PROJECTION_ROUTING, REPRESENTATIONS, STRUCTURE_SOURCE } from '@/domain/projection';
 import { EPISTEMIC_OF_BLOCKING } from '@/domain/epistemic';
 import { STORAGE_CLASSES, STORAGE_PRESENT_STATE, STORAGE_SEQUENCE, STORAGE_STATE_LABEL, STORE_KIND_LABEL } from '@/domain/storage';
 import { SPATIAL_CAPABILITIES, SPATIAL_DERIVATIONS, SPATIAL_DISCIPLINE, SPATIAL_ROLES, SPATIAL_ROLE_STATE_LABEL, SPATIAL_SEQUENCE } from '@/domain/spatialDerivation';
@@ -46,6 +47,12 @@ export default async function ProductPage() {
   // position this seat may not be delivered is not a position it may join on.
   const keysRun = crossLineStanding(FIXTURE_CORPORA);
   const unkeyablePairs = keysRun.pairs.filter((pair) => pair.outcome === 'NOT_KEYABLE').length;
+  // The routing table's own tally, so the count above the table is derived
+  // from the table rather than typed beside it.
+  const routing = {
+    ready: PROJECTION_ROUTING.filter((route) => route.currentResult === 'READY').length,
+    unavailable: PROJECTION_ROUTING.filter((route) => route.currentResult === 'UNAVAILABLE').length,
+  };
   const accommodation = accommodationStanding(CARAVAN_CORPUS);
 
   // The worked demonstration: a condition sitting between the draft survey and
@@ -445,6 +452,38 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
         </div>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{WORKBENCH_RUNTIME.statement} Here: {WORKBENCH_RUNTIME.inThisRepository}</p>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{EXTRACTION_INTERFACE.statement} Here: {EXTRACTION_INTERFACE.inThisRepository}</p>
+
+        <div className="hud-panel flex flex-col gap-3" data-testid="projection-routing">
+          <Rule label="The routing table" right={<span data-epistemic="DERIVED" style={{ border: 0, background: 'transparent' }}>{routing.ready} READY · {routing.unavailable} UNAVAILABLE</span>} state="DERIVED" />
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>Every combination of mode, coordinate semantics and representation the compiler will accept. Anything not in this table is rejected by the router rather than approximated, and a test holds the two in agreement over all {PROJECTION_MODES.length} × {COORDINATE_SEMANTICS.length} × {REPRESENTATIONS.length} combinations. The table decided what the fabric serves and no surface had ever shown it.</p>
+          <div className="surface overflow-x-auto" tabIndex={0}>
+            <table className="ledger-table text-[12px]" aria-label="Projection routing table">
+              <thead><tr><th scope="col">Mode</th><th scope="col">Coordinate semantics</th><th scope="col">Representation</th><th scope="col">Engine</th><th scope="col">Today</th><th scope="col">What it returns, or what stands in the way</th></tr></thead>
+              <tbody>
+                {PROJECTION_ROUTING.map((route) => (
+                  <tr key={`${route.mode}-${route.coordinateSemantics}-${route.representation}`} data-route-mode={route.mode} data-route-result={route.currentResult}>
+                    <td style={{ color: 'var(--text-heading)' }}>{route.mode}</td>
+                    <td className="mono text-[11.5px]">{route.coordinateSemantics}</td>
+                    <td className="mono text-[11.5px]">{route.representation}</td>
+                    <td className="id">{route.engine}</td>
+                    <td><span className="pill text-[10.5px] px-1.5" data-epistemic={route.currentResult === 'READY' ? 'DERIVED' : 'UNKNOWN'}>{route.currentResult}</span></td>
+                    <td style={{ color: 'var(--text-muted)' }}>{route.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="surface-inset p-3 flex flex-col gap-1.5" data-testid="structure-seat">
+            <span className="label-sm">The STRUCTURE seat</span>
+            <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+              Six routes wait on a surface, and this repository pins an engine that makes one: <span className="id">{STRUCTURE_SOURCE.engine}</span>, at an exact commit in <span className="mono">{STRUCTURE_SOURCE.pin}</span>. It would supply {STRUCTURE_SOURCE.wouldSupply}
+            </p>
+            <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="What stands between the audit and the STRUCTURE seat">
+              {STRUCTURE_SOURCE.blockedBy.map((blocker) => <li key={blocker}>{blocker}</li>)}
+            </ul>
+            <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }}>{STRUCTURE_SOURCE.notThis}</p>
+          </div>
+        </div>
 
         <h3 className="m-0 mt-2 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>OpenUSD: a target, never a store</h3>
         <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }} data-testid="usd-role">{USD_ROLE.whyNotStore} {USD_ROLE.whyTarget}</p>

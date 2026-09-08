@@ -246,10 +246,12 @@ meaning or many, and a family that is later separated leaves a stale record
 that fails too — so a fix cannot leave a false tension recorded behind it.
 Eleven families, six shared, one intended. The next one cannot arrive quietly.
 
-Verified on the merged tree: typecheck, ESLint at `--max-warnings=0`, and 4,711
-unit tests across 191 files — nineteen of them new, holding the metric, the
-transitivity of the partition, the two load-bearing tensions by name, and that
-a fault is reported in both directions rather than passed over.
+Verified on the merged tree, 2026-09-08: typecheck, ESLint at
+`--max-warnings=0`, and the whole unit suite green. Nineteen tests are new, and
+they hold the metric, the transitivity of the partition, the two load-bearing
+tensions by name, and that a fault is reported in both directions rather than
+passed over. Nineteen is a fact about this change; the suite total is not, and
+it moves under any prose that pins it.
 
 ## Verification (2026-09-08)
 

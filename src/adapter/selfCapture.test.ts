@@ -18,7 +18,27 @@ import {
   SelfCaptureError, captureCommits, selfCaptureEnabled,
 } from './selfCapture';
 
+/**
+ * The independent oracle: what git says, asked separately from the rail.
+ *
+ * `rev-list --parents` rather than `rev-parse HEAD~1`, for two reasons this
+ * repository supplies itself. HEAD is often a merge, and HEAD~1 names only the
+ * first of its parents — so the older oracle disagreed with a correct rail the
+ * moment a merge landed. And a depth-1 shallow checkout, which is what CI does
+ * by default, holds no parent object for rev-parse to resolve. Reading the
+ * parent list off HEAD's own commit object answers both: git's parser against
+ * this rail's parser, over the same bytes, at any clone depth.
+ */
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+/** Every parent of HEAD, in order, as git reads them. */
+const headParents = () => git('rev-list', '--parents', '-n', '1', 'HEAD').split(' ').slice(1);
+/**
+ * A shallow clone grafts HEAD to have no parents. The commit object still
+ * carries them — so the rail reads two where git reports none, and git stops
+ * being an oracle and becomes a different answer. That is a fact about the
+ * clone, not about either parser, and it is asserted rather than tolerated.
+ */
+const shallow = () => git('rev-parse', '--is-shallow-repository') === 'true';
 const HEAD = git('rev-parse', 'HEAD');
 const capture = (objectNames: readonly string[]) =>
   captureCommits({ objectNames, capturedAt: '2026-09-08T18:30:00.000Z', repository: 'notationsystems/NotationsOS' });
@@ -36,9 +56,13 @@ describe('reading the real store, checked against git rather than against a fixt
     expect(tree.value).toBe(git('rev-parse', 'HEAD^{tree}'));
   });
 
-  it('carries the parent git independently reports', async () => {
+  it('carries every parent git independently reports, merge or not', async () => {
+    expect(shallow(), 'This clone is shallow, so git reports no parents for HEAD however many the commit object carries. CI checks out with fetch-depth: 0 for exactly this reason; clone with history to run this test.').toBe(false);
     const [observation] = (await capture([HEAD])).observations;
-    expect(observation.fields.find((entry) => entry.field === 'parents')!.value).toEqual([git('rev-parse', 'HEAD~1')]);
+    const parents = headParents();
+    expect(parents.length).toBeGreaterThan(0);
+    expect(observation.fields.find((entry) => entry.field === 'parents')!.value).toEqual(parents);
+    expect(observation.fields.find((entry) => entry.field === 'parentCount')!.value).toBe(parents.length);
   });
 
   it('digests exactly the bytes git returned', async () => {

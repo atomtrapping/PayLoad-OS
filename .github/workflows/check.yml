@@ -37,7 +37,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      # Full history, not the default depth-1. A shallow clone grafts HEAD to
+      # have no parents, so `git rev-list --parents` reports none while the
+      # commit object plainly carries two — and src/adapter/selfCapture.test.ts
+      # checks the self-observation rail against git as an independent oracle.
+      # In a shallow checkout git is not an oracle; it is a different answer.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

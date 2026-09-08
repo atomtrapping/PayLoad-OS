@@ -77,6 +77,34 @@ describe('layer boundaries', () => {
     expect(seeder).not.toMatch(/'LIVE_CAPTURE'|'BACKFILLED'/);
   });
 
+  it('the README counts what is there, because a number in prose is the claim that ages quietest', () => {
+    // The README says the repository carries its claims as data with tests
+    // over them, "so that a claim about the system fails a test when it stops
+    // being true rather than quietly ageing in prose". Its own counts were
+    // prose. One had already drifted — 45 where there were 62 — in the
+    // paragraph making that argument. These now fail when they drift, which
+    // is the failure working rather than a nuisance.
+    const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+    const stated = (pattern: RegExp, what: string): number => {
+      const match = pattern.exec(readme);
+      expect(match, `the README no longer states ${what}`).not.toBeNull();
+      return Number(match![1]);
+    };
+
+    const domainModules = readdirSync(join(ROOT, 'src/domain'))
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts')).length;
+    expect(stated(/(\d+) domain modules carry the system/, 'a domain-module count')).toBe(domainModules);
+
+    // Written as a word rather than a numeral, so it is matched as one.
+    const negativeRules = (readFileSync(join(ROOT, 'src/domain/negativeStates.ts'), 'utf8').match(/^\s{4}id: '/gm) ?? []).length;
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    expect(readme, `the README no longer states ${words[negativeRules]} negative states`)
+      .toContain(`this one has ${words[negativeRules]},`);
+
+    const canvasNotes = readdirSync(join(ROOT, 'docs/architecture-map/parts')).filter((f) => f.endsWith('.md')).length;
+    expect(stated(/one note per part, (\d+) of them/, 'a canvas-note count')).toBe(canvasNotes);
+  });
+
   it('the pure policy evaluator and its helpers touch no node builtin, so allowing them in the browser is safe', () => {
     for (const file of ['src/data-os/source-policy.ts', 'src/data-os/validation.ts', 'src/data-os/contracts.ts']) {
       const text = readFileSync(join(ROOT, file), 'utf8');

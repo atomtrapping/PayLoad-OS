@@ -22,3 +22,22 @@ for (const path of PAGES) {
     expect(open.inner, 'layout viewport widened with disclosures open').toBe(open.client);
   });
 }
+
+/**
+ * The four panels of /frontier, because the sweep above only ever measured the
+ * one it lands on. Three of the four are a click away, and the Capex panel is
+ * where an unbounded select pushed the layout viewport of a 412px phone out to
+ * 623 — the exact failure this file exists to catch, one tab out of reach.
+ */
+const FRONTIER_TABS = ['1. Disclosure Assurance (CBAM/CSRD)', '2. Insurability Dynamics', '3. Capex Progress (N11 VOI)', 'Frontier 8-Passage Matrix'];
+
+for (const tab of FRONTIER_TABS) {
+  test(`no horizontal document overflow on /frontier, ${tab} panel`, async ({ page }) => {
+    await page.goto('/frontier');
+    await page.waitForLoadState('load');
+    await page.getByRole('button', { name: tab }).click();
+    const measured = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
+    expect(measured.scroll, `${tab}: scrollWidth ${measured.scroll} > clientWidth ${measured.client}`).toBeLessThanOrEqual(measured.client);
+    expect(measured.inner, `${tab}: layout viewport widened to ${measured.inner}`).toBe(measured.client);
+  });
+}

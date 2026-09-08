@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { Sidebar } from './Sidebar';
 import { NAV_DESTINATIONS } from './nav';
 
@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: ()
 vi.mock('@/components/notations/NotationWorkspace', () => ({ useNotationDraftStatus: () => null }));
 
 beforeEach(() => { push.mockClear(); pathname = '/releases'; });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 const railLinks = () => [...screen.getByTestId('nav-rail').querySelectorAll<HTMLAnchorElement>('a.nav-link')];
 
@@ -129,5 +130,66 @@ describe('the keys are stated where the rail is', () => {
     expect(keys).toHaveTextContent('move in the rail');
     expect(keys).toHaveTextContent('step pages');
     expect(keys).toHaveTextContent('jump');
+  });
+});
+
+describe('the rail reveals destinations in the actual scroll owner', () => {
+  it('scrolls the desktop sidebar on navigation, not its non-scrolling list', () => {
+    const view = render(<Sidebar />);
+    const sidebar = screen.getByRole('complementary');
+    const rail = screen.getByTestId('nav-rail');
+    const scroll = vi.fn();
+    Object.defineProperties(sidebar, {
+      clientHeight: { value: 300 }, scrollHeight: { value: 1300 },
+      scrollTo: { value: scroll },
+      getBoundingClientRect: { value: () => ({ top: 80, bottom: 380, height: 300 }) },
+    });
+    const earth = screen.getByRole('link', { name: 'Earth Twin' });
+    earth.getBoundingClientRect = () => ({ top: 800, bottom: 832, height: 32 }) as DOMRect;
+    pathname = '/earth';
+    view.rerender(<Sidebar />);
+    expect(scroll).toHaveBeenCalledWith({ top: 586, behavior: 'instant' });
+    expect(rail.scrollTop).toBe(0);
+  });
+
+  it('keeps the narrow horizontal strip as its own scroll owner', () => {
+    const view = render(<Sidebar />);
+    const rail = screen.getByTestId('nav-rail');
+    const scroll = vi.fn();
+    Object.defineProperties(rail, {
+      clientWidth: { value: 400 }, scrollWidth: { value: 3000 },
+      scrollTo: { value: scroll },
+      getBoundingClientRect: { value: () => ({ left: 0, right: 400, width: 400 }) },
+    });
+    const earth = screen.getByRole('link', { name: 'Earth Twin' });
+    earth.getBoundingClientRect = () => ({ left: 2000, right: 2100, width: 100 }) as DOMRect;
+    pathname = '/earth';
+    view.rerender(<Sidebar />);
+    expect(scroll).toHaveBeenCalledWith({ left: 1850, behavior: 'instant' });
+  });
+
+  it('names all product lines without asserting a hardcoded active domain', () => {
+    render(<Sidebar />);
+    expect(screen.getByTestId('shell-context')).toHaveTextContent('Caravan / Tradewind / Landshark');
+    expect(screen.getByTestId('shell-context')).toHaveTextContent('Every screen says which.');
+  });
+
+  it.each([true, false])('respects reduced motion (%s) when arrow keys reveal a destination', async (reduced) => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: reduced })));
+    const user = userEvent.setup();
+    render(<Sidebar />);
+    const sidebar = screen.getByRole('complementary');
+    const scroll = vi.fn();
+    Object.defineProperties(sidebar, {
+      clientHeight: { value: 300 }, scrollHeight: { value: 1300 },
+      scrollTo: { value: scroll },
+      getBoundingClientRect: { value: () => ({ top: 80, bottom: 380, height: 300 }) },
+    });
+    const links = railLinks();
+    links[1].getBoundingClientRect = () => ({ top: 800, bottom: 832, height: 32 }) as DOMRect;
+    links[0].focus();
+    await user.keyboard('{ArrowDown}');
+    expect(window.matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
+    expect(scroll).toHaveBeenCalledWith({ top: 586, behavior: reduced ? 'instant' : 'smooth' });
   });
 });

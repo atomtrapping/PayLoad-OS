@@ -33,8 +33,8 @@ export function Inspector({ id, title, subtitle, kicker, onClose, children, acti
       <div className="inspector-head">
         <div className="min-w-0">
           {kicker && <div className="label-sm">{kicker}</div>}
-          <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="m-0 text-[15px] font-semibold leading-snug break-words outline-none" style={{ color: 'var(--text-heading)' }}>{title}</h2>
-          {subtitle && <div className="text-[12px] mt-0.5 break-words" style={{ color: 'var(--text-muted)' }}>{subtitle}</div>}
+          <h2 id={`${id}-title`} ref={heading} tabIndex={-1} className="inspector-title">{title}</h2>
+          {subtitle && <div className="inspector-subtitle">{subtitle}</div>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {actions}

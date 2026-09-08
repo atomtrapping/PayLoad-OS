@@ -1,6 +1,6 @@
-import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { SourceConnectorError } from './errors';
+import { readBoundedSourceRequest as readRequest, CENSUS_BUILD_REQUEST_MAX_BYTES, SOURCE_REQUEST_FILE_ERRORS } from './request-file';
+export { readBoundedSourceRequest, SOURCE_REQUEST_MAX_BYTES, CENSUS_BUILD_REQUEST_MAX_BYTES } from './request-file';
 import { parseSourceCaptureRequest } from './fmcsa';
 import { SourceCaptureStore, StatutoryCaptureStore, type SourceCaptureInspection, type StatutoryCaptureInspection } from './store';
 import { parseStatutoryCaptureRequest } from './statutory';
@@ -8,8 +8,6 @@ import { runScheduledCapture, type StatutoryRunOutcome, type StatutoryRunStore }
 import { CensusNormalizationStore, parseCensusNormalizationRequest, type CensusNormalizationRun } from './census-normalization';
 import { CensusCandidateBuildStore, parseCensusCandidateBuildRequest, type LocalCensusCandidateBuild } from '../data-os/local-census-candidate-build';
 
-export const SOURCE_REQUEST_MAX_BYTES = 8 * 1024;
-export const CENSUS_BUILD_REQUEST_MAX_BYTES = 32 * 1024;
 export const SOURCE_CLI_USAGE = [
   'Operator-only source qualification; no canonical admission or customer-distribution grant.',
   'npm run source -- capture --request <request.json> [--root <directory>]',
@@ -28,8 +26,7 @@ export const SOURCE_CLI_USAGE = [
 
 const SAFE_ERRORS = {
   INVALID_SOURCE_CLI_ARGUMENTS: 'Use source capture --request <request.json> or inspect --request-id <id>, with an optional --root <directory>.',
-  INVALID_SOURCE_REQUEST_FILE: 'Use a readable regular UTF-8 JSON request file no larger than 8 KiB, without duplicate keys.',
-  INVALID_CENSUS_BUILD_REQUEST_FILE: 'Use a readable regular UTF-8 JSON build request file no larger than 32 KiB, without duplicate keys.',
+  ...SOURCE_REQUEST_FILE_ERRORS,
   INVALID_REQUEST: 'Provide an exact source capture request and 1 to 25 unique USDOT identifiers.',
   SOURCE_CAPTURE_NOT_FOUND: 'No stored source capture has this request ID.',
   INVALID_STATUTORY_REQUEST: 'Provide an exact statutory capture request naming a declared jurisdiction and one document path on that regulator’s host.',
@@ -73,59 +70,6 @@ const SAFE_ERRORS = {
 
 function fault(code: keyof typeof SAFE_ERRORS): SourceConnectorError {
   return new SourceConnectorError(code, SAFE_ERRORS[code]);
-}
-
-/** JSON.parse establishes syntax first; this scan also rejects escaped duplicate object keys. */
-function rejectDuplicateKeys(json: string): void {
-  const stack: Array<{ kind: 'array' } | { kind: 'object'; keys: Set<string>; expectingKey: boolean }> = [];
-  for (let index = 0; index < json.length; index++) {
-    const character = json[index];
-    if (character === '{') stack.push({ kind: 'object', keys: new Set(), expectingKey: true });
-    else if (character === '[') stack.push({ kind: 'array' });
-    else if (character === '}' || character === ']') stack.pop();
-    else if (character === ',') {
-      const current = stack.at(-1);
-      if (current?.kind === 'object') current.expectingKey = true;
-    } else if (character === '"') {
-      const start = index;
-      for (index++; index < json.length; index++) {
-        if (json[index] === '\\') index++;
-        else if (json[index] === '"') break;
-      }
-      const current = stack.at(-1);
-      if (current?.kind === 'object' && current.expectingKey) {
-        const key = JSON.parse(json.slice(start, index + 1)) as string;
-        if (current.keys.has(key)) throw fault('INVALID_SOURCE_REQUEST_FILE');
-        current.keys.add(key);
-        current.expectingKey = false;
-      }
-    }
-  }
-}
-
-/** The read remains bounded if the file grows after fstat; no raw input enters diagnostic output. */
-function readRequest(path: string, maximum = SOURCE_REQUEST_MAX_BYTES): unknown {
-  try {
-    const descriptor = openSync(resolve(path), constants.O_RDONLY | (constants.O_NONBLOCK ?? 0) | (constants.O_NOFOLLOW ?? 0));
-    let bytes: Buffer;
-    try {
-      const stat = fstatSync(descriptor);
-      if (!stat.isFile() || stat.size > maximum) throw fault('INVALID_SOURCE_REQUEST_FILE');
-      const buffer = Buffer.alloc(maximum + 1);
-      let length = 0;
-      while (length < buffer.length) {
-        const count = readSync(descriptor, buffer, length, buffer.length - length, null);
-        if (count === 0) break;
-        length += count;
-      }
-      if (length > maximum) throw fault('INVALID_SOURCE_REQUEST_FILE');
-      bytes = buffer.subarray(0, length);
-    } finally { closeSync(descriptor); }
-    const json = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
-    const value: unknown = JSON.parse(json);
-    rejectDuplicateKeys(json);
-    return value;
-  } catch { throw fault(maximum === CENSUS_BUILD_REQUEST_MAX_BYTES ? 'INVALID_CENSUS_BUILD_REQUEST_FILE' : 'INVALID_SOURCE_REQUEST_FILE'); }
 }
 
 type SourceCliStore = Pick<SourceCaptureStore, 'capture' | 'inspect'>;

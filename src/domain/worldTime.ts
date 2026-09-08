@@ -28,8 +28,6 @@
  */
 import type { ISODateTime } from './types';
 
-export const WORLD_TIME_METHOD = 'notationsos.world-time.v1';
-
 export type TimeEvidence =
   /** The source states when the fact took effect. The only kind that resolves cleanly. */
   | { kind: 'SOURCE_DECLARED_EFFECTIVE'; at: ISODateTime; declaredBy: string }

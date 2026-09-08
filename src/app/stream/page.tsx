@@ -1,15 +1,34 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
 import { getCorpusSource } from '@/adapter/corpusSource';
+import { PRODUCT_DESKS, workspaceParam, type WorkspaceParams } from '@/domain/productWorkspace';
+import { STREAM_LINK_PARAMS } from '@/domain/streamLink';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { StreamExplorer } from '@/components/corpus/StreamExplorer';
 
 export const metadata: Metadata = { title: 'Stream' };
 
-export default async function StreamPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const sp = await searchParams;
+export default async function StreamPage({ searchParams }: { searchParams: Promise<WorkspaceParams> }) {
+  const params = await searchParams;
+  const sp: Record<string, string | undefined> = {};
+  try {
+    for (const key of [...STREAM_LINK_PARAMS, 'corpus', 'domain']) sp[key] = workspaceParam(params, key);
+  } catch { notFound(); }
   const source = getCorpusSource();
-  const [corpus] = await source.listCorpora();
+  // An explicit release owns its corpus. Never substitute the first corpus in
+  // the store when a Landshark or Tradewind reading arrives through Stream.
+  const corpus = sp.release ? (await source.getRelease(sp.release))?.corpus
+    : await source.getCorpus(sp.corpus ?? 'caravan.specialty-cargo');
+  if (!corpus || (sp.corpus && corpus.corpusId !== sp.corpus) || (sp.domain && corpus.domain !== sp.domain)) notFound();
+  if (corpus.domain === 'LANDSHARK' || corpus.domain === 'TRADEWIND') {
+    const query = new URLSearchParams();
+    for (const key of STREAM_LINK_PARAMS) if (sp[key]) query.set(key, sp[key]!);
+    query.set('corpus', corpus.corpusId);
+    // Dedicated desks evaluate and gate on the server; the legacy Caravan
+    // explorer is not a boundary for passing another domain's raw corpus.
+    redirect(`${PRODUCT_DESKS[corpus.domain].href}?${query}`);
+  }
   return (
     <>
       {source.origin.kind === 'FIXTURE' && <FixtureBanner note={source.origin.label} />}

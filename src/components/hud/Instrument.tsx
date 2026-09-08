@@ -3,8 +3,9 @@
  * segmented meter and a provenance stamp.
  *
  * Five pieces, because the references get their density from repeating a few
- * marks rather than from inventing a widget per panel. Everything here is
- * line-work over the void ground; nothing fills, glows or animates.
+ * marks rather than from inventing a widget per panel. Evidence uses drawn
+ * frames; labelled controls and measured meter segments may fill. No glow or
+ * ambient animation is needed to communicate a reading.
  *
  * The one rule these enforce rather than describe: a value that is UNKNOWN is
  * drawn as UNKNOWN whatever the caller said. `Readout` derives that state from
@@ -35,12 +36,7 @@ export function Panel({ state, label, right, stamp, children, className = '', te
 }) {
   return (
     <section className={`hud-panel ${className}`} data-epistemic={state} data-testid={testId}>
-      {label && (
-        <div className="hud-bar" data-epistemic={state}>
-          <span>{label}</span>
-          {right !== undefined && <span className="hud-bar-state">{right}</span>}
-        </div>
-      )}
+      {label && <Rule label={label} right={right} state={state} />}
       <div className={label ? 'pt-2' : ''}>{children}</div>
       {stamp && stamp.length > 0 && (
         <div className="hud-stamp" data-testid={testId ? `${testId}-stamp` : undefined}>

@@ -50,9 +50,11 @@ describe('no v1 route builds its own response', () => {
     it(`${name} answers through _lib`, () => {
       const source = readFileSync(file, 'utf8');
       const body = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-      // NextResponse may be imported for its type; what is forbidden is
-      // constructing a response body that skips the attestation.
-      expect(body, `${name} constructs a response outside the envelope`).not.toMatch(/NextResponse\s*\.\s*json\s*\(/);
+      // Both constructors, because the first version of this rule watched
+      // NextResponse.json alone and a route using the plain Response.json
+      // walked straight past it. What is forbidden is constructing a response
+      // body that skips the attestation, whichever class does it.
+      expect(body, `${name} constructs a response outside the envelope`).not.toMatch(/(?:Next)?Response\s*\.\s*json\s*\(/);
       expect(body).toMatch(/from '(\.\.\/)*_lib'/);
     });
   }

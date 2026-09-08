@@ -108,13 +108,18 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               Bayesian Decision Loss Optimization for Project Finance Milestone Draws • Model Priors: {paramSet.version}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          {/* A select sizes itself to its longest option, and these project names
+              run to 506px. Unconstrained, it pushed the layout viewport of a
+              412px phone out to 623 — which scales the whole page down and makes
+              every pointer coordinate land somewhere else. It is bounded now,
+              and the row wraps rather than compressing. */}
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             <span className="text-xs text-neutral-500 font-medium">Megaproject Draw:</span>
             <select
               aria-label="Megaproject draw"
               value={selectedContextId}
               onChange={(e) => setSelectedContextId(e.target.value)}
-              className="text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded px-2.5 py-1 text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+              className="min-w-0 max-w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded px-2.5 py-1 text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900"
             >
               {initialContexts.map((ctx) => (
                 <option key={ctx.projectId} value={ctx.projectId}>
@@ -439,10 +444,17 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
         </div>
       </div>
 
-      {/* Ground Truth Observation Recording Modal */}
+      {/*
+        Ground-truth observation dialog.
+
+        Centred and unscrollable, this was taller than a 412px phone viewport,
+        which put its own confirm button below the fold with no way to reach
+        it — a fixed backdrop does not scroll, so the footer was simply gone.
+        It scrolls now, and the panel is bounded.
+      */}
       {showLogModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full space-y-4 shadow-xl text-xs">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-4 shadow-xl text-xs">
             <h4 className="text-base font-bold text-neutral-900">Add a ground-truth inspection outcome</h4>
             <p className="text-neutral-600">
               This recomputes the tasking optimizer against the committed history plus the outcome below. The entry lives in
@@ -485,16 +497,19 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-neutral-200">
+            {/* Wraps and does not shrink: at a 412px viewport the unwrapped row
+                squeezed these two together until Cancel sat over the confirm
+                button and swallowed its clicks. */}
+            <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-neutral-200">
               <button
                 onClick={() => setShowLogModal(false)}
-                className="px-3 py-1.5 border border-neutral-300 rounded font-medium text-neutral-700 hover:bg-neutral-50"
+                className="shrink-0 px-3 py-1.5 border border-neutral-300 rounded font-medium text-neutral-700 hover:bg-neutral-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleRecordObservation}
-                className="px-3 py-1.5 bg-neutral-900 text-white rounded font-semibold hover:bg-neutral-800"
+                className="shrink-0 px-3 py-1.5 bg-neutral-900 text-white rounded font-semibold hover:bg-neutral-800"
               >
                 Recompute for this session
               </button>

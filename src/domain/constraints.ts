@@ -85,7 +85,6 @@ export const ENFORCEMENT_METHODS: readonly EnforcementSpec[] = [
 
 /* ── The declared object ── */
 
-export type ConstraintSense = 'EQUALITY' | 'INEQUALITY';
 export type Hardness = 'HARD' | 'STIFF_SOFT' | 'SOFT';
 
 export const HARDNESS_RULE: Record<Hardness, string> = {
@@ -93,23 +92,6 @@ export const HARDNESS_RULE: Record<Hardness, string> = {
   STIFF_SOFT: 'A real-world law with a small declared residual noise. Mass balance is stiff-soft, not hard, because facilities leak, meters drift and unmodelled flows exist.',
   SOFT: 'Everything measured, surveyed or regulatory, with R_c set in proportion to one minus the declared confidence, so the certainty harvested matches the certainty claimed.',
 };
-
-export interface DeclaredConstraint {
-  /** C and c, in the state's own units, referencing the quantities by their corpus predicates. */
-  form: 'C x = c' | 'C x ≤ c';
-  sense: ConstraintSense;
-  hardness: Hardness;
-  /** Why it is believed: the artifact, the ordinance, the physical law. */
-  sourceArtifactRef: string;
-  /** 0..1, and it sets R_c for anything not definitional. */
-  confidence: number;
-  /** World time the constraint holds over: a capacity changes with a retrofit, a FAR with an ordinance. */
-  validFrom: string;
-  validTo?: string;
-  /** When the constraint became knowable, so an as-of rebuild applies the stack as of that instant. */
-  knownAt: string;
-  ontologyVersion: string;
-}
 
 export const CONSTRAINT_RECORD_CONTRACT = {
   bitemporal: 'Constraints carry both clocks like any other claim. A capacity changes with a retrofit and a floor-area ratio with an ordinance version, so an as-of rebuild must apply the constraint stack as of the knowledge instant asked for, not the current one.',

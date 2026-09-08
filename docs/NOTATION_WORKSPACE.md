@@ -1,5 +1,7 @@
 # Notation workspace: the frontend contract
 
+Maintenance note (2026-09-08): ordinary `e2e:state-kernel` runs now write their screenshots beneath `test-results/`, avoiding unrelated documentation changes. The screenshot filenames in the historical verification receipts below describe their original runs and remain in Git.
+
 `/notations` authors local notation state against the [Rust state kernel](LOCAL_NOTATION_STATE_KERNEL.md). This document is the frontend's side of that contract: what the interface promises about drafts, states, conflicts and capacity; the contract it asks the backend for; the evidence-reference contract it is prepared to display; and the implementation receipt for the increment that introduced them. Authority does not move: Rust validates every command, the store saves versions, the browser holds drafts.
 
 ## Three states, told apart

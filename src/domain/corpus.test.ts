@@ -8,6 +8,18 @@ const rel2 = releaseById(corpus, 'REL-CAR-2026.08.25')!;
 const rel3 = currentRelease(corpus);
 
 describe('corpus releases', () => {
+  it('compares millisecond and offset instants without changing historical timestamp spellings', () => {
+    const cutoff = '2026-09-01T12:00:00Z';
+    const release = { ...rel3, knownAt: cutoff };
+    const records = [
+      { ...corpus.records[0], recordId: 'equal-offset', knownAt: '2026-09-01T08:00:00-04:00' },
+      { ...corpus.records[0], recordId: 'later-millisecond', knownAt: '2026-09-01T12:00:00.001Z' },
+    ];
+    expect(releaseRecords({ ...corpus, records }, release).map((record) => record.recordId)).toEqual(['equal-offset']);
+    expect(release.knownAt).toBe(cutoff);
+    expect(records[0].knownAt).toBe('2026-09-01T08:00:00-04:00');
+  });
+
   it('a release carries exactly the records knowable by its cutoff', () => {
     expect(releaseRecords(corpus, rel1).map((r) => r.recordId).sort()).toEqual(['REC-0101', 'REC-0102', 'REC-0111', 'REC-0112']);
     expect(releaseRecords(corpus, rel3).length).toBe(corpus.records.length);

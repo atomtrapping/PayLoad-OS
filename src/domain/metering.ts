@@ -1,9 +1,9 @@
 /**
  * Usage as telemetry: what a lap is, and what makes it billable by construction.
  *
- * The performance of the production system generates usage; usage generates
- * telemetry; telemetry is a product. Every query against a corpus, every compute
- * run over it and every agent invocation through it is a lap. The claim that
+ * The internal production system generates usage telemetry. It measures
+ * preparation cost and, when customer delivery exists, can support delivery
+ * receipts. An internal run is not a customer product. The historical claim that
  * follows is that billing is traceable by construction, because every response
  * is receipted — so a bill line points at an exact response over an exact
  * release, and a customer can audit it without trusting the invoice.
@@ -29,7 +29,7 @@ import { SYSTEM_DATA_CLASS, SYSTEM_PARAMETER_SET_VERSION, SYSTEM_VERIFICATION_RU
 /* ── The lap ── */
 
 /** A unit of metered usage. Closed. */
-export type UsageUnit = 'QUERY' | 'COMPUTE_RUN' | 'AGENT_INVOCATION' | 'CLEAN_ROOM_HOUR';
+export type UsageUnit = 'QUERY' | 'COMPUTE_RUN' | 'AGENT_INVOCATION';
 
 export interface UsageUnitSpec {
   id: UsageUnit;
@@ -52,9 +52,9 @@ export const USAGE_UNITS: readonly UsageUnitSpec[] = [
   },
   {
     id: 'COMPUTE_RUN',
-    title: 'Compute run',
+    title: 'Internal compute run',
     what: 'One retained execution of an instrument over declared inputs: a replay, a benchmark, a registration fit, a clearance evaluation, a GAT audit.',
-    here: 'Each instrument retains a run with its dependencies and digests under an operator-selected root. The runs exist; nothing meters them.',
+    here: 'Each instrument retains a run with its dependencies and digests under an operator-selected root. These are internal preparation costs; no customer compute tariff or usage meter exists.',
     counted: false,
   },
   {
@@ -62,13 +62,6 @@ export const USAGE_UNITS: readonly UsageUnitSpec[] = [
     title: 'Agent invocation',
     what: 'One tool call an external agent makes through the MCP surface, which is a query with an agent as the caller rather than a person.',
     here: 'The MCP server exposes the tools over stdio. The caller is not identified and the call is not recorded.',
-    counted: false,
-  },
-  {
-    id: 'CLEAN_ROOM_HOUR',
-    title: 'Clean-room hour',
-    what: 'Elapsed time of customer computation running against a corpus inside a bounded environment, where the tariff is on access and compute rather than on someone else’s infrastructure.',
-    here: 'No hosted execution exists. Every instrument here runs on the operator’s own machine, under the operator’s own flags.',
     counted: false,
   },
 ];
@@ -146,21 +139,21 @@ export const ENVELOPE_TODAY = {
  * it would cost more than it earns.
  */
 export const METERING_BOUNDARY = {
-  posture: 'Bill like a telemetry vendor, not like a payments network.',
+  posture: 'License prepared data and analytics packages. Track internal preparation costs and the evidence of customer delivery separately.',
   notThis: [
     { role: 'Settlement participant', why: 'Taking a share of transfers between other parties absorbs liability and payment-company obligations, and none of it is supported by the asset. The asset is the corpus, not the money movement.' },
     { role: 'Infrastructure toll', why: 'Charging a platform for running on a substrate reverses the direction that actually holds: data gravity kept workloads local, it did not pay data providers rent. A toll invites the tax question without the moat.' },
     { role: 'The tax', why: 'A firm that taxes every use of a format eventually has the tax taken from it. Meter what the firm produced; do not meter what others do with their own machines.' },
   ],
-  instead: 'The tariff is on access to the corpus and on compute over it: per query, per compute run, per clean-room hour. Each is a thing the firm performed and can produce a receipt for.',
+  instead: 'A package license defines the information, version, coverage and permitted use purchased. Delivery receipts support traceability and correction; internal compute usage does not establish a customer charge. No price or billing model is selected here.',
 } as const;
 
-/* ── The same asset, three ways ── */
+/* ── The product and its internal support ── */
 
 export const TELEMETRY_PILLARS = [
-  { pillar: 'Data products', sells: 'The telemetry itself, as the three APIs.', here: 'All three lines have a demonstration corpus behind one fixture feed; none is a live customer API and none is metered, because nothing has been delivered.' },
-  { pillar: 'Hosting and compute', sells: 'Runs of it, over authorized releases.', here: 'The instruments run locally on the operator’s machine. No hosted execution exists.' },
-  { pillar: 'Proprietary capital', sells: 'Nothing: it trades on the same exhaust, under a separate governance boundary.', here: 'Absent, and separated by declaration: no source in the corpus permits proprietary strategy or trading, and the rights matrix says so on every release.' },
+  { pillar: 'Licensed data and analytics', sells: 'Boutique packages prepared from the corpora for business, risk and market applications.', here: 'All three lines have demonstration data and interfaces. Completed licensed customer delivery is not established.' },
+  { pillar: 'Internal preparation', sells: 'Internal capability: acquisition, normalization, computation and quality review prepare the packages.', here: 'Bounded instruments run locally and retain derivations. They are not a hosted customer-compute offering.' },
+  { pillar: 'Delivery and correction records', sells: 'Supporting records for what was supplied, to whom, under which version and terms.', here: 'The delivery ledger is specified and empty. Existing source restrictions, including prohibited proprietary strategy and trading, remain unchanged.' },
 ] as const;
 
 /* ── The federation risk ── */
@@ -178,8 +171,7 @@ export const FEDERATION_RISK = {
     'The calibration: what each source was worth, corroborated against which others, and how that changed.',
     'The corrected history: what was withdrawn, what replaced it, and who was told — which is the delivery ledger again.',
   ],
-  /** Kept honest: none of these exists yet. */
-  here: 'None of the three is implemented. Resolution is absent, corroboration scoring is absent, and the delivery ledger is specified and empty. The defence is a statement of what to build, not a claim about what protects the firm today.',
+  here: 'Issued-identifier resolution and source-comparison mechanisms exist, while the customer delivery ledger is specified and empty. These mechanisms do not establish a populated production identity history, calibrated source quality or commercial protection. The defence remains a design argument, not a claim about what protects the firm today.',
 } as const;
 
 /* ── Where the firm plugs in ── */

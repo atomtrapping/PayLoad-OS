@@ -7,6 +7,8 @@ import type { AsOfAnswer, AsOfQuery, Corpus, CorpusRecord, CorpusRelease, Retrac
 import { currentRelease, deliverableRecords, queryAsOf, releaseById, retractionsSince } from '@/domain/corpus';
 import { FIXTURE_CORPORA } from '@/fixtures';
 import { count, eq } from 'drizzle-orm';
+import { databaseConfigured } from '@/db/config';
+import { hydrateCorpusRecord, type StoredRecord } from '@/db/recordStorage';
 
 /**
  * How many records have crossed the admission gate, and how that was learned.
@@ -66,6 +68,26 @@ export interface CorpusSource {
   admittedRecords(): Promise<AdmittedReading>;
   /** The gate's own record of every ruling it made, admitted and refused alike. */
   admissionLedger(): Promise<LedgerReading>;
+}
+
+function groupCorpusRows<T extends { corpusId: string }>(rows: readonly T[]): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const group = groups.get(row.corpusId) ?? [];
+    group.push(row);
+    groups.set(row.corpusId, group);
+  }
+  return groups;
+}
+
+/** Individual and batch reads use the same admission-aware record hydration. */
+function storedCorpus(data: unknown, releases: readonly { data: unknown }[], records: readonly StoredRecord[], retractions: readonly { data: unknown }[]): Corpus {
+  return {
+    ...(data as Record<string, unknown>),
+    releases: releases.map((row) => row.data as CorpusRelease).sort((a, b) => (a.knownAt < b.knownAt ? -1 : 1)),
+    records: records.map(hydrateCorpusRecord),
+    retractions: retractions.map((row) => row.data),
+  } as Corpus;
 }
 
 export class FixtureCorpusSource implements CorpusSource {
@@ -150,30 +172,23 @@ export class LiveCorpusSource implements CorpusSource {
   }
 
   private async fetchFullCorpus(corpusId: string): Promise<Corpus | undefined> {
-    const corpusRes = await (await this.database()).db.select().from((await this.database()).corpora).where(eq((await this.database()).corpora.corpusId, corpusId));
+    const { db, corpora, releases, records, retractions } = await this.database();
+    const corpusRes = await db.select().from(corpora).where(eq(corpora.corpusId, corpusId));
     if (corpusRes.length === 0) return undefined;
-    
-    const [c] = corpusRes;
-    const rels = await (await this.database()).db.select().from((await this.database()).releases).where(eq((await this.database()).releases.corpusId, corpusId));
-    const recs = await (await this.database()).db.select().from((await this.database()).records).where(eq((await this.database()).records.corpusId, corpusId));
-    const rets = await (await this.database()).db.select().from((await this.database()).retractions).where(eq((await this.database()).retractions.corpusId, corpusId));
-    
-    return {
-      ...(c.data as Record<string, unknown>),
-      releases: (rels.map((r) => r.data) as unknown as CorpusRelease[]).sort((a, b) => (a.knownAt < b.knownAt ? -1 : 1)),
-      records: recs.map((r) => r.data),
-      retractions: rets.map((r) => r.data)
-    } as Corpus;
+    const rels = await db.select().from(releases).where(eq(releases.corpusId, corpusId));
+    const recs = await db.select().from(records).where(eq(records.corpusId, corpusId));
+    const rets = await db.select().from(retractions).where(eq(retractions.corpusId, corpusId));
+    return storedCorpus(corpusRes[0].data, rels, recs, rets);
   }
 
   async listCorpora(): Promise<Corpus[]> {
-    const allCorpora = await (await this.database()).db.select().from((await this.database()).corpora);
-    const results: Corpus[] = [];
-    for (const c of allCorpora) {
-      const full = await this.fetchFullCorpus(c.corpusId);
-      if (full) results.push(full);
-    }
-    return results;
+    const { db, corpora, releases, records, retractions } = await this.database();
+    const allCorpora = await db.select().from(corpora);
+    if (!allCorpora.length) return [];
+    const rels = groupCorpusRows(await db.select().from(releases));
+    const recs = groupCorpusRows(await db.select().from(records));
+    const rets = groupCorpusRows(await db.select().from(retractions));
+    return allCorpora.map((entry) => storedCorpus(entry.data, rels.get(entry.corpusId) ?? [], recs.get(entry.corpusId) ?? [], rets.get(entry.corpusId) ?? []));
   }
 
   async getCorpus(corpusId: string): Promise<Corpus | undefined> {
@@ -181,14 +196,16 @@ export class LiveCorpusSource implements CorpusSource {
   }
 
   async listReleases(corpusId?: string): Promise<CorpusRelease[]> {
+    const { db, releases } = await this.database();
     const rels = corpusId
-      ? await (await this.database()).db.select().from((await this.database()).releases).where(eq((await this.database()).releases.corpusId, corpusId))
-      : await (await this.database()).db.select().from((await this.database()).releases);
+      ? await db.select().from(releases).where(eq(releases.corpusId, corpusId))
+      : await db.select().from(releases);
     return rels.map((r) => r.data as unknown as CorpusRelease).sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1));
   }
 
   async getRelease(releaseId: string): Promise<{ corpus: Corpus; release: CorpusRelease } | undefined> {
-    const rels = await (await this.database()).db.select().from((await this.database()).releases).where(eq((await this.database()).releases.releaseId, releaseId));
+    const { db, releases } = await this.database();
+    const rels = await db.select().from(releases).where(eq(releases.releaseId, releaseId));
     if (rels.length === 0) return undefined;
     
     const release = rels[0];
@@ -308,7 +325,7 @@ let source: CorpusSource | undefined;
  * screen reads it, so a reader is never told a demonstration is a live corpus.
  */
 export function corpusDatabaseConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL || process.env.SQL_HOST);
+  return databaseConfigured();
 }
 
 export function getCorpusSource(): CorpusSource {

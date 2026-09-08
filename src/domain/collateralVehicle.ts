@@ -54,8 +54,6 @@ import { queryAsOf, recordStatusAt } from './corpus';
 import { evaluateNode, type ConditionNode, type FactResolver, type NodeVerdict as ReleaseVerdict } from './conditionGrammar';
 export * from './conditionGrammar';
 
-export const VEHICLE_METHOD = 'notationsos.conditional-custody.v1';
-
 /* ── The role ── */
 
 export const VEHICLE_ROLE = {

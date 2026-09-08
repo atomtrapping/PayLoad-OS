@@ -98,11 +98,21 @@ export const SELF_OBSERVATION_CONTEXT: Omit<DeclaredContext, 'sourceTime' | 'pro
 /**
  * Registrations binding object names to corpus subjects.
  *
- * Derivable rather than asserted, which is what a self-certifying identifier
- * buys: the evidence for `SHA X names subject S` is the object itself, and a
- * reader recomputes it. Everything else about the registration is unchanged —
- * it carries a knowledge time, and `resolveSubject` will not use a registration
- * to answer a question asked as of an instant before the corpus held it.
+ * GIT_OBJECT is the one identifier family in this system with no issuer, and it
+ * is stronger for it. Every other family requires trusting a register: an NAIC
+ * code means what the NAIC says it means, and a party that loses its registry
+ * entry loses its identity. A git object name is the SHA-1 of the object's own
+ * bytes, so two parties holding the same bytes compute the same name without
+ * consulting anyone, and no authority can reassign it.
+ *
+ * That does not make the binding to a corpus subject automatic, and the
+ * resolver is not relaxed for it. Which `notation://` subject a given object
+ * names is still this corpus's decision and still needs a registration
+ * carrying a knowledge time, and `resolveSubject` will not use one to answer a
+ * question asked as of an instant before the corpus held it. What the
+ * self-certifying name buys is that the evidence for the registration is the
+ * object — which a reader recomputes — rather than a register entry that is not
+ * checkable at all.
  */
 export function registrationsFor(observations: readonly CommitObservation[]): Registration[] {
   return observations.map((observation) => ({

@@ -811,6 +811,15 @@ describe('the operator instrument', () => {
 });
 
 describe('located events on the globe', () => {
+  it('reports an unevaluated exact-release layer instead of zero events', async () => {
+    api(() => unavailable);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={[]} eventsAvailable={false} assetsReady loadEngine={loadEngine} />);
+    await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
+    expect(screen.getByTestId('earth-events')).toHaveTextContent('NOT_EVALUATED');
+    expect(screen.getByTestId('earth-events')).not.toHaveAttribute('data-count');
+    expect(screen.getByTestId('earth-events-panel')).toHaveTextContent('does not establish the absence of events');
+  });
+
   const ready = async () => waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
   const drawnEvents = () => {
     const byId = new Map<string, { id: string; point: { pixelSize: number }; ellipse?: { semiMajorAxis: number } }>();

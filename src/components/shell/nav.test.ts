@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { NAV_AREAS, NAV_DESTINATIONS, indexOf, locate, searchNav, step } from './nav';
 
@@ -27,11 +28,14 @@ function routes(dir: string, prefix = ''): string[] {
   return out;
 }
 
-const APP = new URL('../../app', import.meta.url).pathname;
+const APP = fileURLToPath(new URL('../../app', import.meta.url));
 /**
  * Dynamic segments are not destinations the rail names. `/cases/new` is
  * reached from the case queue's own button rather than from the rail, which is
  * deliberate: it is an action on the queue, not a place.
+ *
+ * `/` is not exempt any more. It used to redirect to the releases; it is the
+ * console now, and the rail names it first.
  */
 const RAIL_EXEMPT = ['/cases/new'];
 const NAMED = routes(APP).filter((r) => !r.includes('[') && !RAIL_EXEMPT.includes(r));

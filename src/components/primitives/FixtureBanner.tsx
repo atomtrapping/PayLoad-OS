@@ -15,7 +15,11 @@ export function FixtureBanner({ note }: { note?: string }) {
       style={{ borderColor: 'rgba(var(--accent-rgb), 0.45)', color: 'var(--text-secondary)' }}
     >
       <span className="label-sm shrink-0" style={{ color: 'var(--accent-strong)' }}>fixture_only: true</span>
-      <span>{note ?? 'Demonstration data. Synthetic, deterministic and committed. Not a production endpoint.'}</span>
+      {/* min-w-0: a flex item defaults to min-width:auto, so a long note could
+          not shrink below its own text and pushed the document 9px past a
+          412px viewport — enough to widen the layout viewport and rescale the
+          page. Every screen carries this banner, so it is fixed here once. */}
+      <span className="min-w-0">{note ?? 'Demonstration data. Synthetic, deterministic and committed. Not a production endpoint.'}</span>
     </div>
   );
 }

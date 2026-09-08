@@ -33,8 +33,6 @@
  * `conditions`, because a number whose conditions travelled separately from it
  * is a number that will eventually be quoted without them.
  */
-import type { ISODateTime } from './types';
-
 export const COST_METHOD = 'notationsos.query-cost.v1';
 
 /** The read paths the benchmark exercised. */
@@ -231,10 +229,3 @@ export const COST_LOSS = [
   'p50 is not a latency budget. The benchmark recorded a median and one p95; a serving surface needs tails, and nothing here has them.',
   'The condition tree was measured at five legs and only five. Every other leg count is that number scaled under a stated assumption, not a second measurement.',
 ] as const;
-
-/** A stamp for a served payload that wants to say what its own read cost. */
-export interface ServingCostStatement {
-  method: typeof COST_METHOD;
-  measuredAt: ISODateTime | 'NOT_RECORDED';
-  estimate: CostEstimate;
-}

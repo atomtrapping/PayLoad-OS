@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       // spawns scripts/gat-audit-runner.py, and src/adapter/productionSource.ts reads
       // examples/ during the /candidates render.
       './**/*.test.ts', './**/*.test.tsx', './**/*.spec.ts',
-      './tests/**/*', './clients/**/*', './tsconfig.tsbuildinfo', './package-lock.json', './bun.lock',
+      './tests/**/*', './clients/**/*', './tsconfig.tsbuildinfo', './package-lock.json',
     ],
   },
   // The /candidates server render reads these committed bytes and recomputes their
@@ -33,9 +33,6 @@ const nextConfig: NextConfig = {
       './examples/evidence/notice.txt',
     ],
   },
-  // CesiumJS's KML support imports a zip.js subpath its package exports map does not expose to Turbopack.
-  // The Earth Twin never reads KML; resolve the subpath to the package's main entry so the engine bundles.
-  turbopack: { resolveAlias: { '@zip.js/zip.js/lib/zip-no-worker.js': '@zip.js/zip.js' } },
   // `/product` and `/products` read as one route pair while meaning different
   // things: the operating model, and the products themselves. The model moved to
   // `/model`. A permanent HTTP redirect keeps every existing link and bookmark

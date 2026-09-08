@@ -1,18 +1,20 @@
 # Notation Systems mandate
 
-Notation Systems is a systems and intelligence firm for the physical economy. It
-builds computational representations of physical systems by integrating
-geospatial data, remote sensing, operational data, scientific models, digital
-twins, simulation, and agents.
+Current founder statement, 2026-09-08:
+
+Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
 
 Its internal production system turns authorized heterogeneous source material
 into provenance-bearing computational corpora through acquisition, extraction,
 normalization, identity, ontology, computation, storage, indexing,
 verification, release, correction, and recall.
 
-The corpora are the finished information inventory. APIs, data feeds, reports,
-workbenches, and MCP tools distribute that inventory. Customers apply
-inference, models, agents, and workflows to those data streams.
+The corpora are the information inventory from which the firm prepares boutique
+data and analytics packages. Each package defines its fields, coverage,
+methods, quality, provenance, version and permitted use. HTTP feeds and MCP
+tools are existing delivery interfaces. Customers can apply inference and
+workflows to the data they license. The firm's workbenches and scientific
+instruments prepare and inspect information internally.
 
 Notation Systems is not a scraper, data marketplace, generic AI-agent company,
 or universal database. Scraping and engineering are internal means of
@@ -31,38 +33,45 @@ assets, flows, conditions, counterparties, exposures, and changes over time.
 
 ## Economic architecture
 
-The firm eventually monetizes through:
+Acquire permitted data → prepare data and analytics → package and license it
+→ maintain its quality, provenance and correction history.
 
-- Data systems and products
-- Hosting and compute over the corpora
-- Its own trading/speculation using permitted proprietary intelligence and capital
-
-The shared infrastructure supports all three. Customer evidence, customer
-workloads, and proprietary capital activity remain separated.
+Internal operating costs and customer delivery records support this business.
+Hosted customer workloads and principal trading are not active product
+commitments under this mandate. Earlier discussions remain historical context.
+Existing restrictions on customer information, proprietary strategy, trading
+and redistribution remain in force; positioning grants no new permission.
 
 ## Product structure
 
-```yaml
-Notation Systems Ecosystem
-  → NotationsOS
-      → Caravan: logistics, freight, cargo, supply-chain movement
-      → Tradewind: markets, instruments, pricing, and risk
-      → Landshark: parcels, zoning, entitlements, and development state
+```text
+Notation Systems Inc. — licensed boutique data and analytics
+├─ Caravan: logistics, freight, cargo, supply-chain movement
+├─ Tradewind: markets, instruments, pricing, and risk
+└─ Landshark: parcels, zoning, entitlements, and development state
+
+Internal preparation and operations: NotationsOS and the underlying systems
 ```
 
-Caravan, Tradewind and Landshark are the flagship products: three APIs,
-delivered as HTTP feeds and MCP tools. NotationsOS is the internal terminal that
+Caravan, Tradewind and Landshark organize the data-product lines, with HTTP feeds
+and MCP tools as existing delivery interfaces. NotationsOS is the internal terminal that
 operates, monitors and navigates the backend those three are produced from. It
 is not sold, it is not a fourth customer-facing API, and it is not a universal
-domain database. (Founder correction, 2026-09-06.)
+domain database. The internal-terminal distinction from 2026-09-06 continues
+under the current boutique-data mandate.
 
-## Prototype boundary
+## Current implementation boundary
 
-The Notations Bench prototype is the reference implementation of the shared
-corpus, provenance, policy, release, and verification machinery. This
-repository is a fixture-only corpus product surface and an optional
-distribution-workbench prototype. Its current Caravan corpus and case/ruling
-fixtures are synthetic; they are not production canonical state, deployed
-customer delivery, managed customer computation, or a customer inference
-service. `docs/ECONOMIC_ARCHITECTURE.md` is authoritative for the detailed
-repository status and its stated absences.
+Notations Bench remains a reference for the shared corpus, provenance, policy,
+release and verification machinery. All three product lines now carry
+demonstration corpora. Local evidence and normalization rails, bounded
+connectors, admission and identity/time rules, PostgreSQL integration, and
+internal computation are implemented to varying scopes. The supplied-byte
+statutory harvester can evaluate admission in memory; that result does not
+itself retain a production release. Historical FMCSA qualification is distinct
+from recurring source operation.
+
+Implementation is distinct from retained real data, deployed operation and a
+completed licensed customer delivery. A completed customer package and pilot
+are not established by this repository. See [Economic architecture](ECONOMIC_ARCHITECTURE.md)
+for the current boundary and the explicitly historical earlier record.

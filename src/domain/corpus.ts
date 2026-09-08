@@ -147,10 +147,6 @@ export function evaluateUse(rights: RightsSchedule, use: PermittedUse, at: ISODa
   return evaluateSourceUse(rights.registration, { requestId: `${rights.sourceId}:${use}:${at}`, registrationId: rights.registration.registrationId, purpose: r.purpose, operation: r.operation, audience: r.audience, requestedAt: at });
 }
 
-export function isUsePermitted(rights: RightsSchedule, use: PermittedUse, at: ISODateTime, domain: Domain): boolean {
-  return evaluateUse(rights, use, at, domain).state === 'ALLOWED';
-}
-
 /** The uses a registration permits at an instant, derived so the list and the matrix cannot disagree. */
 export function derivePermittedUses(registration: SourceRegistration, at: ISODateTime, sourceId: string, domain: Domain): PermittedUse[] {
   const requests = sourceUseRequests(domain);
@@ -300,6 +296,16 @@ export interface CorpusRecord {
   knownAt: ISODateTime;
   observedAt?: ISODateTime;
   evidenceClass: EvidenceClass;
+  /** Present only after persisted admission; carried separately from source evidence. */
+  admission?: {
+    authority: string;
+    ruledAt: ISODateTime;
+    outcome: 'ADMITTED' | 'ADMITTED_WITH_CONDITIONS';
+    conditions: string[];
+    sourceTime: ISODateTime;
+    acquisitionTime: ISODateTime;
+    provenance: 'LIVE_CAPTURE' | 'BACKFILLED';
+  };
   provenance: {
     sourceId: string;
     artifactId?: string;
@@ -459,7 +465,14 @@ export interface Corpus {
 
 /* ── Selectors ── */
 
-const le = (a: ISODateTime, b: ISODateTime) => a <= b;
+function compareInstants(a: ISODateTime, b: ISODateTime): number {
+  const left = Date.parse(a), right = Date.parse(b);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) throw new Error('CORPUS_INVALID_TIMESTAMP');
+  return left - right;
+}
+// Compare instants, not their spelling. The frozen v0 fixture digest/projection
+// codec keeps its separate legacy membership rules and original ISO bytes.
+const le = (a: ISODateTime, b: ISODateTime) => compareInstants(a, b) <= 0;
 
 /** Records a release carries: everything knowable by its cutoff. */
 export function releaseRecords(corpus: Corpus, release: CorpusRelease): CorpusRecord[] {
@@ -492,7 +505,7 @@ export function deliveryDecision(release: CorpusRelease, record: CorpusRecord, v
 }
 
 /** Rights guard for delivery: a record leaves the corpus only on an explicitly ALLOWED decision. */
-export function deliverable(corpus: Corpus, release: CorpusRelease, record: CorpusRecord, viewer: VisibilityClass = 'COUNTERPARTY_SHARED'): boolean {
+export function deliverable(release: CorpusRelease, record: CorpusRecord, viewer: VisibilityClass = 'COUNTERPARTY_SHARED'): boolean {
   return deliveryDecision(release, record, viewer)?.state === 'ALLOWED';
 }
 
@@ -558,11 +571,11 @@ export const IDENTITY_LINK_PREDICATE = 'identity.sample_of_lot';
 function candidatesFor(records: CorpusRecord[], subjectId: string, predicate: string, q: AsOfQuery): CorpusRecord[] {
   return records
     .filter((r) => r.subjectId === subjectId && r.predicate === predicate && le(r.knownAt, q.knownAt))
-    .sort((a, b) => (a.knownAt < b.knownAt ? 1 : a.knownAt > b.knownAt ? -1 : 0));
+    .sort((a, b) => compareInstants(b.knownAt, a.knownAt));
 }
 
 function withinValidity(r: CorpusRecord, validAt: ISODateTime): boolean {
-  return le(r.validFrom, validAt) && (r.validTo === undefined || validAt < r.validTo);
+  return le(r.validFrom, validAt) && (r.validTo === undefined || compareInstants(validAt, r.validTo) < 0);
 }
 
 /**
@@ -573,7 +586,7 @@ function withinValidity(r: CorpusRecord, validAt: ISODateTime): boolean {
  * absent answer is a typed refusal with a remedy, never a zero.
  */
 export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, opts: { enforceRights?: boolean; viewer?: VisibilityClass } = {}): AsOfAnswer {
-  const knownAt = q.knownAt <= release.knownAt ? q.knownAt : release.knownAt;
+  const knownAt = le(q.knownAt, release.knownAt) ? q.knownAt : release.knownAt;
   const query = { ...q, knownAt };
   const boundedBy = CLOCK_FOR_QUESTION[q.question];
   const records = releaseRecords(corpus, release);
@@ -613,7 +626,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
         considered.push({ recordId: r.recordId, because: `valid from ${r.validFrom}${r.validTo ? ` to ${r.validTo}` : ''}, not at ${q.validAt}` });
         continue;
       }
-      if (opts.enforceRights && !deliverable(corpus, release, r, opts.viewer)) {
+      if (opts.enforceRights && !deliverable(release, r, opts.viewer)) {
         const d = deliveryDecision(release, r, opts.viewer);
         considered.push({ recordId: r.recordId, because: `source ${r.provenance.sourceId}: ${d?.state ?? 'NO_REGISTRATION'} (${d?.reasons.join(', ') ?? 'no registration'})` });
         continue;
@@ -629,7 +642,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
         refusal: { code: 'RETRACTED', reason: `The only record was withdrawn: ${retraction?.reason ?? 'reason not recorded'}`, remedy: 'Obtain a replacement artifact from the producer, or an independent one; the corpus will carry it as a new record.', considered },
       };
     }
-    if (opts.enforceRights && candidates.some((r) => !deliverable(corpus, release, r, opts.viewer))) {
+    if (opts.enforceRights && candidates.some((r) => !deliverable(release, r, opts.viewer))) {
       const d = deliveryDecision(release, candidates[0], opts.viewer);
       return { query, releaseId: release.releaseId, boundedBy, resolution, identityLink, candidates, refusal: { code: 'NOT_DELIVERABLE', reason: `A record exists but the source-use decision for this delivery is ${d?.state ?? 'absent'}: ${d?.reasons.join(', ') ?? 'no registration'}.`, remedy: 'Register the source for this operation and audience, or supply an equivalent artifact from a source that permits it.', considered } };
     }
@@ -654,7 +667,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
   const linkedSubjects = new Set(records.filter((r) => r.predicate === IDENTITY_LINK_PREDICATE && le(r.knownAt, knownAt) && recordStatusAt(corpus, r, knownAt) === 'CURRENT').map((r) => r.subjectId));
   const sampleRecords = records
     .filter((r) => r.predicate === q.predicate && r.subjectType === 'Sample' && le(r.knownAt, knownAt) && !linkedSubjects.has(r.subjectId))
-    .sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1));
+    .sort((a, b) => compareInstants(b.knownAt, a.knownAt));
   if (sampleRecords.length > 0 && links.length === 0) {
     return {
       query, releaseId: release.releaseId, boundedBy, resolution: 'NONE', candidates: [],
@@ -676,8 +689,8 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
 export function retractionsSince(corpus: Corpus, since: ISODateTime | undefined, viewer: VisibilityClass = 'COUNTERPARTY_SHARED'): Retraction[] {
   const visible = new Set<VisibilityClass>(viewer === 'PUBLIC_RULING' ? ['PUBLIC_RULING'] : viewer === 'COUNTERPARTY_SHARED' ? ['COUNTERPARTY_SHARED', 'PUBLIC_RULING'] : ['INTERNAL_ONLY', 'PRIVATE_PREFLIGHT', 'COUNTERPARTY_SHARED', 'PUBLIC_RULING']);
   return corpus.retractions
-    .filter((r) => (since === undefined || r.issuedAt > since) && visible.has(r.visibility))
-    .sort((a, b) => (a.issuedAt < b.issuedAt ? -1 : 1));
+    .filter((r) => (since === undefined || compareInstants(r.issuedAt, since) > 0) && visible.has(r.visibility))
+    .sort((a, b) => compareInstants(a.issuedAt, b.issuedAt));
 }
 
 export function currentRelease(corpus: Corpus): CorpusRelease {

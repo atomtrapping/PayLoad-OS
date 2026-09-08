@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { inspectEarthAssets } from '@/earth/assets.mjs';
 import { EARTH_ENGINE } from '@/domain/earth';
 import { earthRecordChoices } from '@/earth/records';
@@ -6,38 +7,33 @@ import { readInstrument } from '@/domain/operatorInstrument';
 import { locateAll } from '@/domain/locatedClaims';
 import { SPECIMEN_HEADLINES } from '@/fixtures/caravan/headlines';
 import { describeProjectionSource } from '@/projection/source';
+import { ProjectionError } from '@/projection/spec';
 import { EarthTwin } from '@/components/earth/EarthTwin';
 import { SpatialKeys } from '@/components/earth/SpatialKeys';
 import { FixtureBanner } from '@/components/primitives/FixtureBanner';
 import { getCorpusSource } from '@/adapter/corpusSource';
-import { DOMAINS } from '@/domain/domains';
 import { notFound } from 'next/navigation';
+import { workspaceParam, type WorkspaceParams } from '@/domain/productWorkspace';
 
 export const metadata: Metadata = { title: 'Earth Twin' };
 export const dynamic = 'force-dynamic';
 
-/**
- * The twin shows one line at a time, and the product control in the top bar is
- * what chooses it. A globe carrying three lines at once would put a lot, a
- * freight instrument and a parcel in one cell with no way to tell which line
- * each came from; the cross-line question is asked on the operating model
- * page, where the pairs are enumerated and the answer is stated.
- *
- * Caravan is the default because it is the only line with cases, rulings and
- * captured bytes behind its positions. It is a default, not a claim about the
- * other two.
- */
-export default async function EarthPage({ searchParams }: { searchParams: Promise<{ domain?: string }> }) {
-  const { domain } = await searchParams;
+export default async function EarthPage({ searchParams = Promise.resolve({}) }: { searchParams?: Promise<WorkspaceParams> } = {}) {
+  const params = await searchParams;
+  let releaseId: string | undefined;
+  try { releaseId = workspaceParam(params, 'release'); } catch { return notFound(); }
   const source = getCorpusSource();
-  const corpora = await source.listCorpora();
-  const scope = DOMAINS.find((d) => d.id === domain)?.id;
-  const corpus = (scope ? corpora.find((c) => c.domain === scope) : undefined)
-    ?? await source.getCorpus('caravan.specialty-cargo');
+  const hit = releaseId ? await source.getRelease(releaseId) : undefined;
+  const corpus = releaseId ? hit?.corpus : await source.getCorpus('caravan.specialty-cargo');
   if (!corpus) return notFound();
-
-  const release = [...corpus.releases].sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1))[0];
-  const descriptor = describeProjectionSource(release.releaseId, corpora);
+  const release = releaseId ? hit?.release : corpus.releases.find((entry) => entry.status === 'CURRENT');
+  if (!release) return notFound();
+  let descriptor: ReturnType<typeof describeProjectionSource>;
+  try { descriptor = describeProjectionSource(release.releaseId, [corpus]); }
+  catch (error) {
+    if (!(error instanceof ProjectionError)) throw error;
+    return <div className="p-5"><h1>Earth Twin · projection unavailable</h1><div role="alert" className="empty-state"><strong>{error.code}</strong><p>This exact release cannot be verified by the current demonstration projection compiler. No other release was substituted.</p><Link className="btn" href={`/stream?release=${encodeURIComponent(release.releaseId)}`}>Return to the product inquiry</Link></div></div>;
+  }
   const records = earthRecordChoices(corpus, release);
   // The operator readout for the twin's fixed seat. UNKNOWN for the admission
   // queue is the honest reading from a page: admission lives at the write
@@ -46,18 +42,18 @@ export default async function EarthPage({ searchParams }: { searchParams: Promis
   // The ledger's own events and the drafted specimen headlines, each met by
   // the corpus at its coordinates. Computed here, under the twin's seat, so
   // the client receives readings and never the records the gate withheld.
-  // The drafted headlines are written against Caravan's subjects, so they are
-  // only put to Caravan. Meeting a Tradewind headline against a Landshark
-  // corpus would produce NOT_IN_COVERAGE for every one of them, which is a
-  // true answer to a question nobody asked.
-  const located = locateAll(corpus, release, corpus.domain === 'CARAVAN' ? SPECIMEN_HEADLINES : []);
+  // The legacy event/key helpers do not gate all referenced identities and
+  // some compute against the current release. Keep them out of exact-release
+  // scopes until they support that boundary. Record projection is gated.
+  const eventsAvailable = !releaseId && corpus.domain === 'CARAVAN';
+  const located = eventsAvailable ? locateAll(corpus, release, SPECIMEN_HEADLINES) : [];
   const assetsReady = inspectEarthAssets().state === 'READY';
   
   return (
     <>
-      <FixtureBanner note={`Corpus: ${corpus.corpusId}, release ${release.releaseId}${scope ? '' : ' (no line scope applied; Caravan is the default)'}. Globe: imagery bundled with ${EARTH_ENGINE.name}, served from this origin; no key, no live source.`} />
-      <EarthTwin release={{ releaseId: release.releaseId, corpusId: release.corpusId, knownAt: descriptor.knownAt }} source={descriptor.source} records={records} instrument={instrument} located={located} assetsReady={assetsReady} />
-      <SpatialKeys corpus={corpus} releaseId={release.releaseId} />
+      <FixtureBanner note={`${corpus.domain} · demonstration release ${release.releaseId}. Globe: imagery bundled with ${EARTH_ENGINE.name}, served from this origin; no live imagery source. ${eventsAvailable ? '' : 'Exact-release record view. Event, headline and cross-subject spatial-key layers are not evaluated in this scope.'}`} />
+      <EarthTwin key={descriptor.source.snapshotDigest} release={{ releaseId: release.releaseId, corpusId: release.corpusId, knownAt: descriptor.knownAt }} source={descriptor.source} records={records} instrument={instrument} located={located} eventsAvailable={eventsAvailable} assetsReady={assetsReady} />
+      {eventsAvailable && <SpatialKeys corpus={corpus} releaseId={release.releaseId} />}
     </>
   );
 }

@@ -215,16 +215,45 @@ export function ProductionPath({ enabled, demo, definition, sourceTemplate, purp
   const [censusBuild, setCensusBuild] = useState<Continuation>(enabled ? { status: 'LOADING' } : { status: 'UNAVAILABLE' });
   const [copied, setCopied] = useState('');
   const pastedField = useRef<HTMLTextAreaElement>(null);
+  const catalogRefresh = useRef<Promise<void> | null>(null);
+  const catalogRefreshRequested = useRef(false);
+  const catalogMounted = useRef(true);
   const mode: 'LOCAL' | 'FIXTURE' = enabled && catalog.status !== 'DISABLED' ? 'LOCAL' : 'FIXTURE';
 
-  const refreshCatalog = useCallback(async () => {
-    try {
-      const response = await send('/api/production', { cache: 'no-store' });
-      const body = await response.json().catch(() => null) as Catalog | Availability | ProductionErrorBody | null;
-      if (!response.ok) { const error = (body as ProductionErrorBody | null)?.error; setCatalog({ status: 'ERROR', code: error?.code ?? `HTTP_${response.status}`, message: error?.message ?? 'The rail did not answer.' }); return; }
-      if (body && 'enabled' in body && body.enabled === false) { setCatalog({ status: 'DISABLED' }); return; }
-      if (body && body.schema === 'payload.production-catalog.v1') setCatalog({ status: 'READY', catalog: body });
-    } catch { setCatalog({ status: 'ERROR', code: 'UNREACHABLE', message: 'The rail could not be reached on this origin.' }); }
+  useEffect(() => {
+    catalogMounted.current = true;
+    return () => { catalogMounted.current = false; catalogRefreshRequested.current = false; };
+  }, []);
+
+  const refreshCatalog = useCallback(() => {
+    // Catalog inspection occupies a real worker too. Coalesce refreshes from
+    // successive commands so our own reads cannot fill both execution slots.
+    // Keep one trailing read: an in-flight snapshot may precede a newer receipt.
+    if (!catalogMounted.current) return Promise.resolve();
+    catalogRefreshRequested.current = true;
+    if (catalogRefresh.current) return catalogRefresh.current;
+    const read = async () => {
+      try {
+        do {
+          catalogRefreshRequested.current = false;
+          try {
+            const response = await send('/api/production', { cache: 'no-store' });
+            const body = await response.json().catch(() => null) as Catalog | Availability | ProductionErrorBody | null;
+            if (!catalogMounted.current) return;
+            if (!response.ok) { const error = (body as ProductionErrorBody | null)?.error; setCatalog({ status: 'ERROR', code: error?.code ?? `HTTP_${response.status}`, message: error?.message ?? 'The rail did not answer.' }); }
+            else if (body && 'enabled' in body && body.enabled === false) setCatalog({ status: 'DISABLED' });
+            else if (body && body.schema === 'payload.production-catalog.v1') setCatalog({ status: 'READY', catalog: body });
+          } catch { if (catalogMounted.current) setCatalog({ status: 'ERROR', code: 'UNREACHABLE', message: 'The rail could not be reached on this origin.' }); }
+        } while (catalogRefreshRequested.current && catalogMounted.current);
+      } finally {
+        // Clear in the same turn as the final pending check, not a later
+        // Promise.finally microtask that could swallow a new refresh request.
+        catalogRefresh.current = null;
+      }
+    };
+    // Install the reservation before read() can settle, even for a sync throw.
+    catalogRefresh.current = Promise.resolve().then(read);
+    return catalogRefresh.current;
   }, [send]);
 
   useEffect(() => {

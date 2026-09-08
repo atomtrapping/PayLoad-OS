@@ -39,6 +39,8 @@ export interface EarthTwinProps {
    * draws them and can select them, and has no path from any of it to a write.
    */
   located: LocatedReading[];
+  /** False means the event layer was not evaluated, not that no events exist. */
+  eventsAvailable?: boolean;
   /** Whether the local engine asset package passed verification (scripts/earth-assets.mjs). */
   assetsReady: boolean;
   /** How the engine is obtained; the default loads its prebuilt module from this origin. Tests inject a fake. */
@@ -308,7 +310,7 @@ function readView(Cesium: CesiumModule, viewer: Viewer): TwinView {
  * what it does not do. Nothing here fetches from anywhere but this origin;
  * nothing here invents a position.
  */
-export function EarthTwin({ release, source, records, instrument, located, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
+export function EarthTwin({ release, source, records, instrument, located, eventsAvailable = true, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
   const container = useRef<HTMLDivElement>(null);
   const credits = useRef<HTMLDivElement>(null);
   const engine = useRef<EngineInstance | null>(null);
@@ -630,7 +632,7 @@ export function EarthTwin({ release, source, records, instrument, located, asset
           <span className="pill text-[10px] px-1.5" data-testid="twin-status" data-state={status.state} style={{ color: status.state === 'READY' ? 'var(--check-passed)' : status.state === 'LOADING' ? 'var(--status-pending)' : 'var(--status-refused)', borderColor: 'currentColor' }}>{status.state}</span>
           <span className="mono text-[11px]" style={faint} data-k="WORLD">{fmtUtc(clock.validAt, { seconds: true })}</span>
           <span className="mono text-[11px]" style={faint} data-k="PLACED" data-testid="earth-placed" data-count={Object.keys(placements).length}>{Object.keys(placements).length}</span>
-          <span className="mono text-[11px]" style={faint} data-k="EVENTS" data-testid="earth-events" data-count={placedEvents}>{placedEvents}</span>
+          <span className="mono text-[11px]" style={faint} data-k="EVENTS" data-testid="earth-events" data-count={eventsAvailable ? placedEvents : undefined}>{eventsAvailable ? placedEvents : 'NOT_EVALUATED'}</span>
         </div>
         {status.state === 'UNAVAILABLE' && (
           <div className="earth-unavailable" role="alert" data-testid="earth-unavailable">
@@ -789,8 +791,8 @@ export function EarthTwin({ release, source, records, instrument, located, asset
             )}
           </Part>
 
-          <Part title="Events on the globe" testId="earth-events-panel" right={`${placedEvents} placed, ${located.length - placedEvents} listed`}>
-            <p className="m-0 text-[12px]" style={muted}>The ledger’s own events and the drafted specimen headlines, each met by the corpus at its coordinates. A marker’s colour is where the corpus stands beside the claim now; a conflict is drawn loud.</p>
+          <Part title="Events on the globe" testId="earth-events-panel" right={eventsAvailable ? `${placedEvents} placed, ${located.length - placedEvents} listed` : 'NOT_EVALUATED'}>
+            <p className="m-0 text-[12px]" style={muted}>{eventsAvailable ? 'The ledger’s own events and the drafted specimen headlines, each met by the corpus at its coordinates. A marker’s colour is where the corpus stands beside the claim now; a conflict is drawn loud.' : 'Event and headline layers have not been evaluated for this exact-release scope. An empty display does not establish the absence of events. Use the record picker for permitted spatial observations.'}</p>
             <ul className="m-0 p-0 list-none flex flex-col gap-0.5 text-[12px]" aria-label="Located events" data-testid="event-list">
               {located.map((entry) => {
                 const id = locatedId(entry);

@@ -1,36 +1,18 @@
 import { defineConfig } from "drizzle-kit";
 import * as dotenv from "dotenv";
+import { databaseConfig } from './config';
 
 dotenv.config();
 
-const sqlHost = process.env.SQL_HOST;
-const sqlDbName = process.env.SQL_DB_NAME;
-const user = process.env.SQL_ADMIN_USER;
-const password = process.env.SQL_ADMIN_PASSWORD;
-
-if (!sqlHost) {
-  throw new Error("SQL_HOST must be set in environment variables.");
-}
-if (!sqlDbName) {
-  throw new Error("SQL_DB_NAME must be set in environment variables.");
-}
-if (!user) {
-  throw new Error("SQL_ADMIN_USER must be set in environment variables.");
-}
-if (!password) {
-  throw new Error("SQL_ADMIN_PASSWORD must be set in environment variables.");
-}
+// A migration operator may supply admin fields explicitly. URL configuration
+// otherwise follows the same precedence and validation as runtime access.
+const config = databaseConfig({ ...process.env, SQL_USER: process.env.SQL_ADMIN_USER || process.env.SQL_USER, SQL_PASSWORD: process.env.SQL_ADMIN_PASSWORD ?? process.env.SQL_PASSWORD });
+if (!config) throw new Error('DATABASE_NOT_CONFIGURED');
 
 export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./src/db/drizzle",
   dialect: "postgresql",
   schemaFilter: ["public"],
-  dbCredentials: {
-    host: sqlHost,
-    user: user,
-    password: password,
-    database: sqlDbName,
-    ssl: false,
-  },
+  dbCredentials: 'connectionString' in config ? { url: config.connectionString } : { host: config.host, user: config.user, password: config.password, database: config.database, port: config.port },
 });

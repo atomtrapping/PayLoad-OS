@@ -1,206 +1,278 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { currentRelease, releaseRecords } from './corpus';
-import {
-  buildSlice,
-  CATALOG_LOSS,
-  CORRECTION_RATE_GATE,
-  gradeFrom,
-  type SliceSpec,
-} from './catalogSlice';
+import { buildSlice, CATALOG_LOSS, CORRECTION_RATE_GATE, gradeFrom, type CatalogCorpus, type SliceSpec } from './catalogSlice';
+import { authorizeCatalogExport, catalogDigest, type CatalogVerification, type CatalogVerificationRequest, type CatalogVerifier } from './catalogAuthorization';
 
 const release = currentRelease(CARAVAN_CORPUS);
-const SPEC: SliceSpec = {
-  sliceId: 'caravan-lot-state-2026-09',
-  title: 'Caravan lot state',
-  question: 'What quantity and condition were recorded for these lots, by whom, and as knowable when?',
-  releaseId: release.releaseId,
-};
+const SPEC: SliceSpec = { sliceId: 'catalog-test', title: 'Catalog test', question: 'Which observations are in the selected version?', releaseId: release.releaseId };
+const NOW = '2026-09-08T12:00:00.000Z';
+const CONTEXT = { recipientId: 'test-recipient', purpose: 'CATALOG_TEST', operation: 'EXPORT', audience: 'CUSTOMER' } as const;
+const h = (label: string) => catalogDigest({ test: label });
 
-type Grade = Parameters<typeof buildSlice>[2];
+/** A test-only corpus/service pair. No real admission, provider grant or export. */
+function eligible(): CatalogCorpus {
+  const c: CatalogCorpus = structuredClone(CARAVAN_CORPUS);
+  c.fixture_only = false;
+  for (const record of c.records) record.visibility = 'COUNTERPARTY_SHARED';
+  for (const r of c.releases) {
+    r.fixture_only = false;
+    for (const source of r.sources) source.registration = {
+      ...source.registration, effectiveFrom: '2020-01-01T00:00:00.000Z', effectiveUntil: '2030-01-01T00:00:00.000Z',
+      permittedPurposes: ['CATALOG_TEST'], prohibitedPurposes: [], allowedOperations: ['EXPORT'],
+      allowedAudiences: ['CUSTOMER'], approvalRequiredOperations: [], retention: { mode: 'INDEFINITE' },
+    };
+  }
+  return c;
+}
 
-/** The manifest, whether or not the slice was cut. A reader is entitled to it either way. */
-const described = (spec: Partial<SliceSpec> = {}, grade: Grade = 'DEMONSTRATION') => {
-  const built = buildSlice(CARAVAN_CORPUS, { ...SPEC, ...spec }, grade);
-  // `records` is the discriminant; a manifest survives a refusal but not a
-  // missing release.
-  if (built.records === null && built.manifest === null) throw new Error(built.because);
-  return built.manifest!;
-};
+function verified(request: CatalogVerificationRequest): CatalogVerification {
+  return {
+    schema: 'notationsos.catalog-verification.v1', requestDigest: catalogDigest(request), verifiedAt: request.requestedAt,
+    authorityId: 'isolated-test-verifier',
+    records: request.records.map((r) => ({ recordId: r.recordId, recordDigest: r.recordDigest,
+      state: 'VERIFIED_ADMITTED', provenance: 'LIVE_CAPTURE', rulingDigest: h(r.recordId) })),
+    sources: request.sources.map((s) => ({ sourceId: s.sourceId, policyDigest: s.policyDigest, state: 'CURRENT', grantDigest: h(s.sourceId) })),
+    recipientGrant: { grantId: 'test-only-grant', grantDigest: h('test-only-grant'), ...request.context,
+      notBefore: '2026-09-01T00:00:00.000Z', notAfter: '2026-10-01T00:00:00.000Z',
+      releaseCommitment: request.releaseCommitment, recordsCommitment: request.recordsCommitment,
+      conditions: ['Test attribution condition; no actual provider permission.'] },
+  };
+}
+function service(change: (v: CatalogVerification, request: CatalogVerificationRequest) => unknown = (v) => v): CatalogVerifier {
+  return { now: () => NOW, verify: (request) => change(verified(request), request) };
+}
+function attempt(corpus = eligible(), spec = SPEC, verifier = service(), context: unknown = CONTEXT) {
+  return buildSlice(corpus, spec, 'UNKNOWN', { context, verifier });
+}
+function preview(corpus: CatalogCorpus = CARAVAN_CORPUS, spec: SliceSpec = SPEC) {
+  const result = buildSlice(corpus, spec, 'UNKNOWN');
+  if (!result.manifest) throw new Error('Expected described preview');
+  return result.manifest;
+}
+function refused(result: ReturnType<typeof buildSlice>, reason: string) {
+  expect(result.records).toBeNull();
+  expect(result.manifest?.readiness).toBe('NOT_FOR_SALE');
+  expect(result.manifest?.authorization.reasons).toContain(reason);
+}
 
-/** A cut that may be shipped. Reaching it at all requires a sellable manifest. */
-const cut = (spec: Partial<SliceSpec> = {}, grade: Grade = 'ADMITTED') => {
-  const built = buildSlice(CARAVAN_CORPUS, { ...SPEC, ...spec }, grade);
-  if (built.records === null) throw new Error(built.because);
-  return built;
-};
-
-describe('the manifest is derived from the records, not written beside them', () => {
-  it('counts what the bounds actually selected', () => {
-    const all = cut();
-    expect(all.manifest.recordCount).toBe(releaseRecords(CARAVAN_CORPUS, release).length);
-    expect(all.records).toHaveLength(all.manifest.recordCount);
-    expect(all.excluded).toBe(0);
+describe('content-addressed catalogue descriptions', () => {
+  it('preserves the existing UI preview, counts and coverage', () => {
+    const p = preview();
+    expect(p.schema).toBe('notationsos.catalog-slice.v2');
+    expect(p.readiness).toBe('NOT_FOR_SALE');
+    expect(p.recordCount).toBe(releaseRecords(CARAVAN_CORPUS, release).length);
+    expect(p.coverage.reduce((n, c) => n + c.records, 0)).toBe(p.recordCount);
+    expect(p.evidence.reduce((n, e) => n + e.records, 0)).toBe(p.recordCount);
+    expect(p.release.knowledgeCutoff).toBe(release.knownAt);
+    expect(p.release.declaredManifestCommitment).toBe(release.certification.manifestCommitment);
+    expect(p.bounds).toEqual({ predicates: 'UNBOUNDED', subjectTypes: 'UNBOUNDED' });
   });
+  it('binds complete record contents, not only counts and evidence classes', () => {
+    const c = structuredClone(CARAVAN_CORPUS);
+    const before = preview(c);
+    c.records[0].value = 'changed without changing the histogram';
+    const after = preview(c);
+    expect(after.coverage).toEqual(before.coverage);
+    expect(after.evidence).toEqual(before.evidence);
+    expect(after.digest).not.toBe(before.digest);
+    expect(after.recordsCommitment).not.toBe(before.recordsCommitment);
+    expect(after.release.contentCommitment).not.toBe(before.release.contentCommitment);
+  });
+  it.each(['unit', 'basis', 'title'] as const)('binds changed %s', (field) => {
+    const c = structuredClone(CARAVAN_CORPUS);
+    c.records[0][field] = 'changed';
+    expect(preview(c).digest).not.toBe(preview().digest);
+  });
+  it('binds declared release certification and correction contents', () => {
+    const c = structuredClone(CARAVAN_CORPUS);
+    c.releases.find((r) => r.releaseId === SPEC.releaseId)!.certification.manifestCommitment = h('other release');
+    expect(preview(c).digest).not.toBe(preview().digest);
+    c.retractions[0].reason = 'a different correction basis';
+    expect(preview(c).release.contentCommitment).not.toBe(preview().release.contentCommitment);
+  });
+  it('normalizes row order, object-key order and set-valued bounds', () => {
+    const c = structuredClone(CARAVAN_CORPUS);
+    c.records.reverse(); c.retractions.reverse();
+    c.records[0] = Object.fromEntries(Object.entries(c.records[0]).reverse()) as typeof c.records[number];
+    expect(preview(c).digest).toBe(preview().digest);
+    const a = preview(c, { ...SPEC, predicates: ['quantity.gross', 'condition.moisture'] });
+    const b = preview(c, { ...SPEC, predicates: ['condition.moisture', 'quantity.gross'] });
+    expect(a.digest).toBe(b.digest);
+  });
+  it('digests the entire manifest except the digest itself', () => {
+    const { digest, ...body } = preview();
+    expect(catalogDigest(body)).toBe(digest);
+  });
+  it('keeps unusual JSON property names in the content commitment', () => {
+    const value = JSON.parse('{"__proto__":{"a":1}}');
+    expect(catalogDigest(value)).not.toBe(catalogDigest({}));
+    expect(catalogDigest({ b: 2, a: 1 })).toBe(catalogDigest({ a: 1, b: 2 }));
+  });
+  it.each([NaN, Infinity, undefined, [undefined], new Array(1), new Date(NOW)])('refuses values JSON would lose or reinterpret', (value) => {
+    expect(() => catalogDigest(value)).toThrow();
+  });
+  it('does not evaluate accessor properties while committing content', () => {
+    const getter = vi.fn(() => 'changed');
+    const value = Object.defineProperty({}, 'field', { get: getter, enumerable: true });
+    expect(() => catalogDigest(value)).toThrow();
+    expect(getter).not.toHaveBeenCalled();
+  });
+  it('keeps the record-rate threshold and coverage limits', () => {
+    const p = preview();
+    expect(p.corrections.corrections + p.corrections.withdrawals).toBeGreaterThan(0);
+    expect(p.corrections.ratePerRecord).toBe('NOT_PRICEABLE');
+    expect(CORRECTION_RATE_GATE.minimumRecords).toBeGreaterThan(p.recordCount);
+    expect(p.loss.join(' ')).toContain('not a claim about the world');
+    expect(CATALOG_LOSS.join(' ')).toContain('UNKNOWN does not sell');
+  });
+});
 
-  it('reports coverage per predicate, with the subjects each reaches', () => {
-    const manifest = described();
-    expect(manifest.coverage.length).toBeGreaterThan(0);
-    for (const entry of manifest.coverage) {
-      expect(entry.records).toBeGreaterThan(0);
-      expect(entry.subjects).toBeGreaterThan(0);
-      expect(entry.subjects).toBeLessThanOrEqual(entry.records);
+describe('a grade or count grants no sale authority', () => {
+  it.each(['ADMITTED', 'UNKNOWN', 'DEMONSTRATION'] as const)('keeps a %s caller declaration unshippable', (grade) => {
+    const result = buildSlice(eligible(), SPEC, grade);
+    expect(result.records).toBeNull();
+    expect(result.manifest?.readiness).toBe('NOT_FOR_SALE');
+  });
+  it.each([0, 1, 1_000_000, 'UNKNOWN'] as const)('cannot infer member admission from count %s', (count) => {
+    expect(gradeFrom(count)).toBe('UNKNOWN');
+  });
+  it('refuses fixture-origin material even if a test verifier would accept it', () => {
+    const verify = vi.fn();
+    refused(buildSlice(CARAVAN_CORPUS, SPEC, 'ADMITTED', { context: CONTEXT, verifier: { now: () => NOW, verify } }), 'DEMONSTRATION_NOT_EXPORTABLE');
+    expect(verify).not.toHaveBeenCalled();
+  });
+  it('keeps the default verifier unavailable', () => {
+    refused(buildSlice(eligible(), SPEC, 'ADMITTED', { context: CONTEXT }), 'VERIFIER_UNAVAILABLE');
+  });
+  it('does not accept an approval object as the trusted service', () => {
+    refused(buildSlice(eligible(), SPEC, 'ADMITTED', { context: CONTEXT, verifier: { state: 'ADMITTED' } as unknown as CatalogVerifier }), 'VERIFIER_UNAVAILABLE');
+  });
+});
+
+describe('an exact injected verifier and current export context', () => {
+  it('cuts exact sorted records only with complete successful verification', () => {
+    const c = eligible();
+    const result = attempt(c, { ...SPEC, predicates: ['quantity.gross'] });
+    expect(result.records).not.toBeNull();
+    if (result.records === null) throw new Error(result.because);
+    expect(result.records.every((r) => r.predicate === 'quantity.gross')).toBe(true);
+    expect(result.records.map((r) => r.recordId)).toEqual(result.records.map((r) => r.recordId).sort());
+    expect(catalogDigest(result.records)).toBe(result.manifest.recordsCommitment);
+    expect(result.excluded).toBeGreaterThan(0);
+    expect(result.manifest.authorization.state).toBe('VERIFIED');
+    expect(result.manifest.authorization.context).toEqual(CONTEXT);
+    expect(result.manifest.authorization.conditions).toHaveLength(1);
+    c.records[0].value = 'mutated after return';
+    expect(catalogDigest(result.records)).toBe(result.manifest.recordsCommitment);
+  });
+  it('gives the verifier a detached request', () => {
+    const result = attempt(eligible(), SPEC, service((v, request) => { request.records[0].recordId = 'changed'; return v; }));
+    expect(result.manifest?.authorization.state).toBe('VERIFIED');
+  });
+  it.each(['UNVERIFIED', 'REFUSED'] as const)('refuses a mixed set containing %s admission', (state) => {
+    refused(attempt(eligible(), SPEC, service((v) => { v.records[0].state = state; return v; })), 'RECORD_NOT_VERIFIED_ADMITTED');
+  });
+  it('refuses a mixed demonstration record', () => {
+    refused(attempt(eligible(), SPEC, service((v) => { v.records[0].provenance = 'DEMONSTRATION'; return v; })), 'RECORD_NOT_VERIFIED_ADMITTED');
+  });
+  it.each(['missing', 'duplicate', 'extra'] as const)('refuses %s admission references', (kind) => {
+    refused(attempt(eligible(), SPEC, service((v) => {
+      if (kind === 'missing') v.records.pop();
+      if (kind === 'duplicate') v.records[0] = v.records[1];
+      if (kind === 'extra') v.records.push({ ...v.records[0], recordId: 'unselected' });
+      return v;
+    })), 'RECORD_COVERAGE_MISMATCH');
+  });
+  it('refuses a stale record digest despite unchanged record ID', () => {
+    refused(attempt(eligible(), SPEC, service((v) => { v.records[0].recordDigest = h('old record'); return v; })), 'RECORD_REFERENCE_MISMATCH');
+  });
+  it('refuses a proof captured before a record mutation', () => {
+    const c = eligible(); let previous: CatalogVerification;
+    attempt(c, SPEC, service((v) => { previous = v; return v; }));
+    c.records[0].value = 'new value';
+    refused(attempt(c, SPEC, service(() => previous)), 'STALE_OR_MISMATCHED_VERIFICATION');
+  });
+  it('refuses a proof for the wrong verification instant', () => {
+    refused(attempt(eligible(), SPEC, service((v) => { v.verifiedAt = '2026-09-07T12:00:00.000Z'; return v; })), 'STALE_OR_MISMATCHED_VERIFICATION');
+  });
+  it.each(['REVOKED', 'UNVERIFIED'] as const)('refuses a %s source grant', (state) => {
+    refused(attempt(eligible(), SPEC, service((v) => { v.sources[0].state = state; return v; })), 'CURRENT_SOURCE_GRANT_UNVERIFIED');
+  });
+  it('refuses an unrelated source-policy digest', () => {
+    refused(attempt(eligible(), SPEC, service((v) => { v.sources[0].policyDigest = h('old policy'); return v; })), 'SOURCE_REFERENCE_MISMATCH');
+  });
+  it.each(['expired', 'denied', 'purpose', 'audience', 'approval'] as const)('evaluates source policy at export: %s', (kind) => {
+    const c = eligible();
+    for (const source of c.releases.find((r) => r.releaseId === SPEC.releaseId)!.sources) {
+      const p = source.registration;
+      if (kind === 'expired') p.effectiveUntil = NOW;
+      if (kind === 'denied') p.allowedOperations = ['INGEST'];
+      if (kind === 'purpose') p.permittedPurposes = ['qualification-only'];
+      if (kind === 'audience') p.allowedAudiences = ['INTERNAL'];
+      if (kind === 'approval') { p.allowedOperations = []; p.approvalRequiredOperations = ['EXPORT']; }
     }
-    expect(manifest.coverage.reduce((total, entry) => total + entry.records, 0)).toBe(manifest.recordCount);
+    refused(attempt(c), 'SOURCE_EXPORT_NOT_ALLOWED');
   });
-
-  it('censuses the evidence classes rather than summarising them into one word', () => {
-    const manifest = described();
-    expect(manifest.evidence.length).toBeGreaterThan(1);
-    expect(manifest.evidence.reduce((total, entry) => total + entry.records, 0)).toBe(manifest.recordCount);
-    for (const entry of manifest.evidence) {
-      expect(entry.productionClass).toBeTruthy();
-      expect(entry.claimStrength).toBeTruthy();
-      expect(entry.interest).toBeTruthy();
+  it('checks finite retention independently from the policy effective window', () => {
+    const c = eligible();
+    for (const source of c.releases.find((r) => r.releaseId === SPEC.releaseId)!.sources) source.registration.retention = { mode: 'UNTIL', until: NOW };
+    refused(attempt(c), 'SOURCE_RETENTION_EXPIRED');
+  });
+  it('refuses source-expiry retention whose expiry is unresolved', () => {
+    const c = eligible();
+    for (const source of c.releases.find((r) => r.releaseId === SPEC.releaseId)!.sources) {
+      source.registration.retention = { mode: 'UNTIL_SOURCE_EXPIRY' };
+      delete source.registration.effectiveUntil;
     }
+    refused(attempt(c), 'SOURCE_RETENTION_UNRESOLVED');
   });
-
-  it('digests its own derived content, so a changed extract cannot reuse a manifest', () => {
-    const wide = described();
-    const narrow = described({ predicates: ['quantity.gross'] });
-    expect(wide.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(wide.digest).not.toBe(narrow.digest);
-    expect(described().digest).toBe(wide.digest);
+  it.each(['recipientId', 'purpose', 'releaseCommitment', 'recordsCommitment'] as const)('requires the recipient grant to bind %s', (field) => {
+    refused(attempt(eligible(), SPEC, service((v) => {
+      v.recipientGrant[field] = field.endsWith('Commitment') ? h('other') : 'other'; return v;
+    })), 'RECIPIENT_GRANT_MISMATCH');
   });
-});
-
-describe('bounds are stated, including their absence', () => {
-  it('says UNBOUNDED rather than leaving an axis to be assumed', () => {
-    const manifest = described();
-    expect(manifest.bounds.subjectTypes).toBe('UNBOUNDED');
-    expect(manifest.bounds.predicates).toBe('UNBOUNDED');
+  it('refuses an expired recipient agreement', () => {
+    refused(attempt(eligible(), SPEC, service((v) => { v.recipientGrant.notAfter = NOW; return v; })), 'RECIPIENT_GRANT_OUTSIDE_WINDOW');
   });
-
-  it('carries the bounds it was given and counts what they excluded', () => {
-    const narrow = cut({ predicates: ['quantity.gross'] });
-    expect(narrow.manifest.bounds.predicates).toEqual(['quantity.gross']);
-    expect(narrow.manifest.coverage.every((entry) => entry.predicate === 'quantity.gross')).toBe(true);
-    expect(narrow.excluded).toBeGreaterThan(0);
-    expect(narrow.manifest.recordCount + narrow.excluded).toBe(described().recordCount);
-  });
-
-  it('names the release and its cutoff, because an extract without one has no vintage', () => {
-    const manifest = described();
-    expect(manifest.release.releaseId).toBe(release.releaseId);
-    expect(manifest.release.knowledgeCutoff).toBe(release.knownAt);
-  });
-
-  it('refuses a release the corpus does not carry', () => {
-    const built = buildSlice(CARAVAN_CORPUS, { ...SPEC, releaseId: 'REL-NOT-A-RELEASE' }, 'ADMITTED');
-    if (built.records !== null) throw new Error('a slice over a release the corpus does not carry should refuse');
-    expect(built.manifest).toBeNull();
-    expect(built.because).toContain('no cutoff and therefore no vintage');
+  it('refuses private records even with an accepting verifier', () => {
+    const c = eligible(); c.records[0].visibility = 'INTERNAL_ONLY';
+    refused(attempt(c), 'RECORD_VISIBILITY_NOT_EXPORTABLE');
   });
 });
 
-describe('what a manifest may not assert', () => {
-  /** A Corpus value carries no admission status, so the grade is an argument. */
-  it('will not sell demonstration records as the corpus', () => {
-    const manifest = described({}, 'DEMONSTRATION');
-    expect(manifest.readiness).toBe('NOT_FOR_SALE');
-    expect(manifest.because).toContain('selling the demonstration as the corpus');
+describe('bounded, closed validation and refusal without records', () => {
+  it('does not verify an empty or extra-field selection even when called directly', () => {
+    const verifier = { now: () => NOW, verify: vi.fn() };
+    const selection = { sliceId: 'test', corpusId: 'test', releaseId: 'test', releaseCommitment: h('release'), recordsCommitment: h('records'), records: [], sources: [] };
+    expect(authorizeCatalogExport(selection, CONTEXT, verifier).reasons).toEqual(['INVALID_EXPORT_SELECTION']);
+    expect(authorizeCatalogExport({ ...selection, approved: true } as typeof selection, CONTEXT, verifier).state).toBe('REFUSED');
+    expect(verifier.verify).not.toHaveBeenCalled();
   });
-
-  it('will not sell an unchecked grade either, for the reason an unreadable count is not a zero', () => {
-    const manifest = described({}, 'UNKNOWN');
-    expect(manifest.readiness).toBe('NOT_FOR_SALE');
-    expect(manifest.because).toContain('an unchecked grade is not an admitted one');
+  it.each([{ ...CONTEXT, requestedAt: NOW }, { ...CONTEXT, operation: 'PUBLISH' }, { ...CONTEXT, recipientId: '' }, { ...CONTEXT, audience: 'PUBLIC' }])('refuses an invalid export context', (context) => {
+    refused(attempt(eligible(), SPEC, service(), context), 'INVALID_EXPORT_CONTEXT');
   });
-
-  it('sells only what crossed the gate', () => {
-    expect(described({}, 'ADMITTED').readiness).toBe('SELLABLE');
+  it.each(['unknown field', 'throw', 'bad clock'] as const)('refuses unavailable or malformed verification: %s', (mode) => {
+    const verifier = service((v) => mode === 'unknown field' ? { ...v, approved: true } : (() => { throw new Error('private service diagnostic'); })());
+    if (mode === 'bad clock') verifier.now = () => 'not a clock';
+    const result = attempt(eligible(), SPEC, verifier);
+    refused(result, 'VERIFICATION_UNAVAILABLE_OR_INVALID');
+    expect(JSON.stringify(result)).not.toContain('private service diagnostic');
   });
-
-  it('refuses an empty extract rather than shipping a manifest describing nothing', () => {
-    const empty = described({ predicates: ['predicate.that.does.not.exist'] }, 'ADMITTED');
-    expect(empty.recordCount).toBe(0);
-    expect(empty.readiness).toBe('NOT_FOR_SALE');
-    expect(empty.because).toContain('An empty extract is not a product');
+  it.each([{ predicates: [] }, { predicates: ['x', 'x'] }, { question: '' }, { extra: true }])('refuses invalid specification', (patch) => {
+    const result = buildSlice(eligible(), { ...SPEC, ...patch } as SliceSpec, 'ADMITTED');
+    expect(result.records).toBeNull(); expect(result.manifest).toBeNull();
   });
-
-  /** The gate already used for exposure, applied to the same mistake here. */
-  it('counts corrections at every size and refuses a rate below the gate', () => {
-    const manifest = described();
-    expect(manifest.corrections.corrections + manifest.corrections.withdrawals).toBeGreaterThan(0);
-    expect(manifest.corrections.ratePerRecord).toBe('NOT_PRICEABLE');
-    expect(manifest.corrections.because).toContain('would be multiplied by a real portfolio');
-    expect(CORRECTION_RATE_GATE.minimumRecords).toBeGreaterThan(CARAVAN_CORPUS.records.length);
+  it.each(['duplicate record', 'duplicate release', 'nonfinite', 'wrong corpus'] as const)('refuses ambiguous/lossy input: %s', (kind) => {
+    const c = eligible();
+    if (kind === 'duplicate record') c.records.push(c.records[0]);
+    if (kind === 'duplicate release') c.releases.push(c.releases[0]);
+    if (kind === 'nonfinite') c.records[0].value = NaN;
+    if (kind === 'wrong corpus') c.releases.find((r) => r.releaseId === SPEC.releaseId)!.corpusId = 'other-corpus';
+    const result = attempt(c); expect(result.records).toBeNull(); expect(result.manifest).toBeNull();
   });
-
-  it('states that coverage is not completeness', () => {
-    const manifest = described();
-    expect(manifest.loss.join(' ')).toContain('not a claim about the world');
-    expect(manifest.loss.join(' ')).toContain('never that they are true');
-  });
-});
-
-describe('an unsellable slice is described and not cut', () => {
-  /**
-   * The boundary the whole posture rests on. `admittedRow` settled this shape
-   * one layer down: a refusal never yields a row, and no caller can obtain one
-   * by ignoring an outcome it did not like.
-   */
-  it('returns no records at all when the manifest is not sellable', () => {
-    for (const grade of ['DEMONSTRATION', 'UNKNOWN'] as const) {
-      const built = buildSlice(CARAVAN_CORPUS, SPEC, grade);
-      expect(built.records, grade).toBeNull();
-      expect(built.manifest, `${grade} should still be described`).not.toBeNull();
-      expect(built.manifest!.readiness).toBe('NOT_FOR_SALE');
-    }
-  });
-
-  it('keeps the description, so a reader sees what the extract would have been', () => {
-    const built = buildSlice(CARAVAN_CORPUS, SPEC, 'DEMONSTRATION');
-    if (built.records !== null) throw new Error('a demonstration slice must not be cut');
-    expect(built.manifest!.recordCount).toBeGreaterThan(0);
-    expect(built.manifest!.coverage.length).toBeGreaterThan(0);
-    expect(built.because).toContain('Described and not cut');
-  });
-
-  it('yields records only when the manifest is sellable', () => {
-    const built = buildSlice(CARAVAN_CORPUS, SPEC, 'ADMITTED');
-    expect(built.records).not.toBeNull();
-    expect(built.manifest!.readiness).toBe('SELLABLE');
-  });
-
-  it('cuts nothing from an empty extract even at an admitted grade', () => {
-    const built = buildSlice(CARAVAN_CORPUS, { ...SPEC, predicates: ['predicate.that.does.not.exist'] }, 'ADMITTED');
-    expect(built.records).toBeNull();
-  });
-
-  it('says so in the loss, so the boundary is not only in the types', () => {
-    expect(described().loss.join(' ')).toContain('described and not cut');
-  });
-});
-
-describe('the grade comes from the count, and carries its unknown through', () => {
-  it('maps an admitted count to a grade and an unreadable one to UNKNOWN', () => {
-    expect(gradeFrom(3)).toBe('ADMITTED');
-    expect(gradeFrom(0)).toBe('DEMONSTRATION');
-    expect(gradeFrom('UNKNOWN')).toBe('UNKNOWN');
-  });
-
-  it('is the same three-valued rule the compression derivation uses', () => {
-    expect(described({}, gradeFrom('UNKNOWN')).admissionGrade).toBe('UNKNOWN');
-    expect(described({}, gradeFrom(0)).admissionGrade).toBe('DEMONSTRATION');
-  });
-
-  it('states the four things a closed catalog must not do', () => {
-    expect(CATALOG_LOSS).toHaveLength(4);
-    const joined = CATALOG_LOSS.join(' ');
-    expect(joined).toContain('derived from the records it describes');
-    expect(joined).toContain('UNKNOWN does not sell');
-    expect(joined).toContain('refused below a stated gate');
-    expect(joined).toContain('Coverage is not completeness');
+  it('refuses an absent release and an empty selection', () => {
+    expect(attempt(eligible(), { ...SPEC, releaseId: 'absent' }).manifest).toBeNull();
+    refused(attempt(eligible(), { ...SPEC, predicates: ['absent'] }), 'EMPTY_SELECTION');
   });
 });

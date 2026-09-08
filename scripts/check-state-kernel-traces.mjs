@@ -14,7 +14,7 @@ for (const route of [...['state-kernel/route', 'state-kernel/preview/route', 'st
       (path.startsWith('native/state-kernel/target/') && !/^native\/state-kernel\/target\/debug\/notations-state-kernel(?:\.exe)?$/.test(path)) ||
       // Test and tooling source is not a deployment asset either.
       /\.(?:test|spec)\.tsx?$/.test(path) || /^(?:tests|clients)\//.test(path) ||
-      path === 'tsconfig.tsbuildinfo' || path === 'package-lock.json' || path === 'bun.lock';
+      path === 'tsconfig.tsbuildinfo' || path === 'package-lock.json';
   });
   if (forbidden) throw new Error(`${route} traced unrelated local state, test or compiler files. Do not distribute this build.`);
 }

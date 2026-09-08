@@ -23,36 +23,28 @@ import { DOMAINS } from '@/domain/domains';
  *
  * ROUTES THAT HONOUR THE SCOPE
  *
- * Only the corpus surfaces read `?domain=`, so only they light the control.
- * On one of those the control scopes the page you are on — choosing a line on
- * the globe shows that line's positions on the globe, not its release table.
- * Everywhere else the links still work and take you to that line's releases,
- * and nothing is drawn as pressed, because nothing on that page is scoped to a
- * line and a lit control would claim otherwise.
+ * Corpus history surfaces read `?domain=`. The dedicated Landshark and
+ * Tradewind desks have a fixed scope and switch directly between desks.
+ * Other pages remain unscoped and link to each line's release history.
  */
-export const SCOPED_ROUTES: readonly string[] = ['/releases', '/retractions', '/earth'];
+export const SCOPED_ROUTES: readonly string[] = ['/releases', '/retractions'];
 
 /** The frame with no scope read: what renders before the URL is known. */
-export function VerticalContextFrame({ active, on = '/releases' }: { active?: Domain; on?: string }) {
+export function VerticalContextFrame({ active, desks = false }: { active?: Domain; desks?: boolean }) {
   return (
-    <div className="shrink-0 flex items-center gap-1" role="group" aria-label="Product" data-testid="product-control">
-      <span className="label-sm hidden md:inline mr-1">Product</span>
+    <div className="terminal-products" role="group" aria-label="Product" data-testid="product-control">
+      <span className="terminal-products-label">Product</span>
       {DOMAINS.map((d) => {
-        const scoped = d.id === active;
+        const on = d.id === active;
         return (
           <Link
             key={d.id}
-            href={`${on}?domain=${d.id}`}
-            aria-current={scoped ? 'true' : undefined}
+            href={desks && d.id !== 'CARAVAN' ? `/${d.id.toLowerCase()}` : `/releases?domain=${d.id}`}
+            aria-current={on ? 'true' : undefined}
             data-domain={d.id}
-            data-scoped={String(scoped)}
+            data-scoped={String(on)}
             title={`${d.scope}. ${d.note ?? ''}`.trim()}
-            className="px-2 py-1 rounded-[var(--radius-md)] text-[12px] font-medium border"
-            style={{
-              borderColor: scoped ? 'var(--border-accent)' : 'var(--border-subtle)',
-              color: scoped ? 'var(--accent-strong)' : 'var(--text-muted)',
-              background: scoped ? 'rgba(var(--accent-rgb), 0.08)' : 'transparent',
-            }}
+            className="terminal-product"
           >
             {d.label}
           </Link>
@@ -67,6 +59,7 @@ export function VerticalContext() {
   const params = useSearchParams();
   const requested = params?.get('domain');
   const scopable = SCOPED_ROUTES.includes(pathname);
-  const active = scopable && DOMAINS.some((d) => d.id === requested) ? (requested as Domain) : undefined;
-  return <VerticalContextFrame active={active} on={scopable ? pathname : '/releases'} />;
+  const desk = pathname === '/landshark' ? 'LANDSHARK' : pathname === '/tradewind' ? 'TRADEWIND' : undefined;
+  const active = desk ?? (scopable && DOMAINS.some((d) => d.id === requested) ? (requested as Domain) : undefined);
+  return <VerticalContextFrame active={active} desks={Boolean(desk)} />;
 }

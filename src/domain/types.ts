@@ -126,10 +126,6 @@ export interface TemporalBasis {
   expiresAt?: ISODateTime;
 }
 
-export const TEMPORAL_KEYS: ReadonlyArray<keyof TemporalBasis> = [
-  'validAt', 'knownAt', 'submittedAt', 'evaluatedAt', 'ruledAt', 'releasedAt', 'supersededAt', 'revokedAt', 'expiresAt',
-];
-
 /* ── Use scope ── */
 
 export type ToleranceKind = 'ABSOLUTE' | 'RELATIVE' | 'INTERVAL' | 'PROFILE_DEFINED';

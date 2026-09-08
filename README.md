@@ -1,18 +1,15 @@
 # NotationsOS · Notation Systems
 
-Notation Systems is a systems and intelligence firm for the physical economy. It
-builds computational representations of physical systems from authorized
-geospatial, remote-sensing, operational and scientific source material, and turns
-that material into provenance-bearing corpora through acquisition, extraction,
-normalization, identity, ontology, computation, storage, indexing, verification,
-release, correction and recall.
+Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
 
-**The products are three APIs — Caravan, Tradewind and Landshark — each delivered
-as an HTTP feed and a set of MCP tools over one corpus.** This repository holds
-**NotationsOS, the internal terminal** the firm operates, monitors and navigates
-its backend from. It is not a product and not a fourth API. Positioning is set in
+The firm uses its systems internally to prepare boutique data and analytics
+packages from acquired information. **Caravan, Tradewind and Landshark are the
+data-product lines; HTTP feeds and MCP tools are existing delivery interfaces.**
+This repository holds **NotationsOS, the internal terminal** for preparation,
+quality review and operations. It is not sold. Positioning is set in
 [`docs/ECONOMIC_ARCHITECTURE.md`](docs/ECONOMIC_ARCHITECTURE.md), corrected by the
-founder on 2026-09-06.
+founder on 2026-09-08. Internal compute supports package preparation; hosted
+customer workloads and principal trading are outside the active offering.
 
 ## What is actually here
 
@@ -22,11 +19,13 @@ about it and a reader should be too.
 | | |
 |---|---|
 | Corpora with records | All three lines. Caravan is the deepest, with cases, rulings and captured artifact bytes; Tradewind and Landshark carry records, releases, rights and one retraction each, with no captured bytes |
+| Landshark and Tradewind desks | `/landshark` and `/tradewind`: release selection, gated evidence inquiry, prior-vintage comparison, exact-reading JSON and release-scoped Earth record exploration. Operational on demonstration records, not live source pipelines. See [`docs/product-desks.md`](docs/product-desks.md) |
 | The Caravan corpus | 3 releases, 21 records, 2 retractions, 7 sources — committed, synthetic, `fixture_only: true` on every response |
-| Admitted records | **0.** The admission ruling exists, the write boundary carries an admission status, and the response pipeline refuses to serve a row that never crossed the gate. No candidate has been admitted |
-| Live sources | None acquired. Two connectors are implemented and operator-gated; collection needs an explicit flag the operator holds |
+| Admission and retained inventory | Admission, identity/time rules and a guarded PostgreSQL writer exist. The supplied-byte statutory rail can evaluate admission in memory. A retained real customer inventory is not established by that demonstration |
+| Source operation | Two bounded FMCSA observations and their immutable internal qualification packages are retained locally; the second source response was unchanged. Samsara is offline-tested. Recurring collection and live customer feeds are not established. Capture requires the operator's explicit flag and source-use basis |
+| Boutique package path | `npm run boutique` reopens exact evidence, packages JSONL/CSV with dictionary, quality, terms and digests, and compares vintages. Customer export is refused under the qualification-only policy. See [`docs/BOUTIQUE_PRODUCT_MILESTONE.md`](docs/BOUTIQUE_PRODUCT_MILESTONE.md) |
 | Independent verification | None. Verification here is internal recompute, stated on every release. V0 and V1 of six tiers are reached |
-| Customers, bills, deliveries | None. The delivery ledger is specified and empty |
+| Customers, bills, deliveries | No completed licensed customer delivery or pilot is established. The delivery ledger is specified and empty; internal outputs do not establish a billable customer product |
 
 The domain modules carry the system's own claims **as data with tests over
 them**, so that a claim about the system fails a test when it stops being true
@@ -41,8 +40,9 @@ machine-readable uncertainty, validity bounds, **both clocks**, provenance,
 evidence class and a stable `notation://` identity. As-of answers that refuse
 rather than guess. Push retractions for correction and recall.
 
-Distribution is the fixture-backed feed under `/api/v1`, the stream, and twelve
-MCP tools (`npm run mcp`). The Caravan ruling workbench turns a claim, a declared
+Distribution demonstrations use the feed under `/api/v1`, the stream, and twelve
+MCP tools (`npm run mcp`). Database-backed corpus reads are also wired when
+configured, with their origin identified. The internal Caravan ruling workbench turns a claim, a declared
 use, a tolerance and two clocks into an inspectable ruling — `ADMITTED`,
 `ADMITTED_WITH_CONDITIONS`, `PENDING_EVIDENCE`, `REFUSED`, `SUPERSEDED`,
 `REVOKED` — and is optional: the corpus is valuable without it.
@@ -67,7 +67,8 @@ does not have.
   and an undecided right is not a quiet permission. Ancestry is produced only by an
   admission and lives outside the release, and `releaseLeaks` checks doctrine rule 2
   by scanning a serialized release rather than asserting the rule in a comment. The
-  gate exists; the act does not — and the fixtures the seeder writes are stamped
+  gate can return admission rulings on supplied inputs; retained operational
+  inventory is a separate step. Fixtures written by the seeder are stamped
   `DEMONSTRATION`, which makes the two writers disjoint by type.
 - **Reference ground, and the third clock** — *what the source knew by D* and *what
   this system held at K* are two different questions, and answering the second with
@@ -275,7 +276,7 @@ Opt-in, loopback-only, operator-driven, and none of them a public control.
 ## Run
 
 ```
-npm install
+npm ci
 npm run dev            # http://localhost:3000 → /releases; coordination is read-only
 npm run dev:coordination # http://127.0.0.1:3000; local stable and board writes enabled
 npm run dev:state-kernel # http://127.0.0.1:3000/notations; requires Rust, local notation state enabled
@@ -337,9 +338,11 @@ npm run mcp            # MCP server over the fixture feed (stdio)
 
 Playwright uses the environment's Chromium when `PW_CHROMIUM_PATH` is set (for example `/opt/pw-browsers/chromium`); otherwise its own download.
 
+Typecheck also rejects unused locals and parameters. [Codebase consolidation](docs/CODEBASE_CLEANUP.md) records removed dependencies/declarations, shared boundaries and the regression checks that keep the apparatuses aligned.
+
 ## Read
 
-- `docs/ECONOMIC_ARCHITECTURE.md` — authoritative positioning: the information manufacturer, two operating businesses, a separately governed principal-capital activity, and how this repository reflects each.
+- `docs/ECONOMIC_ARCHITECTURE.md` — current boutique data-and-analytics mandate, internal preparation boundary, implementation status and explicitly superseded historical economic formulations.
 - `docs/PHASE0_RECON.md` — what the sibling repositories contain, verbatim vocabulary, conflicts, recorded ambiguities.
 - `docs/COMPANY_MANDATE.md` — the company mandate, customer categories, economic architecture, and NotationsOS product structure.
 - `docs/SYNTHESIZED_ARCHITECTURE.md` — five fabrics, seven doctrine invariants, historical concept mapping and target runtime/projection responsibilities; implemented boundaries are explicit.

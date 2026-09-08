@@ -334,7 +334,7 @@ export function normalizationSequence(demo: ProductionDemo, run: LocalNormalizat
   return steps;
 }
 
-export function buildSequence(demo: ProductionDemo, build: LocalCandidateBuild): SequenceStep[] {
+export function buildSequence(build: LocalCandidateBuild): SequenceStep[] {
   const m = build.request.manifest;
   const checks = cutoffChecks(build);
   const steps: SequenceStep[] = [

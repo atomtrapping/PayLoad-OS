@@ -4,19 +4,22 @@ This document records the supplied synthesis of the earlier architecture: one ma
 
 ## Firm and product structure
 
-Notation Systems builds and operates provenance-bearing computational corpora for the physical economy. Acquisition, scraping, extraction, normalization, identity, ontology, computation, storage, indexing, verification, correction and recall are internal means of production. The corpora are finished information inventory; APIs, feeds, reports, workbenches and MCP tools distribute it. Customers may apply their own inference directly to those streams.
+Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
 
-The customer categories remain physical-economy brokers, asset and portfolio managers, and insurance and financing firms. The economic engines remain data systems/products, hosting and compute over authorized corpora, and separately governed principal-capital trading/speculation. Shared infrastructure does not grant unrestricted sharing of customer evidence, workloads or proprietary capital intelligence.
+Acquisition, scraping, extraction, normalization, identity, ontology, computation, storage, indexing, verification, correction and recall are internal means of production. The corpora supply the inventory for boutique data and analytics packages. The firm's workbenches inspect and prepare that information; HTTP feeds and MCP tools are existing distribution interfaces. Customers may apply their own inference to the data they license.
+
+The customer categories remain physical-economy brokers, asset and portfolio managers, and insurance and financing firms. The active business is preparation and licensing of boutique data and analytics. Internal computation supports it; hosted customer workloads and principal trading are outside the active offering. Existing source-use and customer-data restrictions remain attached to information through preparation and delivery.
 
 ```text
-Notation Systems
-└─ NotationsOS — the internal terminal over the backend (not a product)
-   ├─ Caravan — logistics, freight, cargo and supply-chain movement
-   ├─ Tradewind — markets, instruments, pricing and risk
-   └─ Landshark — parcels, zoning, entitlements and development state
+Notation Systems Inc. — licensed data and analytics packages
+├─ Caravan — logistics, freight, cargo and supply-chain movement
+├─ Tradewind — markets, instruments, pricing and risk
+└─ Landshark — parcels, zoning, entitlements and development state
+
+NotationsOS — internal terminal for preparing and operating the information inventory
 ```
 
-The synthesis calls historical `PayloadOS` an ancestor of the five fabrics. That historical mapping is retained below; it is not an instruction to rename this repository's **NotationsOS** terminal or create a fourth public API. NotationsOS is the internal terminal, not a product: the products are the Caravan, Tradewind and Landshark APIs (founder correction, 2026-09-06). Domain ownership, existing API routes and historical entity ids/digests remain unchanged until an explicit migration or rename is approved.
+The synthesis calls historical `PayloadOS` an ancestor of the five fabrics. That historical mapping is retained below. **NotationsOS** remains the internal terminal; Caravan, Tradewind and Landshark organize data-product lines delivered through existing API/MCP interfaces. The 2026-09-08 mandate places licensed information at the customer boundary. Domain ownership, existing routes and historical entity ids/digests are unchanged.
 
 ## Five fabrics over one substrate
 
@@ -55,7 +58,7 @@ These rules apply across all three domain products. Visual adjacency is not a se
 
 ## Projection instruments, not information systems
 
-The assigned roles below are architectural choices from the supplied synthesis. Of the three engines, CesiumJS is now installed and rendering as the [Earth Twin](EARTH_TWIN.md), keyless and offline, fed no fixture geometry yet; kepler.gl and Three.js remain routed to, not installed.
+The assigned roles below are architectural choices from the supplied synthesis. Of the three engines, CesiumJS is installed and rendering as the [Earth Twin](EARTH_TWIN.md), keyless and offline, drawing declared fixture positions; kepler.gl and Three.js remain routed to, not installed.
 
 | Instrument | Assigned question and coordinate meaning | Target role |
 |---|---|---|
@@ -102,7 +105,7 @@ These mappings preserve the supplied synthesis without silently promoting old co
 | EvidencePool | Evidence substrate |
 | Immutable graph | Structural representation of the corpus, not the whole corpus or a universal canonical database |
 | InquiryState | Compute/Decision Fabric; not implemented here |
-| CanonicalState | State Fabric; production canonical state is absent |
+| CanonicalState | State Fabric; admission rules and PostgreSQL integration exist, while retained real customer inventory is not established |
 | Morpho | Representation/compute intermediate representation; not implemented here |
 | STE | Deterministic execution responsibility |
 | SCL | High-performance scientific computation responsibility |
@@ -129,6 +132,19 @@ The local acquisition, normalization and candidate-build rails and the manually 
 
 The Acquisition Fabric now includes one [local operator-only FMCSA Company Census connector](LOCAL_SOURCE_CONNECTORS.md) for internal qualification. A guarded CLI request preserves the original provider bytes, immutable intent, request-budget and outcome history, then returns source-scoped observations or retains a quarantine. One live qualification captured a 371-byte response for USDOT 80806 on 2026-09-05; offline inspection and disabled-collection replay preserved that history. The source is `fmcsa-company-census`, not the credential-dependent QCMobile API, and its observations are not compatible with the synthetic Carrier normalization contract. The qualification declaration permits no customer redistribution; it supplies no identity resolution, canonical admission, corpus release or customer feed.
 
-The Projection Fabric supplies a bounded, read-only specification and preview over exact fixture releases, not installed kepler.gl, CesiumJS or Three.js instances. The first small state-kernel milestone is now implemented locally: `/notations` supports create → update → undo → save → page reload through the Rust command kernel. Its stable IDs and authored relationships do not confer source truth or admission authority. Bevy ECS is deferred; there is no ECS, renderer or simulation dependency in this kernel.
+The Projection Fabric supplies a bounded, read-only specification and preview over exact fixture releases. CesiumJS renders declared positions; kepler.gl and Three.js remain routing targets. `/notations` supports create → update → undo → save → page reload through the Rust command kernel. Its stable IDs and authored relationships do not confer source truth or admission authority. Bevy ECS remains deferred.
 
-`InquiryState`, canonical domain-state admission, Morpho, scientific compute runtimes and spatial renderer adapters remain target architecture, not implemented capabilities. The earlier blanket absence of live connectors is superseded only by the single local FMCSA qualification connector. A public source-connector fleet, recurring ingestion and customer live feeds remain absent. The other five firm-wide absences are unchanged: production storage and identity, deployed customer delivery, managed execution of customer workloads, independent verification, and a completed pilot.
+Current boundary (2026-09-08): admission rules, issued-identifier resolution,
+world-time establishment and PostgreSQL/Drizzle storage are implemented. The
+supplied-byte statutory harvester can evaluate admission and answer as-of
+questions in memory; that result alone does not persist an operational release.
+Bounded scientific instruments and CesiumJS are implemented separately from the
+still-proposed general `InquiryState`, Morpho and simulation runtime.
+
+All three product lines carry demonstration data. The historical FMCSA
+qualification and offline-tested Samsara adapter do not establish recurring
+source operation. A retained real customer inventory, deployed licensed
+delivery, independent verification and completed pilot are not established by
+the repository. Customer-hosted execution, custody and settlement are outside
+the active boutique-data offering. Existing internal experiments remain
+available for a package whose fields or quality checks need them.

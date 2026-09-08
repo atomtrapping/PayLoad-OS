@@ -1,8 +1,9 @@
 import type { Corpus, CorpusRecord, CorpusRelease, RecordGeometry, RecordStatus } from '../domain/corpus';
-import { LOCATION_POSITION_PREDICATE, deliverable, releaseRecords } from '../domain/corpus';
+import { LOCATION_POSITION_PREDICATE, deliverable } from '../domain/corpus';
 import type { EvidenceClass } from '../domain/types';
 import { FIXTURE_CORPORA } from '../fixtures';
 import { canonicalJson } from '../fixtures/digest';
+import { legacyFixtureReleaseRecords } from '../fixtures/legacyReleaseMembership';
 import { representativePointOf } from '../domain/spatialKey';
 import { parseProjectionSpec, ProjectionError, routeProjection, type ProjectionSpec } from './spec';
 import { projectionDigest as addressed, projectionRecord, projectionSource, resolveProjectionRelease, sourceTime as time, type ProjectionRecord } from './source';
@@ -24,8 +25,8 @@ function boundaryOf(release: CorpusRelease, spec: ProjectionSpec): Boundary {
 }
 
 /** The one gate every projected record passes: committed, deliverable, visible to the viewer, knowable at the instant, valid at the instant. */
-function admissible(corpus: Corpus, release: CorpusRelease, committed: Set<string>, record: CorpusRecord, b: Boundary): boolean {
-  return committed.has(record.recordId) && deliverable(corpus, release, record) &&
+function admissible(release: CorpusRelease, committed: Set<string>, record: CorpusRecord, b: Boundary): boolean {
+  return committed.has(record.recordId) && deliverable(release, record) &&
     [...(b.viewer === 'COUNTERPARTY_SHARED' ? ['COUNTERPARTY_SHARED'] : []), 'PUBLIC_RULING'].includes(record.visibility) &&
     time(record.knownAt) <= Math.min(b.knownAt, b.releasedAt) && time(record.validFrom) <= b.validAt &&
     (record.validTo === undefined || b.validAt < time(record.validTo));
@@ -33,11 +34,11 @@ function admissible(corpus: Corpus, release: CorpusRelease, committed: Set<strin
 
 function rows(corpus: Corpus, release: CorpusRelease, spec: ProjectionSpec, b: Boundary): ProjectionRecord[] {
   const selected: ProjectionRecord[] = [];
-  const committed = new Set(releaseRecords(corpus, release).map((record) => record.recordId));
+  const committed = new Set(legacyFixtureReleaseRecords(corpus, release).map((record) => record.recordId));
   for (const recordId of spec.selection.recordIds) {
     const matches = corpus.records.filter((item) => item.recordId === recordId);
     const record = matches[0];
-    if (matches.length !== 1 || !record || !admissible(corpus, release, committed, record, b)) {
+    if (matches.length !== 1 || !record || !admissible(release, committed, record, b)) {
       // Same refusal for hidden, absent, ambiguous, too-new and out-of-validity records.
       throw new ProjectionError('SELECTION_NOT_AVAILABLE', 'The complete selection is not available at this release, viewer and time boundary.');
     }
@@ -85,14 +86,14 @@ export interface ProjectionGeometry { datum: 'WGS84'; positions: GeodeticPositio
  * as unplaced; a position the viewer may not see is simply absent.
  */
 function geometryFor(corpus: Corpus, release: CorpusRelease, selected: ProjectionRecord[], b: Boundary): ProjectionGeometry {
-  const committed = releaseRecords(corpus, release);
+  const committed = legacyFixtureReleaseRecords(corpus, release);
   const committedIds = new Set(committed.map((record) => record.recordId));
   const positions: GeodeticPosition[] = [];
   const unplaced: string[] = [];
   for (const row of selected) {
     const declared = committed
       .filter((record) => record.predicate === LOCATION_POSITION_PREDICATE && record.geometry !== undefined && record.geometry.datum === 'WGS84' &&
-        record.subjectId === row.subject.subjectId && admissible(corpus, release, committedIds, record, b))
+        record.subjectId === row.subject.subjectId && admissible(release, committedIds, record, b))
       .sort((a, c) => a.recordId < c.recordId ? -1 : a.recordId > c.recordId ? 1 : 0);
     if (!declared.length) { unplaced.push(row.recordId); continue; }
     for (const record of declared) {

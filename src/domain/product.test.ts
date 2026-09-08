@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENGINES } from './product';
+import { ECONOMIC_ARCHITECTURE, ENGINES, THESIS } from './product';
 
 describe('honest live source presence', () => {
   it('names only the bounded internal Company Census connector as present', () => {
@@ -12,9 +12,17 @@ describe('honest live source presence', () => {
   });
   it('does not promote the other firm-wide absences through a successful source capture', () => {
     const entries = ENGINES.flatMap((engine) => engine.inThisRepository);
-    for (const item of ['Production storage and identity', 'Deployed customer delivery', 'Independent verification', 'A completed pilot', 'Managed execution of customer workloads']) {
+    for (const item of ['Deployed customer delivery', 'Independent verification', 'A completed pilot', 'Managed execution of customer workloads']) {
       expect(entries.find((entry) => entry.item === item)?.presence).toBe('ABSENT');
     }
+    expect(entries.find((entry) => entry.item.startsWith('PostgreSQL corpus schema'))?.presence).toBe('PRESENT');
+    expect(entries.find((entry) => entry.item.startsWith('Admission, issued-identifier'))?.presence).toBe('PRESENT');
+  });
+  it('keeps the licensed package mandate and internal compute boundary together', () => {
+    expect(THESIS.firm).toBe('Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.');
+    expect(THESIS.platform).toContain('internal terminal');
+    expect(ENGINES.find((entry) => entry.id === 'compute')?.title).toBe('Internal analytics and preparation');
+    expect(ECONOMIC_ARCHITECTURE.map((entry) => entry.statement).join(' ')).not.toMatch(/host compute|trading|speculation/i);
   });
   it('distinguishes the offline-tested Samsara adapter from a connected fleet or inferred visits', () => {
     const data = ENGINES.find((engine) => engine.id === 'data_systems')!;

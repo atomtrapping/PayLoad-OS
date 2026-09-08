@@ -1,100 +1,76 @@
-# Usage as telemetry
+# Delivery records and internal usage
 
-The performance of the production system generates usage; usage generates
-telemetry; telemetry is a product. Every query against a corpus, every compute
-run over it and every agent invocation through it is a lap.
+Notation Systems licenses boutique data and analytics packages. Internal usage
+telemetry helps account for the work of preparing them. A compute run, agent
+invocation or inspection is an internal operation; it does not establish a
+customer charge or an additional hosted-compute offering.
 
-`src/domain/metering.ts` carries this as data, `/products` renders it, and
-`src/domain/metering.test.ts` holds the claims to what the code actually does.
+`src/domain/metering.ts` records the present response-receipt contract,
+`/products` renders it, and its tests hold those claims to the fields carried by
+the current demonstration interface. This document supersedes the earlier
+three-business and per-clean-room-hour pricing formulation.
 
-## The claim, checked
+## What delivery needs to identify
 
-The strategic claim is that billing is traceable by construction, because every
-response is receipted. **That is half true today, and the half that is missing is
-the half that makes a bill attributable.**
+A package specifies the information, version, coverage and permitted use being
+licensed. A delivery record must identify what was supplied and to whom. That
+record can support both a commercial record and a later correction notice;
+internal preparation telemetry has a different purpose.
 
-A response receipt has two halves. The **content** half says what the corpus was.
-The **event** half says which response this is and who received it.
+The current HTTP response envelope has a content half and an incomplete event
+half:
 
-| Field | Half | State |
+| Field | Meaning | State |
 |---|---|---|
-| `corpus_release` | What the corpus was | Carried, in the envelope and a header |
-| `parameter_set_version` | What the corpus was | Carried, in the envelope and a header |
-| `verification_rung` | What the corpus was | Carried, in the envelope and a header |
-| `data_class` | What the corpus was | Carried, in the envelope and a header |
-| `response_id` | Which response | **Absent** |
-| `response_digest` | Which response | **Absent** |
-| `recipient_id` | To whom | **Absent** |
-| `unit` | Which lap | **Absent** |
-| `served_at` | When | **Absent** |
+| `corpus_release` | The release represented | Carried |
+| `parameter_set_version` | The declared parameter version | Carried |
+| `verification_rung` | The stated verification level | Carried |
+| `data_class` | Real or synthetic classification | Carried |
+| `response_id` | This particular response | Absent |
+| `response_digest` | Commitment to everything returned | Absent |
+| `recipient_id` | Who received it | Absent |
+| `unit` | The usage category, if metered | Absent |
+| `served_at` | When it was delivered | Absent |
 
-`meteringReadiness()` computes this rather than asserting it. A bill could say
-what the corpus was; it could not yet say which response it is charging for, or
-to whom. Nothing counts a lap today, and `data_class: synthetic` on every
-response is also what makes the demonstration unbillable — a lap over a
-demonstration is not a lap.
+`meteringReadiness()` checks those fields; it does not declare delivery or billing
+ready from release provenance alone. The demonstration remains synthetic and
+unbillable. A prospective package artifact is not itself evidence that a
+customer received it.
 
-## One ledger, two obligations
+## One delivery ledger
 
-The metering entry and the recall entry are the same object. A retraction has to
-reach everyone holding an affected record; a bill has to name what each recipient
-consumed. Both need recipient, release, what was returned and when. It is
-specified once, as `DELIVERY_LEDGER` in `src/domain/correction.ts`, and it is
-empty because no customer exists.
+`DELIVERY_LEDGER` in `src/domain/correction.ts` specifies recipient, release,
+returned records and delivery time. The ledger is empty. Retractions need to
+reach holders of affected information, so the same delivery identity should
+support correction tracking. A receipt that identifies no recipient cannot
+prove that obligation was completed.
 
-## Meter the usage; do not become the rails
+The billing contract and prices remain undecided. The repository selects no
+per-query tariff, customer-compute price, clean-room charge or share of a
+customer's settlement. Internal compute runs can inform preparation costs
+without being sold as customer execution.
 
-Bill like a telemetry vendor, not like a payments network. Metering needs
-receipts, not liability.
+## Internal usage categories
 
-- **Not a settlement participant.** Taking a share of transfers between other
-  parties absorbs liability and payment-company obligations, and none of it is
-  supported by the asset. The asset is the corpus, not the money movement.
-- **Not an infrastructure toll.** Charging a platform for running on a substrate
-  reverses the direction that actually holds: data gravity kept workloads local,
-  it did not pay data providers rent.
-- **Not the tax.** A firm that taxes every use of a format eventually has the tax
-  taken from it. Meter what the firm produced, not what others do with their own
-  machines.
+- Query: an answered corpus request, including a typed refusal.
+- Compute run: a retained internal derivation with declared inputs and methods.
+- Agent invocation: a tool call through the existing MCP interface.
 
-Instead the tariff is on access to the corpus and compute over it: per query, per
-compute run, per clean-room hour. Each is a thing the firm performed and can
-produce a receipt for.
+These categories are not currently metered. The existing instruments retain
+local run artifacts and the MCP surface exposes tools, but neither establishes
+an identified customer delivery.
 
-## Where the firm plugs in
+## Integration and scope
 
-**As a dependency.** The API is the evidence-bounded data source that customer
-compute calls. Their function imports the client; every invocation carries
-provenance context; receipt digests appear in their own structured logs, so a run
-over these records emits audit-grade telemetry in the customer's own
-observability stack. Invisible, everywhere, metered. It is absent: it needs a
-published client, a response receipt for it to log, and an identified caller —
-the last two being the missing half above.
+The existing HTTP and MCP interfaces let customers apply their own computation
+to licensed data. A packaged output should preserve the information's version,
+provenance and use terms through that handoff. The firm operates the production
+system internally; hosted customer workloads, proprietary trading and settlement
+are outside the active offering. Existing source and trading restrictions remain
+in force.
 
-**Not as a provider.** The inverse, where other platforms run on the firm's
-substrate and pay for it, is rejected: it makes the firm a settlement
-participant, absorbing liability the corpus does not support.
-
-## One asset, three ways
-
-| Pillar | Sells | Here |
-|---|---|---|
-| Data products | The telemetry itself, as the three APIs | All three lines have a demonstration corpus behind one fixture feed; none is live and none is metered, because nothing has been delivered |
-| Hosting and compute | Runs of it, over authorized releases | The instruments run locally on the operator's machine; no hosted execution exists |
-| Proprietary capital | Nothing: it trades on the same exhaust, under a separate governance boundary | Absent, and separated by declaration: no source permits proprietary strategy or trading |
-
-## If customers federate
-
-Customers who pool their holdings replicate the aggregate corpus. Anyone can
-resell a fact; a consortium can resell all of them.
-
-The defence is that the identity and decision estates do not pool. A shared
-format is not a shared resolution: two members can exchange records and still not
-agree on which two identifiers name the same carrier, at what time, on what
-evidence — and neither holds the other's corrections. What cannot be pooled is
-the resolution decisions, the calibration of each source, and the corrected
-history.
-
-**None of the three is implemented.** Resolution is absent, corroboration scoring
-is absent, and the delivery ledger is specified and empty. The defence is a
-statement of what to build, not a claim about what protects the firm today.
+Issued-identifier resolution and source-comparison mechanisms now exist.
+Retained production identity history, calibrated source quality and a populated
+delivery ledger have not been established. They are useful production
+capabilities to develop for a specific package, not proof of commercial
+defensibility or a completed customer service.

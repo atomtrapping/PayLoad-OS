@@ -441,6 +441,29 @@ describe('pure fixture projection compilation', () => {
     failure(() => compileProjection(spec(['REC-0204'], corpus, release), [corpus]), 'SELECTION_NOT_AVAILABLE');
   });
 
+  it('does not derive geometry or correction status from outside the exact legacy committed set', () => {
+    const { corpus, release } = cloned();
+    record(corpus, 'REC-0207').knownAt = '2026-09-01T13:00:00+02:00';
+    record(corpus, 'REC-0204').knownAt = '2026-09-01T13:00:00+02:00';
+    restamp(corpus, release);
+    const input = spec(['REC-0203'], corpus, release);
+    const result = compileProjection({ ...input,
+      selection: { ...input.selection, validAt: '2026-08-17T17:00:00Z' },
+      view: { mode: 'GLOBE', coordinateSemantics: 'GEODETIC', representation: 'GLOBAL_3D' },
+    }, [corpus]);
+    expect(result.records[0].statusAtKnownAt).toBe('CURRENT');
+    expect(result.geometry).toEqual({ datum: 'WGS84', positions: [], unplaced: ['REC-0203'] });
+    expect(result.error).toBe('GEOMETRY_NOT_AVAILABLE');
+  });
+
+  it('still refuses numerically future records even when the frozen legacy codec contains them', () => {
+    const { corpus, release } = cloned();
+    record(corpus).knownAt = '2026-09-01T12:00:00.001Z';
+    expect(releaseCanonical(corpus, release.releaseId)?.map((entry) => entry.recordId)).toContain('REC-0204');
+    restamp(corpus, release);
+    failure(() => compileProjection(spec(['REC-0204'], corpus, release), [corpus]), 'SELECTION_NOT_AVAILABLE');
+  });
+
   it('rejects duplicate selected record identities without returning partial records', () => {
     const { corpus, release, input } = cloned();
     corpus.records.push(structuredClone(record(corpus)));

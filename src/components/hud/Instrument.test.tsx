@@ -88,4 +88,14 @@ describe('a panel is a frame that can carry its own provenance', () => {
     expect(screen.getByText('Conveniences taken')).toBeInTheDocument();
     expect(screen.getByText('NONE')).toHaveClass('hud-bar-state');
   });
+
+  it('uses the same rule markup inside and outside a panel, including a measured zero', () => {
+    render(<><Panel label="Inside" right={0} state="MEASURED"><p>body</p></Panel><Rule label="Outside" right={0} state="MEASURED" /></>);
+    const inside = screen.getByText('Inside').parentElement!;
+    const outside = screen.getByText('Outside').parentElement!;
+    expect(inside).toHaveClass('hud-bar');
+    expect(inside).toHaveAttribute('data-epistemic', outside.getAttribute('data-epistemic'));
+    expect(inside.querySelector('.hud-bar-state')?.outerHTML).toBe(outside.querySelector('.hud-bar-state')?.outerHTML);
+    expect(inside.querySelector('.hud-bar-state')).toHaveTextContent('0');
+  });
 });

@@ -232,3 +232,55 @@ test('the operator instrument reads the corpus back and offers no way to change 
   const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).exclude('.earth-canvas').analyze();
   expect(accessibility.violations).toEqual([]);
 });
+
+/**
+ * Located events: the ledger's own retractions and the drafted specimen
+ * headlines, each met by the corpus at its coordinates. Five of seven have a
+ * radius and are drawn; two are listed and not drawn. A conflict is drawn
+ * loud, and the card shows both clocks.
+ */
+test('located events meet the corpus at their coordinates, and nothing in the section writes', async ({ page }) => {
+  await page.goto('/earth');
+  await page.waitForLoadState('load');
+  await expect(page.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY', { timeout: 45_000 });
+
+  await expect(page.getByTestId('earth-events')).toHaveAttribute('data-count', '5');
+  const list = page.getByTestId('event-list');
+  await expect(list.locator('[data-event-item]')).toHaveCount(7);
+  await expect(list.locator('[data-event-item][data-placed="false"]')).toHaveCount(2);
+  await expect(list.locator('[data-event-item="SPEC-H-002"]')).toHaveAttribute('data-event-state', 'CONFLICTING');
+
+  // A conflict, flown to from the list, with the corpus's own bounds in the card.
+  await list.locator('[data-event-select="SPEC-H-002"]').click();
+  const card = page.getByTestId('event-card');
+  await expect(card).toHaveAttribute('data-state', 'CONFLICTING');
+  await expect(card).toContainText(/falls outside REC-0302.s stated bounds \[19\.94, 19\.98\] t/);
+  await expect(page.getByTestId('earth-camera')).toContainText('-23.9535°, -46.3130° · 1,000 km', { timeout: 20_000 });
+
+  // Two clocks that disagree: corroborated when captured, conflicting now.
+  await list.locator('[data-event-select="SPEC-H-005"]').click();
+  await expect(page.getByTestId('event-reading-capture')).toHaveAttribute('data-state', 'CORROBORATED');
+  await expect(page.getByTestId('event-reading-now')).toHaveAttribute('data-state', 'CONFLICTING');
+  await expect(page.getByTestId('event-clocks-differ')).toBeVisible();
+
+  // Not drawn, still checked: the corpus's refusal, at coordinates it declined to draw.
+  await list.locator('[data-event-select="SPEC-H-004"]').click();
+  await expect(card).toHaveAttribute('data-state', 'NOT_IN_COVERAGE');
+  await expect(card).toContainText('NO_IDENTITY_LINK');
+  await expect(page.getByTestId('event-geocode')).toHaveAttribute('data-epistemic', 'UNKNOWN');
+
+  // The ledger's correction at the berth, selecting the record it replaced with.
+  await list.locator('[data-event-select="RET-0001"]').click();
+  await expect(card).toHaveAttribute('data-state', 'CORRECTION');
+  await expect(card).toHaveAttribute('data-epistemic', 'WITHDRAWN');
+  await page.locator('[data-event-record="REC-0204"]').click();
+  await expect(page.getByLabel('Record', { exact: true })).toHaveValue('REC-0204');
+
+  // Every control in the section is a selection or a flight.
+  const labels = await page.getByTestId('earth-events-panel').getByRole('button').allInnerTexts();
+  expect(labels.length).toBeGreaterThanOrEqual(8);
+  for (const label of labels) expect(label).toMatch(/^(RET-\d+|SPEC-H-\d+|Fly to it|Select REC-\d+)$/);
+
+  const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).exclude('.earth-canvas').analyze();
+  expect(accessibility.violations).toEqual([]);
+});

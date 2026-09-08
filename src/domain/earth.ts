@@ -9,6 +9,7 @@
  * fetched from anywhere but this origin. Browser-safe; nothing here renders.
  */
 import { ENGINE_ROLE } from './projection';
+import type { CorroborationWord } from './locatedClaims';
 import type { ProjectionSpec } from '@/projection/spec';
 import type { GeodeticPosition, ProjectionGeometry } from '@/projection/compile';
 import type { Interest } from './types';
@@ -263,6 +264,21 @@ export type ProjectionOutcome =
   | { state: 'READY'; detail: string; positions: GeodeticPosition[]; unplaced: string[] }
   | { state: 'UNAVAILABLE'; code: string; detail: string }
   | { state: 'REFUSED'; code: string; detail: string };
+
+/**
+ * How a located item is drawn. The colour is the claim's current reading
+ * against the corpus — the check vocabulary's own tokens — and a ledger event
+ * takes the withdrawn hue, because a retraction is support removed. A conflict
+ * is drawn loud: bigger point, heavier ring. A claim that disagrees with the
+ * corpus is the most useful object on the globe.
+ */
+export const EVENT_TONE: Record<CorroborationWord | 'LEDGER', { hex: string; cssVar: string; label: string }> = {
+  CORROBORATED: { hex: '#4cc48a', cssVar: '--check-passed', label: 'corroborated' },
+  CONFLICTING: { hex: '#e26b5c', cssVar: '--check-failed', label: 'conflicting' },
+  UNCORROBORATED: { hex: '#7fb0ff', cssVar: '--check-not-evaluated', label: 'uncorroborated' },
+  NOT_IN_COVERAGE: { hex: '#8e8b83', cssVar: '--check-na', label: 'not in coverage' },
+  LEDGER: { hex: '#b795f2', cssVar: '--ep-withdrawn', label: 'ledger event' },
+};
 
 /** How a placed record is drawn: the declaring source's interest, which the evidence class carries, is the one thing the colour says. */
 export const PLACEMENT_TONE: Record<Interest, { label: string; hex: string }> = {

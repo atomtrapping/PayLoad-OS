@@ -76,7 +76,7 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
 
 test('the product page states the firm, the twelve stages, the three customer categories and the four-step economic architecture', async ({ page }) => {
   await page.goto('/model');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('systems and intelligence firm for the physical economy');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('transform, organize, and license real-world data and analytics');
   await expect(page.locator('[data-stage]')).toHaveCount(12);
   await expect(page.locator('[data-customer]')).toHaveCount(3);
   await expect(page.locator('[data-step]')).toHaveCount(4);

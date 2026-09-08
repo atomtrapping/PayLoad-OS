@@ -67,6 +67,12 @@ test('desktop screenshots', async ({ page }) => {
   await page.getByTestId('operator-voids').scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/00m-earth-operator-instrument.png`, fullPage: false });
+  // A conflicting specimen headline selected: the region drawn loud at the yard, and the card with both clocks.
+  await page.locator('[data-event-select="SPEC-H-005"]').click();
+  await expect(page.getByTestId('earth-camera')).toContainText('51.9497°, 4.0250°', { timeout: 20_000 });
+  await page.getByTestId('event-card').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${OUT}/00o-earth-events.png`, fullPage: false });
   await page.goto('/cases');
   await page.getByRole('table', { name: 'Case queue' }).waitFor();
   await page.screenshot({ path: `${OUT}/01-case-queue.png`, fullPage: true });

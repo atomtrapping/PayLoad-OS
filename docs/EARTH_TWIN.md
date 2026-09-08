@@ -350,3 +350,99 @@ flattening as the retracted record chip, found the same way.
 
 Every pinned string stayed inside the container its test reads: 136 twin and
 primitive unit tests, the earth browser spec at desktop and Pixel 7.
+
+## Events on the globe
+
+A headline is a claim by a source at a publication time. It is never a fact. On
+the twin it is a marker at its coordinates, and the card at those coordinates
+does not say what the source said — it says where the corpus stands beside it.
+
+That is the difference between this and a news map. A news map renders claims
+on a globe. This renders claims against the corpus's adjudicated state: the
+disagreement layer, spatialized. A headline that conflicts with the corpus is
+the most useful object on the screen — the corpus is thin there, the source is
+wrong, or something changed — and each of those is work, so a conflict is
+drawn loud: a bigger point, a heavier ring.
+
+### The reading
+
+`src/domain/locatedClaims.ts`. A located claim carries a source, an evidence
+class (reported, asserted, interest unknown — the terms the estate already
+has), both clocks, a declared origin, a geocode, and what it asserts in the
+corpus's own terms — a subject, a predicate, a value and a world time — or
+null when it names no predicate this corpus holds.
+
+The geocode is itself an observation. A method produced coordinates and an
+uncertainty from text, and it is carried as one: `method` names what ran, and
+a drafted specimen says so rather than pretending a geocoder did.
+
+The corpus is asked with `queryAsOf`, `WHAT_WE_HELD`, under the twin's seat,
+and the answer or refusal becomes one of four states. **They ride on the check
+vocabulary the case checks already use** — `PASSED`, `FAILED`,
+`NOT_EVALUATED`, `NOT_APPLICABLE` — with claim-facing labels, rather than a
+fifth closed set:
+
+| label | status | means |
+| --- | --- | --- |
+| `CORROBORATED` | `PASSED` | inside the record's own stated bounds; two accounts agree |
+| `CONFLICTING` | `FAILED` | outside them, or a different categorical value |
+| `UNCORROBORATED` | `NOT_EVALUATED` | the record states no bounds and the values differ — no tolerance is assumed — or the only record was withdrawn |
+| `NOT_IN_COVERAGE` | `NOT_APPLICABLE` | the corpus refuses (no record, no identity link, not deliverable) or the headline names no predicate |
+
+CORROBORATED and not CONFIRMED: the estate already holds that a single account
+is not corroborated by standing alone. A headline and a record are two accounts
+agreeing, which is corroboration, and confirmation is a stronger word than two
+accounts earn.
+
+**Both clocks are shown.** A claim is checked against what the corpus held when
+the claim was captured and against what it holds at the release cutoff. The
+marker draws the current reading; the card shows both. When they differ, the
+corpus learned something — the specimen draft-survey headline reads
+`CORROBORATED` on 19 August against the carrier's 40.0 t (no bounds, equal)
+and `CONFLICTING` now against the weighbridge's 40.12 t [40.08, 40.16], which
+became knowable on the 25th. Collapsing the two would be the backfill mistake
+the as-of law exists to refuse.
+
+**Never a fake pin.** A geocode with no stated uncertainty is not drawn. A
+point without a radius is a precision claim nobody made, and the spatial
+derivation already refuses to key such a position. An unplaceable claim is
+listed with the reason, can be selected and read, and its card carries the
+corpus's check — it simply has nowhere to be flown to.
+
+**The card carries what it needs and nothing the gate withheld.** The
+corroboration sends the client a narrow checked-record shape — identifier,
+value, bounds, standing, both clocks — and a refusal's code and reason only.
+The full as-of answer includes the records a refusal considered, and that list
+can name records this seat is not shown.
+
+### The two sources in this slice
+
+- **The ledger.** Every retraction knowable by the release, placed at its
+  subject's *last declared* position. Lot 5B-221's position record was valid
+  15–18 August and the correction was issued on the 25th; where the lot was on
+  the 25th is not held, and the geocode says so. The sample withdrawal has no
+  position at all and is listed, not drawn.
+- **Drafted specimen headlines** (`src/fixtures/caravan/headlines.ts`), every
+  one `DRAFTED_SPECIMEN` from a source named as a specimen and not a
+  publication, chosen to land on each state against records the corpus
+  actually holds. Five of seven located items are drawn.
+
+No wire adapter exists yet. Collection is the operator's act under the same
+flag as every other connector, and reading the news is collection behaviour:
+general feeds under a deliberate posture, never targeted ones that would
+reveal a watchlist.
+
+### The card is docked, not tracked
+
+The card renders in the inspector, and the marker's label at the coordinates
+carries the identifier, the current reading and the headline. A card anchored
+to the coordinates and moved every frame is the ancestor's behaviour and a
+later step; it needs occlusion handling for markers behind the globe and a
+per-frame transform, and neither was worth getting slightly wrong in the first
+slice. The label at the coordinates is the part that has to be right.
+
+### Nothing writes
+
+The section's every control is a selection or a flight, and a test asserts the
+whole set. If a checked claim ought to become a candidate, that is the intake
+rail's decision under its own receipts; the card navigates and the rails decide.

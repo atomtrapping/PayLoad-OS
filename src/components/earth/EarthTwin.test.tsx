@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectionSpec } from '@/projection/spec';
 import { INSTRUMENT_METHOD, INSTRUMENT_RULES, type InstrumentReading } from '@/domain/operatorInstrument';
+import { LOCATED_CLAIM_METHOD, WIRE_EVIDENCE_CLASS, type LocatedReading } from '@/domain/locatedClaims';
 import { EarthTwin, type EarthRecord } from './EarthTwin';
 
 // The engine is a fake injected through the loader: nothing here needs WebGL. The browser suite runs the real one.
@@ -91,6 +92,58 @@ const instrument: InstrumentReading = {
   because: 'The release as this seat may read it.',
 };
 
+/**
+ * Three located items, shaped by hand: a ledger correction at a berth, a
+ * conflicting specimen drawn as a region, and a specimen with no radius that
+ * is listed and not drawn. The readings are what the server would send; the
+ * component draws and selects them and computes nothing.
+ */
+/** For the placement tests, which count entity calls: nothing located, so they keep meaning what they meant. */
+const none: LocatedReading[] = [];
+
+const located: LocatedReading[] = [
+  {
+    method: LOCATED_CLAIM_METHOD,
+    item: {
+      kind: 'LEDGER_EVENT', eventId: 'RET-X', subjectId: 'LOT-1', affectedSubjectIds: ['LOT-1'],
+      retraction: { retractionId: 'RET-X', kind: 'CORRECTION', issuedAt: '2026-08-25T14:00:00Z', releaseId: 'REL-X', affectedRecordIds: ['REC-1'], replacementRecordIds: ['REC-2'], reason: 'A correction, drafted for this test.', sourceId: 'test-source', visibility: 'COUNTERPARTY_SHARED' },
+      geocode: { point: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 250 }, method: 'notationsos.geocode.declared-position.v1', because: 'LOT-1’s last declared position.' },
+    },
+    placement: { placed: true, radiusM: 250 },
+    reading: null,
+  },
+  {
+    method: LOCATED_CLAIM_METHOD,
+    item: {
+      kind: 'CLAIM', claimId: 'SPEC-T-1', headline: 'Port sources say lot 2 weighed in at 21.5 t',
+      source: { sourceId: 'specimen-wire', displayName: 'Drafted specimen — not a publication' }, evidenceClass: WIRE_EVIDENCE_CLASS,
+      publishedAt: '2026-08-27T06:00:00Z', capturedAt: '2026-08-27T06:30:00Z', beganAs: 'DRAFTED_SPECIMEN',
+      geocode: { point: { kind: 'POINT', datum: 'WGS84', longitude: -46.313, latitude: -23.9535, horizontalUncertaintyM: 5000 }, method: 'notationsos.geocode.declared-specimen.v1', because: 'Declared by the drafter.' },
+      asserts: { subjectId: 'LOT-2', predicate: 'quantity.gross', value: 21.5, validAt: '2026-08-10T00:00:00Z' },
+    },
+    placement: { placed: true, radiusM: 5000 },
+    reading: {
+      atCapture: { status: 'PASSED', label: 'CORROBORATED', knownAt: '2026-08-27T06:30:00Z', refusal: null, record: { recordId: 'REC-2', value: 21.5, unit: 't', status: 'CURRENT', validFrom: '2026-08-10T00:00:00Z', knownAt: '2026-08-11T00:00:00Z' }, because: '21.5 t equals REC-2’s 21.5 t.' },
+      now: { status: 'FAILED', label: 'CONFLICTING', knownAt: '2026-09-01T12:00:00.000Z', refusal: null, record: { recordId: 'REC-2', value: 19.96, unit: 't', uncertainty: { low: 19.94, high: 19.98, semantics: 'stated' }, status: 'CURRENT', validFrom: '2026-08-10T00:00:00Z', knownAt: '2026-08-28T00:00:00Z' }, because: '21.5 t falls outside REC-2’s stated bounds [19.94, 19.98] t.' },
+    },
+  },
+  {
+    method: LOCATED_CLAIM_METHOD,
+    item: {
+      kind: 'CLAIM', claimId: 'SPEC-T-2', headline: 'Congestion reported somewhere near the yard',
+      source: { sourceId: 'specimen-wire', displayName: 'Drafted specimen — not a publication' }, evidenceClass: WIRE_EVIDENCE_CLASS,
+      publishedAt: '2026-08-28T05:30:00Z', capturedAt: '2026-08-28T06:00:00Z', beganAs: 'DRAFTED_SPECIMEN',
+      geocode: { point: { kind: 'POINT', datum: 'WGS84', longitude: -46.313, latitude: -23.9535 }, method: 'notationsos.geocode.declared-specimen.v1', because: 'Declared with no uncertainty.' },
+      asserts: null,
+    },
+    placement: { placed: false, because: 'The geocode states no horizontal uncertainty.' },
+    reading: {
+      atCapture: { status: 'NOT_APPLICABLE', label: 'NOT_IN_COVERAGE', knownAt: '2026-08-28T06:00:00Z', refusal: null, record: null, because: 'The headline names no predicate this corpus holds.' },
+      now: { status: 'NOT_APPLICABLE', label: 'NOT_IN_COVERAGE', knownAt: '2026-09-01T12:00:00.000Z', refusal: null, record: null, because: 'The headline names no predicate this corpus holds.' },
+    },
+  },
+];
+
 function api(answer: (body: ProjectionSpec) => { status: number; json: unknown }) {
   const fetch = vi.fn(async (_url: string, init?: RequestInit) => { const body = JSON.parse(String(init?.body)) as ProjectionSpec; const reply = answer(body); return { status: reply.status, ok: reply.status === 200, json: async () => reply.json }; });
   vi.stubGlobal('fetch', fetch);
@@ -127,7 +180,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); listeners.length 
 describe('EarthTwin', () => {
   it('says the globe is not shown, and why, when the engine assets are not on this origin', async () => {
     api(() => unavailable);
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady={false} loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady={false} loadEngine={loadEngine} />);
     expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'UNAVAILABLE');
     expect(screen.getByTestId('earth-unavailable')).toHaveTextContent('npm run earth:assets');
     expect(screen.getByTestId('fly-global')).toBeDisabled();
@@ -137,7 +190,7 @@ describe('EarthTwin', () => {
   it('starts the engine keyless from bundled imagery, lists every layer with its state, asks the compiler for one record on the globe and shows its refusal without drawing', async () => {
     const fetch = api((body) => body.selection.recordIds[0] === 'REC-1' ? unavailable : { status: 404, json: { fixture_only: true, error: 'SELECTION_NOT_AVAILABLE' } });
     const user = userEvent.setup();
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     expect(ion.defaultAccessToken).toBe('');
     expect(fromUrl).toHaveBeenCalledWith('/cesium/Assets/Textures/NaturalEarthII');
@@ -173,7 +226,7 @@ describe('EarthTwin', () => {
     api(() => unavailable);
     window.history.replaceState(null, '', '/earth#v=999,0,1,0,0');
     const user = userEvent.setup();
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     expect(screen.getByTestId('earth-link')).toHaveTextContent('#v=0.0000,0.0000,12000000,0.0,-90.0');
     act(() => { for (const listener of listeners) listener(); });
@@ -199,9 +252,9 @@ describe('EarthTwin', () => {
     const pending = deferred<never>();
     const oldImagery = vi.fn(() => pending.promise);
     const oldLoader = stage === 'engine' ? () => pending.promise : async () => fakeEngine({ imagery: oldImagery });
-    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={oldLoader} />);
+    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={oldLoader} />);
     if (stage === 'imagery') await waitFor(() => expect(oldImagery).toHaveBeenCalledOnce());
-    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     await act(async () => { pending.reject(new Error('superseded failure')); });
     expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY');
@@ -216,9 +269,9 @@ describe('EarthTwin', () => {
     const imageryPending = deferred<unknown>();
     const oldImagery = vi.fn(() => imageryPending.promise);
     const oldLoader = stage === 'engine' ? () => enginePending.promise : async () => fakeEngine({ imagery: oldImagery });
-    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={oldLoader} />);
+    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={oldLoader} />);
     if (stage === 'imagery') await waitFor(() => expect(oldImagery).toHaveBeenCalledOnce());
-    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     await act(async () => { enginePending.resolve(fakeEngine()); imageryPending.resolve({ imagery: true }); });
     expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY');
@@ -229,13 +282,13 @@ describe('EarthTwin', () => {
 
   it('shows loading during replacement and initializes the replacement at the unchanged pinned world time', async () => {
     api(() => unavailable);
-    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     const old = viewers[0];
     expect(old.clock.currentTime).toEqual({ iso: records[0].validFrom });
     const pending = deferred<typeof import('cesium')>();
     const nextLoader = () => pending.promise;
-    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={nextLoader} />);
+    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={nextLoader} />);
     expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'LOADING');
     expect(screen.getByTestId('fly-global')).toBeDisabled();
     expect(screen.getByTestId('fly-subsolar')).toBeDisabled();
@@ -252,10 +305,10 @@ describe('EarthTwin', () => {
 
   it('disables a ready viewer when assets fail verification, and starts a fresh viewer when verified again', async () => {
     api(() => unavailable);
-    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     const oldMoveEnd = listeners[0];
-    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady={false} loadEngine={loadEngine} />);
+    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady={false} loadEngine={loadEngine} />);
     expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'UNAVAILABLE');
     expect(screen.getByTestId('earth-unavailable')).toHaveTextContent('missing or failed verification');
     expect(screen.getByTestId('earth-subsolar')).toHaveTextContent('not computed');
@@ -264,7 +317,7 @@ describe('EarthTwin', () => {
     act(() => { oldMoveEnd(); window.dispatchEvent(new HashChangeEvent('hashchange')); });
     expect(window.location.hash).toBe('');
     expect(flyTo).not.toHaveBeenCalled();
-    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     expect(viewers).toHaveLength(2);
     expect(viewers[1].clock.currentTime).toEqual({ iso: records[0].validFrom });
@@ -273,13 +326,13 @@ describe('EarthTwin', () => {
   it('destroys a partially initialized viewer immediately and recovers with another loader', async () => {
     api(() => unavailable);
     setView.mockImplementationOnce(() => { throw new Error('camera initialization failed'); });
-    const { rerender, unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    const { rerender, unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'UNAVAILABLE'));
     expect(viewers[0].destroy).toHaveBeenCalledOnce();
     expect(listeners).toHaveLength(0);
     expect(screen.getByTestId('fly-global')).toBeDisabled();
     const nextLoader = async () => fakeEngine();
-    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={nextLoader} />);
+    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={nextLoader} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     expect(viewers[1].clock.currentTime).toEqual({ iso: records[0].validFrom });
     unmount();
@@ -291,7 +344,7 @@ describe('EarthTwin', () => {
   it.each(['resolve', 'reject'] as const)('ignores an engine %s after unmount', async (completion) => {
     api(() => unavailable);
     const pending = deferred<typeof import('cesium')>();
-    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={() => pending.promise} />);
+    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={() => pending.promise} />);
     unmount();
     await act(async () => { if (completion === 'resolve') pending.resolve(fakeEngine()); else pending.reject(new Error('unmounted load')); });
     expect(viewers).toHaveLength(0);
@@ -303,9 +356,9 @@ describe('EarthTwin', () => {
     api(() => unavailable);
     const pending = deferred<void>();
     const firstLoader = async () => fakeEngine({ preload: () => pending.promise, longitude: 1 });
-    const { rerender, unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={firstLoader} />);
+    const { rerender, unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={firstLoader} />);
     await waitFor(() => expect(screen.getByTestId('earth-subsolar')).toHaveTextContent('57.30°'));
-    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    rerender(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('earth-subsolar')).toHaveTextContent('28.65°'));
     await act(async () => { pending.resolve(); });
     expect(screen.getByTestId('earth-subsolar')).toHaveTextContent('28.65°');
@@ -318,7 +371,7 @@ describe('EarthTwin', () => {
     api(() => unavailable);
     const pending = deferred<typeof import('cesium')>();
     const user = userEvent.setup();
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={() => pending.promise} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={() => pending.promise} />);
     await user.selectOptions(screen.getByLabelText('Record'), 'REC-2');
     await act(async () => { pending.resolve(fakeEngine()); });
     expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY');
@@ -329,7 +382,7 @@ describe('EarthTwin', () => {
     api(() => unavailable);
     const pending = deferred<unknown>();
     const imagery = vi.fn(() => pending.promise);
-    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={async () => fakeEngine({ imagery })} />);
+    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={async () => fakeEngine({ imagery })} />);
     await waitFor(() => expect(imagery).toHaveBeenCalledOnce());
     unmount();
     await act(async () => { if (completion === 'resolve') pending.resolve({ imagery: true }); else pending.reject(new Error('unmounted imagery')); });
@@ -340,7 +393,7 @@ describe('EarthTwin', () => {
   it('removes listeners and destroys the viewer if renderer inspection fails after listener installation', async () => {
     api(() => unavailable);
     vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(() => { throw new Error('context lost'); });
-    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'UNAVAILABLE'));
     expect(viewers).toHaveLength(1);
     expect(viewers[0].destroy).toHaveBeenCalledOnce();
@@ -357,7 +410,7 @@ describe('EarthTwin', () => {
       .mockResolvedValueOnce({ status: 200, json: async () => unavailable.json })
       .mockImplementationOnce(() => pending.promise);
     vi.stubGlobal('fetch', fetch);
-    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady={false} />);
+    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady={false} />);
     await waitFor(() => expect(screen.getByTestId('earth-projection')).toHaveAttribute('data-code', 'GEOMETRY_NOT_AVAILABLE'));
     const nextSource = { ...source };
     const nextRelease = { ...release };
@@ -365,7 +418,7 @@ describe('EarthTwin', () => {
     else if (field === 'releaseId') { nextSource.releaseId = 'REL-Y'; nextRelease.releaseId = 'REL-Y'; }
     else if (field === 'corpusId') { nextSource.corpusId = 'another-corpus'; nextRelease.corpusId = 'another-corpus'; }
     else nextSource[field] = field === 'snapshotDigest' ? `sha256:${'d'.repeat(64)}` : 'd'.repeat(64);
-    rerender(<EarthTwin release={nextRelease} source={nextSource} records={records} instrument={instrument} assetsReady={false} />);
+    rerender(<EarthTwin release={nextRelease} source={nextSource} records={records} instrument={instrument} located={located} assetsReady={false} />);
     expect(screen.getByTestId('earth-projection')).toHaveAttribute('data-outcome', 'ASKING');
     expect(screen.getByTestId('earth-projection')).not.toHaveAttribute('data-code');
     expect(fetch).toHaveBeenCalledTimes(2);
@@ -384,9 +437,9 @@ describe('EarthTwin', () => {
       .mockResolvedValueOnce({ status: 200, json: () => oldBody.promise })
       .mockImplementationOnce(() => currentReply.promise);
     vi.stubGlobal('fetch', fetch);
-    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady={false} />);
+    const { rerender } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady={false} />);
     await act(async () => {});
-    rerender(<EarthTwin release={{ ...release, knownAt: '2026-09-01T11:00:00.000Z' }} source={{ ...source, snapshotDigest: `sha256:${'d'.repeat(64)}` }} records={records} instrument={instrument} assetsReady={false} />);
+    rerender(<EarthTwin release={{ ...release, knownAt: '2026-09-01T11:00:00.000Z' }} source={{ ...source, snapshotDigest: `sha256:${'d'.repeat(64)}` }} records={records} instrument={instrument} located={located} assetsReady={false} />);
     expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
     await act(async () => { oldBody.resolve({ status: 'READY' }); });
     expect(screen.getByTestId('earth-projection')).toHaveAttribute('data-outcome', 'ASKING');
@@ -399,7 +452,7 @@ describe('EarthTwin', () => {
       ? ready([declared('REC-2', 'REC-P1'), declared('REC-2', 'REC-P2', 'self_reported', { point: { datum: 'WGS84', longitude: -46.313, latitude: -23.9535, horizontalUncertaintyM: null }, source: { sourceId: 'caravan:source:meridian-yard-log', sourceName: null } })])
       : unavailable);
     const user = userEvent.setup();
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={none} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     const projection = screen.getByTestId('earth-projection');
     await waitFor(() => expect(projection).toHaveAttribute('data-outcome', 'UNAVAILABLE'));
@@ -461,7 +514,7 @@ describe('EarthTwin', () => {
     });
     const user = userEvent.setup();
     const more: EarthRecord[] = [...records, { recordId: 'REC-3', title: 'Withheld', subjectId: 'LOT-3', predicate: 'x', validFrom: '2026-08-12T00:00:00Z' }, { recordId: 'REC-4', title: 'Loading completed', subjectId: 'LOT-1', predicate: 'custody.loading_completed', validFrom: '2026-08-17T16:00:00Z' }];
-    render(<EarthTwin release={release} source={source} records={more} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={more} instrument={instrument} located={none} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     await waitFor(() => expect(screen.getByTestId('earth-projection')).toHaveAttribute('data-outcome', 'READY'));
     expect(screen.queryByTestId('place-summary')).toBeNull();
@@ -499,7 +552,7 @@ describe('EarthTwin', () => {
       ? ready([declared('REC-1', 'REC-P1'), declared('REC-1', 'REC-P2', 'self_reported', far), declared('REC-1', 'REC-P3', 'unknown', { ...far, statusAtKnownAt: 'RETRACTED' })])
       : unavailable);
     const user = userEvent.setup();
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     await waitFor(() => expect(screen.getByTestId('earth-projection')).toHaveAttribute('data-outcome', 'READY'));
 
@@ -531,7 +584,7 @@ describe('EarthTwin', () => {
   it('selects the record a drawn point was placed for when the point is clicked, and ignores clicks on nothing', async () => {
     api((body) => body.selection.recordIds[0] === 'REC-2' ? ready([declared('REC-2', 'REC-P1')]) : unavailable);
     const user = userEvent.setup();
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={none} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     expect(clicks).toHaveLength(1);
     const projection = screen.getByTestId('earth-projection');
@@ -560,7 +613,7 @@ describe('EarthTwin', () => {
     api(() => unavailable);
     // A link naming an offered record opens it.
     window.history.replaceState(null, '', '/earth#v=4.0250,51.9497,1000000,0.0,-90.0&r=REC-2');
-    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    const { unmount } = render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     expect((screen.getByLabelText('Record') as HTMLSelectElement).value).toBe('REC-2');
     expect(screen.queryByTestId('link-selection-refused')).toBeNull();
@@ -569,7 +622,7 @@ describe('EarthTwin', () => {
     // A link naming a record this release does not offer selects nothing and
     // says so. Silently showing the default would look like success.
     window.history.replaceState(null, '', '/earth#v=4.0250,51.9497,1000000,0.0,-90.0&r=REC-NOT-HERE');
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
     const refused = screen.getByTestId('link-selection-refused');
     expect(refused).toHaveAttribute('data-named', 'REC-NOT-HERE');
@@ -588,7 +641,7 @@ describe('what the twin opens on', () => {
       { recordId: 'REC-NOPOS', title: 'Moisture', subjectId: 'SAMPLE-1', predicate: 'condition.moisture', validFrom: '2026-08-01T00:00:00Z', positionDeclared: false },
       { recordId: 'REC-POS', title: 'Gross quantity', subjectId: 'LOT-1', predicate: 'quantity.gross', validFrom: '2026-08-03T10:00:00Z', positionDeclared: true },
     ];
-    render(<EarthTwin release={release} source={source} records={mixed} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={mixed} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     expect(screen.getByLabelText('Record')).toHaveValue('REC-POS');
   });
 
@@ -598,7 +651,7 @@ describe('what the twin opens on', () => {
       { recordId: 'REC-A', title: 'Moisture', subjectId: 'SAMPLE-1', predicate: 'condition.moisture', validFrom: '2026-08-01T00:00:00Z', positionDeclared: false },
       { recordId: 'REC-B', title: 'Other', subjectId: 'SAMPLE-2', predicate: 'x', validFrom: '2026-08-02T00:00:00Z', positionDeclared: false },
     ];
-    render(<EarthTwin release={release} source={source} records={none} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={none} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     expect(screen.getByLabelText('Record')).toHaveValue('REC-A');
   });
 
@@ -609,7 +662,7 @@ describe('what the twin opens on', () => {
       { recordId: 'REC-NOPOS', title: 'Moisture', subjectId: 'SAMPLE-1', predicate: 'condition.moisture', validFrom: '2026-08-01T00:00:00Z', positionDeclared: false },
       { recordId: 'REC-POS', title: 'Gross quantity', subjectId: 'LOT-1', predicate: 'quantity.gross', validFrom: '2026-08-03T10:00:00Z', positionDeclared: true },
     ];
-    render(<EarthTwin release={release} source={source} records={mixed} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={mixed} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     expect(screen.getByLabelText('Record')).toHaveValue('REC-NOPOS');
     window.location.hash = '';
   });
@@ -622,7 +675,7 @@ describe('the inspector folds what a reader arrives past', () => {
    * the lists and not the facts.
    */
   it('starts with the layers and the signal registry closed, and keeps their counts visible', () => {
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     const layers = screen.getByTestId('earth-layers');
     const signals = screen.getByTestId('earth-signals');
     expect(layers.tagName).toBe('DETAILS');
@@ -633,7 +686,7 @@ describe('the inspector folds what a reader arrives past', () => {
   });
 
   it('leaves the corpus panel open, because it is what the page is for', () => {
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     expect(screen.getByTestId('earth-projection')).toBeVisible();
   });
 });
@@ -645,7 +698,7 @@ describe('the operator instrument', () => {
    * conveniences without anyone editing this component.
    */
   it('renders every layer with its reading, and shows an unreadable one as UNKNOWN rather than as zero', () => {
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     const rows = within(screen.getByTestId('operator-layers')).getAllByRole('listitem');
     expect(rows.map((row) => `${row.getAttribute('data-operator-layer')}:${row.getAttribute('data-reading')}`)).toEqual(['positioned:1', 'void:1', 'admission-queue:UNKNOWN']);
     expect(rows.every((row) => row.getAttribute('data-convenience') === 'NONE')).toBe(true);
@@ -654,7 +707,7 @@ describe('the operator instrument', () => {
 
   it('names a convenience the reading declares, so the label is a filter and not decoration', () => {
     const smoothed: InstrumentReading = { ...instrument, layers: [...instrument.layers, { id: 'ghost', label: 'Dead-reckoned track', shows: 'A carried-forward position.', reading: 4, convenience: 'DEAD_RECKONED', because: 'Carried forward from the last fix.' }] };
-    render(<EarthTwin release={release} source={source} records={records} instrument={smoothed} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={smoothed} located={located} assetsReady loadEngine={loadEngine} />);
     const taken = screen.getByTestId('operator-conveniences');
     expect(taken).toHaveAttribute('data-taken', '1');
     expect(taken).toHaveTextContent('dead reckoned');
@@ -662,7 +715,7 @@ describe('the operator instrument', () => {
   });
 
   it('carries the headline reading in the summary, so shutting the section hides the lists and not the facts', () => {
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     const panel = screen.getByTestId('earth-operator');
     expect(panel.tagName).toBe('DETAILS');
     expect((panel as HTMLDetailsElement).open).toBe(false);
@@ -674,7 +727,7 @@ describe('the operator instrument', () => {
   it('lists the subjects it cannot fly to and lets the operator select their records instead', async () => {
     const user = userEvent.setup();
     api(() => unavailable);
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     const voids = screen.getByTestId('operator-voids');
     expect(voids).toHaveAttribute('data-count', '1');
     expect(voids).toHaveTextContent('LOT-2');
@@ -684,7 +737,7 @@ describe('the operator instrument', () => {
   });
 
   it('states the two rules it is held to, and that it writes nothing', () => {
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     const rules = screen.getByTestId('operator-rules');
     expect(rules).toHaveAttribute('data-writes', 'NONE');
     expect(within(rules).getAllByRole('listitem')).toHaveLength(2);
@@ -698,8 +751,112 @@ describe('the operator instrument', () => {
    * a selection.
    */
   it('offers no control but selection: every button in the panel changes what is looked at', () => {
-    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} assetsReady loadEngine={loadEngine} />);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
     const buttons = within(screen.getByTestId('earth-operator')).getAllByRole('button');
     expect(buttons.map((button) => button.textContent)).toEqual(['Select REC-2']);
+  });
+});
+
+describe('located events on the globe', () => {
+  const ready = async () => waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
+  const drawnEvents = () => {
+    const byId = new Map<string, { id: string; point: { pixelSize: number }; ellipse?: { semiMajorAxis: number } }>();
+    for (const [entity] of entitiesAdd.mock.calls as Array<[{ id: string; point: { pixelSize: number }; ellipse?: { semiMajorAxis: number } }]>) if (String(entity.id).startsWith('event:')) byId.set(entity.id, entity);
+    return byId;
+  };
+
+  it('draws only the items with a radius, draws the conflict loud, and counts the drawn ones in the strip', async () => {
+    api(() => unavailable);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
+    await ready();
+    const events = drawnEvents();
+    expect([...events.keys()].sort()).toEqual(['event:RET-X', 'event:SPEC-T-1']);
+    expect(events.get('event:SPEC-T-1')?.point.pixelSize).toBe(12);
+    expect(events.get('event:SPEC-T-1')?.ellipse?.semiMajorAxis).toBe(5000);
+    expect(events.get('event:RET-X')?.point.pixelSize).toBe(8);
+    expect(screen.getByTestId('earth-events')).toHaveAttribute('data-count', '2');
+    expect(screen.getByTestId('earth-events-panel')).toHaveTextContent('2 placed, 1 listed');
+  });
+
+  /** READY is the status pill; the markers are an effect behind it. A click before the effect flushes finds nothing, so the precondition is stated. */
+  const drawn = async () => { await ready(); await waitFor(() => expect(drawnEvents().size).toBe(2)); };
+
+  it('labels only the selected item at its coordinates, because five items share the berth and stacked labels read as none', async () => {
+    const user = userEvent.setup();
+    api(() => unavailable);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
+    await drawn();
+    const labelled = () => [...drawnEvents().values()].filter((entity) => 'label' in entity).map((entity) => entity.id);
+    expect(labelled()).toEqual([]);
+    entitiesAdd.mockClear();
+    await user.click(screen.getByRole('button', { name: 'SPEC-T-1' }));
+    await waitFor(() => expect(labelled()).toEqual(['event:SPEC-T-1']));
+  });
+
+  it('opens the card when a marker on the globe is clicked, and does not fly', async () => {
+    api(() => unavailable);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
+    await drawn();
+    flyTo.mockClear();
+    pick.mockReturnValue({ id: { id: 'event:SPEC-T-1' } });
+    act(() => { clicks[0]({ position: {} }); });
+    const card = screen.getByTestId('event-card');
+    expect(card).toHaveAttribute('data-event', 'SPEC-T-1');
+    expect(card).toHaveAttribute('data-state', 'CONFLICTING');
+    expect(card).toHaveAttribute('data-epistemic', 'DECLARED');
+    expect(screen.getByTestId('event-reading-now')).toHaveAttribute('data-state', 'CONFLICTING');
+    expect(screen.getByTestId('event-reading-capture')).toHaveAttribute('data-state', 'CORROBORATED');
+    expect(screen.getByTestId('event-clocks-differ')).toHaveTextContent('The two clocks disagree');
+    expect(card).toHaveTextContent('falls outside REC-2’s stated bounds');
+    expect(flyTo).not.toHaveBeenCalled();
+  });
+
+  it('selects from the list and flies to a placed item, and to nowhere for one with no radius', async () => {
+    const user = userEvent.setup();
+    api(() => unavailable);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
+    await ready();
+    flyTo.mockClear();
+    await user.click(screen.getByRole('button', { name: 'SPEC-T-1' }));
+    expect(flyTo).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('event-card')).toHaveAttribute('data-event', 'SPEC-T-1');
+    await user.click(screen.getByRole('button', { name: 'SPEC-T-2' }));
+    expect(flyTo).toHaveBeenCalledTimes(1);
+    const card = screen.getByTestId('event-card');
+    expect(card).toHaveAttribute('data-event', 'SPEC-T-2');
+    expect(card).toHaveAttribute('data-state', 'NOT_IN_COVERAGE');
+    expect(screen.getByTestId('event-geocode')).toHaveAttribute('data-epistemic', 'UNKNOWN');
+    expect(screen.getByTestId('event-geocode')).toHaveTextContent('radius not stated · not drawn');
+    expect(screen.getByTestId('event-asserts')).toHaveTextContent('names no predicate this corpus holds');
+    expect(screen.queryByRole('button', { name: 'Fly to it' })).toBeNull();
+  });
+
+  it('lets a card select the record it was checked against, or the records a retraction touched: navigation, not admission', async () => {
+    const user = userEvent.setup();
+    api(() => unavailable);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
+    await ready();
+    await user.click(screen.getByRole('button', { name: 'SPEC-T-1' }));
+    // Scoped to the card: the operator instrument's void list offers the same record.
+    await user.click(within(screen.getByTestId('event-card')).getByRole('button', { name: 'Select REC-2' }));
+    expect(screen.getByLabelText('Record')).toHaveValue('REC-2');
+    await user.click(screen.getByRole('button', { name: 'RET-X' }));
+    const card = screen.getByTestId('event-card');
+    expect(card).toHaveAttribute('data-state', 'CORRECTION');
+    expect(card).toHaveAttribute('data-epistemic', 'WITHDRAWN');
+    await user.click(within(card).getByRole('button', { name: 'Select REC-1' }));
+    expect(screen.getByLabelText('Record')).toHaveValue('REC-1');
+  });
+
+  /** Rule one at this surface: every control in the section selects or flies. */
+  it('offers no control but selection and flight', async () => {
+    const user = userEvent.setup();
+    api(() => unavailable);
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
+    await ready();
+    await user.click(screen.getByRole('button', { name: 'SPEC-T-1' }));
+    const labels = within(screen.getByTestId('earth-events-panel')).getAllByRole('button').map((button) => button.textContent ?? '');
+    expect(labels.length).toBeGreaterThanOrEqual(5);
+    expect(labels.every((label) => /^(RET-X|SPEC-T-\d|Fly to it|Select REC-\d)$/.test(label))).toBe(true);
   });
 });

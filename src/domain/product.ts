@@ -9,7 +9,7 @@ import { DOMAINS, PRODUCT_ROOT } from './domains';
 import { MATERIAL_CLASSES, MATERIAL_LABEL, PRODUCTION_STAGES, STAGE_LABEL, type MaterialClass, type ProductionStage } from './corpus';
 
 export const THESIS = {
-  firm: 'Notation Systems is a systems and intelligence firm for the physical economy. It builds computational representations of physical systems from authorized geospatial, remote-sensing, operational, and scientific source material.',
+  firm: 'Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.',
   production: 'Its internal production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.',
   inventory: 'The corpora are the finished information inventory. Customers apply their own inference, models, agents, and workflows to the data streams.',
   separation: 'Customer evidence, customer workloads, and proprietary-capital activity remain separated.',

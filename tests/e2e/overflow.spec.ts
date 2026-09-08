@@ -11,8 +11,6 @@ const PAGES = ['/', '/cases', '/cases/new', '/cases/CASE-CAR-7C104', '/cases/CAS
 for (const path of PAGES) {
   test(`no horizontal document overflow on ${path}, disclosures open`, async ({ page }) => {
     await page.goto(path);
-    // The root redirects to the corpus; measure the page it lands on.
-    if (path === '/') await page.waitForURL((u) => u.pathname !== '/');
     await page.waitForLoadState('load');
     const measure = () => page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
     const closed = await measure();

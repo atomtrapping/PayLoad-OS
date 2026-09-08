@@ -30,6 +30,29 @@ export interface AdmittedReading {
  */
 export const ADMITTED_PROVENANCE = ['LIVE_CAPTURE', 'BACKFILLED'] as const;
 
+/**
+ * What the admission gate has ruled, read back.
+ *
+ * `admitRecords` writes a row to `admission_ruling` for every ruling it makes,
+ * refusals included, in the same transaction as the record it admitted. That
+ * table had no reader anywhere in the system: the gate's own account of what it
+ * decided was written and never looked at, which makes it a log rather than a
+ * ledger. This reading is the reader.
+ *
+ * Every field is `number | 'UNKNOWN'` for the same reason the admitted count is.
+ * A store that cannot be reached has an unknown number of rulings in it, and
+ * answering zero would say the gate has never refused anything on the strength
+ * of a failed connection.
+ */
+export interface LedgerReading {
+  rulings: AdmittedCount;
+  /** Rulings by their own outcome word, as the gate wrote it. Empty when unreadable. */
+  byOutcome: readonly { outcome: string; rulings: number }[];
+  /** Rows in `record_ancestry`: released records that can still name the build that proposed them. */
+  ancestry: AdmittedCount;
+  because: string;
+}
+
 export interface CorpusSource {
   readonly origin: { kind: 'FIXTURE'; label: string } | { kind: 'LIVE'; label: string };
   listCorpora(): Promise<Corpus[]>;
@@ -41,10 +64,31 @@ export interface CorpusSource {
   retractions(since: string | undefined, viewer: VisibilityClass): Promise<Retraction[]>;
   /** Derived from the store, never asserted. A source that cannot reach one answers UNKNOWN. */
   admittedRecords(): Promise<AdmittedReading>;
+  /** The gate's own record of every ruling it made, admitted and refused alike. */
+  admissionLedger(): Promise<LedgerReading>;
 }
 
 export class FixtureCorpusSource implements CorpusSource {
   readonly origin = { kind: 'FIXTURE', label: 'Demonstration corpus (fixture_only: true)' } as const;
+
+  /**
+   * UNKNOWN, for exactly the reason the admitted count is.
+   *
+   * It is tempting to answer zero here — no store, so no gate, so surely no
+   * rulings. That reasoning is wrong in the same way everywhere it appears:
+   * this process not being connected to the admission store says nothing about
+   * what is in it. A gate may have ruled a thousand times in a database this
+   * process was never pointed at. Zero would be a claim about that store made
+   * from a process that cannot see it.
+   */
+  async admissionLedger(): Promise<LedgerReading> {
+    return {
+      rulings: 'UNKNOWN',
+      byOutcome: [],
+      ancestry: 'UNKNOWN',
+      because: 'This process reads the committed demonstration corpus and holds no connection to the store the admission gate writes its rulings to. What that gate has ruled is not readable from here, and an unreadable count is not a zero.',
+    };
+  }
 
   async listCorpora(): Promise<Corpus[]> {
     return [...FIXTURE_CORPORA];
@@ -211,6 +255,46 @@ export class LiveCorpusSource implements CorpusSource {
       return {
         count: 'UNKNOWN',
         because: 'A corpus store is configured and could not be read, so the admitted count is unknown. An unreadable count is not a zero, and reporting one here would be a claim about the corpus made on the strength of a failed connection.',
+      };
+    }
+  }
+
+  /**
+   * The gate's own account of itself, read back for the first time.
+   *
+   * `admitRecords` writes a ruling row for every decision it makes — refusals
+   * as well as admissions, in the same transaction as the record — and nothing
+   * in this system had ever read one. A refusal that is written and never read
+   * is not accountability, it is storage.
+   *
+   * Grouped in the database, like the admitted count and for the same reason:
+   * the answer is a handful of integers and the cost of a self-report should
+   * not grow with what it reports on.
+   */
+  async admissionLedger(): Promise<LedgerReading> {
+    try {
+      const { db, admissionRulings, recordAncestry } = await this.database();
+      const [tallies, ancestryRows] = await Promise.all([
+        db.select({ outcome: admissionRulings.outcome, rows: count() }).from(admissionRulings).groupBy(admissionRulings.outcome),
+        db.select({ rows: count() }).from(recordAncestry),
+      ]);
+      const byOutcome = tallies
+        .map((tally) => ({ outcome: tally.outcome, rulings: Number(tally.rows) }))
+        .sort((a, b) => (b.rulings - a.rulings) || (a.outcome < b.outcome ? -1 : 1));
+      const rulings = byOutcome.reduce((total, entry) => total + entry.rulings, 0);
+      const ancestry = Number(ancestryRows[0]?.rows ?? 0);
+      return {
+        rulings, byOutcome, ancestry,
+        because: rulings === 0
+          ? 'The admission ruling table is empty. This is a read of the store: the gate exists, it has never been asked to rule, and nothing has been refused either.'
+          : `${rulings} ${rulings === 1 ? 'ruling' : 'rulings'} recorded, ${byOutcome.map((entry) => `${entry.rulings} ${entry.outcome}`).join(', ')}. Every ruling is written in the same transaction as the record it decided, refusals included, so this count is the gate's whole history and not only its successes.`,
+      };
+    } catch {
+      return {
+        rulings: 'UNKNOWN',
+        byOutcome: [],
+        ancestry: 'UNKNOWN',
+        because: 'A corpus store is configured and the admission ruling table could not be read, so what the gate has ruled is unknown. Answering zero would say the gate has never refused anything, on the strength of a failed connection.',
       };
     }
   }

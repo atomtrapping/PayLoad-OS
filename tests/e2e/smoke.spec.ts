@@ -45,9 +45,12 @@ test('mobile: the ruling viewer remains legible and does not scroll horizontally
   const vw = await page.evaluate(() => window.innerWidth);
   expect(width).toBeLessThanOrEqual(vw + 1);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByText('Refused').first()).toBeVisible();
-  await expect(page.locator('[data-clock="validAt"]').first()).toBeVisible();
-  await expect(page.locator('[data-clock="knownAt"]').first()).toBeVisible();
+  // Scoped to the ruling, not the whole document: the sidebar's own copy names
+  // what is refused, and a bare text match found that first.
+  const ruling = page.getByRole('main');
+  await expect(ruling.getByText('Refused').first()).toBeVisible();
+  await expect(ruling.locator('[data-clock="validAt"]').first()).toBeVisible();
+  await expect(ruling.locator('[data-clock="knownAt"]').first()).toBeVisible();
 });
 
 test('the feed serves fixture-only JSON with release, bounds, refusals and retractions', async ({ request }) => {
@@ -476,4 +479,43 @@ test('the product control scopes the corpus surfaces to one line, and says what 
   await page.getByTestId('line-scope').locator('[data-scope="ALL"]').click();
   await expect(page.locator('[data-retraction-id]')).toHaveCount(4);
   await expect(page.getByTestId('line-scope-hidden')).toHaveCount(0);
+});
+
+test('the console reports the terminal on itself, and never turns an unreadable count into a number', async ({ page }) => {
+  // The home route used to redirect into the release catalogue. A control
+  // system's home is the system.
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: 'NotationsOS console' })).toBeVisible();
+
+  // Three panels: what answered, what the gate did, what is refused.
+  await expect(page.getByTestId('console-corpus')).toBeVisible();
+  await expect(page.getByTestId('console-admission')).toBeVisible();
+  await expect(page.getByTestId('console-rails')).toBeVisible();
+
+  // Without a database this process cannot see the admission store, so the
+  // three readings that come from it are UNREADABLE and carry no digit.
+  const admitted = page.locator('[data-console-row="ADMITTED"]');
+  await expect(admitted).toHaveAttribute('data-console-state', 'UNREADABLE');
+  await expect(admitted).toContainText('UNREADABLE');
+  await expect(admitted).toContainText('an unreadable count is not a zero');
+  await expect(admitted.locator('[data-epistemic="UNKNOWN"]')).toHaveCount(1);
+  await expect(page.locator('[data-console-state="UNREADABLE"]')).toHaveCount(3);
+
+  // A count that was read is a count: the corpus panel answers from the
+  // committed demonstration and says the number it found.
+  const corpora = page.locator('[data-console-row="CORPORA"]');
+  await expect(corpora).toHaveAttribute('data-console-state', 'READ');
+  await expect(corpora.locator('[data-epistemic="MEASURED"]')).toHaveCount(1);
+
+  // Every rail is off by configuration, drawn as DECLARED and never as a
+  // refusal, and each prints the command that enables it.
+  await expect(page.locator('[data-console-state="DISABLED"]')).toHaveCount(4);
+  await expect(page.locator('[data-console-state="DISABLED"] [data-epistemic="REFUSED"]')).toHaveCount(0);
+  await expect(page.locator('[data-enable-with="PRODUCTION"]')).toHaveText('npm run dev:production');
+
+  // The page declares that it writes nothing, and offers no control that could.
+  await expect(page.getByTestId('console-loss')).toContainText('NONE');
+  await expect(page.getByTestId('console-because')).toContainText('4 of 4 local rails are off');
+  await expect(page.getByTestId('console').locator('button')).toHaveCount(0);
 });

@@ -31,6 +31,7 @@
  * than a reading of absence.
  */
 import type { BlockingOutcome } from './crossLineJoin';
+import type { ConsoleState } from './console';
 import type { RecordStatus } from './corpus';
 import type { LayerState, ProjectionOutcome } from './earth';
 import type { FieldPresence } from './statutoryHarvest';
@@ -117,6 +118,28 @@ export const EPISTEMIC_OF_BLOCKING: Record<BlockingOutcome, Epistemic> = {
   NOT_CO_LOCATED: 'DERIVED',
   NO_TIME_OVERLAP: 'DERIVED',
   NOT_KEYABLE: 'UNKNOWN',
+};
+
+/**
+ * What a console row is.
+ *
+ * READ is MEASURED because a console reading is exactly that: a store or a
+ * process variable was asked and answered, and the number is what was there.
+ * UNREADABLE is UNKNOWN, which is the one that matters — it is the only state
+ * drawn hollow, and a console is where the pull toward a confident zero is
+ * strongest.
+ *
+ * DISABLED is DECLARED and deliberately not REFUSED. A refusal is a gate
+ * declining a request; a rail an operator never enabled has declined nothing.
+ * Drawing the two alike would put every unconfigured rail in refusal red on the
+ * terminal's home page, and a reader who sees red on every visit stops reading
+ * red at all.
+ */
+export const EPISTEMIC_OF_CONSOLE: Record<ConsoleState, Epistemic> = {
+  READ: 'MEASURED',
+  UNREADABLE: 'UNKNOWN',
+  DISABLED: 'DECLARED',
+  ABSENT: 'UNKNOWN',
 };
 
 /**

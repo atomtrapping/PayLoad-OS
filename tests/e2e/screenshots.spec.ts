@@ -5,6 +5,11 @@ const OUT = 'docs/screenshots';
 mkdirSync(OUT, { recursive: true });
 
 test('desktop screenshots', async ({ page }) => {
+  // The console first, because it is the terminal's home and the first thing
+  // an operator sees.
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'NotationsOS console' }).waitFor();
+  await page.screenshot({ path: `${OUT}/0000-console.png`, fullPage: true });
   await page.goto('/model');
   await page.getByRole('heading', { level: 1 }).waitFor();
   await page.screenshot({ path: `${OUT}/000-product-model.png`, fullPage: true });

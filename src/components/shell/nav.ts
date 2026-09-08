@@ -6,9 +6,16 @@
  * Acquisitions live on the rail page, so that area opens it at its section.
  */
 export interface NavItem { href: string; label: string; match: RegExp }
-export interface NavArea { id: 'products' | 'acquisition' | 'corpus' | 'notations' | 'inquiry' | 'coordination'; label: string; activity: string; items: readonly NavItem[] }
+export interface NavArea { id: 'system' | 'products' | 'acquisition' | 'corpus' | 'notations' | 'inquiry' | 'coordination'; label: string; activity: string; items: readonly NavItem[] }
 
 export const NAV_AREAS: readonly NavArea[] = [
+  // The terminal itself leads, because this is a control system and the first
+  // question an operator has on opening one is about the system, not the
+  // catalogue. `/` used to redirect into Releases, so there was nothing to put
+  // here and nothing that answered that question anywhere.
+  { id: 'system', label: 'System', activity: 'What this terminal can see about itself: stores, the admission gate, and what is refused right now', items: [
+    { href: '/', label: 'Console', match: /^\/$/ },
+  ] },
   { id: 'products', label: 'Products', activity: 'The three APIs, what they deliver, and how a customer reads them', items: [
     { href: '/products', label: 'Products', match: /^\/products/ },
     { href: '/api', label: 'API', match: /^\/api/ },

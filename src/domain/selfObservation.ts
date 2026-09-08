@@ -102,7 +102,8 @@ export const PRESENCE_MEANING: Record<FieldPresence, string> = {
 /** Every field this grammar reads out of a commit object, with the basis fixed per field. */
 export const COMMIT_FIELDS = {
   tree: { basis: 'CONTENT_DERIVED', kind: 'OBJECT_NAME', what: 'The name of the tree this commit records, which is a SHA-1 over that tree’s own bytes.' },
-  parents: { basis: 'CONTENT_DERIVED', kind: 'OBJECT_NAME_LIST', what: 'The names of the commits this one follows. Zero for a root commit, two or more for a merge.' },
+  parents: { basis: 'CONTENT_DERIVED', kind: 'OBJECT_NAME_LIST', what: 'The names of the commits this one follows. Empty for a root commit, which names nothing rather than naming none.' },
+  parentCount: { basis: 'CONTENT_DERIVED', kind: 'COUNT', what: 'How many commits this one follows. Zero for a root commit, which is a value: the object states that it follows nothing.' },
   authorIdentity: { basis: 'SELF_REPORTED', kind: 'TEXT', what: 'The name and address on the author line, as configured by whoever ran the command. Git verifies neither.' },
   authoredAt: { basis: 'SELF_REPORTED', kind: 'INSTANT', what: 'The instant on the author line. Settable to any value, past or future, with git commit --date.' },
   committerIdentity: { basis: 'SELF_REPORTED', kind: 'TEXT', what: 'The name and address on the committer line. Rewritten by rebase and amend, and verified by nothing.' },
@@ -118,7 +119,7 @@ export interface ObservedField {
   field: CommitFieldName;
   presence: FieldPresence;
   basis: ObservationBasis;
-  value: string | readonly string[] | boolean | null;
+  value: string | readonly string[] | boolean | number | null;
   because: string;
 }
 
@@ -260,13 +261,24 @@ export function observeCommit(bytes: string, objectName: string, declaration: Ca
     // but a value that is not an object name still is not one.
     const parents = headers.filter((entry) => entry.key === 'parent').map((entry) => entry.value);
     const badParent = parents.find((value) => !OBJECT_NAME.test(value));
-    fields.push(
-      badParent !== undefined
-        ? field('parents', 'MALFORMED', null, `A parent header carries ${JSON.stringify(badParent.slice(0, 48))}, which is not a 40-character object name.`)
-        : field('parents', 'PRESENT', parents, parents.length === 0
-          ? 'No parent: a root commit. Zero parents is a value, not an absence.'
-          : `${parents.length} ${parents.length === 1 ? 'parent' : 'parents'}, each a SHA-1 over that commit’s own bytes.`),
-    );
+    // The list and the count are two propositions, not one rendering of the
+    // same one. A root commit names no parent — so the list carries nothing to
+    // assert — and states that it follows zero, which is a value. Collapsing
+    // them would make "names none" and "says nothing" the same answer, one
+    // level up from where the four presences already refuse to.
+    if (badParent !== undefined) {
+      const because = `A parent header carries ${JSON.stringify(badParent.slice(0, 48))}, which is not a 40-character object name.`;
+      fields.push(field('parents', 'MALFORMED', null, because), field('parentCount', 'MALFORMED', null, because));
+    } else {
+      fields.push(
+        parents.length === 0
+          ? field('parents', 'ABSENT', null, 'A root commit names no parent. There is no name here to assert, which is why the count beside it carries the claim.')
+          : field('parents', 'PRESENT', parents, `${parents.length} ${parents.length === 1 ? 'parent' : 'parents'}, each a SHA-1 over that commit’s own bytes.`),
+        field('parentCount', 'PRESENT', parents.length, parents.length === 0
+          ? 'Zero: the object states that it follows nothing, which is a value rather than a silence.'
+          : `${parents.length}, counted from the parent headers present.`),
+      );
+    }
 
     fields.push(...identityFields(headers, 'author', 'authorIdentity', 'authoredAt'));
     fields.push(...identityFields(headers, 'committer', 'committerIdentity', 'committedAt'));

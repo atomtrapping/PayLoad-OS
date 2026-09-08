@@ -43,7 +43,7 @@ export const RESOLUTION_METHOD = 'notationsos.identity-resolution.v1';
  * identifier at all. The second is not an oversight — it is the value that
  * stops a name being used as a key.
  */
-export type IdentifierFamilyId = 'USDOT' | 'IMO' | 'MMSI' | 'LEI' | 'NAIC' | 'LOT' | 'NOT_AN_IDENTIFIER';
+export type IdentifierFamilyId = 'USDOT' | 'IMO' | 'MMSI' | 'LEI' | 'NAIC' | 'LOT' | 'GIT_OBJECT' | 'NOT_AN_IDENTIFIER';
 
 export const FAMILY_ISSUER: Record<IdentifierFamilyId, string> = {
   USDOT: 'FMCSA',
@@ -52,6 +52,20 @@ export const FAMILY_ISSUER: Record<IdentifierFamilyId, string> = {
   LEI: 'GLEIF',
   NAIC: 'National Association of Insurance Commissioners',
   LOT: 'Operator, in the demonstration corpus',
+  /**
+   * The one family here with no issuer, and it is stronger for it. Every other
+   * family above requires trusting a register: an NAIC code means what the NAIC
+   * says it means, and a party that lost its registry entry loses its identity.
+   * A git object name is the SHA-1 of the object's own bytes, so it is derived
+   * from the content it names. Two parties holding the same bytes compute the
+   * same name without consulting anyone, and no authority can reassign it.
+   *
+   * That does not make the binding to a corpus subject automatic. Which
+   * `notation://` subject a given object names is still this corpus's decision
+   * and still needs a registration — but the evidence for that registration is
+   * the object, which is checkable, rather than a register entry that is not.
+   */
+  GIT_OBJECT: 'Nobody. A git object name is the SHA-1 of the object’s own bytes, so it is derived from the content it names rather than assigned by a party, and anyone holding the bytes recomputes it.',
   NOT_AN_IDENTIFIER: 'Nobody. A name, a description or a label, which no authority issued and which resolves nothing.',
 };
 

@@ -60,14 +60,18 @@ describe('a content address is read as a content address', () => {
     }
   });
 
-  it('reads no parent as zero parents rather than as absence', () => {
-    // A root commit states something: that it follows nothing. Reporting that
-    // as ABSENT would lose the difference between "none" and "not said".
+  it('splits a root commit into "names no parent" and "follows zero"', () => {
+    // Two propositions, not one rendering of the same one. There is no parent
+    // name to assert, and the object does state that it follows nothing —
+    // which is a value. Collapsing them would make "names none" and "says
+    // nothing" the same answer, one level above where the four presences
+    // already refuse to.
     const root = COMMIT_SPECIMENS.find((s) => s.shape.startsWith('A root'))!;
-    const parents = read(observe(root.bytes), 'parents');
-    expect(parents.presence).toBe('PRESENT');
-    expect(parents.value).toEqual([]);
-    expect(parents.because).toMatch(/Zero parents is a value, not an absence/);
+    const observation = observe(root.bytes);
+    expect(read(observation, 'parents').presence).toBe('ABSENT');
+    expect(read(observation, 'parentCount').presence).toBe('PRESENT');
+    expect(read(observation, 'parentCount').value).toBe(0);
+    expect(read(observation, 'parentCount').because).toMatch(/value rather than a silence/);
   });
 
   it('reads two parents as two, because a parent header repeats legitimately', () => {
@@ -79,6 +83,7 @@ describe('a content address is read as a content address', () => {
     expect(parents.presence).toBe('PRESENT');
     expect((parents.value as readonly string[]).length).toBe(2);
     for (const name of parents.value as readonly string[]) expect(name).toMatch(/^[0-9a-f]{40}$/);
+    expect(read(observe(merge.bytes), 'parentCount').value).toBe(2);
   });
 });
 
@@ -95,7 +100,7 @@ describe('a claim is read as a claim, and never offered as a measurement', () =>
   });
 
   it('offers only content-derived fields as assertable, and withholds the rest with the reason', () => {
-    expect([...observation.assertable].sort()).toEqual(['parents', 'tree']);
+    expect([...observation.assertable].sort()).toEqual(['parentCount', 'parents', 'tree']);
     const withheldFields = observation.withheld.map((entry) => entry.field).sort();
     expect(withheldFields).toEqual(['authorIdentity', 'authoredAt', 'committedAt', 'committerIdentity', 'message', 'signature']);
     for (const entry of observation.withheld) expect(entry.because.length).toBeGreaterThan(0);
@@ -168,6 +173,9 @@ describe('four answers, and a repeat is never broken by taking the first', () =>
   it('refuses a parent that is not an object name rather than carrying it', () => {
     const observation = observe(`${tree('a'.repeat(40))}\nparent nope\nauthor A <a@b> 1 +0000\n\nx\n`);
     expect(read(observation, 'parents').presence).toBe('MALFORMED');
+    // The count goes with it: counting headers this grammar could not read
+    // would be reporting a number over an unknown.
+    expect(read(observation, 'parentCount').presence).toBe('MALFORMED');
   });
 
   it('reads an empty message as absent', () => {
@@ -184,7 +192,7 @@ describe('the message body is a message body', () => {
     const observation = observe(`tree ${real}\nauthor A <a@b> 1 +0000\n\ntree ${'0'.repeat(40)}\nparent ${'1'.repeat(40)}\n`);
     expect(read(observation, 'tree').presence).toBe('PRESENT');
     expect(read(observation, 'tree').value).toBe(real);
-    expect(read(observation, 'parents').value).toEqual([]);
+    expect(read(observation, 'parents').presence).toBe('ABSENT');
     expect(read(observation, 'message').value).toContain(`tree ${'0'.repeat(40)}`);
   });
 

@@ -1,4 +1,4 @@
-"""Standard-library client for the local Payload OS coordination sandbox.
+"""Standard-library client for the local NotationsOS coordination sandbox.
 
 Participant IDs name simulated authors; they are not authentication credentials.
 All retries reuse the exact encoded command and the caller-supplied requestId.

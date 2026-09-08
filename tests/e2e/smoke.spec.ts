@@ -150,6 +150,19 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.getByTestId('cross-line-join')).toContainText('A join built per line is not a join');
   // The cell key is computed now, and the hazard it carries is unchanged.
   await expect(page.locator('[data-join-key="SPATIAL_CELL"][data-join-state="PRESENT"]')).toContainText('never what the comparison concludes');
+  // The two present keys, run across all three lines: co-location established, resolution not.
+  const keys = page.getByTestId('keys-run');
+  await expect(keys.locator('[data-line]')).toHaveCount(3);
+  await expect(keys.locator('[data-pair-outcome]')).toHaveCount(11);
+  await expect(keys.locator('[data-pair-outcome="CO_LOCATED"]')).toHaveCount(4);
+  await expect(page.getByTestId('keys-resolved')).toHaveAttribute('data-value', '0');
+  await expect(keys).toContainText('RESOLVED 0 · ABSENT');
+  // A pair with no key reads hollow, and is neither co-located nor apart.
+  const unkeyable = keys.locator('[data-pair-outcome="NOT_KEYABLE"]');
+  await expect(unkeyable).toHaveCount(3);
+  await expect(unkeyable.first()).toContainText('states no horizontal uncertainty');
+  await expect(unkeyable.first().locator('[data-epistemic="UNKNOWN"]').first()).toBeVisible();
+  await expect(page.getByTestId('keys-because')).toContainText('0 are resolved');
   // Space: six roles with their honest state, five derivations ranked, the display the only built one.
   await expect(page.locator('[data-spatial-role]')).toHaveCount(6);
   await expect(page.locator('[data-spatial-role="DISPLAY"][data-spatial-state="BUILT"]')).toContainText('windshield, not the engine');

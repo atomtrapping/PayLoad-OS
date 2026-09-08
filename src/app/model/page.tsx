@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import { getCorpusSource } from '@/adapter/corpusSource';
-import { Readout, Segments } from '@/components/hud/Instrument';
+import { Readout, Rule, Segments } from '@/components/hud/Instrument';
 import Link from 'next/link';
 import { CUSTOMER_CATEGORIES, DISTRIBUTION_MECHANISMS, ECONOMIC_ARCHITECTURE, ENGINES, MATERIAL_CLASSES_IN_CORPUS, PRESENCE_LABEL, PRODUCTION_SYSTEM, PRODUCT_ARCHITECTURE, REFERENCE_IMPLEMENTATION, THESIS, VALUE_PROPOSITION } from '@/domain/product';
 import { DOCTRINE, EXTRACTION_INTERFACE, FABRICS, IDENTITY_CHAIN, INFORMATION_STATES, OPERATIONAL_RULE, PROJECTION_ENGINES_IN_REPOSITORY, VERIFICATION_TIERS, WORKBENCH_RUNTIME } from '@/domain/doctrine';
 import { CROSS_LINE_JOIN, CORE_STATE_LABEL, FAMILY_STATE_LABEL, IDENTIFIER_FAMILIES, IDENTITY_CORE, JOIN_KEYS } from '@/domain/identity';
+import { BLOCKING_MEANING, CROSS_LINE_LOSS, crossLineStanding } from '@/domain/crossLineJoin';
+import { EPISTEMIC_OF_BLOCKING } from '@/domain/epistemic';
 import { STORAGE_CLASSES, STORAGE_PRESENT_STATE, STORAGE_SEQUENCE, STORAGE_STATE_LABEL, STORE_KIND_LABEL } from '@/domain/storage';
 import { SPATIAL_CAPABILITIES, SPATIAL_DERIVATIONS, SPATIAL_DISCIPLINE, SPATIAL_ROLES, SPATIAL_ROLE_STATE_LABEL, SPATIAL_SEQUENCE } from '@/domain/spatialDerivation';
 import { AS_OF_COMPOSITION, LAYER_CONVENTION, MAPPING_STATE_LABEL, UNCERTAINTY_ENCODING, USD_BOUNDARY, USD_MAPPING, USD_ROLE } from '@/domain/usdProjection';
@@ -24,6 +26,7 @@ import { NEGATIVE_RULES, WHY_ONE_IS_NOT_ENOUGH } from '@/domain/negativeStates';
 import { STACK, WHAT_IS_BEING_CLAIMED, compressionAvailable } from '@/domain/compression';
 import { currentRelease } from '@/domain/corpus';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
+import { FIXTURE_CORPORA } from '@/fixtures';
 import { Section } from '@/components/primitives/Section';
 import { fmtUtc } from '@/lib/format';
 
@@ -38,6 +41,11 @@ const FIT_LABEL = {
 
 export default async function ProductPage() {
   const capabilityFits = CAPABILITIES.map((capability) => fitOf(capability, CARAVAN_CORPUS));
+  // The two present join keys, run across every line that carries records.
+  // Read from the counterparty seat's deliverable set, never the release: a
+  // position this seat may not be delivered is not a position it may join on.
+  const keysRun = crossLineStanding(FIXTURE_CORPORA);
+  const unkeyablePairs = keysRun.pairs.filter((pair) => pair.outcome === 'NOT_KEYABLE').length;
   const accommodation = accommodationStanding(CARAVAN_CORPUS);
 
   // The worked demonstration: a condition sitting between the draft survey and
@@ -257,6 +265,54 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
             </tbody>
           </table>
           <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{CROSS_LINE_JOIN.discipline}</p>
+        </div>
+
+        <div className="hud-panel flex flex-col gap-3" data-testid="keys-run">
+          <Rule label="The keys, run" right={<span data-epistemic="DERIVED" style={{ border: 0, background: 'transparent' }}>RESOLVED {keysRun.resolved} · {keysRun.resolutionState}</span>} state="DERIVED" />
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>Two of the three keys are present, and all three lines carry records, so they were run rather than described. Every pair below was compared at the coarser of its two stated precisions, over valid time, at knowledge time <span className="mono">{fmtUtc(keysRun.knownAt)}</span>, from the <span className="mono">{keysRun.seat.replace('_', ' ').toLowerCase()}</span> seat.</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <Readout label="Cross-line pairs" value={keysRun.pairs.length} state="DERIVED" testId="keys-pairs" />
+            <Readout label="Co-located" value={keysRun.coLocated} state="DERIVED" testId="keys-colocated" />
+            <Readout label="Unkeyable" value={unkeyablePairs} state="DERIVED" testId="keys-unkeyable" />
+            <Readout label="Resolved" value={keysRun.resolved} state="DERIVED" testId="keys-resolved" />
+          </div>
+          <div className="surface overflow-x-auto" tabIndex={0}>
+            <table className="ledger-table text-[12px]" aria-label="Declared positions per line">
+              <thead><tr><th scope="col">Line</th><th scope="col">Corpus</th><th scope="col">Positions</th><th scope="col">Keyed</th><th scope="col">Unkeyable</th></tr></thead>
+              <tbody>
+                {keysRun.lines.map((line) => (
+                  <tr key={line.corpusId} data-line={line.domain}>
+                    <td style={{ color: 'var(--text-heading)' }}>{line.domain}</td>
+                    <td className="mono">{line.corpusId}</td>
+                    <td className="mono">{line.positions}</td>
+                    <td className="mono">{line.keyed}</td>
+                    <td className="mono">{line.unkeyable === 0 ? '0' : <span data-epistemic="UNKNOWN" style={{ border: 0, background: 'transparent' }}>{line.unkeyable}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="surface overflow-x-auto" tabIndex={0}>
+            <table className="ledger-table text-[12px]" aria-label="Cross-line pairs and what the keys established">
+              <thead><tr><th scope="col">Left</th><th scope="col">Right</th><th scope="col">Outcome</th><th scope="col">Cell</th><th scope="col">At precision</th><th scope="col">What it establishes</th></tr></thead>
+              <tbody>
+                {keysRun.pairs.map((pair) => (
+                  <tr key={`${pair.left.recordId}-${pair.right.recordId}`} data-pair-outcome={pair.outcome}>
+                    <td className="whitespace-nowrap"><span className="id">{pair.left.subjectId}</span><br /><span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{pair.left.domain}</span></td>
+                    <td className="whitespace-nowrap"><span className="id">{pair.right.subjectId}</span><br /><span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{pair.right.domain}</span></td>
+                    <td><span className="pill" data-epistemic={EPISTEMIC_OF_BLOCKING[pair.outcome]} title={BLOCKING_MEANING[pair.outcome]}>{pair.outcome.replace(/_/g, ' ')}</span></td>
+                    <td className="mono">{pair.comparedCell ?? <span data-epistemic="UNKNOWN" style={{ border: 0, background: 'transparent' }}>NONE</span>}</td>
+                    <td className="mono">{pair.comparedAtPrecision ?? <span data-epistemic="UNKNOWN" style={{ border: 0, background: 'transparent' }}>UNKNOWN</span>}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{pair.because}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }} data-testid="keys-because">{keysRun.because}</p>
+          <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }} aria-label="What running the keys gives up">
+            {CROSS_LINE_LOSS.map((loss) => <li key={loss}>{loss}</li>)}
+          </ul>
         </div>
       </Section>
 

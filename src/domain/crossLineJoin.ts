@@ -168,10 +168,12 @@ export function linePositions(corpus: Corpus, seat: VisibilityClass = 'COUNTERPA
 export function blockPair(left: LinePosition, right: LinePosition): BlockingPair {
   const base = { left, right, comparedAtPrecision: null, comparedCell: null, overlap: null } as const;
   if (!left.key || !right.key) {
-    const which = !left.key && !right.key ? 'Neither position states' : `${!left.key ? left.recordId : right.recordId} states no`;
+    const which = !left.key && !right.key
+      ? 'Neither position states a horizontal uncertainty'
+      : `${!left.key ? left.recordId : right.recordId} states no horizontal uncertainty`;
     return {
       ...base, outcome: 'NOT_KEYABLE',
-      because: `${which} a horizontal uncertainty (${(left.refusal ?? right.refusal) as KeyRefusal}), so there is no key and no comparison at any resolution. A default radius would have invented the answer.`,
+      because: `${which} (${(left.refusal ?? right.refusal) as KeyRefusal}), so there is no key and no comparison at any resolution. A default radius would have invented the answer.`,
     };
   }
   // A key is only as sharp as the vaguer of the two sources.

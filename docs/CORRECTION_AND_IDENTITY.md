@@ -91,8 +91,10 @@ predicate, and a line-agnostic key for the cases where no identifier is shared.
 
 Three join keys, each with the mistake it invites:
 
-- **Spatial cell** — absent. A shared cell is co-location at a resolution, not
-  a relationship.
+- **Spatial cell** — present, and now exercised across three lines. A shared
+  cell is co-location at a resolution, not a relationship. Two keys block at
+  the coarser of their two precisions, never the finer, and a position whose
+  source stated no precision is refused a key rather than given a default one.
 - **Time interval** — present, because both clocks exist. Overlapping in valid
   time is coincidence in the world; overlapping in knowledge time is only
   coincidence in what was known, and confusing them invents causation from a
@@ -100,6 +102,23 @@ Three join keys, each with the mistake it invites:
 - **Resolved entity** — absent. A matching name is not a resolution, and a
   matching label across two lines is the cheapest way to manufacture a moat
   that is not there.
+
+### Running the two present keys
+
+Until 2026-09-08 the join could not be exercised, because two of the three
+lines held nothing. All three carry records now, so `src/domain/crossLineJoin.ts`
+runs the spatial cell and the time interval over every cross-line pair. At the
+counterparty seat and knowledge time `2026-09-01T12:00:00Z` it returns 11
+cross-line pairs: 4 co-located, 4 apart, 3 unkeyable, and `resolved: 0` with
+`resolutionState: ABSENT`.
+
+The zero is the finding, not a shortfall. Blocking decides which pairs are
+worth comparing; it is not the comparison and it is not the decision. Three
+subjects sharing cell `u14ze9` over one interval — a Caravan lot, a Tradewind
+route's discharge point and a Landshark parcel — are three subjects in one
+cell, and no number of co-located pairs becomes a resolution.
+
+`docs/CROSS_LINE_JOIN.md` records the run in full.
 
 A join built per line is not a join. If resolution, provenance and
 bitemporality are solved once for Caravan alone, the second line pays the whole

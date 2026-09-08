@@ -88,8 +88,15 @@ does not have.
   the declared policy ran — not that it was the right policy.
 - **Correction and identity** — downstream invalidation, the specified-and-empty
   delivery ledger, one identity core with three per-line identifier families and
-  the absent cross-line join.
+  the still-absent cross-line join.
   [`docs/CORRECTION_AND_IDENTITY.md`](docs/CORRECTION_AND_IDENTITY.md)
+- **The cross-line join, run** — three lines carry records now, so the two
+  present keys were finally exercised rather than asserted: 11 cross-line pairs,
+  4 co-located, 3 unkeyable because their source stated no precision, and
+  `resolved: 0`. A lot at a berth, a route's discharge point written against
+  that berth and the parcel the berth sits on are three subjects in one cell.
+  That is co-location, and no number of co-located pairs becomes a resolution.
+  [`docs/CROSS_LINE_JOIN.md`](docs/CROSS_LINE_JOIN.md)
 - **Metering** — what a lap is, and the half of a response receipt that would
   have to exist before a bill line could point at one.
   [`docs/METERING.md`](docs/METERING.md)
@@ -196,7 +203,7 @@ does not have.
   a second account that stated its own uncertainty.
   [`docs/ACCOMMODATION.md`](docs/ACCOMMODATION.md)
 
-An editable [architecture map](docs/architecture-map/Payload%20OS%20Architecture.md)
+An editable [architecture map](docs/architecture-map/NotationsOS%20Architecture.md)
 — an Obsidian canvas with one note per part, 63 of them — draws the fabrics,
 layers and flows as they exist on the branch.
 
@@ -356,7 +363,8 @@ Playwright uses the environment's Chromium when `PW_CHROMIUM_PATH` is set (for e
 - `docs/INTERACTION_SPEC.md` — status transitions, refusal interaction, replay, supersession, visibility.
 - `docs/DEMO_CASE.md` — the fixtures, why they are synthetic, what they demonstrate, what is unvalidated.
 - `docs/STORAGE.md` — six classes of information, the store each asks for, the invariant each must not break, and the sequence in which one earns its place.
-- `docs/CORRECTION_AND_IDENTITY.md` — downstream invalidation per class of derived artifact, the delivery ledger, as-of as a contract feature, and the identity core with the absent cross-line join.
+- `docs/CORRECTION_AND_IDENTITY.md` — downstream invalidation per class of derived artifact, the delivery ledger, as-of as a contract feature, and the identity core with the still-absent cross-line join.
+- `docs/CROSS_LINE_JOIN.md` — the two present join keys run across all three corpora: the three lines and what each carries, the precision rule, the two clocks kept apart, 11 pairs with their outcomes, and why `resolved` is the literal 0.
 - `docs/METERING.md` — the lap, the two halves of a response receipt, the metering boundary, and the federation risk stated as work to do.
 - `docs/SPATIAL_DERIVATION.md` — space as resolver, join key, validity clock and inference engine; the cell key bounded by stated uncertainty; the three sensor families and the semantic convergence that is the actual gap.
 - `docs/ESTIMATION.md` — constraints as observations with provenance, the factor graph they live in, the two disciplines written before the first solve, and the four tiers of invariant scoring with the reference channel they must never feed.

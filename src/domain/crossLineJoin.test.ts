@@ -122,3 +122,16 @@ describe('what the derivation gives up', () => {
     for (const outcome of Object.keys(BLOCKING_MEANING) as BlockingOutcome[]) expect(BLOCKING_MEANING[outcome].length).toBeGreaterThan(0);
   });
 });
+
+describe('the reason a pair is unkeyable reads as a sentence', () => {
+  it('names the one position that stated nothing, without splicing two clauses together', () => {
+    const standing = crossLineStanding(FIXTURE_CORPORA);
+    const unkeyable = standing.pairs.filter((pair) => pair.outcome === 'NOT_KEYABLE');
+    expect(unkeyable.length).toBeGreaterThan(0);
+    for (const pair of unkeyable) {
+      expect(pair.because).toMatch(/^(Neither position states a horizontal uncertainty|[A-Z0-9-]+ states no horizontal uncertainty) \(/);
+      expect(pair.because).not.toContain('states no a ');
+      expect(pair.because).toContain('A default radius would have invented the answer.');
+    }
+  });
+});

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  EPISTEMIC_LOSS, EPISTEMIC_MEANING, EPISTEMIC_OF_FIELD_PRESENCE, EPISTEMIC_OF_LAYER_STATE,
+  EPISTEMIC_LOSS, EPISTEMIC_MEANING, EPISTEMIC_OF_BLOCKING, EPISTEMIC_OF_FIELD_PRESENCE, EPISTEMIC_OF_LAYER_STATE,
   EPISTEMIC_OF_PROJECTION, EPISTEMIC_OF_RECORD_STATUS, EPISTEMIC_STATES, EPISTEMIC_STROKE,
   epistemicOfReading, type Epistemic,
 } from './epistemic';
@@ -52,9 +52,25 @@ describe('the scale is complete and carries a second channel', () => {
       ...Object.values(EPISTEMIC_OF_LAYER_STATE),
       ...Object.values(EPISTEMIC_OF_FIELD_PRESENCE),
       ...Object.values(EPISTEMIC_OF_PROJECTION),
+      ...Object.values(EPISTEMIC_OF_BLOCKING),
       epistemicOfReading(0), epistemicOfReading('UNKNOWN'),
     ]);
     expect([...used].sort()).toEqual([...EPISTEMIC_STATES].sort());
+  });
+});
+
+describe('a pair with no key reads as unknown, not as a refusal or a distance', () => {
+  it('draws NOT_KEYABLE hollow rather than as either co-located or apart', () => {
+    expect(EPISTEMIC_OF_BLOCKING.NOT_KEYABLE).toBe('UNKNOWN');
+    expect(EPISTEMIC_OF_BLOCKING.NOT_KEYABLE).not.toBe('REFUSED');
+    expect(EPISTEMIC_OF_BLOCKING.NOT_KEYABLE).not.toBe(EPISTEMIC_OF_BLOCKING.NOT_CO_LOCATED);
+  });
+
+  it('draws a blocking result as derived, so it never borrows the standing of a reading', () => {
+    expect(EPISTEMIC_OF_BLOCKING.CO_LOCATED).toBe('DERIVED');
+    expect(EPISTEMIC_OF_BLOCKING.NOT_CO_LOCATED).toBe('DERIVED');
+    expect(EPISTEMIC_OF_BLOCKING.NO_TIME_OVERLAP).toBe('DERIVED');
+    expect(Object.values(EPISTEMIC_OF_BLOCKING)).not.toContain('MEASURED');
   });
 });
 

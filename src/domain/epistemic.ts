@@ -30,6 +30,7 @@
  * state drawn hollow and dashed, because it is the absence of a reading rather
  * than a reading of absence.
  */
+import type { BlockingOutcome } from './crossLineJoin';
 import type { RecordStatus } from './corpus';
 import type { LayerState, ProjectionOutcome } from './earth';
 import type { FieldPresence } from './statutoryHarvest';
@@ -93,6 +94,29 @@ export const EPISTEMIC_OF_PROJECTION: Record<ProjectionOutcome['state'], Epistem
   READY: 'DERIVED',
   UNAVAILABLE: 'UNKNOWN',
   REFUSED: 'REFUSED',
+};
+
+/**
+ * What running the two present join keys over a cross-line pair established.
+ *
+ * The three outcomes that ran are DERIVED: they are computed here from records
+ * the corpus holds, reproducible from the same inputs, and none of them is an
+ * observation of anything. A co-located pair is not measured, and drawing it as
+ * measured would let a blocking result borrow the standing of a reading.
+ *
+ * NOT_KEYABLE is UNKNOWN, not REFUSED, and the difference is where the absence
+ * lives. The key derivation does refuse — `spatialKeyFor` declines a position
+ * whose source stated no precision, and the reason travels with it. But the
+ * outcome being drawn is not the refusal, it is what the pair's co-location
+ * reads as afterwards, and that is nothing: not co-located, not apart, no
+ * reading at any resolution. UNKNOWN is the only state drawn hollow, which is
+ * exactly right for a comparison that was never available.
+ */
+export const EPISTEMIC_OF_BLOCKING: Record<BlockingOutcome, Epistemic> = {
+  CO_LOCATED: 'DERIVED',
+  NOT_CO_LOCATED: 'DERIVED',
+  NO_TIME_OVERLAP: 'DERIVED',
+  NOT_KEYABLE: 'UNKNOWN',
 };
 
 /**

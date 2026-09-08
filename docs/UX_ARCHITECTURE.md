@@ -92,6 +92,21 @@ Moving in it follows the rail's discipline: twenty-eight links are one tab stop,
 
 ![The workspace atlas](screenshots/0000b-workspace-atlas.png)
 
+### Sending what you are looking at
+
+A selection is a link. `src/lib/hashSelection.ts` is the codec — total on anything a URL bar can contain, first occurrence of a repeated key, a key with no value read as nothing selected rather than as a selection of the empty string — and `useLinkedSelection.ts` is the hook that writes the surface's selection into the fragment as it changes and hears a link pasted into the bar the page is already in.
+
+The fragment rather than the query: writing a hash re-runs no server component, so moving down a register costs nothing and the server render never depends on which row a reader had open. The surfaces that take a query parameter (the as-of stream, the scoped product) take one deliberately, because there the parameter is part of what the page *is*. History is replaced and never pushed, so Back keeps meaning the page before this one.
+
+| Surface | Link | Read back |
+| --- | --- | --- |
+| Case workspace | `#claim=` / `#evidence=` / `#invariant=` / `#ruling=` — the kind is the key, so one thing is selected by construction | Against the bundle, which is a prop, so the URL is authoritative from the first render |
+| Notation workspace | `#notation=` and `#relation=` together | Against the kernel's state once it has loaded; a link beats the selection this tab's drafts remembered, being the more explicit instruction |
+| Spatial Inquiry | `#space=` — strictly one key, because a link into that instrument names a space and nothing else | Against the analysed layout |
+| Earth Twin | the camera and the selected record | Against the release's records |
+
+Both directions refuse a name the surface does not hold: an inspector opened on an id the page has never seen is a worse answer than the overview. Nothing is written before the surface's data has arrived, so a link is never erased by the page it opened still loading. Still in memory alone: the ruling viewer, the release catalogue, the production path and the coordination surfaces.
+
 ### The export boundary, made mechanical
 
 A closed catalog sells bounded extracts, and `src/domain/catalogSlice.ts` cuts them. Its manifest is derived from the records it describes; its readiness is derived from the admission grade, which is supplied because a `Corpus` value carries none.

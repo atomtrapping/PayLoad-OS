@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { MAX_NOTATION_COMMANDS, MAX_NOTATION_SAVED_VERSIONS, notationCapacity, type KernelCommand, type NotationRelation, type StateKernelFailure, type StateKernelRequest, type StateKernelSnapshot } from '@/state-kernel/types';
 import { Inspector } from '@/components/primitives/Inspector';
+import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import { CapacityMeter } from './CapacityMeter';
 import { ConflictPanel } from './ConflictPanel';
 import { capacityOf } from './capacity';
@@ -101,6 +102,11 @@ function useNotationController() {
   const [confirmReload, setConfirmReload] = useState(false);
   const [conflict, setConflict] = useState<{ reason: 'VERSION_CONFLICT' | 'STALE_DRAFTS'; drafts: BrowserDrafts } | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  /**
+   * What the URL named when this document was opened, captured before the load
+   * resolves so a link cannot be overwritten by the state it was linking into.
+   */
+  const linkedOnOpen = useRef(openedWith());
 
   const busy = inFlight !== null;
   const notations = useMemo(() => snapshot?.state.notations ?? [], [snapshot]);
@@ -143,6 +149,10 @@ function useNotationController() {
       const next = await readSnapshot('/api/state-kernel');
       setSnapshot(next);
       setSelectedId(next.state.notations[0]?.id ?? '');
+      // What this load leaves held: the previewed state where drafts were
+      // re-validated, the saved state otherwise. A link is checked against
+      // that rather than against an intermediate.
+      let held = next.state;
       setNotice(next.enabled ? 'Saved local state loaded.' : 'Local notation state is disabled.');
       if (stored && draftsHaveContent(stored) && next.enabled) {
         if (stored.baseVersion !== next.savedVersion || stored.savedDigest !== next.savedDigest) {
@@ -156,6 +166,7 @@ function useNotationController() {
               const previewed = await readSnapshot('/api/state-kernel/preview', { schema: 'payload.notation-command-batch.v1', baseVersion: next.savedVersion, commands: stored.pending });
               if (previewed.savedVersion !== next.savedVersion) throw new Error('The saved version changed during restoration.');
               setSnapshot(previewed); setPending(stored.pending);
+              held = previewed.state;
               if (stored.selectedId && previewed.state.notations.some((n) => n.id === stored.selectedId)) setSelectedId(stored.selectedId);
               setNotice(`Browser drafts restored: ${stored.pending.length} pending ${stored.pending.length === 1 ? 'command' : 'commands'} re-validated by the state kernel. Not saved.`);
             } catch (failure) {
@@ -165,11 +176,38 @@ function useNotationController() {
           }
         }
       }
+      // A link is more explicit than a remembered place, so it wins over the
+      // selection this tab's drafts carried. A link naming a notation this
+      // state does not hold selects nothing rather than opening an inspector
+      // on nothing — the same rule the relation follows one level down.
+      const linked = linkedOnOpen.current;
+      if (linked.notation && held.notations.some((notation) => notation.id === linked.notation)) {
+        setSelectedId(linked.notation);
+        setSelectedRelationId(linked.relation && held.relations.some((relation) => relation.id === linked.relation) ? linked.relation : '');
+      }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Unable to load local state.');
       setNotice('');
     } finally { inFlightRef.current = false; setInFlight(null); setHydrated(true); }
   }, []);
+
+  /**
+   * The selection is in the URL, so what you are looking at can be sent.
+   *
+   * Written from the moment this tab has loaded, and read back when a link is
+   * pasted into the bar this page is already in. Both directions refuse a name
+   * the kernel's state does not hold: an inspector opened on nothing would be
+   * a worse answer than no inspector.
+   */
+  useLinkedSelection(
+    { notation: selectedId || null, relation: selectedRelationId || null },
+    (values) => {
+      if (!values.notation || !notations.some((notation) => notation.id === values.notation)) return;
+      setSelectedId(values.notation);
+      setSelectedRelationId(values.relation && relations.some((relation) => relation.id === values.relation) ? values.relation : '');
+    },
+    hydrated,
+  );
 
   // Persist this tab's copy whenever the draft changes; clear it when nothing is unsaved.
   useEffect(() => {

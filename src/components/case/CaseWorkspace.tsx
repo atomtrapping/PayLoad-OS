@@ -17,6 +17,7 @@ import { LineagePath } from './LineagePath';
 import { RemediationActions, ActionIntentPanel, type ActionIntent } from './RemediationActions';
 import { RevisionComparison } from './RevisionComparison';
 import { fmtUtc } from '@/lib/format';
+import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 
 type Selection =
   | { kind: 'overview' }
@@ -24,6 +25,36 @@ type Selection =
   | { kind: 'evidence'; id: string }
   | { kind: 'invariant'; id: string }
   | { kind: 'ruling'; id: string };
+
+/**
+ * A selection is a link: `#claim=CLM-…`, `#evidence=…`, `#invariant=…`,
+ * `#ruling=…`, and no fragment at all for the overview.
+ *
+ * The kind is the key, so exactly one thing is selected at a time by
+ * construction rather than by convention — two keys in one link cannot name two
+ * selections, because the first the case knows about wins and the rest are not
+ * read. A name the case does not hold selects nothing: an inspector opened on
+ * an id this bundle has never seen would be a worse answer than the overview.
+ */
+const LINKED_KINDS = ['claim', 'evidence', 'invariant', 'ruling'] as const;
+
+function selectionFrom(values: Readonly<Record<string, string>>, bundle: ClaimCaseBundle): Selection | null {
+  const holds: Record<(typeof LINKED_KINDS)[number], (id: string) => boolean> = {
+    claim: (id) => bundle.claims.some((claim) => claim.claimId === id),
+    evidence: (id) => bundle.evidence.some((evidence) => evidence.evidenceId === id),
+    invariant: (id) => allRulings(bundle).some((ruling) => ruling.invariantResults.some((result) => result.invariantId === id)),
+    ruling: (id) => allRulings(bundle).some((ruling) => ruling.rulingId === id),
+  };
+  for (const kind of LINKED_KINDS) {
+    const id = values[kind];
+    if (id !== undefined && holds[kind](id)) return { kind, id };
+  }
+  return null;
+}
+
+/** What the URL carries for a selection. The overview carries nothing, because it is where you are when you have selected nothing. */
+const linkFor = (selection: Selection): Record<string, string | null> =>
+  Object.fromEntries(LINKED_KINDS.map((kind) => [kind, selection.kind === kind ? selection.id : null]));
 
 type ViewerRole = 'SPONSOR' | 'REVIEWER';
 const ROLE_VISIBILITY: Record<ViewerRole, VisibilityClass> = { SPONSOR: 'PRIVATE_PREFLIGHT', REVIEWER: 'INTERNAL_ONLY' };
@@ -38,13 +69,21 @@ const ROLE_VISIBILITY: Record<ViewerRole, VisibilityClass> = { SPONSOR: 'PRIVATE
  */
 export function CaseWorkspace({ bundle: raw, initialSelection }: { bundle: ClaimCaseBundle; initialSelection?: Selection }) {
   const [role, setRole] = useState<ViewerRole>('SPONSOR');
-  const [sel, setSel] = useState<Selection>(initialSelection ?? { kind: 'overview' });
+  // A selection supplied by the route wins over one in the link, because it is
+  // the more specific instruction: the caller asked for this case *at* that
+  // object. Otherwise the link decides, and the overview is where neither says.
+  const [sel, setSel] = useState<Selection>(() => initialSelection ?? selectionFrom(openedWith(), raw) ?? { kind: 'overview' });
   const [intents, setIntents] = useState<ActionIntent[]>([]);
 
   const projection = useMemo(() => projectForViewer(raw, ROLE_VISIBILITY[role]), [raw, role]);
   const bundle = projection.bundle;
   const ruling = bundle.currentRuling;
   const rulings = useMemo(() => allRulings(bundle), [bundle]);
+
+  // Written as it changes, and read back when a link is pasted into the bar
+  // this page is already in. The bundle is a prop, so there is nothing to wait
+  // for and the URL is authoritative from the first render.
+  useLinkedSelection(linkFor(sel), (values) => { const linked = selectionFrom(values, raw); if (linked) setSel(linked); }, true);
 
   const selectedInvariantId = sel.kind === 'invariant' ? sel.id : undefined;
   const hl = useMemo(() => highlightsForInvariant(bundle, selectedInvariantId), [bundle, selectedInvariantId]);

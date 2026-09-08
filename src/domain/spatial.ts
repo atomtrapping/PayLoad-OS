@@ -8,6 +8,7 @@
  * polygons and is never used to make a passage. Browser-safe; nothing here
  * renders.
  */
+import { formatHash, readHash } from '@/lib/hashSelection';
 import type { Access, AnalysisRequest, EvidenceReference, SpatialLayout } from '@/spatial/contracts';
 import type { AnalysisResult } from '@/spatial/analysis';
 
@@ -273,12 +274,22 @@ export function graphLayout(projection: SpatialProjection): GraphLayout {
 
 /* ═══ A selection is a link ═══ */
 
-/** `#space=<id>`; anything else is ignored whole. */
+/**
+ * `#space=<id>`; anything else is ignored whole.
+ *
+ * Read through the shared hash codec, so this page and the surfaces that came
+ * after it decode a link the same way — but kept strict about carrying exactly
+ * one key, which the other surfaces are not: a link into this instrument names
+ * a space and nothing else, and a hash that also carried something would be a
+ * link to a page this is not.
+ */
 export function parseSelection(hash: string): string | null {
-  const match = /^#?space=([A-Za-z0-9][A-Za-z0-9._:-]{0,95})$/.exec(hash);
-  return match ? match[1] : null;
+  const entries = readHash(hash);
+  if (entries.size !== 1) return null;
+  const value = entries.get('space');
+  return value !== undefined && isSpatialId(value) ? value : null;
 }
-export const formatSelection = (spaceId: string) => `space=${spaceId}`;
+export const formatSelection = (spaceId: string) => formatHash({ space: spaceId });
 
 /* ═══ What this is, and is not ═══ */
 

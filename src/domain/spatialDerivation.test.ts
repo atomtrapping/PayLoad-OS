@@ -102,7 +102,7 @@ describe('the discipline and the order', () => {
   it('sequences the work behind what each step presupposes', () => {
     expect(SPATIAL_SEQUENCE.length).toBeGreaterThan(3);
     expect(SPATIAL_SEQUENCE[0]).toMatch(/cell key first/i);
-    expect(SPATIAL_SEQUENCE.join(' ')).toMatch(/Areal geometry/);
+    expect(SPATIAL_SEQUENCE.join(' ')).toMatch(/containment predicate/);
     expect(SPATIAL_SEQUENCE.join(' ')).toMatch(/rights are the strictest/);
   });
 });

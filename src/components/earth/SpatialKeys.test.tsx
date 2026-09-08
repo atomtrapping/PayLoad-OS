@@ -41,7 +41,7 @@ describe('the derivation beneath the globe', () => {
   it('says the display is not the derivation, and that containment is absent', () => {
     render(<SpatialKeys corpus={CARAVAN_CORPUS} releaseId={release} />);
     expect(screen.getByText(/The globe is the display/)).toBeInTheDocument();
-    expect(screen.getByText(/Containment is the join that would matter, and it is absent/)).toBeInTheDocument();
+    expect(screen.getByText(/Containment is the join that would matter, and it is still absent/)).toBeInTheDocument();
   });
 
   it('refuses rather than defaults when a position states no uncertainty', () => {

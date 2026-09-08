@@ -30,7 +30,7 @@ function freeze<T>(value: T): T {
 
 describe('Earth record choices before client serialization', () => {
   it('passes only gated choices from the server page to EarthTwin with the original source descriptor', async () => {
-    const page = await EarthPage();
+    const page = await EarthPage({ searchParams: Promise.resolve({}) });
     const child = Children.toArray((page as React.ReactElement<{ children: React.ReactNode }>).props.children).find((entry) => isValidElement(entry) && entry.type === EarthTwin);
     expect(isValidElement<EarthTwinProps>(child)).toBe(true);
     if (!isValidElement<EarthTwinProps>(child)) throw new Error('EarthTwin child is absent.');

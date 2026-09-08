@@ -61,11 +61,12 @@ import {
   type Corpus,
   type CorpusRecord,
   type CorpusRelease,
-  type GeodeticPoint,
+  type RecordGeometry,
   type RecordStatus,
   type Retraction,
   type UncertaintyBounds,
 } from './corpus';
+import { representativePointOf } from './spatialKey';
 import type { CaptureOrigin } from './statutoryHarvest';
 import type { CheckStatus, EvidenceClass, ISODateTime } from './types';
 
@@ -73,7 +74,12 @@ export const LOCATED_CLAIM_METHOD = 'notationsos.located-claim.v1';
 
 /** Where coordinates came from, carried as the observation it is. */
 export interface Geocode {
-  point: GeodeticPoint;
+  /**
+   * The shape the coordinates name: a point, a boundary or a containing
+   * rectangle. It is called a geocode because it locates something, not
+   * because the answer is always a pin.
+   */
+  geometry: RecordGeometry;
   /** The method that produced the coordinates. A drafted specimen declares them; a geocoder would name its version. */
   method: string;
   because: string;
@@ -195,12 +201,13 @@ const instantOf = (value: string): number | null => { const ms = Date.parse(valu
  */
 export function placementOf(geocode: Geocode | null): Placement {
   if (!geocode) return { placed: false, because: 'No position: the subject has no declared position record, so there are no coordinates to draw at.' };
-  const { longitude, latitude, horizontalUncertaintyM } = geocode.point;
+  const { longitude, latitude } = representativePointOf(geocode.geometry);
+  const { horizontalUncertaintyM } = geocode.geometry;
   if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
     return { placed: false, because: 'The coordinates are outside the datum’s range, so they name no point on the ellipsoid.' };
   }
   if (horizontalUncertaintyM === undefined || !Number.isFinite(horizontalUncertaintyM) || horizontalUncertaintyM <= 0) {
-    return { placed: false, because: 'The geocode states no horizontal uncertainty. A point drawn without a radius would be a precision claim nobody made, so it is listed and not drawn.' };
+    return { placed: false, because: 'The geocode states no horizontal uncertainty. A shape drawn without a stated accuracy would be a precision claim nobody made — a bare pin has no size at all, and a bare boundary asserts its own edges are exact — so it is listed and not drawn.' };
   }
   return { placed: true, radiusM: horizontalUncertaintyM };
 }
@@ -221,7 +228,7 @@ export function validateClaim(value: LocatedClaim): { claim: LocatedClaim; becau
   const captured = readable(value.capturedAt) ? instantOf(value.capturedAt) : null;
   if (published === null || captured === null) return { claim: null, because: 'A publication time and a capture time are both required and at least one is missing or unreadable.' };
   if (captured < published) return { claim: null, because: `The capture time ${value.capturedAt} precedes the publication time ${value.publishedAt}. This system cannot have obtained a headline before its source published it; the claim is incoherent and refused at the boundary.` };
-  if (!value.geocode || !value.geocode.point || !readable(value.geocode.method)) return { claim: null, because: 'The claim carries no geocode with a method. Coordinates with no method are a guess with no author.' };
+  if (!value.geocode || !value.geocode.geometry || !readable(value.geocode.method)) return { claim: null, because: 'The claim carries no geocode with a method. Coordinates with no method are a guess with no author.' };
   if (value.asserts !== null) {
     const a = value.asserts;
     if (!readable(a.subjectId) || !readable(a.predicate) || (typeof a.value !== 'number' && !readable(a.value)) || instantOf(a.validAt) === null) {
@@ -312,7 +319,7 @@ export function locateLedgerEvents(corpus: Corpus, release: CorpusRelease): Ledg
       : undefined;
     const geocode: Geocode | null = position?.geometry
       ? {
-        point: position.geometry, method: 'notationsos.geocode.declared-position.v1',
+        geometry: position.geometry, method: 'notationsos.geocode.declared-position.v1',
         because: `${first!.subjectId}’s last declared position, ${position.recordId}, valid ${position.validFrom} → ${position.validTo ?? 'open'}. Where the subject was when ${retraction.retractionId} was issued is not held; this is where it was last declared to be.`,
       }
       : null;
@@ -338,7 +345,7 @@ export const LOCATED_CLAIM_LOSS = [
   'A headline is a claim, never a fact. It enters as a candidate with an evidence class, a source and both clocks, and nothing here believes it; the card says where the corpus stands beside it.',
   'The four states are the check vocabulary the case checks already use, labelled for claims. CORROBORATED and not CONFIRMED, because two accounts agreeing is corroboration and a single account is not corroborated by standing alone.',
   'A claim is checked at two knowledge times and both are shown. The marker draws the current reading; the card shows what the corpus held when the claim was captured, because when the two differ the corpus learned something.',
-  'A geocode with no stated uncertainty is not drawn. A point without a radius is a precision claim nobody made; the claim is listed, selectable and checked, and has nowhere to be flown to.',
+  'A geocode with no stated uncertainty is not drawn, whatever its shape. A point without a radius is a precision claim nobody made, and a boundary without one asserts its own edges are exact; either way the claim is listed, selectable and checked, and has nowhere to be flown to.',
   'NOT_IN_COVERAGE is where this system is ignorant, not where the claim is false. It is the most honest state a corpus with nothing admitted can show, and it is expected to be the common one until the first real facts land.',
   'Nothing writes. If a checked claim ought to become a candidate, that is the intake rail’s decision under its own receipts; the card navigates and the rails decide.',
 ] as const;

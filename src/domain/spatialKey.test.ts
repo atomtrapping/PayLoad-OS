@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
+import { LANDSHARK_CORPUS } from '@/fixtures/landshark/release';
 import type { GeodeticPoint } from './corpus';
 import {
   AREAL_GEOMETRY, CELL_SCHEME, CONSISTENCY_MEANING, CROSS_SUBJECT_TEST, KEY_REFUSAL_REASON, MAX_PRECISION, SEPARATION_METRIC,
   cellExtentM, cellPrecisionFor, compareSubjects, crossSubjectPairs, encodeGeohash, geodesicSeparationM,
-  positionKeys, spatialKeyFor, spatialKeyStanding, type PositionKey,
+  positionKeys, representativePointOf, spatialKeyFor, spatialKeyStanding, type PositionKey,
 } from './spatialKey';
 
 const point = (latitude: number, longitude: number, horizontalUncertaintyM?: number): GeodeticPoint => ({
@@ -113,7 +114,7 @@ describe('the metric, and the answer it is allowed to reach', () => {
   });
 
   const keyed = (recordId: string, subjectId: string, p: GeodeticPoint): PositionKey => ({
-    recordId, subjectId, subjectType: 'Lot', title: recordId, point: p, outcome: spatialKeyFor(p),
+    recordId, subjectId, subjectType: 'Lot', title: recordId, geometry: p, point: representativePointOf(p), outcome: spatialKeyFor(p),
   });
 
   it('refutes when the stated radii cannot contain one common point', () => {
@@ -163,7 +164,7 @@ describe('what the corpus can key today, reported rather than claimed', () => {
     const keys = positionKeys(CARAVAN_CORPUS);
     expect(keys.length).toBeGreaterThan(0);
     for (const k of keys) {
-      expect(k.point.datum).toBe('WGS84');
+      expect(k.geometry.datum).toBe('WGS84');
       // Every fixture position states its uncertainty, so every one is keyable.
       expect(k.outcome.keyed).toBe(true);
     }
@@ -181,10 +182,76 @@ describe('what the corpus can key today, reported rather than claimed', () => {
     expect(standing.statement).toMatch(/resolution decision that does not exist/);
   });
 
-  it('says plainly that a point cannot contain anything', () => {
-    expect(AREAL_GEOMETRY.state).toBe('ABSENT');
+  it('says plainly that carrying a shape is not the same as computing containment', () => {
+    // The contract carries POLYGON and EXTENT now, so the state moved off
+    // ABSENT. It did not move to BUILT, and the reason is the whole point:
+    // nothing reads a boundary to say what is inside it.
+    expect(AREAL_GEOMETRY.state).toBe('PARTIAL');
+    expect(AREAL_GEOMETRY.why).toMatch(/POINT, POLYGON and EXTENT/);
+    expect(AREAL_GEOMETRY.why).toMatch(/still absent is the predicate/);
     expect(AREAL_GEOMETRY.wouldNeed.length).toBe(3);
     expect(AREAL_GEOMETRY.hazard).toMatch(/inexact line/);
     expect(CELL_SCHEME.notBuiltHere).toMatch(/not a spatial database/);
+  });
+});
+
+describe('a shape is keyed as a shape, and its own size bounds the cell', () => {
+  const ring = LANDSHARK_CORPUS.records.find((r) => r.recordId === 'LS-0123')!.geometry!;
+  const extent = LANDSHARK_CORPUS.records.find((r) => r.recordId === 'LS-0124')!.geometry!;
+
+  it('keys a boundary at the centre of its containing rectangle, reproducibly', () => {
+    // Not an area centroid: an area centroid moves when the ring is re-ordered
+    // or re-sampled, and a key a counterparty cannot recompute is not a key.
+    expect(ring.kind).toBe('POLYGON');
+    const centre = representativePointOf(ring);
+    expect(centre.longitude).toBeCloseTo(4.025, 4);
+    expect(centre.latitude).toBeCloseTo(51.9497, 4);
+    const reversed = { ...ring, ring: [...(ring as { ring: readonly { longitude: number; latitude: number }[] }).ring].reverse() };
+    expect(representativePointOf(reversed)).toEqual(centre);
+  });
+
+  it('bounds the cell by the stated uncertainty PLUS the feature’s own reach', () => {
+    const outcome = spatialKeyFor(ring);
+    expect(outcome.keyed).toBe(true);
+    if (!outcome.keyed) return;
+    expect(outcome.key.of).toBe('POLYGON');
+    expect(outcome.key.bound.statedUncertaintyM).toBe(30);
+    // The parcel is roughly 297 x 291 m, so the furthest vertex is ~208 m out.
+    expect(outcome.key.bound.featureReachM).toBeGreaterThan(150);
+    expect(outcome.key.bound.featureReachM).toBeLessThan(260);
+    expect(outcome.key.boundedByM).toBeCloseTo(30 + outcome.key.bound.featureReachM, 6);
+    // And the cell is no finer than that total, which is the whole discipline.
+    expect(outcome.key.extent.shortestM).toBeGreaterThanOrEqual(outcome.key.boundedByM);
+  });
+
+  it('keys a 30 m survey more finely than a 30 m survey of a whole parcel', () => {
+    // Same stated accuracy, different features. The parcel keys coarser because
+    // reducing an extended thing to one cell means the cell must contain it.
+    const mark = spatialKeyFor({ kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 30 });
+    const parcel = spatialKeyFor(ring);
+    expect(mark.keyed && parcel.keyed).toBe(true);
+    if (!mark.keyed || !parcel.keyed) return;
+    expect(mark.key.bound.featureReachM).toBe(0);
+    expect(mark.key.precision).toBeGreaterThan(parcel.key.precision);
+  });
+
+  it('keys an extent, and never confuses it with a boundary', () => {
+    const outcome = spatialKeyFor(extent);
+    expect(extent.kind).toBe('EXTENT');
+    expect(outcome.keyed).toBe(true);
+    if (!outcome.keyed) return;
+    expect(outcome.key.of).toBe('EXTENT');
+    expect(outcome.key.bound.featureReachM).toBeGreaterThan(0);
+  });
+
+  it('refuses a shape that encloses nothing, and a boundary with no stated accuracy', () => {
+    const two = spatialKeyFor({ kind: 'POLYGON', datum: 'WGS84', horizontalUncertaintyM: 10, ring: [{ longitude: 4, latitude: 52 }, { longitude: 4.001, latitude: 52 }] });
+    expect(two).toEqual({ keyed: false, refusal: 'DEGENERATE_BOUNDARY' });
+    const flat = spatialKeyFor({ kind: 'EXTENT', datum: 'WGS84', horizontalUncertaintyM: 10, west: 4, east: 4, south: 52, north: 52.01 });
+    expect(flat).toEqual({ keyed: false, refusal: 'DEGENERATE_BOUNDARY' });
+    // A ring bounds how big the feature is. It says nothing about how far the
+    // whole ring might be displaced, so it does not escape the uncertainty rule.
+    const unstated = spatialKeyFor({ ...(ring as { kind: 'POLYGON'; datum: 'WGS84'; ring: readonly { longitude: number; latitude: number }[] }), horizontalUncertaintyM: undefined });
+    expect(unstated).toEqual({ keyed: false, refusal: 'NO_STATED_UNCERTAINTY' });
   });
 });

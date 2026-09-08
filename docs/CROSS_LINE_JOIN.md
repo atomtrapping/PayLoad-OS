@@ -16,7 +16,7 @@ were actually run across them, and it is deliberately not a success story.
 |---|---|---|---|---|
 | `caravan.specialty-cargo` | Logistics, freight, cargo | 3 | 19 | 2 |
 | `tradewind.freight-rates` | Markets, pricing, risk | 2 | 6 | 1 correction (`RET-TW-0001`) |
-| `landshark.terminal-parcels` | Parcels, zoning, entitlements | 2 | 7 | 1 withdrawal (`RET-LS-0001`) |
+| `landshark.terminal-parcels` | Parcels, zoning, entitlements | 2 | 9 | 1 withdrawal (`RET-LS-0001`) |
 
 All three are `fixture_only` and every response that carries them says so. A
 line becomes servable by appearing in `FIXTURE_CORPORA`, because the feed, the
@@ -73,6 +73,22 @@ designated discharge point, and the Landshark parcel `PARCEL-NL-0442`. That is
 a triangle, and the fourth pair is separate: `LOT-7C-104` and `PARCEL-BR-1207`
 in cell `6gxpdp`.
 
+Two of those Landshark positions are shapes rather than points. The registry's
+second filing published `PARCEL-NL-0442` as a cadastral ring (`LS-0123`) and
+`PARCEL-BR-1207` as a containing rectangle (`LS-0124`), each superseding the
+centroid it replaced. The cells did not change, and the boundary keys slightly
+**tighter** than the centroid did:
+
+| Position | Kind | Stated | Feature reach | Bound | Cell |
+|---|---|---|---|---|---|
+| `LS-0103` (superseded) | POINT | ±250 m | 0 m | 250 m | `u14ze9` |
+| `LS-0123` | POLYGON | ±30 m | 208 m | 238 m | `u14ze9` |
+| `LS-0124` | EXTENT | ±120 m | 250 m | 370 m | `6gxpdp` |
+
+A ±30 m survey of a 291 m parcel is a better-known position than a ±250 m
+centroid of the same parcel, and the arithmetic says so without anyone
+asserting it.
+
 A lot at a berth, a route's discharge point written against that berth, and the
 parcel the berth sits on are three subjects in one cell over one interval. That
 is co-location. It is not a relationship, it is not an identity, and asserting
@@ -80,6 +96,11 @@ either from a shared cell is the cheapest way to manufacture a moat that is not
 there. `resolved` is the literal `0` and a test holds it at `0`.
 
 ### The three unkeyable pairs
+
+A boundary does not escape the uncertainty rule. A ring bounds how big a
+feature is; it says nothing about how far the whole ring might be displaced, so
+a boundary with no stated accuracy is exactly as unkeyable as a point with
+none. One rule, no exception for shapes.
 
 `PARCEL-NL-0511` publishes a centroid with no precision. The registry stated
 none, so the record states none, and a position with no stated uncertainty is
@@ -104,6 +125,21 @@ key is only as sharp as the vaguer of the two sources, and comparing a ±10 m
 position against a ±500 m position at 10 m would report a disagreement that
 only the arithmetic believes. All four co-located pairs above were compared at
 geohash precision 6.
+
+A shape adds a second term to the same rule. Reducing an extended feature to
+one cell means the cell has to contain the feature, so the feature's own reach
+is a floor on the cell's size exactly as the stated uncertainty is, and the two
+are added: `boundedByM = statedUncertaintyM + featureReachM`. The reach is the
+greatest geodesic distance from the shape's representative point to any of its
+vertices, and it is zero for a point. The two halves are carried separately on
+the key so a reader can tell a coarse cell caused by a vague survey from one
+caused by a large parcel.
+
+The representative point is the centre of the shape's containing rectangle,
+not its area centroid. An area centroid moves when a ring is re-ordered or
+re-sampled; the rectangle's centre is a function of the extreme coordinates
+alone, so a counterparty computing it from the same published ring gets the
+same answer. A key another party cannot recompute is not a join key.
 
 ## The two clocks, kept apart
 

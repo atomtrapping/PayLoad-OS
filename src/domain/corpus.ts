@@ -189,6 +189,37 @@ export type RecordStatus = 'CURRENT' | 'SUPERSEDED' | 'RETRACTED';
 /** The predicate of a record that declares where its subject was. */
 export const LOCATION_POSITION_PREDICATE = 'location.position';
 
+/**
+ * WHERE A SUBJECT IS, IN THE SHAPE THE SOURCE PUBLISHED IT
+ *
+ * Three kinds, because a source publishes one of three things and flattening
+ * them loses the distinction. A point is a position. A polygon is a boundary:
+ * a registry's cadastral ring, a berth, a yard, a footprint. An extent is a
+ * rectangle, which is what a source publishes when it will commit to a
+ * containing box and no more.
+ *
+ * A polygon is not a large point and a point is not a small polygon. A parcel
+ * reduced to its centroid loses its shape, and every areal question —
+ * containment, coverage, adjacency, overlap — becomes unanswerable rather than
+ * approximate. That is why the union exists.
+ *
+ * One rule runs through all three: `horizontalUncertaintyM` is the source's
+ * own statement about its positional accuracy, and it is optional here because
+ * sources do omit it. What is not optional is the consequence — a geometry
+ * with no stated uncertainty is refused a spatial key rather than given a
+ * default one. See ./spatialKey. The shape does not rescue the refusal: a ring
+ * bounds a feature's size, it says nothing about how far the whole ring might
+ * be displaced, so a boundary with no stated accuracy is exactly as unkeyable
+ * as a point with none.
+ */
+export type GeodeticGeometryKind = 'POINT' | 'POLYGON' | 'EXTENT';
+
+/** A vertex on the datum. Field names match GeodeticPoint so one reader serves both. */
+export interface GeodeticVertex {
+  longitude: number;
+  latitude: number;
+}
+
 export interface GeodeticPoint {
   kind: 'POINT';
   datum: 'WGS84';
@@ -196,6 +227,56 @@ export interface GeodeticPoint {
   latitude: number;
   /** Horizontal uncertainty as the source stated it, in metres; absent when the source stated none. */
   horizontalUncertaintyM?: number;
+}
+
+/**
+ * A closed boundary as the source published it: the outer ring only.
+ *
+ * The ring is implicitly closed — the last vertex is not a repeat of the
+ * first — because a repeated vertex is a serialisation convention and storing
+ * it invites a reader to treat a four-sided parcel as having five corners.
+ * Holes are deliberately not modelled: no source in this corpus publishes one,
+ * and a field nobody fills is a claim that something was considered.
+ */
+export interface GeodeticPolygon {
+  kind: 'POLYGON';
+  datum: 'WGS84';
+  /** The outer ring in order, at least three vertices, implicitly closed. */
+  ring: readonly GeodeticVertex[];
+  /** Positional accuracy of the ring's vertices, in metres, as the source stated it. */
+  horizontalUncertaintyM?: number;
+}
+
+/**
+ * An axis-aligned rectangle on the datum: what a source publishes when it will
+ * commit to a containing box and nothing finer. It is a weaker claim than a
+ * polygon and is kept distinct so it is never read as one.
+ */
+export interface GeodeticExtent {
+  kind: 'EXTENT';
+  datum: 'WGS84';
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+  /** Positional accuracy of the rectangle's edges, in metres, as the source stated it. */
+  horizontalUncertaintyM?: number;
+}
+
+/** Every shape a record may carry. Closed: a fourth kind is a decision, not a default. */
+export type RecordGeometry = GeodeticPoint | GeodeticPolygon | GeodeticExtent;
+
+/** The vertices of any geometry, in order. A point is its own single vertex. */
+export function geometryVertices(geometry: RecordGeometry): readonly GeodeticVertex[] {
+  if (geometry.kind === 'POINT') return [{ longitude: geometry.longitude, latitude: geometry.latitude }];
+  if (geometry.kind === 'POLYGON') return geometry.ring;
+  const { west, south, east, north } = geometry;
+  return [
+    { longitude: west, latitude: south },
+    { longitude: east, latitude: south },
+    { longitude: east, latitude: north },
+    { longitude: west, latitude: north },
+  ];
 }
 
 export interface CorpusRecord {
@@ -235,8 +316,10 @@ export interface CorpusRecord {
    * validity interval, present only on `location.position` records. WGS84.
    * A position is a claim like any other: it has evidence, both clocks and
    * rights, and it says where the source says the subject was, not where it is.
+   * A point, a boundary or a containing rectangle, whichever the source
+   * published; see RecordGeometry.
    */
-  geometry?: GeodeticPoint;
+  geometry?: RecordGeometry;
   visibility: VisibilityClass;
   supersedesRecordId?: string;
   /** Set when a later record replaced this one (correction). */

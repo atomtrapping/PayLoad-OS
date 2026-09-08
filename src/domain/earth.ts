@@ -13,6 +13,8 @@ import type { CorroborationWord } from './locatedClaims';
 import type { ProjectionSpec } from '@/projection/spec';
 import type { GeodeticPosition, ProjectionGeometry } from '@/projection/compile';
 import type { Interest } from './types';
+import type { RecordGeometry } from './corpus';
+import { spatialKeyFor } from './spatialKey';
 
 export type { GeodeticPosition } from '@/projection/compile';
 
@@ -288,8 +290,49 @@ export const PLACEMENT_TONE: Record<Interest, { label: string; hex: string }> = 
   negotiating_position: { label: 'negotiating position', hex: '#f87171' },
 };
 
+/**
+ * A declaration the release has since replaced or withdrawn, drawn as one.
+ *
+ * It is still drawn, because the release declared it and the twin shows what
+ * the release declares. It is not drawn in its source's interest colour,
+ * because that colour answers "who said this" and this position's standing is
+ * the more important thing about it. `--ep-withdrawn` is the scale's own
+ * withdrawn hue, so a superseded position on the globe reads as the same state
+ * a superseded row reads as in every table.
+ */
+export const SUPERSEDED_TONE = { label: 'superseded or retracted at this knowledge time', hex: '#b795f2', cssVar: '--ep-withdrawn' } as const;
+
 /** The camera over a placed position: straight down from a regional height, so the point is at the centre of the view, the view's link is the point itself, and the bundled surface still shows where on Earth it is. The uncertainty ring becomes legible as one comes closer. */
 export const PLACEMENT_VIEW = { height: 1_000_000, heading: 0, pitch: -90 } as const;
+
+/**
+ * The camera height that actually frames the thing being flown to.
+ *
+ * The fixed one-million-metre preset was written for a point, where the whole
+ * of what the source claimed is a radius and the ring only has to become
+ * legible on the way in. It does not survive a shape: a 291 m parcel at a
+ * thousand kilometres is a sub-pixel speck, so a boundary carried all the way
+ * through the record contract and the compiler would arrive on screen as the
+ * dot it was supposed to replace.
+ *
+ * So the height is derived from the claim's own size — the stated uncertainty
+ * plus, for a shape, its reach — with a floor so a survey mark does not put
+ * the camera on the ground, and the regional preset as the ceiling so nothing
+ * flies further out than it used to. The multiple is a legibility convenience
+ * and nothing else: it is not a precision, and no reading is taken from it.
+ */
+export const PLACEMENT_FRAME = { multiple: 14, floorM: 1_200, ceilingM: PLACEMENT_VIEW.height } as const;
+
+export function placementHeightM(boundedByM: number | null | undefined): number {
+  if (typeof boundedByM !== 'number' || !Number.isFinite(boundedByM) || boundedByM <= 0) return PLACEMENT_VIEW.height;
+  return Math.min(PLACEMENT_FRAME.ceilingM, Math.max(PLACEMENT_FRAME.floorM, boundedByM * PLACEMENT_FRAME.multiple));
+}
+
+/** The camera over one declared position, framed by what that position claims. */
+export function placementViewFor(geometry: RecordGeometry | undefined): { height: number; heading: number; pitch: number } {
+  const outcome = geometry ? spatialKeyFor(geometry) : null;
+  return { ...PLACEMENT_VIEW, height: placementHeightM(outcome?.keyed ? outcome.key.boundedByM : null) };
+}
 
 /** One label per declared position: the subject, the declaration and its source's interest, then the records placed there. A record's identity is a record, so several records at one position share one point and one label. */
 export function placementLabel(position: GeodeticPosition, records: ReadonlyArray<{ recordId: string; title: string }>): string {

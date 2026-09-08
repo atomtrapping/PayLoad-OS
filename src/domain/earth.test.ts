@@ -70,7 +70,7 @@ describe('the Earth Twin as data', () => {
 
 /* ── What the declared positions imply ── */
 
-import { SELECTION_MEANING, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatLink, formatMetres, geodesicSeparationM, parseLink, positionSeparations, selectionFromLink, soleDeclaration } from './earth';
+import { PLACEMENT_FRAME, PLACEMENT_VIEW, placementHeightM, placementViewFor, SELECTION_MEANING, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatLink, formatMetres, geodesicSeparationM, parseLink, positionSeparations, selectionFromLink, soleDeclaration } from './earth';
 import type { GeodeticPosition } from './earth';
 
 const LAT = 51.5, LON = -0.12;
@@ -83,6 +83,7 @@ function at(positionRecordId: string, latitude: number, horizontalUncertaintyM: 
     positionRecordId,
     canonicalId: `urn:record:${positionRecordId}`,
     subject: { subjectId: 'subject-a', canonicalId: 'urn:facility:one', subjectType: 'facility' },
+    shape: { kind: 'POINT', datum: 'WGS84', longitude: LON, latitude, ...(horizontalUncertaintyM === null ? {} : { horizontalUncertaintyM }) },
     point: { datum: 'WGS84', longitude: LON, latitude, horizontalUncertaintyM },
     value: 'at the terminal',
     basis: 'stated in the filing',
@@ -296,5 +297,41 @@ describe('a selection is a link, and one that cannot be honoured is refused', ()
       .toMatchObject({ standing: 'NONE_NAMED', recordId: null });
     expect(selectionFromLink(null, offered)).toMatchObject({ standing: 'NONE_NAMED', recordId: null });
     expect(SELECTION_MEANING.NONE_NAMED).toMatch(/before selections were carried/);
+  });
+});
+
+describe('the camera frames what it flies to', () => {
+  it('falls back to the regional preset when nothing states a size', () => {
+    expect(placementHeightM(null)).toBe(PLACEMENT_VIEW.height);
+    expect(placementHeightM(undefined)).toBe(PLACEMENT_VIEW.height);
+    expect(placementHeightM(0)).toBe(PLACEMENT_VIEW.height);
+    expect(placementViewFor(undefined).height).toBe(PLACEMENT_VIEW.height);
+  });
+
+  it('comes in close enough for a parcel and stays back for a vague position', () => {
+    const parcel = placementViewFor({
+      kind: 'POLYGON', datum: 'WGS84', horizontalUncertaintyM: 30,
+      ring: [
+        { longitude: 4.022838, latitude: 51.948394 },
+        { longitude: 4.027162, latitude: 51.948394 },
+        { longitude: 4.027162, latitude: 51.950467 },
+        { longitude: 4.026288, latitude: 51.951006 },
+        { longitude: 4.022838, latitude: 51.951006 },
+      ],
+    });
+    // A ~290 m parcel is invisible at the old million-metre preset; this frames it.
+    expect(parcel.height).toBeGreaterThan(1_200);
+    expect(parcel.height).toBeLessThan(10_000);
+    const vague = placementViewFor({ kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 5_000 });
+    expect(vague.height).toBeGreaterThan(parcel.height);
+    // Never nearer than the floor, and never further than it used to be.
+    expect(placementHeightM(1)).toBe(PLACEMENT_FRAME.floorM);
+    expect(placementHeightM(10_000_000)).toBe(PLACEMENT_VIEW.height);
+  });
+
+  it('keeps the heading and the straight-down pitch, so only the height is derived', () => {
+    const framed = placementViewFor({ kind: 'POINT', datum: 'WGS84', longitude: 0, latitude: 0, horizontalUncertaintyM: 250 });
+    expect(framed.heading).toBe(PLACEMENT_VIEW.heading);
+    expect(framed.pitch).toBe(PLACEMENT_VIEW.pitch);
   });
 });

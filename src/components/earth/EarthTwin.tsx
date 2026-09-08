@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
-import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, EVENT_TONE, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { ADOPTED, CLOCK_MEANING, SUPERSEDED_TONE, EARTH_ENGINE, EARTH_TWIN_ORIGIN, EVENT_TONE, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, placementViewFor, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { CONVENIENCE_MEANING, INSTRUMENT_RULES, conveniencesTaken, type InstrumentReading } from '@/domain/operatorInstrument';
 import { Readout, Rule } from '@/components/hud/Instrument';
 import { EPISTEMIC_OF_LAYER_STATE, EPISTEMIC_OF_PROJECTION } from '@/domain/epistemic';
 import { CORROBORATION_MEANING, type LocatedReading } from '@/domain/locatedClaims';
+import { geometryVertices, type RecordGeometry } from '@/domain/corpus';
+import { representativePointOf } from '@/domain/spatialKey';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -64,7 +66,20 @@ const ENTITY_PREFIX = 'place:';
 const EVENT_PREFIX = 'event:';
 
 const locatedId = (entry: LocatedReading) => entry.item.kind === 'CLAIM' ? entry.item.claimId : entry.item.eventId;
-const locatedPoint = (entry: LocatedReading) => entry.item.kind === 'CLAIM' ? entry.item.geocode.point : entry.item.geocode?.point;
+const locatedGeometry = (entry: LocatedReading) => entry.item.kind === 'CLAIM' ? entry.item.geocode.geometry : entry.item.geocode?.geometry;
+const locatedPoint = (entry: LocatedReading) => { const geometry = locatedGeometry(entry); return geometry ? representativePointOf(geometry) : undefined; };
+/**
+ * The ring of a shape as a flat degree array, or null for a point.
+ *
+ * A shape is drawn as the shape. An uncertainty ring is drawn instead only for
+ * a point, where the radius is the whole of what the source said about extent;
+ * drawing both over a boundary would state the extent twice and imply the
+ * larger of them is the claim.
+ */
+function ringDegrees(geometry: RecordGeometry): number[] | null {
+  if (geometry.kind === 'POINT') return null;
+  return geometryVertices(geometry).flatMap((vertex) => [vertex.longitude, vertex.latitude]);
+}
 const locatedWord = (entry: LocatedReading): keyof typeof EVENT_TONE => entry.item.kind === 'LEDGER_EVENT' ? 'LEDGER' : (entry.reading?.now.label ?? 'NOT_IN_COVERAGE');
 /** The label at the coordinates: identifier and current reading, then the headline, cut so it reads as a label and not a paragraph. */
 function eventLabel(entry: LocatedReading): string {
@@ -126,7 +141,7 @@ function LocatedCard({ entry, records, engineReady, flyTo, onSelectRecord }: {
   const word = locatedWord(entry);
   const tone = `var(${EVENT_TONE[word].cssVar})`;
   const where = point ? `${point.latitude.toFixed(4)}°, ${point.longitude.toFixed(4)}°` : null;
-  const flyHere = () => { if (point) flyTo({ longitude: point.longitude, latitude: point.latitude, ...PLACEMENT_VIEW }); };
+  const flyHere = () => { if (point) flyTo({ longitude: point.longitude, latitude: point.latitude, ...placementViewFor(locatedGeometry(entry)) }); };
   if (entry.item.kind === 'LEDGER_EVENT') {
     const item = entry.item;
     const selectable = [...item.retraction.affectedRecordIds, ...(item.retraction.replacementRecordIds ?? [])].filter((id) => records.some((r) => r.recordId === id));
@@ -466,7 +481,7 @@ export function EarthTwin({ release, source, records, instrument, located, asset
         setAnswer({ key, outcome });
         if (outcome.state === 'READY') {
           setPlacements((current) => ({ ...current, [asked.recordId]: { title: asked.title, validFrom: asked.validFrom, positions: outcome.positions } }));
-          if (flyOnResolve.current && outcome.positions[0]) { flyOnResolve.current = false; flyTo({ longitude: outcome.positions[0].point.longitude, latitude: outcome.positions[0].point.latitude, ...PLACEMENT_VIEW }); }
+          if (flyOnResolve.current && outcome.positions[0]) { flyOnResolve.current = false; flyTo({ longitude: outcome.positions[0].point.longitude, latitude: outcome.positions[0].point.latitude, ...placementViewFor(outcome.positions[0].shape) }); }
         } else {
           setPlacements((current) => { if (!(asked.recordId in current)) return current; const next = { ...current }; delete next[asked.recordId]; return next; });
         }
@@ -493,13 +508,31 @@ export function EarthTwin({ release, source, records, instrument, located, asset
     for (const [positionRecordId, { position, records: placed }] of groups) {
       const id = `${ENTITY_PREFIX}${positionRecordId}`;
       drawn.current.set(id, placed.map((entry) => entry.recordId).sort());
-      const tone = Cesium.Color.fromCssColorString(PLACEMENT_TONE[position.evidenceClass.interest].hex);
+      // A position the release has replaced is drawn in the withdrawn hue and
+      // carries no label. The subject keeps both declarations — the earlier
+      // release still shows the centroid a boundary later superseded — and two
+      // labels at one berth read as none.
+      const standing = position.statusAtKnownAt === 'CURRENT';
+      const tone = Cesium.Color.fromCssColorString(standing ? PLACEMENT_TONE[position.evidenceClass.interest].hex : SUPERSEDED_TONE.hex);
       const where = Cesium.Cartesian3.fromDegrees(position.point.longitude, position.point.latitude);
+      const ring = ringDegrees(position.shape);
       viewer.entities.add({
         id, position: where,
         point: { pixelSize: 9, color: tone, outlineColor: Cesium.Color.BLACK.withAlpha(0.85), outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
-        label: { text: placementLabel(position, drawn.current.get(id)!.map((recordId) => placed.find((entry) => entry.recordId === recordId)!)), font: '12px system-ui, sans-serif', fillColor: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -12), showBackground: true, backgroundColor: Cesium.Color.fromCssColorString('#04040a').withAlpha(0.72), disableDepthTestDistance: Number.POSITIVE_INFINITY },
-        ...(position.point.horizontalUncertaintyM ? { ellipse: { semiMajorAxis: position.point.horizontalUncertaintyM, semiMinorAxis: position.point.horizontalUncertaintyM, material: tone.withAlpha(0.18), outline: true, outlineColor: tone.withAlpha(0.8) } } : {}),
+        ...(standing ? { label: { text: placementLabel(position, drawn.current.get(id)!.map((recordId) => placed.find((entry) => entry.recordId === recordId)!)), font: '12px system-ui, sans-serif', fillColor: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -12), showBackground: true, backgroundColor: Cesium.Color.fromCssColorString('#04040a').withAlpha(0.72), disableDepthTestDistance: Number.POSITIVE_INFINITY } } : {}),
+        ...(ring === null && position.point.horizontalUncertaintyM
+          ? { ellipse: { semiMajorAxis: position.point.horizontalUncertaintyM, semiMinorAxis: position.point.horizontalUncertaintyM, material: tone.withAlpha(0.18), outline: true, outlineColor: tone.withAlpha(0.8) } }
+          : {}),
+        ...(ring !== null
+          ? {
+              polygon: { hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(ring)), material: tone.withAlpha(0.22) },
+              // A polygon's own `outline` is silently dropped by some WebGL
+              // drivers, and a boundary with no visible edge is a smudge. The
+              // ring is closed back to its first vertex here because the
+              // record stores it implicitly closed.
+              polyline: { positions: Cesium.Cartesian3.fromDegreesArray([...ring, ring[0], ring[1]]), width: 2, material: tone.withAlpha(0.95), clampToGround: true },
+            }
+          : {}),
       });
     }
     // Located items: the ledger's events and the checked claims, each drawn only
@@ -509,7 +542,9 @@ export function EarthTwin({ release, source, records, instrument, located, asset
     drawnEvents.current = new Map();
     for (const entry of located) {
       const point = locatedPoint(entry);
-      if (!entry.placement.placed || !point) continue;
+      const geometry = locatedGeometry(entry);
+      if (!entry.placement.placed || !point || !geometry) continue;
+      const eventRing = ringDegrees(geometry);
       const word = locatedWord(entry);
       const tone = Cesium.Color.fromCssColorString(EVENT_TONE[word].hex);
       const loud = word === 'CONFLICTING';
@@ -525,7 +560,12 @@ export function EarthTwin({ release, source, records, instrument, located, asset
         id, position: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude),
         point: { pixelSize: loud ? 12 : 8, color: tone, outlineColor: Cesium.Color.BLACK.withAlpha(0.85), outlineWidth: loud ? 3 : 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
         ...(selectedHere ? { label: { text: eventLabel(entry), font: '11px ui-monospace, Menlo, monospace', fillColor: tone, outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -14), showBackground: true, backgroundColor: Cesium.Color.fromCssColorString('#04040a').withAlpha(0.72), disableDepthTestDistance: Number.POSITIVE_INFINITY } } : {}),
-        ellipse: { semiMajorAxis: entry.placement.radiusM, semiMinorAxis: entry.placement.radiusM, material: tone.withAlpha(loud ? 0.22 : 0.12), outline: true, outlineColor: tone.withAlpha(0.9), outlineWidth: loud ? 3 : 1 },
+        ...(eventRing === null
+          ? { ellipse: { semiMajorAxis: entry.placement.radiusM, semiMinorAxis: entry.placement.radiusM, material: tone.withAlpha(loud ? 0.22 : 0.12), outline: true, outlineColor: tone.withAlpha(0.9), outlineWidth: loud ? 3 : 1 } }
+          : {
+              polygon: { hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(eventRing)), material: tone.withAlpha(loud ? 0.28 : 0.18) },
+              polyline: { positions: Cesium.Cartesian3.fromDegreesArray([...eventRing, eventRing[0], eventRing[1]]), width: loud ? 3 : 2, material: tone.withAlpha(0.95), clampToGround: true },
+            }),
       });
     }
     viewer.scene.requestRender();
@@ -547,7 +587,7 @@ export function EarthTwin({ release, source, records, instrument, located, asset
   const selectEvent = (entry: LocatedReading) => {
     setSelectedEvent(locatedId(entry));
     const point = locatedPoint(entry);
-    if (entry.placement.placed && point) flyTo({ longitude: point.longitude, latitude: point.latitude, ...PLACEMENT_VIEW });
+    if (entry.placement.placed && point) flyTo({ longitude: point.longitude, latitude: point.latitude, ...placementViewFor(locatedGeometry(entry)) });
   };
   const instrumentReading = useCallback((id: string) => String(instrument.layers.find((entry) => entry.id === id)?.reading ?? 'UNKNOWN'), [instrument]);
 
@@ -698,14 +738,15 @@ export function EarthTwin({ release, source, records, instrument, located, asset
                         <span data-k="VALID">{fmtUtc(position.validity.validFrom)} → {position.validity.validTo ? fmtUtc(position.validity.validTo) : 'open'}</span>
                         <span data-k="KNOWN">{fmtUtc(position.knownAt)}</span>
                       </div>
-                      <div><button type="button" className="btn btn-sm" disabled={status.state !== 'READY'} onClick={() => flyTo({ longitude: position.point.longitude, latitude: position.point.latitude, ...PLACEMENT_VIEW })}>Fly to it</button></div>
+                      <div><button type="button" className="btn btn-sm" disabled={status.state !== 'READY'} onClick={() => flyTo({ longitude: position.point.longitude, latitude: position.point.latitude, ...placementViewFor(position.shape) })}>Fly to it</button></div>
                     </li>
                   ))}
                 </ul>
                 <div className="hud-stamp" data-testid="earth-legend">
                   <span data-k="WHERE">as declared over the interval, not where it is now</span>
-                  <span data-k="COLOUR">the declaring source’s interest</span>
-                  <span data-k="RING">the stated uncertainty</span>
+                  <span data-k="COLOUR">the declaring source’s interest, or withdrawn where the release has replaced the declaration</span>
+                  <span data-k="RING">a point’s stated uncertainty</span>
+                  <span data-k="OUTLINE">a boundary or extent as the source published it, drawn instead of a ring because the shape is already the extent claim</span>
                 </div>
                 <DeclaredPositionReading groups={positionSeparations(outcome.positions)} />
                 {soleDeclaration(outcome.positions) && (
@@ -743,7 +784,7 @@ export function EarthTwin({ release, source, records, instrument, located, asset
             )}
             {Object.keys(placements).length > 0 && (
               <ul className="m-0 p-0 list-none flex flex-col gap-0.5 text-[12px]" aria-label="Placed records">
-                {Object.entries(placements).map(([id, placement]) => <li key={id} className="flex flex-wrap items-baseline gap-x-2" data-placed-record={id}><button type="button" className="btn btn-sm btn-quiet" aria-pressed={id === recordId} onClick={() => { flyOnResolve.current = true; setRecordId(id); if (id === recordId && placement.positions[0]) flyTo({ longitude: placement.positions[0].point.longitude, latitude: placement.positions[0].point.latitude, ...PLACEMENT_VIEW }); }}>{id}</button><span style={muted}>{placement.title}</span><span style={faint}>{placement.positions.map((p) => p.subject.subjectId).join(', ')} · {fmtUtc(placement.validFrom)}</span></li>)}
+                {Object.entries(placements).map(([id, placement]) => <li key={id} className="flex flex-wrap items-baseline gap-x-2" data-placed-record={id}><button type="button" className="btn btn-sm btn-quiet" aria-pressed={id === recordId} onClick={() => { flyOnResolve.current = true; setRecordId(id); if (id === recordId && placement.positions[0]) flyTo({ longitude: placement.positions[0].point.longitude, latitude: placement.positions[0].point.latitude, ...placementViewFor(placement.positions[0].shape) }); }}>{id}</button><span style={muted}>{placement.title}</span><span style={faint}>{placement.positions.map((p) => p.subject.subjectId).join(', ')} · {fmtUtc(placement.validFrom)}</span></li>)}
               </ul>
             )}
           </Part>

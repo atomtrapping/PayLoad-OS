@@ -96,10 +96,10 @@ export const LANDSHARK_RECORDS: CorpusRecord[] = [
   rec({ recordId: 'LS-0102', firstReleaseId: REL_1, subjectId: 'PARCEL-NL-0442', subjectType: 'Parcel', predicate: 'zoning.designation', title: 'Zoning designation', value: 'Port industrial — heavy cargo handling', basis: 'Municipal zoning plan in force', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-19T10:00:00Z', evidenceClass: AUTHORITY_ASSERTED, provenance: prov('municipal-planning', 'EV-ZONE-NL-0442', 'P-PRODUCER-PLANNING'), visibility: 'PUBLIC_RULING' }),
 
   /** Keyable: the registry states a precision. Co-located with Caravan's lot 5B-221 and Tradewind's delivery point. */
-  rec({ recordId: 'LS-0103', firstReleaseId: REL_1, subjectId: 'PARCEL-NL-0442', subjectType: 'Parcel', predicate: 'location.position', title: 'Registry centroid', value: '51.9497 N, 4.0250 E', basis: 'Cadastral registry centroid, ±250 m as published', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-19T10:00:00Z', evidenceClass: REGISTRY_MEASURED, provenance: prov('cadastral-registry', 'EV-CAD-NL-0442', 'P-PRODUCER-CADASTRE'), geometry: { kind: 'POINT', datum: 'WGS84', longitude: 4.0250, latitude: 51.9497, horizontalUncertaintyM: 250 }, visibility: 'PUBLIC_RULING' }),
+  rec({ recordId: 'LS-0103', firstReleaseId: REL_1, subjectId: 'PARCEL-NL-0442', subjectType: 'Parcel', predicate: 'location.position', title: 'Registry centroid', value: '51.9497 N, 4.0250 E', basis: 'Cadastral registry centroid, ±250 m as published', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-19T10:00:00Z', evidenceClass: REGISTRY_MEASURED, provenance: prov('cadastral-registry', 'EV-CAD-NL-0442', 'P-PRODUCER-CADASTRE'), geometry: { kind: 'POINT', datum: 'WGS84', longitude: 4.0250, latitude: 51.9497, horizontalUncertaintyM: 250 }, visibility: 'PUBLIC_RULING', supersededByRecordId: 'LS-0123' }),
 
   /* ── Parcel BR-1207: the Santos origination yard ── */
-  rec({ recordId: 'LS-0111', firstReleaseId: REL_1, subjectId: 'PARCEL-BR-1207', subjectType: 'Parcel', predicate: 'location.position', title: 'Registry centroid', value: '23.9535 S, 46.3130 W', basis: 'Cadastral registry centroid, ±500 m as published', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-19T10:00:00Z', evidenceClass: REGISTRY_MEASURED, provenance: prov('cadastral-registry', 'EV-CAD-BR-1207', 'P-PRODUCER-CADASTRE'), geometry: { kind: 'POINT', datum: 'WGS84', longitude: -46.3130, latitude: -23.9535, horizontalUncertaintyM: 500 }, visibility: 'PUBLIC_RULING' }),
+  rec({ recordId: 'LS-0111', firstReleaseId: REL_1, subjectId: 'PARCEL-BR-1207', subjectType: 'Parcel', predicate: 'location.position', title: 'Registry centroid', value: '23.9535 S, 46.3130 W', basis: 'Cadastral registry centroid, ±500 m as published', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-19T10:00:00Z', evidenceClass: REGISTRY_MEASURED, provenance: prov('cadastral-registry', 'EV-CAD-BR-1207', 'P-PRODUCER-CADASTRE'), geometry: { kind: 'POINT', datum: 'WGS84', longitude: -46.3130, latitude: -23.9535, horizontalUncertaintyM: 500 }, visibility: 'PUBLIC_RULING', supersededByRecordId: 'LS-0124' }),
 
   /** Withdrawn in release 2: the application was found to have lapsed before it was recorded. */
   rec({ recordId: 'LS-0112', firstReleaseId: REL_1, subjectId: 'PARCEL-BR-1207', subjectType: 'Parcel', predicate: 'entitlement.status', title: 'Entitlement application standing', value: 'Under review — expansion of bulk storage', basis: 'Planning authority register, as published', validFrom: '2026-06-01T00:00:00Z', knownAt: '2026-08-19T10:00:00Z', evidenceClass: AUTHORITY_ASSERTED, provenance: prov('municipal-planning', 'EV-ENT-BR-1207', 'P-PRODUCER-PLANNING'), visibility: 'PUBLIC_RULING', retractedByRetractionId: 'RET-LS-0001' }),
@@ -110,6 +110,44 @@ export const LANDSHARK_RECORDS: CorpusRecord[] = [
    * consequence of a source that did not say how well it knew.
    */
   rec({ recordId: 'LS-0121', firstReleaseId: REL_2, subjectId: 'PARCEL-NL-0511', subjectType: 'Parcel', predicate: 'location.position', title: 'Registry centroid, precision not stated', value: '51.9530 N, 4.0310 E', basis: 'Cadastral registry centroid; the registry published no precision for this parcel', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-30T10:00:00Z', evidenceClass: REGISTRY_MEASURED, provenance: prov('cadastral-registry', 'EV-CAD-NL-0511', 'P-PRODUCER-CADASTRE'), geometry: { kind: 'POINT', datum: 'WGS84', longitude: 4.0310, latitude: 51.9530 }, visibility: 'PUBLIC_RULING' }),
+
+  /**
+   * THE BOUNDARY, NOT THE CENTROID
+   *
+   * The registry's second filing publishes the parcel's cadastral ring. It
+   * supersedes the centroid because it answers the same question — where is
+   * this parcel — better, and the corpus records a better answer as a
+   * supersession rather than an edit. The earlier release still shows the
+   * centroid, which is the point of keeping both.
+   *
+   * The ring encloses 84,466 m² against the registry's stated 84,500 ±100 m²
+   * in LS-0101, so the boundary and the area do not contradict each other. The
+   * ±30 m is the survey tolerance on the vertices, not the size of the parcel;
+   * the parcel's own reach is derived, not declared, and it is what makes this
+   * record's spatial key coarser than a survey mark's.
+   */
+  rec({ recordId: 'LS-0123', firstReleaseId: REL_2, subjectId: 'PARCEL-NL-0442', subjectType: 'Parcel', predicate: 'location.position', title: 'Cadastral boundary', value: 'Registered ring, 5 vertices', basis: 'Cadastral registry boundary filing, vertices to ±30 m as published', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-30T10:00:00Z', evidenceClass: REGISTRY_MEASURED, provenance: prov('cadastral-registry', 'EV-CAD-NL-0442-RING', 'P-PRODUCER-CADASTRE'), geometry: {
+    kind: 'POLYGON', datum: 'WGS84', horizontalUncertaintyM: 30,
+    ring: [
+      { longitude: 4.022838, latitude: 51.948394 },
+      { longitude: 4.027162, latitude: 51.948394 },
+      { longitude: 4.027162, latitude: 51.950467 },
+      { longitude: 4.026288, latitude: 51.951006 },
+      { longitude: 4.022838, latitude: 51.951006 },
+    ],
+  }, visibility: 'PUBLIC_RULING', supersedesRecordId: 'LS-0103' }),
+
+  /**
+   * A CONTAINING RECTANGLE, WHICH IS A WEAKER CLAIM THAN A RING
+   *
+   * The Santos registry will commit to a box and no further. EXTENT is kept a
+   * separate kind from POLYGON so that is never read as a boundary: the parcel
+   * is somewhere inside this rectangle, and the rectangle is not its shape.
+   */
+  rec({ recordId: 'LS-0124', firstReleaseId: REL_2, subjectId: 'PARCEL-BR-1207', subjectType: 'Parcel', predicate: 'location.position', title: 'Containing rectangle', value: 'Registry extent, no boundary published', basis: 'Cadastral registry extent, edges to ±120 m as published; the registry publishes no ring for this parcel', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-30T10:00:00Z', evidenceClass: REGISTRY_MEASURED, provenance: prov('cadastral-registry', 'EV-CAD-BR-1207-EXTENT', 'P-PRODUCER-CADASTRE'), geometry: {
+    kind: 'EXTENT', datum: 'WGS84', horizontalUncertaintyM: 120,
+    west: -46.314966, south: -23.954847, east: -46.311034, north: -23.952153,
+  }, visibility: 'PUBLIC_RULING', supersedesRecordId: 'LS-0111' }),
 
   rec({ recordId: 'LS-0122', firstReleaseId: REL_2, subjectId: 'PARCEL-NL-0511', subjectType: 'Parcel', predicate: 'zoning.designation', title: 'Zoning designation', value: 'Port industrial — ancillary', basis: 'Municipal zoning plan in force', validFrom: '2026-01-01T00:00:00Z', knownAt: '2026-08-30T10:00:00Z', evidenceClass: AUTHORITY_ASSERTED, provenance: prov('municipal-planning', 'EV-ZONE-NL-0511', 'P-PRODUCER-PLANNING'), visibility: 'PUBLIC_RULING' }),
 ];

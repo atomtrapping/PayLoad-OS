@@ -13,13 +13,13 @@ tags:
 **Group:** Firm, domain products and customers  
 **Map:** [[NotationsOS Architecture]]
 
-> The three flagship products, each an API delivered as an HTTP feed and MCP tools over one provenance-bearing corpus. All three now carry a committed demonstration corpus served by one corpus-generic feed: Caravan (logistics, freight, cargo, supply-chain movement) is the deepest, with cases, rulings and captured artifact bytes; Tradewind (markets, pricing, risk) and Landshark (parcels, zoning, entitlements) carry records, releases, rights and one retraction each, with no captured bytes. NotationsOS is not among them: it is the internal terminal over the backend.
+> The three flagship products, each an API delivered as an HTTP feed and MCP tools over one provenance-bearing corpus. All three now carry a committed demonstration corpus served by one corpus-generic feed: Caravan (logistics, freight, cargo, supply-chain movement) is the deepest, with cases, rulings and captured artifact bytes; Tradewind (markets, pricing, risk) and Landshark (parcels, zoning, entitlements) carry records, releases, rights and one retraction each, with no captured bytes; Landshark carries the corpus's only areal geometry. NotationsOS is not among them: it is the internal terminal over the backend.
 
 ## What it is
 
 - Caravan is the deepest line: the `caravan.specialty-cargo` demonstration corpus (three releases, nineteen records, two retractions, seven sources), the cases and rulings, the captured artifact bytes and the Carrier candidate contract.
 - Tradewind carries `tradewind.freight-rates`: two releases, six records, one correction (`RET-TW-0001`), dry-bulk route settlements and a counterparty book position, with a supersession between the two releases.
-- Landshark carries `landshark.terminal-parcels`: two releases, seven records, one withdrawal (`RET-LS-0001`), cadastral areas, zoning designations and entitlement standing.
+- Landshark carries `landshark.terminal-parcels`: two releases, nine records, one withdrawal (`RET-LS-0001`), cadastral areas, zoning designations, entitlement standing, and the corpus's only shapes — a cadastral ring and a containing rectangle, each superseding the centroid it replaced.
 - All three are `enabled` in `DOMAINS`, and each note ends "Not a live customer API." Being servable and being sold are different states and the copy keeps them apart.
 - Founder correction, 2026-09-06: NotationsOS is the internal terminal that operates, monitors and navigates the backend. It is not a platform sold above the three, and it is not a fourth API.
 

@@ -186,7 +186,7 @@ export function usdReadiness(corpus: Corpus): UsdReadiness {
     'No resolution decision object: prim paths would be minted per subject, and a later resolution would change a path that downstream references depend on.',
     'No encoding decided for uncertainty, provenance, rights or visibility, which USD has no native concept for.',
     'No writer, and no USD library installed. The routing table records the route as UNAVAILABLE and the compiler answers GEOMETRY_NOT_AVAILABLE.',
-    'No areal or mesh geometry: the record contract admits POINT, so a stage would carry markers and no shapes.',
+    'No mesh geometry. The record contract carries POLYGON and EXTENT now, so a stage could carry a parcel’s ring as a flat curve, but nothing in the corpus has a surface, a volume or an elevation, and a stage of flat rings is not the interchange this route is for.',
   ];
   return {
     prims: new Set(records.map((r) => r.subjectCanonicalId)).size,

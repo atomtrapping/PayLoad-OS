@@ -51,7 +51,7 @@ export const COMPLEX: readonly ComplexPart[] = [
     what: 'A region at a stated resolution as the unit of the structure, so that a thing sits in a cell rather than at a coordinate.',
     state: 'PARTIAL',
     here: `Every keyable position carries a ${CELL_SCHEME.id} cell at the finest resolution its stated uncertainty supports. The cell is already a region and already carries its ground extent.`,
-    missing: 'Cells that are not derived from a point: an administrative or cadastral region is a cell in its own right, and the record contract admits POINT only.',
+    missing: 'A region as a cell in its own right. The record contract carries a cadastral boundary now, but the complex still keys every shape to one geohash cell containing it; an administrative region is not a cell, it is a set of them, and nothing computes that set.',
   },
   {
     id: 'CONTAINMENT',

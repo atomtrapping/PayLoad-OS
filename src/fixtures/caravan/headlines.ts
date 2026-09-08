@@ -14,7 +14,7 @@ import { WIRE_EVIDENCE_CLASS } from '@/domain/locatedClaims';
 const SOURCE = { sourceId: 'specimen-wire', displayName: 'Drafted specimen — not a publication' } as const;
 const DECLARED = 'notationsos.geocode.declared-specimen.v1';
 const geocode = (latitude: number, longitude: number, horizontalUncertaintyM?: number): LocatedClaim['geocode'] => ({
-  point: { kind: 'POINT', datum: 'WGS84', latitude, longitude, ...(horizontalUncertaintyM === undefined ? {} : { horizontalUncertaintyM }) },
+  geometry: { kind: 'POINT', datum: 'WGS84', latitude, longitude, ...(horizontalUncertaintyM === undefined ? {} : { horizontalUncertaintyM }) },
   method: DECLARED,
   because: horizontalUncertaintyM === undefined
     ? 'Coordinates declared by the drafter of this specimen with no uncertainty stated; no geocoder ran.'

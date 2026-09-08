@@ -38,13 +38,14 @@ export function SpatialKeys({ corpus, releaseId }: { corpus: Corpus; releaseId: 
         </p>
         <div className="surface overflow-x-auto" tabIndex={0}>
           <table className="ledger-table text-[12px]" aria-label="Spatial keys for declared positions">
-            <thead><tr><th scope="col">Record</th><th scope="col">Subject</th><th scope="col">Stated uncertainty</th><th scope="col">Cell</th><th scope="col">Resolution it supports</th></tr></thead>
+            <thead><tr><th scope="col">Record</th><th scope="col">Subject</th><th scope="col">Shape</th><th scope="col">Stated uncertainty</th><th scope="col">Cell</th><th scope="col">Resolution it supports</th></tr></thead>
             <tbody>
               {keys.map((k) => (
                 <tr key={k.recordId} data-key-record={k.recordId} data-keyed={String(k.outcome.keyed)}>
                   <td className="id">{k.recordId}</td>
                   <td style={{ color: 'var(--text-heading)' }}>{k.subjectId}<div style={{ color: 'var(--text-muted)' }}>{k.title}</div></td>
-                  <td className="mono">{k.point.horizontalUncertaintyM ? `±${metres(k.point.horizontalUncertaintyM)}` : <span style={{ color: 'var(--status-refused)' }}>none stated</span>}</td>
+                  <td><span className="pill text-[10.5px] px-1.5" data-shape={k.geometry.kind}>{k.geometry.kind}</span></td>
+                  <td className="mono">{k.geometry.horizontalUncertaintyM ? <>±{metres(k.geometry.horizontalUncertaintyM)}{k.outcome.keyed && k.outcome.key.bound.featureReachM > 0 ? <span style={{ color: 'var(--text-muted)' }}> + {metres(k.outcome.key.bound.featureReachM)} reach</span> : null}</> : <span style={{ color: 'var(--status-refused)' }}>none stated</span>}</td>
                   <td>
                     {k.outcome.keyed
                       ? <span className="mono" style={{ color: 'var(--text-heading)' }}>{k.outcome.key.cell}</span>
@@ -84,13 +85,13 @@ export function SpatialKeys({ corpus, releaseId }: { corpus: Corpus; releaseId: 
                   <td style={{ color: ANSWER_TONE[p.state] }}>{p.state === 'DISJOINT' ? 'Not the same place' : p.state === 'OVERLAPPING' ? 'Cannot be separated' : 'Not assessable'}<div style={{ color: 'var(--text-muted)' }}>{p.because}</div></td>
                 </tr>
               ))}
-              {pairs.length === 0 ? <tr><td colSpan={5} style={{ color: 'var(--text-muted)' }}>Fewer than two subjects declare a position, so there is no pair to test.</td></tr> : null}
+              {pairs.length === 0 ? <tr><td colSpan={6} style={{ color: 'var(--text-muted)' }}>Fewer than two subjects declare a position, so there is no pair to test.</td></tr> : null}
             </tbody>
           </table>
         </div>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{CONSISTENCY_MEANING.OVERLAPPING}</p>
         <p className="m-0 text-[12px]" style={{ color: 'var(--status-refused)' }}>
-          Containment is the join that would matter, and it is absent. {AREAL_GEOMETRY.why} {AREAL_GEOMETRY.hazard}
+          Containment is the join that would matter, and it is still absent — the shape is carried now, the predicate is not. {AREAL_GEOMETRY.why} {AREAL_GEOMETRY.hazard}
         </p>
       </Section>
     </div>

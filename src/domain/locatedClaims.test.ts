@@ -20,7 +20,7 @@ function claim(overrides: Partial<LocatedClaim> = {}): LocatedClaim {
     source: { sourceId: 'specimen-wire', displayName: 'Drafted specimen — not a publication' },
     evidenceClass: WIRE_EVIDENCE_CLASS, publishedAt: '2026-08-26T08:00:00Z', capturedAt: '2026-08-26T09:00:00Z',
     beganAs: 'DRAFTED_SPECIMEN',
-    geocode: { point: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 300 }, method: 'notationsos.geocode.declared.v1', because: 'declared by the drafter' },
+    geocode: { geometry: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 300 }, method: 'notationsos.geocode.declared.v1', because: 'declared by the drafter' },
     asserts: { subjectId: 'LOT-5B-221', predicate: 'quantity.gross', value: 40.10, validAt: record('REC-0204').validFrom },
     ...overrides,
   };
@@ -111,14 +111,14 @@ describe('two clocks, both shown', () => {
 describe('never a fake pin', () => {
   it('places a geocode only with a radius', () => {
     expect(placementOf(claim().geocode)).toEqual({ placed: true, radiusM: 300 });
-    const noRadius = placementOf({ ...claim().geocode, point: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497 } });
+    const noRadius = placementOf({ ...claim().geocode, geometry: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497 } });
     expect(noRadius.placed).toBe(false);
     if (!noRadius.placed) expect(noRadius.because).toMatch(/precision claim nobody made/);
     expect(placementOf(null).placed).toBe(false);
   });
 
   it('refuses coordinates outside the datum', () => {
-    const off = placementOf({ ...claim().geocode, point: { kind: 'POINT', datum: 'WGS84', longitude: 190, latitude: 0, horizontalUncertaintyM: 10 } });
+    const off = placementOf({ ...claim().geocode, geometry: { kind: 'POINT', datum: 'WGS84', longitude: 190, latitude: 0, horizontalUncertaintyM: 10 } });
     expect(off.placed).toBe(false);
   });
 });
@@ -129,7 +129,7 @@ describe('the ledger is the best source there is', () => {
     expect(events.map((event) => event.eventId)).toEqual(['RET-0001', 'RET-0002']);
     const correction = events[0];
     expect(correction.subjectId).toBe('LOT-5B-221');
-    expect(correction.geocode?.point).toMatchObject({ longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 250 });
+    expect(correction.geocode?.geometry).toMatchObject({ longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 250 });
     expect(correction.geocode?.because).toMatch(/last declared position, REC-0207, valid 2026-08-15T06:00:00Z → 2026-08-18T00:00:00Z/);
     expect(correction.geocode?.because).toMatch(/Where the subject was when RET-0001 was issued is not held/);
     const withdrawal = events[1];

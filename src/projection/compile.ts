@@ -1,8 +1,9 @@
-import type { Corpus, CorpusRecord, CorpusRelease, RecordStatus } from '../domain/corpus';
+import type { Corpus, CorpusRecord, CorpusRelease, RecordGeometry, RecordStatus } from '../domain/corpus';
 import { LOCATION_POSITION_PREDICATE, deliverable, releaseRecords } from '../domain/corpus';
 import type { EvidenceClass } from '../domain/types';
 import { FIXTURE_CORPORA } from '../fixtures';
 import { canonicalJson } from '../fixtures/digest';
+import { representativePointOf } from '../domain/spatialKey';
 import { parseProjectionSpec, ProjectionError, routeProjection, type ProjectionSpec } from './spec';
 import { projectionDigest as addressed, projectionRecord, projectionSource, resolveProjectionRelease, sourceTime as time, type ProjectionRecord } from './source';
 export type { ProjectionRecord } from './source';
@@ -52,6 +53,17 @@ export interface GeodeticPosition {
   positionRecordId: string;
   canonicalId: string;
   subject: { subjectId: string; canonicalId: string; subjectType: string };
+  /**
+   * The shape exactly as the source published it: a point, a boundary or a
+   * containing rectangle. This is the claim; `point` below is a convenience.
+   */
+  shape: RecordGeometry;
+  /**
+   * Where to put a marker for this position: the shape's representative point,
+   * which for a point is the point itself. A convenience for placing a label
+   * and flying a camera, and it is labelled as one — reading a parcel's marker
+   * as the parcel's location would be reading the convenience as the claim.
+   */
   point: { datum: 'WGS84'; longitude: number; latitude: number; horizontalUncertaintyM: number | null };
   value: string | number;
   basis: string | null;
@@ -79,7 +91,7 @@ function geometryFor(corpus: Corpus, release: CorpusRelease, selected: Projectio
   const unplaced: string[] = [];
   for (const row of selected) {
     const declared = committed
-      .filter((record) => record.predicate === LOCATION_POSITION_PREDICATE && record.geometry?.kind === 'POINT' && record.geometry.datum === 'WGS84' &&
+      .filter((record) => record.predicate === LOCATION_POSITION_PREDICATE && record.geometry !== undefined && record.geometry.datum === 'WGS84' &&
         record.subjectId === row.subject.subjectId && admissible(corpus, release, committedIds, record, b))
       .sort((a, c) => a.recordId < c.recordId ? -1 : a.recordId > c.recordId ? 1 : 0);
     if (!declared.length) { unplaced.push(row.recordId); continue; }
@@ -88,7 +100,8 @@ function geometryFor(corpus: Corpus, release: CorpusRelease, selected: Projectio
       positions.push({
         recordId: row.recordId, positionRecordId: record.recordId, canonicalId: record.canonicalId,
         subject: { subjectId: record.subjectId, canonicalId: record.subjectCanonicalId, subjectType: record.subjectType },
-        point: { datum: 'WGS84', longitude: record.geometry!.longitude, latitude: record.geometry!.latitude, horizontalUncertaintyM: record.geometry!.horizontalUncertaintyM ?? null },
+        shape: record.geometry!,
+        point: { datum: 'WGS84', ...representativePointOf(record.geometry!), horizontalUncertaintyM: record.geometry!.horizontalUncertaintyM ?? null },
         value: record.value, basis: record.basis ?? null, validity: { validFrom: record.validFrom, validTo: record.validTo ?? null }, knownAt: record.knownAt,
         evidenceClass: record.evidenceClass, source: { sourceId: record.provenance.sourceId, sourceName: projected.rights?.sourceName ?? release.sources.find((s) => s.sourceId === record.provenance.sourceId)?.sourceName ?? null },
         statusAtKnownAt: projected.statusAtKnownAt,

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectionSpec } from '@/projection/spec';
 import { INSTRUMENT_METHOD, INSTRUMENT_RULES, type InstrumentReading } from '@/domain/operatorInstrument';
 import { LOCATED_CLAIM_METHOD, WIRE_EVIDENCE_CLASS, type LocatedReading } from '@/domain/locatedClaims';
+import { PLACEMENT_TONE, PLACEMENT_VIEW, placementHeightM, SUPERSEDED_TONE } from '@/domain/earth';
 import { EarthTwin, type EarthRecord } from './EarthTwin';
 
 // The engine is a fake injected through the loader: nothing here needs WebGL. The browser suite runs the real one.
@@ -36,7 +37,9 @@ class FakeViewer {
   constructor() { viewers.push(this); }
 }
 function fakeEngine(options: { imagery?: () => Promise<unknown>; preload?: () => Promise<void>; longitude?: number } = {}) {
-  class Cartesian3 { constructor(public x = 0, public y = 0, public z = 0) {} static fromDegrees(lon: number, lat: number, h: number) { return new Cartesian3(lon, lat, h); } }
+  class Cartesian3 { constructor(public x = 0, public y = 0, public z = 0) {} static fromDegrees(lon: number, lat: number, h: number) { return new Cartesian3(lon, lat, h); }
+    static fromDegreesArray(coordinates: number[]) { const out: Cartesian3[] = []; for (let i = 0; i < coordinates.length; i += 2) out.push(new Cartesian3(coordinates[i], coordinates[i + 1], 0)); return out; } }
+  class PolygonHierarchy { constructor(public positions: Cartesian3[]) {} }
   class Matrix3 { static multiplyByVector(_m: unknown, v: Cartesian3) { return v; } }
   class Color {
     constructor(public css = '#000', public alpha = 1) {}
@@ -50,7 +53,7 @@ function fakeEngine(options: { imagery?: () => Promise<unknown>; preload?: () =>
     buildModuleUrl: (p: string) => `/cesium/${p}`,
     ImageryLayer: class { constructor(public provider: unknown) {} },
     EllipsoidTerrainProvider: class {},
-    Viewer: FakeViewer, Cartesian3, Matrix3, Color,
+    Viewer: FakeViewer, Cartesian3, Matrix3, Color, PolygonHierarchy,
     Cartesian2: class { constructor(public x = 0, public y = 0) {} },
     LabelStyle: { FILL_AND_OUTLINE: 2 }, VerticalOrigin: { BOTTOM: 1 }, ScreenSpaceEventType: { LEFT_CLICK: 0 },
     JulianDate: { fromIso8601: (iso: string) => ({ iso }) },
@@ -107,7 +110,7 @@ const located: LocatedReading[] = [
     item: {
       kind: 'LEDGER_EVENT', eventId: 'RET-X', subjectId: 'LOT-1', affectedSubjectIds: ['LOT-1'],
       retraction: { retractionId: 'RET-X', kind: 'CORRECTION', issuedAt: '2026-08-25T14:00:00Z', releaseId: 'REL-X', affectedRecordIds: ['REC-1'], replacementRecordIds: ['REC-2'], reason: 'A correction, drafted for this test.', sourceId: 'test-source', visibility: 'COUNTERPARTY_SHARED' },
-      geocode: { point: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 250 }, method: 'notationsos.geocode.declared-position.v1', because: 'LOT-1’s last declared position.' },
+      geocode: { geometry: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 250 }, method: 'notationsos.geocode.declared-position.v1', because: 'LOT-1’s last declared position.' },
     },
     placement: { placed: true, radiusM: 250 },
     reading: null,
@@ -118,7 +121,7 @@ const located: LocatedReading[] = [
       kind: 'CLAIM', claimId: 'SPEC-T-1', headline: 'Port sources say lot 2 weighed in at 21.5 t',
       source: { sourceId: 'specimen-wire', displayName: 'Drafted specimen — not a publication' }, evidenceClass: WIRE_EVIDENCE_CLASS,
       publishedAt: '2026-08-27T06:00:00Z', capturedAt: '2026-08-27T06:30:00Z', beganAs: 'DRAFTED_SPECIMEN',
-      geocode: { point: { kind: 'POINT', datum: 'WGS84', longitude: -46.313, latitude: -23.9535, horizontalUncertaintyM: 5000 }, method: 'notationsos.geocode.declared-specimen.v1', because: 'Declared by the drafter.' },
+      geocode: { geometry: { kind: 'POINT', datum: 'WGS84', longitude: -46.313, latitude: -23.9535, horizontalUncertaintyM: 5000 }, method: 'notationsos.geocode.declared-specimen.v1', because: 'Declared by the drafter.' },
       asserts: { subjectId: 'LOT-2', predicate: 'quantity.gross', value: 21.5, validAt: '2026-08-10T00:00:00Z' },
     },
     placement: { placed: true, radiusM: 5000 },
@@ -133,7 +136,7 @@ const located: LocatedReading[] = [
       kind: 'CLAIM', claimId: 'SPEC-T-2', headline: 'Congestion reported somewhere near the yard',
       source: { sourceId: 'specimen-wire', displayName: 'Drafted specimen — not a publication' }, evidenceClass: WIRE_EVIDENCE_CLASS,
       publishedAt: '2026-08-28T05:30:00Z', capturedAt: '2026-08-28T06:00:00Z', beganAs: 'DRAFTED_SPECIMEN',
-      geocode: { point: { kind: 'POINT', datum: 'WGS84', longitude: -46.313, latitude: -23.9535 }, method: 'notationsos.geocode.declared-specimen.v1', because: 'Declared with no uncertainty.' },
+      geocode: { geometry: { kind: 'POINT', datum: 'WGS84', longitude: -46.313, latitude: -23.9535 }, method: 'notationsos.geocode.declared-specimen.v1', because: 'Declared with no uncertainty.' },
       asserts: null,
     },
     placement: { placed: false, because: 'The geocode states no horizontal uncertainty.' },
@@ -154,6 +157,7 @@ const unavailable = { status: 200, json: { status: 'UNAVAILABLE', error: 'GEOMET
 function declared(recordId: string, positionRecordId: string, interest = 'disinterested', extra: Record<string, unknown> = {}) {
   return {
     recordId, positionRecordId, canonicalId: `caravan:${positionRecordId}`, subject: { subjectId: 'LOT-1', canonicalId: 'caravan:LOT-1', subjectType: 'Lot' },
+    shape: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 250 },
     point: { datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 250 }, value: '51.9497 N, 4.0250 E', basis: 'Port custody record',
     validity: { validFrom: '2026-08-15T06:00:00Z', validTo: '2026-08-18T00:00:00Z' }, knownAt: '2026-08-18T09:30:00Z',
     evidenceClass: { claimStrength: 'reported', productionClass: 'asserted', interest }, source: { sourceId: 'caravan:source:port-custody-system', sourceName: 'Port custody system' }, statusAtKnownAt: 'CURRENT', ...extra,
@@ -447,9 +451,54 @@ describe('EarthTwin', () => {
     expect(screen.getByTestId('earth-projection')).toHaveAttribute('data-code', 'SOURCE_VERSION_MISMATCH');
   });
 
+  it('draws a boundary as a boundary, and a superseded declaration as withdrawn and unlabelled', async () => {
+    // A parcel keeps both declarations: the centroid the registry published
+    // first, and the ring that superseded it. The ring is drawn as the ring;
+    // the centroid is drawn in the withdrawn hue with no label, because two
+    // labels at one berth read as none and the standing is the more important
+    // thing about a replaced position.
+    const ring = {
+      kind: 'POLYGON', datum: 'WGS84', horizontalUncertaintyM: 30,
+      ring: [
+        { longitude: 4.022838, latitude: 51.948394 },
+        { longitude: 4.027162, latitude: 51.948394 },
+        { longitude: 4.027162, latitude: 51.950467 },
+        { longitude: 4.026288, latitude: 51.951006 },
+        { longitude: 4.022838, latitude: 51.951006 },
+      ],
+    };
+    const fetch = api((body) => body.selection.recordIds[0] === 'REC-2'
+      ? ready([
+          declared('REC-2', 'REC-CENTROID', 'disinterested', { statusAtKnownAt: 'SUPERSEDED' }),
+          declared('REC-2', 'REC-RING', 'disinterested', { shape: ring, point: { datum: 'WGS84', longitude: 4.025, latitude: 51.9497, horizontalUncertaintyM: 30 } }),
+        ])
+      : unavailable);
+    const user = userEvent.setup();
+    render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={none} assetsReady loadEngine={loadEngine} />);
+    await waitFor(() => expect(screen.getByTestId('twin-status')).toHaveAttribute('data-state', 'READY'));
+    await user.selectOptions(screen.getByLabelText('Record'), 'REC-2');
+    await waitFor(() => expect(entitiesAdd).toHaveBeenCalledTimes(2));
+    const drawn = new Map(entitiesAdd.mock.calls.map((call) => [call[0].id as string, call[0]]));
+
+    const boundary = drawn.get('place:REC-RING')!;
+    expect(boundary.polygon).toBeDefined();
+    // Five vertices in, five out: the ring is drawn as published, not resampled.
+    expect(boundary.polygon.hierarchy.positions).toHaveLength(5);
+    // And no uncertainty ellipse over it: the boundary is already the extent claim.
+    expect(boundary.ellipse).toBeUndefined();
+    expect(boundary.label).toBeDefined();
+
+    const superseded = drawn.get('place:REC-CENTROID')!;
+    expect(superseded.polygon).toBeUndefined();
+    expect(superseded.label).toBeUndefined();
+    expect(superseded.point.color).toMatchObject({ css: SUPERSEDED_TONE.hex });
+    expect(superseded.point.color).not.toMatchObject({ css: PLACEMENT_TONE.disinterested.hex });
+    expect(fetch).toHaveBeenCalled();
+  });
+
   it('draws a record at every position its own subject declares, coloured by the declaring source, and flies there when the record is chosen', async () => {
     const fetch = api((body) => body.selection.recordIds[0] === 'REC-2'
-      ? ready([declared('REC-2', 'REC-P1'), declared('REC-2', 'REC-P2', 'self_reported', { point: { datum: 'WGS84', longitude: -46.313, latitude: -23.9535, horizontalUncertaintyM: null }, source: { sourceId: 'caravan:source:meridian-yard-log', sourceName: null } })])
+      ? ready([declared('REC-2', 'REC-P1'), declared('REC-2', 'REC-P2', 'self_reported', { shape: { kind: 'POINT', datum: 'WGS84', longitude: -46.313, latitude: -23.9535 }, point: { datum: 'WGS84', longitude: -46.313, latitude: -23.9535, horizontalUncertaintyM: null }, source: { sourceId: 'caravan:source:meridian-yard-log', sourceName: null } })])
       : unavailable);
     const user = userEvent.setup();
     render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={none} assetsReady loadEngine={loadEngine} />);
@@ -492,7 +541,11 @@ describe('EarthTwin', () => {
     expect(screen.getByTestId('earth-placed')).toHaveAttribute('data-count', '1');
     // Choosing the record flew the camera to its first position at the placement height; nothing flew on first load.
     expect(flyTo).toHaveBeenCalledTimes(1);
-    expect(flyTo.mock.calls[0][0].destination).toMatchObject({ x: 4.025, y: 51.9497, z: 1_000_000 });
+    // The height is derived from what is being flown to, not fixed: this
+    // position states ±250 m, so the camera stops where 250 m is legible
+    // rather than at the old regional preset a parcel would vanish in.
+    expect(flyTo.mock.calls[0][0].destination).toMatchObject({ x: 4.025, y: 51.9497, z: placementHeightM(250) });
+    expect(placementHeightM(250)).toBeLessThan(PLACEMENT_VIEW.height);
     await user.click(within(positions[1]).getByRole('button', { name: 'Fly to it' }));
     expect(flyTo).toHaveBeenCalledTimes(2);
     expect(flyTo.mock.calls[1][0].destination).toMatchObject({ x: -46.313, y: -23.9535 });
@@ -547,7 +600,7 @@ describe('EarthTwin', () => {
 
   it('reads the placed geometry: two standing accounts a kilometre apart with ±250 m each cannot both be right, and a withdrawn one is set aside before the question is put', async () => {
     // One subject, three declarations: two that stand about a kilometre apart, and one withdrawn at this knowledge instant.
-    const far = { point: { datum: 'WGS84', longitude: 4.025, latitude: 51.9587, horizontalUncertaintyM: 250 } };
+    const far = { shape: { kind: 'POINT', datum: 'WGS84', longitude: 4.025, latitude: 51.9587, horizontalUncertaintyM: 250 }, point: { datum: 'WGS84', longitude: 4.025, latitude: 51.9587, horizontalUncertaintyM: 250 } };
     const fetch = api((body) => body.selection.recordIds[0] === 'REC-1'
       ? ready([declared('REC-1', 'REC-P1'), declared('REC-1', 'REC-P2', 'self_reported', far), declared('REC-1', 'REC-P3', 'unknown', { ...far, statusAtKnownAt: 'RETRACTED' })])
       : unavailable);

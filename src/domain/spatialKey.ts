@@ -32,8 +32,8 @@
  * Nothing here resolves an identity. OVERLAPPING is a candidate for a
  * resolution decision that does not exist yet (see ./identity), never a merge.
  */
-import { LOCATION_POSITION_PREDICATE, currentRelease, recordStatusAt, releaseRecords } from './corpus';
-import type { Corpus, CorpusRecord, GeodeticPoint } from './corpus';
+import { LOCATION_POSITION_PREDICATE, currentRelease, geometryVertices, recordStatusAt, releaseRecords } from './corpus';
+import type { Corpus, CorpusRecord, GeodeticGeometryKind, GeodeticVertex, RecordGeometry } from './corpus';
 
 /* ── The scheme ── */
 
@@ -115,13 +115,14 @@ export function cellPrecisionFor(uncertaintyM: number, latitude: number): number
 
 /* ── The key, and the refusals ── */
 
-export type KeyRefusal = 'NO_GEOMETRY' | 'UNSUPPORTED_DATUM' | 'INVALID_COORDINATES' | 'NO_STATED_UNCERTAINTY';
+export type KeyRefusal = 'NO_GEOMETRY' | 'UNSUPPORTED_DATUM' | 'INVALID_COORDINATES' | 'DEGENERATE_BOUNDARY' | 'NO_STATED_UNCERTAINTY';
 
 export const KEY_REFUSAL_REASON: Record<KeyRefusal, string> = {
   NO_GEOMETRY: 'The record declares no position, so there is nothing to key.',
   UNSUPPORTED_DATUM: 'The position is declared in a datum other than WGS84, and no transform to WGS84 is declared. A datum shift is metres; guessing it would put the position in the wrong cell.',
   INVALID_COORDINATES: 'The declared coordinates are not a point on the datum.',
-  NO_STATED_UNCERTAINTY: 'The source stated no horizontal uncertainty, so no resolution is supportable. A cell chosen anyway would assert a precision no evidence backs.',
+  DEGENERATE_BOUNDARY: 'The shape does not enclose anything: a ring of fewer than three vertices, or a rectangle whose sides do not increase. It is not a boundary that was drawn badly, it is not a boundary.',
+  NO_STATED_UNCERTAINTY: 'The source stated no horizontal uncertainty, so no resolution is supportable. A cell chosen anyway would assert a precision no evidence backs. A boundary does not escape this: a ring bounds how big the feature is and says nothing about how far the whole ring might be displaced.',
 };
 
 export interface SpatialKey {
@@ -130,25 +131,90 @@ export interface SpatialKey {
   cell: string;
   precision: number;
   extent: CellExtent;
-  /** The stated uncertainty that bounded the resolution. */
+  /** What the key was taken over. A shape is not keyed as if it were a point. */
+  of: GeodeticGeometryKind;
+  /** The total bound on the resolution: the stated uncertainty plus the feature's own reach. */
   boundedByM: number;
+  /**
+   * The two halves of that bound, kept apart so a reader can tell a coarse
+   * cell caused by a vague survey from one caused by a large parcel. A point
+   * contributes zero reach.
+   */
+  bound: { statedUncertaintyM: number; featureReachM: number };
 }
 
 export type SpatialKeyOutcome = { keyed: true; key: SpatialKey } | { keyed: false; refusal: KeyRefusal };
 
-/** Pure: a key, or the exact reason there is none. Never a default cell. */
-export function spatialKeyFor(point: GeodeticPoint | undefined): SpatialKeyOutcome {
-  if (!point) return { keyed: false, refusal: 'NO_GEOMETRY' };
-  if (point.datum !== 'WGS84') return { keyed: false, refusal: 'UNSUPPORTED_DATUM' };
-  const { latitude, longitude } = point;
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
-    return { keyed: false, refusal: 'INVALID_COORDINATES' };
+/**
+ * The point a shape is keyed at: the centre of the rectangle that contains it.
+ *
+ * Deliberately not an area centroid. An area centroid weights by the shape and
+ * would move if the ring were re-ordered or re-sampled; the containing
+ * rectangle's centre is a function of the extreme coordinates alone, so two
+ * parties computing it from the same published ring get the same answer. The
+ * key has to be reproducible by a counterparty or it is not a join key.
+ */
+export function representativePointOf(geometry: RecordGeometry): GeodeticVertex {
+  if (geometry.kind === 'POINT') return { longitude: geometry.longitude, latitude: geometry.latitude };
+  const vertices = geometryVertices(geometry);
+  const longitudes = vertices.map((v) => v.longitude);
+  const latitudes = vertices.map((v) => v.latitude);
+  return {
+    longitude: (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
+    latitude: (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
+  };
+}
+
+/**
+ * How far the feature reaches from that point: the greatest geodesic distance
+ * to any of its vertices, and zero for a point.
+ *
+ * This is why a parcel keys more coarsely than a survey mark. Reducing an
+ * extended feature to one cell means the cell must contain the feature, so the
+ * feature's own size is a floor on the cell's size exactly as the stated
+ * uncertainty is. Keying a 300 m parcel into a 38 m cell would put the parcel
+ * in a cell most of it is not in.
+ */
+export function featureReachM(geometry: RecordGeometry): SeparationOutcome {
+  if (geometry.kind === 'POINT') return { state: 'MEASURED', metres: 0 };
+  const centre = representativePointOf(geometry);
+  let furthest = 0;
+  for (const vertex of geometryVertices(geometry)) {
+    const separation = geodesicSeparationM(centre, vertex);
+    if (separation.state !== 'MEASURED') return separation;
+    if (separation.metres > furthest) furthest = separation.metres;
   }
-  const uncertaintyM = point.horizontalUncertaintyM;
-  if (typeof uncertaintyM !== 'number' || !Number.isFinite(uncertaintyM) || uncertaintyM <= 0) {
+  return { state: 'MEASURED', metres: furthest };
+}
+
+/** Whether a shape encloses anything at all. A ring of two points does not. */
+function enclosesSomething(geometry: RecordGeometry): boolean {
+  if (geometry.kind === 'POINT') return true;
+  if (geometry.kind === 'POLYGON') {
+    const distinct = new Set(geometry.ring.map((v) => `${v.longitude},${v.latitude}`));
+    return geometry.ring.length >= 3 && distinct.size >= 3;
+  }
+  return geometry.east > geometry.west && geometry.north > geometry.south;
+}
+
+/** Pure: a key, or the exact reason there is none. Never a default cell. */
+export function spatialKeyFor(geometry: RecordGeometry | undefined): SpatialKeyOutcome {
+  if (!geometry) return { keyed: false, refusal: 'NO_GEOMETRY' };
+  if (geometry.datum !== 'WGS84') return { keyed: false, refusal: 'UNSUPPORTED_DATUM' };
+  const vertices = geometryVertices(geometry);
+  const onDatum = vertices.length > 0 && vertices.every(({ latitude, longitude }) =>
+    Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180);
+  if (!onDatum) return { keyed: false, refusal: 'INVALID_COORDINATES' };
+  if (!enclosesSomething(geometry)) return { keyed: false, refusal: 'DEGENERATE_BOUNDARY' };
+  const statedUncertaintyM = geometry.horizontalUncertaintyM;
+  if (typeof statedUncertaintyM !== 'number' || !Number.isFinite(statedUncertaintyM) || statedUncertaintyM <= 0) {
     return { keyed: false, refusal: 'NO_STATED_UNCERTAINTY' };
   }
-  const precision = cellPrecisionFor(uncertaintyM, latitude);
+  const reach = featureReachM(geometry);
+  if (reach.state !== 'MEASURED') return { keyed: false, refusal: 'INVALID_COORDINATES' };
+  const { latitude, longitude } = representativePointOf(geometry);
+  const boundedByM = statedUncertaintyM + reach.metres;
+  const precision = cellPrecisionFor(boundedByM, latitude);
   return {
     keyed: true,
     key: {
@@ -157,7 +223,9 @@ export function spatialKeyFor(point: GeodeticPoint | undefined): SpatialKeyOutco
       cell: encodeGeohash(latitude, longitude, precision),
       precision,
       extent: cellExtentM(precision, latitude),
-      boundedByM: uncertaintyM,
+      of: geometry.kind,
+      boundedByM,
+      bound: { statedUncertaintyM, featureReachM: reach.metres },
     },
   };
 }
@@ -270,7 +338,10 @@ export interface PositionKey {
   subjectId: string;
   subjectType: string;
   title: string;
-  point: GeodeticPoint;
+  /** The shape as the source published it. */
+  geometry: RecordGeometry;
+  /** The point the metric was taken from. For a shape it is a convenience, and the reach it stands in for is carried in the key's bound. */
+  point: GeodeticVertex;
   outcome: SpatialKeyOutcome;
 }
 
@@ -303,7 +374,8 @@ export function positionKeys(corpus: Corpus): PositionKey[] {
     subjectId: r.subjectId,
     subjectType: r.subjectType,
     title: r.title,
-    point: r.geometry as GeodeticPoint,
+    geometry: r.geometry!,
+    point: representativePointOf(r.geometry!),
     outcome: spatialKeyForRecord(r),
   }));
 }
@@ -398,12 +470,12 @@ export function spatialKeyStanding(corpus: Corpus): SpatialKeyStanding {
  * corpus carries points and nothing else.
  */
 export const AREAL_GEOMETRY = {
-  state: 'ABSENT' as const,
-  why: 'CorpusRecord.geometry admits one kind, POINT. A point can be near another point; it cannot contain one.',
+  state: 'PARTIAL' as const,
+  why: 'CorpusRecord.geometry now admits three kinds — POINT, POLYGON and EXTENT — so a boundary is a record like any other, with its datum, its own stated positional uncertainty and both clocks. What is still absent is the predicate: nothing computes containment, adjacency or overlap, so a parcel and a lot inside it block into one cell and the corpus still cannot say that one contains the other.',
   wouldNeed: [
-    'A polygon geometry kind on the record contract, with its datum and its own stated positional uncertainty, so a boundary is evidence like any other record.',
-    'A declared source for boundaries — cadastral, berth or administrative — registered with its rights, because a boundary is somebody’s survey and carries its terms.',
     'Predicates for containment, adjacency and overlap in the link vocabulary, each naming the evidence its kind demands, so that a computed overlap enters as a candidate rather than as an edge.',
+    'A declared source for boundaries — cadastral, berth or administrative — registered with its rights, because a boundary is somebody’s survey and carries its terms. The demonstration corpus declares one; no boundary has been captured from a live registry.',
+    'A rule for what containment means when the container’s vertices carry an uncertainty of their own, since a lot 20 m inside a boundary surveyed to ±30 m is not inside it in any sense the evidence supports.',
   ],
-  hazard: 'A digitized boundary is a line somebody drew, at a scale, on a date. Containment computed against it is exact arithmetic over an inexact line, and reporting the arithmetic’s precision as the answer’s precision is the characteristic GIS error.',
+  hazard: 'A digitized boundary is a line somebody drew, at a scale, on a date. Containment computed against it is exact arithmetic over an inexact line, and reporting the arithmetic’s precision as the answer’s precision is the characteristic GIS error. Carrying the shape makes that error reachable for the first time, which is why the predicate is not being added at the same time as the geometry.',
 } as const;

@@ -105,10 +105,17 @@ then.
 
 ## What is deliberately not built
 
-- **Areal geometry.** `CorpusRecord.geometry` admits `POINT` and nothing else, so
-  containment, adjacency and overlap — the strong geometric joins — are absent. A
-  point can be near another point; it cannot contain one. Four of the five
-  derivations wait on this.
+- **The containment predicate.** `CorpusRecord.geometry` admits `POINT`,
+  `POLYGON` and `EXTENT` now, so a boundary is a record like any other, with its
+  datum, its own stated positional uncertainty and both clocks. What is absent
+  is the predicate: nothing computes containment, adjacency or overlap, so a
+  parcel and a lot inside it block into one cell and the corpus still cannot
+  say that one contains the other. Carrying the shape is what makes the
+  characteristic GIS error reachable — exact arithmetic over an inexact line —
+  which is why the predicate was not added in the same step as the geometry. It
+  needs a rule for what containment means when the container's own vertices
+  carry an uncertainty: a lot 20 m inside a boundary surveyed to ±30 m is not
+  inside it in any sense the evidence supports.
 - **A resolution decision object.** An `OVERLAPPING` pair stops at
   candidate. Carrying two identifiers to one subject with evidence, method,
   version and both clocks is the identity core's job, not a spatial one.
@@ -124,11 +131,16 @@ then.
 
 1. The cell key, because every other derivation presupposes it and it needs no
    new source. **Done.**
-2. Areal geometry, because containment is the strong join. A change to the record
-   contract and a registered boundary source, not a database.
-3. The resolution decision object, so a candidate can become one subject with
+2. Areal geometry on the record contract. **Done.** `POLYGON` and `EXTENT` sit
+   beside `POINT`, keyed by the same rule with one term added: a shape's cell is
+   bounded by its stated uncertainty plus its own reach, because reducing an
+   extended feature to one cell means the cell has to contain it. A boundary
+   with no stated accuracy is refused a key exactly as a point with none is.
+3. The containment predicate, with its rule for an uncertain container. This is
+   now the only thing between the corpus and the strong join.
+4. The resolution decision object, so a candidate can become one subject with
    evidence behind it and be undone without rewriting history.
-4. The flow-through-geometry demonstration over one place and one week, end to
+5. The flow-through-geometry demonstration over one place and one week, end to
    end with digests.
 5. Imagery last of the sources, because its rights are the strictest and its
    value depends on everything above being in place.

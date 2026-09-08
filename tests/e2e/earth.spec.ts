@@ -105,8 +105,10 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await expect(berth).toContainText('±250 m · WGS84');
   await expect(berth).toContainText('Port custody operator system');
   await expect(page.getByTestId('earth-placed')).toHaveAttribute('data-count', '1');
-  await expect(page.getByTestId('earth-camera')).toContainText('51.9497°, 4.0250° · 1,000 km', { timeout: 20_000 });
-  await expect.poll(async () => new URL(page.url()).hash, { timeout: 20_000 }).toMatch(/^#v=4\.0250,51\.9497,1000000,/);
+  // The height is framed by the position's own stated uncertainty (±250 m),
+  // not by a fixed regional preset a parcel would be invisible in.
+  await expect(page.getByTestId('earth-camera')).toContainText('51.9497°, 4.0250° · 4 km', { timeout: 20_000 });
+  await expect.poll(async () => new URL(page.url()).hash, { timeout: 20_000 }).toMatch(/^#v=4\.0250,51\.9497,3500,/);
 
   // Every record offered, each at its own validity start: two lots declare a position, so their records are placed; samples, identity links and retracted inventory are not, and nothing is inferred across the sample-of-lot link. The records this viewer may not select were never offered, so the compiler refuses none.
   await page.getByTestId('place-all').click();
@@ -123,7 +125,7 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await expect(projection).toHaveAttribute('data-outcome', 'READY', { timeout: 15_000 });
   await expect(projection.locator('[data-position-record="REC-0306"]')).toHaveAttribute('data-interest', 'self_reported');
   await expect(projection).toContainText('self-reported');
-  await expect(page.getByTestId('earth-camera')).toContainText('-23.9535°, -46.3130° · 1,000 km', { timeout: 20_000 });
+  await expect(page.getByTestId('earth-camera')).toContainText('-23.9535°, -46.3130° · 7 km', { timeout: 20_000 });
   await expect(page.getByTestId('earth-placed')).toHaveAttribute('data-count', '9');
 
   const dimensions = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: window.innerWidth }));
@@ -155,7 +157,10 @@ test('the derivation beneath the globe keys each position no finer than its evid
   await expect(pair).toContainText('750 m of stated uncertainty');
   await expect(pair).toContainText('different places');
   await expect(panel.locator('[data-answer="OVERLAPPING"]')).toHaveCount(0);
-  await expect(panel).toContainText('Containment is the join that would matter, and it is absent');
+  await expect(panel).toContainText('Containment is the join that would matter, and it is still absent');
+  // The shape is carried now; the predicate that would read it is not.
+  await expect(panel).toContainText('POINT, POLYGON and EXTENT');
+  await expect(panel.locator('[data-shape="POINT"]')).toHaveCount(2);
 });
 
 /**
@@ -255,7 +260,7 @@ test('located events meet the corpus at their coordinates, and nothing in the se
   const card = page.getByTestId('event-card');
   await expect(card).toHaveAttribute('data-state', 'CONFLICTING');
   await expect(card).toContainText(/falls outside REC-0302.s stated bounds \[19\.94, 19\.98\] t/);
-  await expect(page.getByTestId('earth-camera')).toContainText('-23.9535°, -46.3130° · 1,000 km', { timeout: 20_000 });
+  await expect(page.getByTestId('earth-camera')).toContainText('-23.9535°, -46.3130° · 70 km', { timeout: 20_000 });
 
   // Two clocks that disagree: corroborated when captured, conflicting now.
   await list.locator('[data-event-select="SPEC-H-005"]').click();

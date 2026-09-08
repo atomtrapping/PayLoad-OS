@@ -67,7 +67,7 @@ export const SPATIAL_ROLES: readonly SpatialRole[] = [
     job: 'Decide, from measured geometry rather than from matching names, whether two records are about the same thing.',
     state: 'PARTIAL',
     here: 'Two positions are now compared metrically: the geodesic on the WGS84 ellipsoid against their combined stated uncertainty, yielding a refutation, a candidate, or an explicit refusal to put the question. Geometry can already refute an identity claim here, and the Earth Twin asks the same test of one subject’s own declarations.',
-    missing: 'Confirmation. An OVERLAPPING pair is a candidate and stops there, because no resolution decision object exists to carry two identifiers to one subject with evidence, method, version and both clocks. Containment and adjacency — the strong geometric joins — need areal geometry the corpus does not carry.',
+    missing: 'Confirmation. An OVERLAPPING pair is a candidate and stops there, because no resolution decision object exists to carry two identifiers to one subject with evidence, method, version and both clocks. Containment and adjacency — the strong geometric joins — need a predicate that does not exist. The corpus carries boundaries now; nothing computes what is inside one.',
   },
   {
     id: 'JOIN_KEY',
@@ -134,7 +134,7 @@ export const SPATIAL_DERIVATIONS: readonly SpatialDerivation[] = [
     here: 'One line has records. The cell key that would carry a flow and a parcel to the same block is computed; there is nothing on the other side of the join.',
     needs: [
       'A resolution decision object, so a facility identifier and a parcel identifier are carried to one subject by evidence rather than by a shared cell.',
-      'Areal geometry, so “sits on” is containment against a boundary and not proximity between two points.',
+      'A containment predicate, so “sits on” is a lot inside a boundary and not two points near each other. The boundary is carried; the predicate that would read it is not.',
       'A second line with admitted records: a berth or facility footprint on one side, a parcel on the other.',
     ],
     hazard: 'Every step is a spatial predicate, and a chain of predicates each true at its own tolerance is not true at the tolerance of the tightest one. The joined sentence must carry the loosest uncertainty in the chain, not the tightest.',
@@ -175,9 +175,9 @@ export const SPATIAL_DERIVATIONS: readonly SpatialDerivation[] = [
     what: 'An as-of answer for geometry: the flood zone, the zoning line or the berth layout as it stood on the date a decision relied on it, not as it stands now.',
     whyHere: 'Every other bitemporal thing in this corpus is already versioned; geometry is the one class of claim the industry treats as a current-state overwrite. Folding polygons into the same supersession machinery costs little here and is a genuine differentiator, because the maps that matter commercially are revised periodically and relied upon between revisions.',
     state: 'PARTIAL',
-    here: 'Positions are already fully bitemporal and already supersede and retract. Boundaries are not, because the record contract admits points only.',
+    here: 'Positions are already fully bitemporal and already supersede and retract, and a boundary is a position record like any other — Landshark’s cadastral ring supersedes the centroid it replaced, and the earlier release still shows the centroid. What is not versioned is the boundary as an authority: nothing tracks that a registry re-cut a parcel, only that this corpus learned a better answer.',
     needs: [
-      'Areal geometry on the record contract, with its datum, its scale and its own positional uncertainty.',
+      'A re-cut event distinct from a supersession: a parcel that was split is not a parcel whose position was restated, and the corpus currently records both the same way.',
       'A boundary source registered with its revision cadence, so a revision is a correction with a knowledge time rather than a silent replacement.',
     ],
     hazard: 'A revised boundary is a correction, so every ruling that relied on the old one is downstream of a retraction. Versioning geometry without wiring it to the retraction ledger produces an honest history and a dishonest set of conclusions.',
@@ -212,7 +212,7 @@ export const SPATIAL_CAPABILITIES: readonly SpatialCapability[] = [
   { capability: 'Datum, frame and transform discipline', component: 'src/domain/observationReplay.ts, /compute/observations', state: 'PARTIAL', note: 'Frames, calibrations and transforms are modelled for recorded observations with their validity windows. They are not corpus objects, so a position cannot yet cite the transform that produced it.' },
   { capability: 'Cell key and blocking', component: 'src/domain/spatialKey.ts', state: 'BUILT', note: 'Resolution bounded by stated uncertainty; a position with none is refused rather than defaulted.' },
   { capability: 'Geometric verdict between two positions', component: 'src/domain/spatialKey.ts compareSubjects', state: 'BUILT', note: 'One metric — the WGS84 ellipsoidal geodesic, by Vincenty’s inverse solution, refusing where it does not converge — and one three-valued vocabulary, shared with the twin’s reading of a subject’s own declarations.' },
-  { capability: 'Areal geometry: containment, adjacency, overlap', component: 'CorpusRecord.geometry', state: 'ABSENT', note: AREAL_GEOMETRY.why },
+  { capability: 'Areal geometry: containment, adjacency, overlap', component: 'CorpusRecord.geometry', state: 'PARTIAL', note: AREAL_GEOMETRY.why },
   { capability: 'Scene and detector as a source', component: 'The extraction interface and the acquisition rail', state: 'ABSENT', note: 'The interface admits a vision model as an adapter; no imagery source is registered and no scene is acquired.' },
   { capability: 'Tasking economics over instruments', component: 'src/domain/n11MeasurementEconomy.ts', state: 'PARTIAL', note: 'Instruments carry ground resolution, latency, cost, sensitivity and false-alarm rate and are chosen by value of information. No site or indicator exists to point them at.' },
   { capability: 'Display and inspection', component: 'src/domain/earth.ts, src/projection/compile.ts, /spatial', state: 'BUILT', note: 'Positions drawn under rights, visibility and both clocks, with refusals shown rather than gaps left.' },
@@ -230,7 +230,7 @@ export const SPATIAL_DISCIPLINE = {
 /** The order these earn their place, from what each one presupposes. */
 export const SPATIAL_SEQUENCE: readonly string[] = [
   'The cell key first, because every other derivation presupposes it and it is the only one that needs no new source. Done: a key bounded by stated uncertainty, and a verdict that refuses rather than guesses.',
-  'Areal geometry next, because containment is the strong join and four of the five derivations wait on it. It is a change to the record contract and a registered boundary source, not a database.',
+  'The containment predicate next, because it is now the only thing between the corpus and the strong join. The record contract carries POLYGON and EXTENT; what is missing is the rule for what containment means when the boundary’s own vertices carry an uncertainty.',
   'The resolution decision object, so that an OVERLAPPING pair can become one subject with evidence behind it and be undone without rewriting history. This is shared with the identity core and is not a spatial problem.',
   'Then the flow-through-geometry demonstration over one place and one week, end to end with digests, because it is the strongest single proof of the cross-line thesis and it is a demonstration rather than a product.',
   'Imagery last of the sources, because its rights are the strictest and its value depends on everything above it being in place.',

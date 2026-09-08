@@ -77,6 +77,24 @@ describe('layer boundaries', () => {
     expect(seeder).not.toMatch(/'LIVE_CAPTURE'|'BACKFILLED'/);
   });
 
+  it('the README states no count that is an accident of file organisation, and pins the one that is a designed claim', () => {
+    // First version of this test pinned the domain-module count. The parallel
+    // session added five modules within one merge and it broke — which is
+    // churn, not a finding. A file count is not a claim about the system; it
+    // is a fact about a directory, and stating it in prose guarantees drift
+    // without buying anything.
+    const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+    expect(readme, 'the README states a domain-module count again').not.toMatch(/\d+ domain modules/);
+
+    // The negative-state count is different in kind: "this one has seven" is
+    // the argument, not an inventory. An eighth rule without updating the
+    // sentence that argues seven is the point would be the claim ageing.
+    const negativeRules = (readFileSync(join(ROOT, 'src/domain/negativeStates.ts'), 'utf8').match(/^\s{4}id: '/gm) ?? []).length;
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    expect(readme, `negativeStates.ts carries ${negativeRules} rules and the README does not say so`)
+      .toContain(`this one has ${words[negativeRules]},`);
+  });
+
   it('the pure policy evaluator and its helpers touch no node builtin, so allowing them in the browser is safe', () => {
     for (const file of ['src/data-os/source-policy.ts', 'src/data-os/validation.ts', 'src/data-os/contracts.ts']) {
       const text = readFileSync(join(ROOT, file), 'utf8');

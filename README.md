@@ -28,7 +28,7 @@ about it and a reader should be too.
 | Independent verification | None. Verification here is internal recompute, stated on every release. V0 and V1 of six tiers are reached |
 | Customers, bills, deliveries | None. The delivery ledger is specified and empty |
 
-Roughly 45 domain modules carry the system's own claims **as data with tests over
+The domain modules carry the system's own claims **as data with tests over
 them**, so that a claim about the system fails a test when it stops being true
 rather than quietly ageing in prose. The pattern throughout: every module states
 what exists, what does not, and the mistake the absence invites.

@@ -7,7 +7,9 @@
  * its referents' identities intact. Node only.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
+import { isBuiltin } from 'node:module';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { asOfPayload, recordsPayload, releaseManifestPayload, releasePayload, releasesPayload, retractionsPayload, rulingManifestPayload, rulingPayload } from '@/adapter/feed';
 import { MCP_TOOLS, runMcpTool } from '@/mcp/tools';
@@ -33,7 +35,38 @@ function browserAndPageFiles(): string[] {
   return files.filter((f) => !nodeOnlyByDesign.has(f));
 }
 
-const IMPORT = /import\s+(type\s+)?[^;]*?\sfrom\s+'([^']+)'/g;
+// Parse the actual import graph: spelling an import relatively, using double
+// quotes, re-exporting, or loading dynamically must not bypass a layer rule.
+function moduleEdges(file: string, text = readFileSync(join(ROOT, file), 'utf8')) {
+  const edges: Array<{ target: string; typeOnly: boolean }> = [];
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  function add(specifier: ts.Expression | undefined, typeOnly: boolean) {
+    if (!specifier || !ts.isStringLiteralLike(specifier)) return;
+    const name = specifier.text;
+    const target = name.startsWith('@/') ? `src/${name.slice(2)}`
+      : name.startsWith('.') ? relative(ROOT, resolve(ROOT, dirname(file), name)).replace(/\\/g, '/') : name;
+    edges.push({ target: target.replace(/\.(?:[cm]?[jt]sx?)$/, ''), typeOnly });
+  }
+  function visit(node: ts.Node) {
+    if (ts.isImportDeclaration(node)) {
+      const clause = node.importClause;
+      const bindings = clause?.namedBindings;
+      add(node.moduleSpecifier, Boolean(clause?.isTypeOnly || (!clause?.name && bindings && ts.isNamedImports(bindings) && bindings.elements.length > 0 && bindings.elements.every((entry) => entry.isTypeOnly))));
+    } else if (ts.isExportDeclaration(node)) {
+      const clause = node.exportClause;
+      add(node.moduleSpecifier, node.isTypeOnly || Boolean(clause && ts.isNamedExports(clause) && clause.elements.length > 0 && clause.elements.every((entry) => entry.isTypeOnly)));
+    } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+      add(node.arguments[0], false);
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      add(node.moduleReference.expression, node.isTypeOnly);
+    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+      add(node.argument.literal, true);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return edges;
+}
 
 /**
  * The rail modules a browser or page layer may run: the contracts (types) and
@@ -41,14 +74,37 @@ const IMPORT = /import\s+(type\s+)?[^;]*?\sfrom\s+'([^']+)'/g;
  * the rights matrix computes cell by cell. Capture, parsing, normalization,
  * building and every file operation stay out.
  */
-const PURE_RAIL_MODULES = new Set(['@/data-os/contracts', '@/data-os/source-policy']);
+const PURE_RAIL_MODULES = new Set(['src/data-os/contracts', 'src/data-os/source-policy']);
 
 describe('layer boundaries', () => {
+  it('recognizes relative, re-exported, dynamic and type-only module edges', () => {
+    expect(moduleEdges('src/domain/example.ts', `
+      import { capture } from "../data-os/evidence-capture";
+      export * from '@/data-os/local-intake';
+      const load = () => import('../data-os/local-normalization');
+      const legacy = require('../data-os/file-object-store');
+      import type { Corpus } from './corpus';
+      import { type SourceRegistration } from '@/data-os/contracts';
+      export { type UseRequest } from '@/data-os/source-policy';
+      type Capture = import('../data-os/evidence-capture').CaptureResult;
+      import old = require('../data-os/local-candidate-build');
+    `)).toEqual([
+      { target: 'src/data-os/evidence-capture', typeOnly: false },
+      { target: 'src/data-os/local-intake', typeOnly: false },
+      { target: 'src/data-os/local-normalization', typeOnly: false },
+      { target: 'src/data-os/file-object-store', typeOnly: false },
+      { target: 'src/domain/corpus', typeOnly: true },
+      { target: 'src/data-os/contracts', typeOnly: true },
+      { target: 'src/data-os/source-policy', typeOnly: true },
+      { target: 'src/data-os/evidence-capture', typeOnly: true },
+      { target: 'src/data-os/local-candidate-build', typeOnly: false },
+    ]);
+  });
+
   it('browser and page layers take only types and the pure policy evaluator from the rails: they can describe a capture, never perform one', () => {
     const offenders: string[] = [];
     for (const file of browserAndPageFiles()) {
-      const text = readFileSync(join(ROOT, file), 'utf8');
-      for (const m of text.matchAll(IMPORT)) if (m[2].startsWith('@/data-os/') && !m[1] && !PURE_RAIL_MODULES.has(m[2])) offenders.push(`${file} → ${m[2]}`);
+      for (const edge of moduleEdges(file)) if (edge.target.startsWith('src/data-os/') && !edge.typeOnly && !PURE_RAIL_MODULES.has(edge.target)) offenders.push(`${file} → ${edge.target}`);
     }
     expect(offenders).toEqual([]);
   });
@@ -97,16 +153,22 @@ describe('layer boundaries', () => {
 
   it('the pure policy evaluator and its helpers touch no node builtin, so allowing them in the browser is safe', () => {
     for (const file of ['src/data-os/source-policy.ts', 'src/data-os/validation.ts', 'src/data-os/contracts.ts']) {
-      const text = readFileSync(join(ROOT, file), 'utf8');
-      for (const m of text.matchAll(IMPORT)) expect(m[2], `${file} imports ${m[2]}`).not.toMatch(/^node:|^fs$|^path$|^crypto$/);
+      for (const edge of moduleEdges(file)) expect(isBuiltin(edge.target), `${file} imports ${edge.target}`).toBe(false);
     }
   });
 
   it('the rails depend on nothing above them, so they can produce no corpus record, case or payload', () => {
     const offenders: string[] = [];
     for (const file of walk(join(ROOT, 'src/data-os'))) {
-      const text = readFileSync(join(ROOT, file), 'utf8');
-      for (const m of text.matchAll(IMPORT)) if (/^@\/(domain|fixtures|adapter|components|app|mcp|coordination)\//.test(m[2])) offenders.push(`${file} → ${m[2]}`);
+      for (const edge of moduleEdges(file)) if (/^src\/(domain|fixtures|adapter|components|app|mcp|coordination)\//.test(edge.target)) offenders.push(`${file} → ${edge.target}`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('libraries and other CLIs do not import command entrypoints for shared utilities', () => {
+    const offenders: string[] = [];
+    for (const file of walk(join(ROOT, 'src'))) {
+      for (const edge of moduleEdges(file)) if (/^src\/.*(?:\/cli|-cli)$/.test(edge.target) && !edge.typeOnly) offenders.push(`${file} → ${edge.target}`);
     }
     expect(offenders).toEqual([]);
   });

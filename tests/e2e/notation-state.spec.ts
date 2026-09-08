@@ -226,13 +226,13 @@ test('notations: the inspector follows the selection, relations are made and ins
   await expect(page.getByTestId('pending-count')).toHaveText('3');
   await expect(inspector.getByTestId('inspector-relations')).toContainText(`out supports → Target ${stamp}`);
   await workspace.evaluate((element) => window.scrollTo({ top: element.getBoundingClientRect().top + window.scrollY - 64 }));
-  await page.screenshot({ path: `docs/screenshots/00h-notations-inspector-${testInfo.project.name.replace('state-', '')}.png`, fullPage: testInfo.project.name.endsWith('mobile') });
+  await page.screenshot({ path: testInfo.outputPath('notations-inspector.png'), fullPage: testInfo.project.name.endsWith('mobile') });
   await inspector.getByRole('button', { name: 'Inspect relation supports' }).click();
   const relation = page.getByTestId('relation-inspector');
   await expect(relation.getByTestId('relation-origin')).toHaveAttribute('data-origin', 'CREATED');
   await expect(relation).toContainText(`Source ${stamp}`);
   await expect(relation).toContainText(`Target ${stamp}`);
-  if (testInfo.project.name.endsWith('desktop')) { await workspace.evaluate((element) => window.scrollTo({ top: element.getBoundingClientRect().top + window.scrollY - 64 })); await page.screenshot({ path: 'docs/screenshots/00i-notations-relation-inspector.png', fullPage: false }); }
+  if (testInfo.project.name.endsWith('desktop')) { await workspace.evaluate((element) => window.scrollTo({ top: element.getBoundingClientRect().top + window.scrollY - 64 })); await page.screenshot({ path: testInfo.outputPath('notations-relation-inspector.png'), fullPage: false }); }
   await relation.getByRole('button', { name: 'Inspect to notation' }).click();
   await expect(page.getByTestId('selected-notation-id')).toHaveText(targetId);
   await expect(inspector.getByTestId('inspector-relations')).toContainText(`in supports ← Source ${stamp}`);

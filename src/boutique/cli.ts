@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { readBoundedSourceRequest } from '../acquisition/cli';
+import { readBoundedSourceRequest } from '../acquisition/request-file';
 import { CensusPackageError, CensusPackageStore } from './census-package';
 import { CENSUS_OBSERVATION_PRODUCT, CENSUS_PRODUCT_DIGEST } from './census-product';
 

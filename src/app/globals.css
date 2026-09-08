@@ -212,11 +212,6 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
    widen the document's scrollable overflow; mobile Chrome then reports a
    layout viewport as wide as the widest table. */
 [class~='overflow-x-auto'] { position: relative; }
-.surface-raised {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-}
 .surface-inset {
   background: var(--bg-inset);
   border: 1px solid var(--border-subtle);
@@ -634,8 +629,6 @@ details[open] > summary::before { transform: rotate(90deg); }
 .hud-panel::after,
 .surface::before,
 .surface::after,
-.surface-raised::before,
-.surface-raised::after,
 .inspector::before,
 .inspector::after {
   content: '';
@@ -646,11 +639,11 @@ details[open] > summary::before { transform: rotate(90deg); }
   border: var(--hud-hair) solid var(--ep, var(--tick-neutral));
   pointer-events: none;
 }
-.hud-panel::before, .surface::before, .surface-raised::before, .inspector::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
-.hud-panel::after, .surface::after, .surface-raised::after, .inspector::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.hud-panel::before, .surface::before, .inspector::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.hud-panel::after, .surface::after, .inspector::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
 /* The general surfaces take the frame too, so every card on the estate reads
    as the same instrument as the panels built for it. */
-.surface, .surface-raised { position: relative; }
+.surface { position: relative; }
 
 /* ── The section bar ─────────────────────────────────────────────────────
    The labelled rule from the plotter references: a name at the left, a hairline

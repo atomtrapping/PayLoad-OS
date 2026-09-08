@@ -206,25 +206,6 @@ export function correctionImpact(corpus: Corpus, retraction: Retraction): Correc
 
 /* ── The delivery ledger ── */
 
-/**
- * What a delivery entry must carry for "which supersessions shipped to which
- * customers, when" to be answerable. Specified, not populated: no customer
- * exists, and inventing one would invent customer scope.
- */
-export interface DeliveryEntry {
-  deliveryId: string;
-  /** The recipient, by an identifier the firm issued. Never a guess. */
-  recipientId: string;
-  /** Which surface delivered it. */
-  channel: 'FEED' | 'MCP' | 'REPORT' | 'WORKBENCH';
-  /** The exact release, so the delivery is reproducible. */
-  releaseId: string;
-  /** The question answered, when the delivery answered one. */
-  query?: { subjectId: string; predicate: string; validAt: ISODateTime; knownAt: ISODateTime };
-  recordIds: readonly string[];
-  deliveredAt: ISODateTime;
-}
-
 export const DELIVERY_LEDGER = {
   purpose: 'Answer, for any correction, which recipients hold a record that has since been superseded or withdrawn, and when they were told.',
   state: 'SPECIFIED_AND_EMPTY' as const,

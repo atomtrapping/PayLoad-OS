@@ -147,10 +147,6 @@ export function evaluateUse(rights: RightsSchedule, use: PermittedUse, at: ISODa
   return evaluateSourceUse(rights.registration, { requestId: `${rights.sourceId}:${use}:${at}`, registrationId: rights.registration.registrationId, purpose: r.purpose, operation: r.operation, audience: r.audience, requestedAt: at });
 }
 
-export function isUsePermitted(rights: RightsSchedule, use: PermittedUse, at: ISODateTime, domain: Domain): boolean {
-  return evaluateUse(rights, use, at, domain).state === 'ALLOWED';
-}
-
 /** The uses a registration permits at an instant, derived so the list and the matrix cannot disagree. */
 export function derivePermittedUses(registration: SourceRegistration, at: ISODateTime, sourceId: string, domain: Domain): PermittedUse[] {
   const requests = sourceUseRequests(domain);
@@ -426,7 +422,7 @@ export function deliveryDecision(release: CorpusRelease, record: CorpusRecord, v
 }
 
 /** Rights guard for delivery: a record leaves the corpus only on an explicitly ALLOWED decision. */
-export function deliverable(corpus: Corpus, release: CorpusRelease, record: CorpusRecord, viewer: VisibilityClass = 'COUNTERPARTY_SHARED'): boolean {
+export function deliverable(release: CorpusRelease, record: CorpusRecord, viewer: VisibilityClass = 'COUNTERPARTY_SHARED'): boolean {
   return deliveryDecision(release, record, viewer)?.state === 'ALLOWED';
 }
 
@@ -547,7 +543,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
         considered.push({ recordId: r.recordId, because: `valid from ${r.validFrom}${r.validTo ? ` to ${r.validTo}` : ''}, not at ${q.validAt}` });
         continue;
       }
-      if (opts.enforceRights && !deliverable(corpus, release, r, opts.viewer)) {
+      if (opts.enforceRights && !deliverable(release, r, opts.viewer)) {
         const d = deliveryDecision(release, r, opts.viewer);
         considered.push({ recordId: r.recordId, because: `source ${r.provenance.sourceId}: ${d?.state ?? 'NO_REGISTRATION'} (${d?.reasons.join(', ') ?? 'no registration'})` });
         continue;
@@ -563,7 +559,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
         refusal: { code: 'RETRACTED', reason: `The only record was withdrawn: ${retraction?.reason ?? 'reason not recorded'}`, remedy: 'Obtain a replacement artifact from the producer, or an independent one; the corpus will carry it as a new record.', considered },
       };
     }
-    if (opts.enforceRights && candidates.some((r) => !deliverable(corpus, release, r, opts.viewer))) {
+    if (opts.enforceRights && candidates.some((r) => !deliverable(release, r, opts.viewer))) {
       const d = deliveryDecision(release, candidates[0], opts.viewer);
       return { query, releaseId: release.releaseId, boundedBy, resolution, identityLink, candidates, refusal: { code: 'NOT_DELIVERABLE', reason: `A record exists but the source-use decision for this delivery is ${d?.state ?? 'absent'}: ${d?.reasons.join(', ') ?? 'no registration'}.`, remedy: 'Register the source for this operation and audience, or supply an equivalent artifact from a source that permits it.', considered } };
     }

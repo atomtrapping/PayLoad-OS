@@ -17,6 +17,16 @@ export interface CaseSource {
   getRemediation(remediationId: string): Promise<Remediation | undefined>;
 }
 
+/** Rebuild the ruling history once for both individual and batched reads. */
+function withRulings(data: unknown, rulings: readonly Ruling[]): ClaimCaseBundle {
+  const sorted = [...rulings].sort((a, b) => b.revision - a.revision);
+  return {
+    ...(data as Record<string, unknown>),
+    currentRuling: sorted[0],
+    previousRulings: sorted.slice(1),
+  } as ClaimCaseBundle;
+}
+
 export class FixtureCaseSource implements CaseSource {
   readonly origin = { kind: 'FIXTURE', label: 'Demonstration fixtures (fixture_only: true)' } as const;
 
@@ -59,29 +69,25 @@ export class LiveCaseSource implements CaseSource {
   }
 
   private async fetchFullCase(caseId: string): Promise<ClaimCaseBundle | undefined> {
-    const caseRes = await (await this.database()).db.select().from((await this.database()).cases).where(eq((await this.database()).cases.caseId, caseId));
+    const { db, cases, rulings } = await this.database();
+    const caseRes = await db.select().from(cases).where(eq(cases.caseId, caseId));
     if (caseRes.length === 0) return undefined;
-    
-    const [c] = caseRes;
-    const allRulings = await (await this.database()).db.select().from((await this.database()).rulings).where(eq((await this.database()).rulings.caseId, caseId));
-    
-    const sortedRulings = allRulings.map(r => r.data as unknown as Ruling).sort((a, b) => b.revision - a.revision);
-    
-    return {
-      ...(c.data as Record<string, unknown>),
-      currentRuling: sortedRulings.length > 0 ? sortedRulings[0] : undefined,
-      previousRulings: sortedRulings.length > 1 ? sortedRulings.slice(1) : []
-    } as ClaimCaseBundle;
+    const rows = await db.select().from(rulings).where(eq(rulings.caseId, caseId));
+    return withRulings(caseRes[0].data, rows.map((row) => row.data as Ruling));
   }
 
   async listCases(): Promise<ClaimCaseBundle[]> {
-    const allCases = await (await this.database()).db.select().from((await this.database()).cases);
-    const results: ClaimCaseBundle[] = [];
-    for (const c of allCases) {
-       const full = await this.fetchFullCase(c.caseId);
-       if (full) results.push(full);
+    const { db, cases, rulings } = await this.database();
+    const allCases = await db.select().from(cases);
+    if (!allCases.length) return [];
+    const rows = await db.select().from(rulings);
+    const histories = new Map<string, Ruling[]>();
+    for (const row of rows) {
+      const history = histories.get(row.caseId) ?? [];
+      history.push(row.data as Ruling);
+      histories.set(row.caseId, history);
     }
-    return results;
+    return allCases.map((entry) => withRulings(entry.data, histories.get(entry.caseId) ?? []));
   }
 
   async getCase(caseId: string): Promise<ClaimCaseBundle | undefined> {
@@ -89,7 +95,8 @@ export class LiveCaseSource implements CaseSource {
   }
 
   async getRuling(rulingId: string): Promise<{ bundle: ClaimCaseBundle; ruling: Ruling } | undefined> {
-     const rulingRes = await (await this.database()).db.select().from((await this.database()).rulings).where(eq((await this.database()).rulings.rulingId, rulingId));
+     const { db, rulings } = await this.database();
+     const rulingRes = await db.select().from(rulings).where(eq(rulings.rulingId, rulingId));
      if (rulingRes.length === 0) return undefined;
      
      const bundle = await this.fetchFullCase(rulingRes[0].caseId);

@@ -35,12 +35,7 @@ export function Panel({ state, label, right, stamp, children, className = '', te
 }) {
   return (
     <section className={`hud-panel ${className}`} data-epistemic={state} data-testid={testId}>
-      {label && (
-        <div className="hud-bar" data-epistemic={state}>
-          <span>{label}</span>
-          {right !== undefined && <span className="hud-bar-state">{right}</span>}
-        </div>
-      )}
+      {label && <Rule label={label} right={right} state={state} />}
       <div className={label ? 'pt-2' : ''}>{children}</div>
       {stamp && stamp.length > 0 && (
         <div className="hud-stamp" data-testid={testId ? `${testId}-stamp` : undefined}>

@@ -36,24 +36,12 @@
  */
 import type { ISODateTime } from './types';
 
-export const RESOLUTION_METHOD = 'notationsos.identity-resolution.v1';
-
 /**
  * A family whose issuer is named, or the explicit marker that a field is not an
  * identifier at all. The second is not an oversight — it is the value that
  * stops a name being used as a key.
  */
 export type IdentifierFamilyId = 'USDOT' | 'IMO' | 'MMSI' | 'LEI' | 'NAIC' | 'LOT' | 'NOT_AN_IDENTIFIER';
-
-export const FAMILY_ISSUER: Record<IdentifierFamilyId, string> = {
-  USDOT: 'FMCSA',
-  IMO: 'International Maritime Organization',
-  MMSI: 'ITU',
-  LEI: 'GLEIF',
-  NAIC: 'National Association of Insurance Commissioners',
-  LOT: 'Operator, in the demonstration corpus',
-  NOT_AN_IDENTIFIER: 'Nobody. A name, a description or a label, which no authority issued and which resolves nothing.',
-};
 
 /** What a source offered as a way of naming the subject. */
 export interface OfferedIdentifier {

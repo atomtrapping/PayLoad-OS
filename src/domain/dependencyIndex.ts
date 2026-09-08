@@ -33,17 +33,7 @@
  */
 import type { ISODateTime } from './types';
 
-export const DEPENDENCY_METHOD = 'notationsos.dependency-index.v1';
-
 export type DependentKind = 'RELEASE' | 'RULING' | 'DERIVED_RECORD' | 'SERVED_ANSWER' | 'ATTESTATION';
-
-export const DEPENDENT_KIND_MEANING: Record<DependentKind, string> = {
-  RELEASE: 'A release that carries the record. Correcting the record does not edit the release; the release stays what it was and a later one supersedes it.',
-  RULING: 'A ruling that cited the record as evidence. A restatement means the ruling was reached on facts that have since moved.',
-  DERIVED_RECORD: 'A record computed from the record. This is the edge that makes the closure transitive, and the one most easily left undeclared.',
-  SERVED_ANSWER: 'An answer already delivered over the record. It cannot be recalled, only followed by a correction notice to whoever received it.',
-  ATTESTATION: 'An attestation taken across the record. It attested what was held at its instant and remains true about that instant; what changed is the ground under it.',
-};
 
 /** Declared by the dependent, at the moment it comes to depend. Never inferred. */
 export interface DependencyEdge {

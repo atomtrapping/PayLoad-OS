@@ -275,7 +275,7 @@ Opt-in, loopback-only, operator-driven, and none of them a public control.
 ## Run
 
 ```
-npm install
+npm ci
 npm run dev            # http://localhost:3000 → /releases; coordination is read-only
 npm run dev:coordination # http://127.0.0.1:3000; local stable and board writes enabled
 npm run dev:state-kernel # http://127.0.0.1:3000/notations; requires Rust, local notation state enabled
@@ -336,6 +336,8 @@ npm run mcp            # MCP server over the fixture feed (stdio)
 ```
 
 Playwright uses the environment's Chromium when `PW_CHROMIUM_PATH` is set (for example `/opt/pw-browsers/chromium`); otherwise its own download.
+
+Typecheck also rejects unused locals and parameters. [Codebase consolidation](docs/CODEBASE_CLEANUP.md) records removed dependencies/declarations, shared boundaries and the regression checks that keep the apparatuses aligned.
 
 ## Read
 

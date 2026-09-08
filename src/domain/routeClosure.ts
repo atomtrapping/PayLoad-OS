@@ -37,8 +37,6 @@
  * back for the next route.
  */
 
-export const ROUTE_METHOD = 'notationsos.route-closure.v1';
-
 export type RouteState = 'OPEN' | 'CLOSED' | 'UNCLOSED';
 
 export interface RouteStateProperties {

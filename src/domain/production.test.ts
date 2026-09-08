@@ -74,7 +74,7 @@ describe('acquisition as an observable process', () => {
     expect(quarantined.find((s) => s.key === 'candidate')?.what).toMatch(/SCHEMA_MISMATCH/);
     expect(quarantined.find((s) => s.key === 'build')?.outcome).toBe('NONE');
     expect(acquisitionSequence(demo.acquisitions[2]).map((s) => s.outcome)).toEqual(['DONE', 'DONE', 'DONE', 'DONE']);
-    const build = buildSequence(demo, demo.builds[0]);
+    const build = buildSequence(demo.builds[0]);
     expect(build.map((s) => s.label)).toEqual(['Build definition', 'Knowledge cutoff', 'Member reopened', 'DERIVE at build time', 'Membership root']);
     expect(mentionedObjects(demo, demo.refusals[1].error)).toEqual([{ kind: 'normalization', id: 'demo-caravan-carrier-normalization-002' }]);
     expect(refusalsNaming(demo, 'demo-caravan-carrier-normalization-001').map((r) => r.requestId)).toEqual(['demo-caravan-carrier-build-003']);

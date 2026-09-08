@@ -1,4 +1,5 @@
 import { SourceConnectorError } from './errors';
+import { rejectDuplicateJsonKeys } from '../data-os/json-keys';
 
 export const CENSUS_FIELDS = Object.freeze([
   'dot_number', 'legal_name', 'business_org_desc', 'status_code', 'carrier_operation',
@@ -76,34 +77,6 @@ export function buildCensusUrl(request: SourceCaptureRequest): URL {
   return url;
 }
 
-/** Syntax is checked by JSON.parse first; scan decoded keys to reject escaped duplicate names. */
-function rejectDuplicateKeys(json: string): void {
-  const stack: Array<{ kind: 'array' } | { kind: 'object'; keys: Set<string>; expectingKey: boolean }> = [];
-  for (let index = 0; index < json.length; index++) {
-    const character = json[index];
-    if (character === '{') stack.push({ kind: 'object', keys: new Set(), expectingKey: true });
-    else if (character === '[') stack.push({ kind: 'array' });
-    else if (character === '}' || character === ']') stack.pop();
-    else if (character === ',') {
-      const current = stack.at(-1);
-      if (current?.kind === 'object') current.expectingKey = true;
-    } else if (character === '"') {
-      const start = index;
-      for (index++; index < json.length; index++) {
-        if (json[index] === '\\') index++;
-        else if (json[index] === '"') break;
-      }
-      const current = stack.at(-1);
-      if (current?.kind === 'object' && current.expectingKey) {
-        const key = JSON.parse(json.slice(start, index + 1)) as string;
-        if (current.keys.has(key)) throw new SourceConnectorError('SOURCE_INVALID_JSON', 'Duplicate source JSON keys are not permitted.', 502);
-        current.keys.add(key);
-        current.expectingKey = false;
-      }
-    }
-  }
-}
-
 function optionalField(record: Record<string, unknown>, field: typeof CENSUS_FIELDS[number], pattern: RegExp): string | null {
   if (!Object.hasOwn(record, field) || record[field] === null) return null;
   const value = record[field];
@@ -160,7 +133,7 @@ export function parseCensusBytes(bytes: Buffer, request: SourceCaptureRequest): 
   let value: unknown;
   try { value = JSON.parse(json); }
   catch { throw new SourceConnectorError('SOURCE_INVALID_JSON', 'The source response must be valid JSON.', 502); }
-  rejectDuplicateKeys(json);
+  rejectDuplicateJsonKeys(json, () => new SourceConnectorError('SOURCE_INVALID_JSON', 'Duplicate source JSON keys are not permitted.', 502));
   if (!Array.isArray(value) || value.length > selected.usdot.length) invalidSource();
   const requested = new Set(selected.usdot);
   const records = value.map((row) => parseRow(row, requested));

@@ -1,4 +1,5 @@
 import { parseISOInstant, requireIdentifier, requireText } from './validation';
+import { rejectDuplicateJsonKeys } from './json-keys';
 
 export type CarrierAdapterErrorCode =
   | 'INVALID_SOURCE_ENCODING'
@@ -68,36 +69,6 @@ function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boo
   return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 }
 
-/** JSON.parse validates syntax first; this iterative pass detects even escaped duplicate keys. */
-function rejectDuplicateKeys(json: string): void {
-  const stack: Array<{ kind: 'array' } | { kind: 'object'; keys: Set<string>; expectingKey: boolean }> = [];
-  for (let index = 0; index < json.length; index++) {
-    const character = json[index];
-    if (character === '{') stack.push({ kind: 'object', keys: new Set(), expectingKey: true });
-    else if (character === '[') stack.push({ kind: 'array' });
-    else if (character === '}' || character === ']') stack.pop();
-    else if (character === ',') {
-      const current = stack.at(-1);
-      if (current?.kind === 'object') current.expectingKey = true;
-    } else if (character === '"') {
-      const start = index;
-      for (index++; index < json.length; index++) {
-        if (json[index] === '\\') index++;
-        else if (json[index] === '"') break;
-      }
-      const current = stack.at(-1);
-      if (current?.kind === 'object' && current.expectingKey) {
-        const key: string = JSON.parse(json.slice(start, index + 1));
-        if (current.keys.has(key)) {
-          throw new CarrierAdapterError('INVALID_SOURCE_JSON', 'Carrier source JSON contains duplicate object keys.');
-        }
-        current.keys.add(key);
-        current.expectingKey = false;
-      }
-    }
-  }
-}
-
 function fieldText(value: unknown, maximum: number): string {
   if (typeof value !== 'string') throw new Error('Expected text.');
   return requireText(value.trim(), 'carrier field', maximum);
@@ -126,7 +97,7 @@ export function parseCarrierEvidence(bytes: Uint8Array): CarrierCandidateData {
   let source: unknown;
   try { source = JSON.parse(json); }
   catch { throw new CarrierAdapterError('INVALID_SOURCE_JSON', 'Carrier source must be valid JSON.'); }
-  rejectDuplicateKeys(json);
+  rejectDuplicateJsonKeys(json, () => new CarrierAdapterError('INVALID_SOURCE_JSON', 'Carrier source JSON contains duplicate object keys.'));
   if (!record(source) || source.schema !== CARRIER_ADAPTER.sourceSchema || !exactKeys(source, CARRIER_ADAPTER.requiredInputFields)) {
     throw new CarrierAdapterError('SCHEMA_MISMATCH', 'Carrier source does not match the declared schema and exact field set.');
   }

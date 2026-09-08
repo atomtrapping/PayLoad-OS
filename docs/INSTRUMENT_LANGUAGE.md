@@ -188,6 +188,71 @@ than silently accepted.
   count beside it. Painting the whole meter as unknown would overstate the
   uncertainty, which is the same failure as understating it.
 
+## What the channel is actually carrying, measured
+
+The tension recorded above — links are cyan and so is `DERIVED` — was found by
+eye, and by eye it looked like the only one. Measured, it is one of six.
+
+`src/domain/instrumentPalette.ts` holds the palette against a stated metric:
+CIELAB dE\*76 under D65, with a declared floor of 20. The floor is a decision
+rather than a perceptual law. About 2.3 is the classical just-noticeable
+difference for two patches that touch; nothing on these surfaces touches, so
+what is being asked is whether a reader recalling one hue from a screen away
+would reach for the other, and 20 is where this estate says no.
+
+Under that floor the estate's twenty-six hue-bearing tokens, across six
+vocabularies chosen independently of each other, resolve to **eleven
+distinguishable hues**. The colour channel is oversubscribed better than two to
+one. Six of the eleven families hold more than one token, and of those six, one
+is intended:
+
+| family | reading | what shares the hue |
+| --- | --- | --- |
+| gold | many meanings | brand chrome, a conditionally admitted ruling, a reviewed assurance, a declared claim |
+| cyan | many meanings | an identifier, a ruling under evaluation, a witnessed assurance, a derived value — and links |
+| grey | many meanings | draft, unverified, not-applicable, unknown |
+| green | many meanings | admitted, verified, passed |
+| coral | many meanings | refused, failed, the epistemic refusal |
+| blue | **one meaning** | pending and not-evaluated: the evaluation has not happened |
+
+Two of these are the estate's own doctrine flattening at the last step.
+
+**The gold family is the load-bearing one.** `--status-conditional` and
+`--accent` are not close, they are the same bytes. The middle tier of the
+two-tier accent rule is drawn amber precisely to withhold a conclusion —
+`ADMITTED_WITH_CONDITIONS` says nothing is settled — and it arrives in the same
+colour as the underline saying which page you are on, and as a primary button.
+The tier that exists to say *not yet* is spent on decoration, which is the
+failure the "decoration takes no hue" rule was written to prevent, arriving
+from the other direction.
+
+**The green family is the two-tier rule at the pixel.** Overlapping is plain and
+never green, because absence of contradiction is not presence of support. Three
+vocabularies drawing their favourable outcome in one green manufactures exactly
+that support: a gate admitting, a party verifying and an invariant holding are
+three findings about three different things, and the hue says they agree.
+
+The grey family flattens four different absences, of which `NOT_APPLICABLE` is
+not an absence at all but a determination that somebody made; only `UNKNOWN`
+recovers itself, through the dashed stroke. The coral family flattens
+REFUSED-IS-NOT-FALSE: a gate declining yields no row and says nothing about the
+world, while a failed invariant is a finding about it.
+
+**The module repaints nothing.** A hue is a design decision and belongs to
+whoever owns the surface. What it adds is that every sharing is now declared
+and read, and that the declaration fails in both directions: a token that moves
+into an existing family fails the build until somebody says whether it is one
+meaning or many, and a family that is later separated leaves a stale record
+that fails too — so a fix cannot leave a false tension recorded behind it.
+Eleven families, six shared, one intended. The next one cannot arrive quietly.
+
+Verified on the merged tree, 2026-09-08: typecheck, ESLint at
+`--max-warnings=0`, and the whole unit suite green. Nineteen tests are new, and
+they hold the metric, the transitivity of the partition, the two load-bearing
+tensions by name, and that a fault is reported in both directions rather than
+passed over. Nineteen is a fact about this change; the suite total is not, and
+it moves under any prose that pins it.
+
 ## Verification (2026-09-08)
 
 Typecheck; ESLint at `--max-warnings=0`; 4,692 unit tests across 190 files, 20

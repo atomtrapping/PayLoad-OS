@@ -109,10 +109,15 @@
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 
-  /* ── Radii ── */
-  --radius-sm: 3px;
-  --radius-md: 5px;
-  --radius-lg: 8px;
+  /* ── Radii: none. The instrument has no rounded corners. ──
+        Every reference is hard-edged — a frequency counter, a plotter, a MAGI
+        cell. A radius is a soft-UI convention that says "product"; a square
+        corner with a registration tick says "instrument". Kept as tokens at
+        zero rather than deleted, so a surface that ever needs one has to name
+        it. */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
 
   /* ── Motion: immediate for routine interaction, short for panels, never for waiting ── */
   --motion-fast: 120ms;
@@ -155,7 +160,10 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* Links inside running text are distinguishable without colour (WCAG 1.4.1). */
 p a, dd a, li > span a, li > div a, .prose a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); }
 
-button, input, select, textarea { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; border-radius: 0; }
+/* Tailwind's `rounded` and `rounded-full` compile to literal radii rather
+   than to the tokens above; this unlayered rule outranks the utility layer. */
+.rounded, .rounded-sm, .rounded-md, .rounded-full { border-radius: 0; }
 button { cursor: pointer; background: none; border: 0; padding: 0; }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 
@@ -261,11 +269,12 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 /* ── Status pill base: colour + glyph + text, always ── */
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 2px 8px; border-radius: 999px;
-  border: 1px solid currentColor; font-size: 11.5px; font-weight: 600;
-  letter-spacing: 0.04em; white-space: nowrap; line-height: 1.5;
+  padding: 2px 7px; border-radius: 0;
+  border: 1px solid currentColor; font-size: 10.5px; font-weight: 600;
+  font-family: var(--font-mono); text-transform: uppercase;
+  letter-spacing: 0.08em; white-space: nowrap; line-height: 1.6;
 }
-.pill-lg { font-size: 13px; padding: 4px 12px; }
+.pill-lg { font-size: 12px; padding: 3px 10px; }
 
 /* ── Motion discipline ── */
 /* ═══ Shell: one primary navigation. A left rail from 1024px; a horizontal strip beneath the top bar below that. ═══ */
@@ -290,7 +299,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 }
 .nav-link:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.05); text-decoration: none; }
 .nav-link[aria-current='page'] { color: var(--text-heading); background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 -2px 0 var(--accent); }
-.nav-mark { margin-left: 2px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--status-conditional); color: var(--status-conditional); font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.4; }
+.nav-mark { margin-left: 2px; padding: 1px 6px; border-radius: 0; border: 1px solid var(--status-conditional); color: var(--status-conditional); font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.4; }
 @media (min-width: 1024px) {
   .app-body { flex-direction: row; }
   .app-sidebar {
@@ -337,7 +346,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
    notation workspace's own `.kbd`, which is styled and sized for a button. */
 .nav-keys kbd, .palette-hint kbd, .palette-kbd {
   font-family: var(--font-mono); font-size: var(--text-2xs); line-height: 1.6;
-  padding: 0 4px; border-radius: 4px; border: 1px solid var(--border-default);
+  padding: 0 4px; border-radius: 0; border: 1px solid var(--border-default);
   background: var(--bg-tertiary); color: var(--text-secondary);
 }
 @media (min-width: 1024px) {
@@ -398,8 +407,8 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .inspector {
   grid-area: inspector; scroll-margin-top: calc(var(--topbar-h) + 8px);
   background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1); min-width: 0;
-  animation: panel-in var(--motion-base) var(--motion-ease-out);
+  min-width: 0;
+  animation: panel-in var(--motion-fast) var(--motion-ease-out);
 }
 @media (min-width: 1024px) {
   .workspace.has-inspector { grid-template-columns: minmax(0, 1fr) var(--inspector-w); grid-template-areas: 'top inspector' 'bottom inspector'; grid-template-rows: auto 1fr; }
@@ -416,10 +425,10 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .inspector-fold[open] > summary::before { transform: rotate(90deg); }
 .inspector-fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
 .inspector-fold-body { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
-@keyframes panel-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.enter { animation: panel-in var(--motion-base) var(--motion-ease-out); }
-.flash { animation: flash var(--motion-slow) var(--motion-ease-out); }
-@keyframes flash { from { background: rgba(var(--accent-rgb), 0.18); } to { background: transparent; } }
+/* Opacity only. A slide is a soft-UI flourish; an instrument's panel is
+   either drawn or it is not. `.enter` and `.flash` had no remaining callers
+   and are gone. */
+@keyframes panel-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ═══ Provenance as a sequence, and source bytes beside the record ═══ */
 .sequence { list-style: none; margin: 0; padding: 0 0 0 6px; display: flex; flex-direction: column; }
@@ -622,16 +631,26 @@ details[open] > summary::before { transform: rotate(90deg); }
   padding: 9px 11px;
 }
 .hud-panel::before,
-.hud-panel::after {
+.hud-panel::after,
+.surface::before,
+.surface::after,
+.surface-raised::before,
+.surface-raised::after,
+.inspector::before,
+.inspector::after {
   content: '';
   position: absolute;
+  z-index: 2;
   width: var(--hud-tick);
   height: var(--hud-tick);
   border: var(--hud-hair) solid var(--ep, var(--tick-neutral));
   pointer-events: none;
 }
-.hud-panel::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
-.hud-panel::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.hud-panel::before, .surface::before, .surface-raised::before, .inspector::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.hud-panel::after, .surface::after, .surface-raised::after, .inspector::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+/* The general surfaces take the frame too, so every card on the estate reads
+   as the same instrument as the panels built for it. */
+.surface, .surface-raised { position: relative; }
 
 /* ── The section bar ─────────────────────────────────────────────────────
    The labelled rule from the plotter references: a name at the left, a hairline

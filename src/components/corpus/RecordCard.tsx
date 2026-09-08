@@ -1,20 +1,29 @@
 import Link from 'next/link';
 import type { CorpusRecord, RecordStatus, RightsSchedule } from '@/domain/corpus';
+import { EPISTEMIC_OF_RECORD_STATUS } from '@/domain/epistemic';
 import { EvidenceClassBadge } from '@/components/primitives/EvidenceClassBadge';
 import { VisibilityBadge } from '@/components/primitives/VisibilityClass';
 import { Digest } from '@/components/primitives/ManifestCommitment';
 import { fmtNumber, fmtUtc, humanize } from '@/lib/format';
 
-export const RECORD_STATUS: Record<RecordStatus, { label: string; cssVar: string; glyph: string; meaning: string }> = {
-  CURRENT: { label: 'Current', cssVar: '--status-admitted', glyph: '●', meaning: 'The newest knowable record for this subject and predicate at the knowledge time.' },
-  SUPERSEDED: { label: 'Superseded', cssVar: '--status-superseded', glyph: '↷', meaning: 'A later record corrected this one. It remains inspectable.' },
-  RETRACTED: { label: 'Retracted', cssVar: '--status-revoked', glyph: '⊗', meaning: 'Withdrawn by a retraction. It remains inspectable; it must not be relied on.' },
+/**
+ * Label, glyph and meaning per record status. No colour here: a record's
+ * standing is a kind of knowledge, and its hue comes from the epistemic scale
+ * so that RETRACTED draws as WITHDRAWN and never in the refusal family. The
+ * first version of this map pointed RETRACTED at the ruling-revoked token,
+ * which flattened WITHDRAWN-IS-NOT-FALSE at the one step every layer beneath
+ * had kept it — the pixel.
+ */
+export const RECORD_STATUS: Record<RecordStatus, { label: string; glyph: string; meaning: string }> = {
+  CURRENT: { label: 'Current', glyph: '●', meaning: 'The newest knowable record for this subject and predicate at the knowledge time.' },
+  SUPERSEDED: { label: 'Superseded', glyph: '↷', meaning: 'A later record corrected this one. It remains inspectable.' },
+  RETRACTED: { label: 'Retracted', glyph: '⊗', meaning: 'Withdrawn by a retraction. It remains inspectable; it must not be relied on.' },
 };
 
 export function RecordStatusPill({ status }: { status: RecordStatus }) {
   const s = RECORD_STATUS[status];
   return (
-    <span className="pill" style={{ color: `var(${s.cssVar})`, borderColor: `var(${s.cssVar})` }} title={s.meaning} data-record-status={status}>
+    <span className="pill" data-epistemic={EPISTEMIC_OF_RECORD_STATUS[status]} title={s.meaning} data-record-status={status}>
       <span aria-hidden="true">{s.glyph}</span> {s.label}
     </span>
   );

@@ -120,6 +120,47 @@ Decoration takes no hue. A frame, a rule, a grid and a tick draw from the
 neutral border tokens, because a surface that colours its chrome has spent the
 channel that was supposed to mean something.
 
+## The finish pass
+
+Applied after the language landed, once the estate could be looked at whole.
+
+**No rounded corners.** Every reference is hard-edged. The three radius tokens
+are held at zero rather than deleted, so a surface that ever needs one has to
+name it; Tailwind's literal `rounded` and `rounded-full` are outranked by one
+unlayered rule, which spared 147 class edits. The browser's own default radius
+on selects is squared too.
+
+**Every panel is a frame.** The general surfaces and the inspector carry the
+same two corner registration marks as the panels built for the language, so a
+card on any page reads as the same instrument. The marks sit inside the
+hairline: the inspector scrolls, and a mark drawn outside its edge would be
+clipped by the container it belongs to.
+
+**Status words are chips.** Mono, uppercase, spaced, square. The DOM text is
+unchanged, so nothing a screen reader announces changed; what changed is that a
+status now reads as an instrument's state word rather than a web badge.
+
+**Record status draws from the scale.** `RecordStatusPill` had a colour map of
+its own, and it pointed `RETRACTED` at the ruling-revoked token. That was
+WITHDRAWN-IS-NOT-FALSE flattened at the pixel, after every layer beneath had
+kept it. The map now carries label, glyph and meaning only; the hue is the
+epistemic scale's, so a retracted record is violet with a double rule and never
+in the refusal family. Superseded and retracted share that state — both are
+support removed — and stay told apart by glyph and word.
+
+**Motion is opacity only.** The inspector's entrance slid up six pixels. A
+slide is a soft-UI flourish; an instrument's panel is drawn or it is not. Two
+animation classes with no remaining callers were removed with it.
+
+**The fixture banner is a stamp line.** Mono, with the accent on the label and
+the rule beneath instead of a tinted fill — a fill would have been the one thing
+on the page coloured without meaning something.
+
+**Known tension, left standing.** Links are cyan, and cyan is also the DERIVED
+hue. The underline disambiguates a link from a reading, and recolouring every
+link on the estate is a larger change than this pass; it is noted here rather
+than silently accepted.
+
 ## Where it is applied
 
 - The shell: ruled section labels in the inspector and the navigation rail, mono

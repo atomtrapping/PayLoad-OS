@@ -196,3 +196,40 @@ describe('one vocabulary, and it is the registry’s', () => {
     expect(duplicated.map(([members, homes]) => `{${members}} in ${homes.join(' and ')}`)).toEqual([]);
   });
 });
+
+/**
+ * ONE CANONICALIZATION, BECAUSE A CONTENT ADDRESS IS NOT A HASH OF A TRAVERSAL.
+ *
+ * `canonicalJson` sorts keys recursively and drops undefined, so two objects
+ * with the same content digest the same however they were built. Raw
+ * `JSON.stringify` does not: it preserves insertion order, so moving a field in
+ * a refactor silently changes the digest of unchanged content, and two code
+ * paths building the same object can disagree.
+ *
+ * Four modules were hashing raw stringify output — the statutory admission
+ * receipt, the catalog slice, the parameter set and the coordination seed pin.
+ * The first of those is the digest a test asserts is reproducible across runs;
+ * it was reproducible only because one code path built it. Every digest in this
+ * repository goes through the same canonicalization now, and this test is what
+ * keeps a fifth from appearing.
+ */
+describe('every digest is taken over canonical JSON', () => {
+  const HASH_OVER_RAW_STRINGIFY = /\.update\(\s*JSON\.stringify\(/;
+
+  it('finds no module hashing a raw JSON.stringify', () => {
+    const offenders = walk(join(ROOT, 'src'))
+      .filter((file) => /\.tsx?$/.test(file) && !file.endsWith('.test.ts') && !file.endsWith('.test.tsx'))
+      .filter((file) => HASH_OVER_RAW_STRINGIFY.test(readFileSync(file, 'utf8')))
+      .map((file) => relative(ROOT, file));
+    expect(offenders, 'hash these through canonicalJson from @/fixtures/digest').toEqual([]);
+  });
+
+  it('proves the two disagree, so the rule above is not a style preference', async () => {
+    const { canonicalJson } = await import('@/fixtures/digest');
+    const written = { b: 1, a: { d: 2, c: 3 } };
+    const rebuilt = { a: { c: 3, d: 2 }, b: 1 };
+    // Same content, two build orders. One serializer says they differ.
+    expect(JSON.stringify(written)).not.toBe(JSON.stringify(rebuilt));
+    expect(canonicalJson(written)).toBe(canonicalJson(rebuilt));
+  });
+});

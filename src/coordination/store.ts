@@ -1,6 +1,7 @@
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { canonicalJson } from '@/fixtures/digest';
 import { applyCommand, connectionsFor, CoordinationError, scopeState } from './ledger';
 import { createSeed, DEMO_SCOPE, RELEASE_CONTEXTS } from './seed';
 import type { CoordinationSnapshot, CoordinationState } from './types';
@@ -14,8 +15,14 @@ function hasCode(error: unknown, code: string) { return !!error && typeof error 
 export function createLocalRepository(directory: string) {
   const file = join(directory, 'events.json');
   const lockPath = join(directory, 'writer.lock');
-  // Pin replay to this exact seed so later fixture edits cannot silently reassign message ids.
-  const seedDigest = createHash('sha256').update(JSON.stringify(createSeed())).digest('hex');
+  // Pin replay to this exact seed so later fixture edits cannot silently reassign
+  // message ids. Through canonicalJson, like every other digest in this
+  // repository: a raw JSON.stringify here made the pin sensitive to the order a
+  // field happens to be written in the seed, which is not an edit. An existing
+  // local log written before this change reads as an incompatible seed and is
+  // refused rather than replayed — the correct answer for a gitignored
+  // development log whose pin has changed.
+  const seedDigest = createHash('sha256').update(canonicalJson(createSeed())).digest('hex');
 
   async function load(): Promise<{ log: LocalLog; state: CoordinationState }> {
     let content: string;

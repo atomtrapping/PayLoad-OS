@@ -55,6 +55,7 @@
  * independently, which is the arity `candidateProjection` exists to preserve.
  */
 import { createHash } from 'node:crypto';
+import { canonicalJson } from '@/fixtures/digest';
 import {
   admit,
   admittedRow,
@@ -192,8 +193,19 @@ export interface StatutoryAdmissionReceipt {
   because: string;
 }
 
+/**
+ * One canonicalization, and it is the corpus's.
+ *
+ * This used to be `JSON.stringify(value)` — key-order dependent. Two objects
+ * with the same content, built by different code paths or by the same path
+ * after a field was moved, digest differently. That is not a content address;
+ * it is a hash of one serializer's traversal order. Six other modules already
+ * hash through `canonicalJson`, which sorts keys recursively and drops
+ * undefined, so a repository whose thesis is reproducibility was running two
+ * digest disciplines at once.
+ */
 const digestOf = (value: unknown): string =>
-  `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
+  `sha256:${createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 
 const CONTRACT_DIGEST = digestOf(STATUTORY_BUILD_CONTRACT);
 

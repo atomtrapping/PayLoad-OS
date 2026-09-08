@@ -1,5 +1,6 @@
 import type { Hash, ISODateTime } from './types';
 import { createHash } from 'node:crypto';
+import { canonicalJson } from '@/fixtures/digest';
 
 /**
  * Versioned Parameter Registry & Citations Store
@@ -157,8 +158,14 @@ export const CANONICAL_PARAMETER_ROWS: Record<string, ModelParameterRow> = {
   },
 };
 
+/**
+ * The digest over the parameter rows, through the same canonicalization every
+ * other digest in this repository uses. The explicit `.sort()` stays: it is
+ * what fixes the order of the array, and canonicalJson sorts keys within each
+ * entry rather than reordering the array itself.
+ */
 function computeParameterSetDigest(params: Record<string, ModelParameterRow>): Hash {
-  const serialized = JSON.stringify(
+  const serialized = canonicalJson(
     Object.keys(params)
       .sort()
       .map((k) => ({

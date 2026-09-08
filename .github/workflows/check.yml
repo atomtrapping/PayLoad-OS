@@ -41,12 +41,14 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.9'
+          node-version: '22.13'
           cache: npm
 
       # The kernel is a build input, not an optional extra: `npm test` builds it
       # first because src/state-kernel/store.test.ts runs against the real
-      # executable rather than a stub.
+      # executable rather than a stub. Both cargo commands pass --locked, which
+      # is why native/state-kernel/Cargo.lock has to be committed — this run is
+      # what discovered it was not.
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -87,7 +89,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.9'
+          node-version: '22.13'
           cache: npm
 
       - run: npm ci

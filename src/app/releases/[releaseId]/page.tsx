@@ -13,6 +13,7 @@ import { ProductionRecord } from '@/components/corpus/ProductionRecord';
 import { CopyButton } from '@/components/primitives/CopyButton';
 import { buildReleaseManifest } from '@/fixtures/releaseManifest';
 import { fmtNumber, fmtUtc } from '@/lib/format';
+import { streamLink } from '@/domain/streamLink';
 
 export async function generateMetadata({ params }: { params: Promise<{ releaseId: string }> }): Promise<Metadata> {
   const { releaseId } = await params;
@@ -136,7 +137,7 @@ export default async function ReleasePage({ params }: { params: Promise<{ releas
               <tbody>
                 {delivered.records.map((r) => (
                   <tr key={r.recordId} data-record-id={r.recordId}>
-                    <td><Link href={`/stream?release=${encodeURIComponent(release.releaseId)}&subject=${encodeURIComponent(r.subjectId)}&predicate=${encodeURIComponent(r.predicate)}&validAt=${encodeURIComponent(r.validFrom)}&knownAt=${encodeURIComponent(release.knownAt)}`} className="id" style={{ color: 'var(--info)' }}>{r.recordId}</Link></td>
+                    <td><Link href={streamLink({ release: release.releaseId, subject: r.subjectId, predicate: r.predicate, validAt: r.validFrom, knownAt: release.knownAt, question: 'WHAT_WE_HELD', record: r.recordId })} className="id" style={{ color: 'var(--info)' }}>{r.recordId}</Link></td>
                     <td><span className="id">{r.subjectId}</span><div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{r.subjectType}</div></td>
                     <td className="id">{r.predicate}</td>
                     <td className="mono">{fmtNumber(r.value)} {r.unit ?? ''}<div className="text-[11px] font-sans" style={{ color: 'var(--text-muted)' }}>{r.basis}</div></td>

@@ -11,6 +11,8 @@ export interface NavArea { id: 'products' | 'acquisition' | 'corpus' | 'notation
 export const NAV_AREAS: readonly NavArea[] = [
   { id: 'products', label: 'Products', activity: 'The three APIs, what they deliver, and how a customer reads them', items: [
     { href: '/products', label: 'Products', match: /^\/products/ },
+    { href: '/landshark', label: 'Landshark', match: /^\/landshark$/ },
+    { href: '/tradewind', label: 'Tradewind', match: /^\/tradewind$/ },
     { href: '/api', label: 'API', match: /^\/api/ },
     { href: '/stream', label: 'Stream', match: /^\/stream/ },
     { href: '/releases', label: 'Releases', match: /^\/releases/ },

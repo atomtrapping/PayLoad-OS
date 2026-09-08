@@ -23,15 +23,14 @@ import { DOMAINS } from '@/domain/domains';
  *
  * ROUTES THAT HONOUR THE SCOPE
  *
- * Only the corpus surfaces read `?domain=`, so only they light the control.
- * On every other page the links still work — they take you to that line's
- * releases — and nothing is drawn as pressed, because nothing on that page is
- * scoped to a line and a lit control would claim otherwise.
+ * Corpus history surfaces read `?domain=`. The dedicated Landshark and
+ * Tradewind desks have a fixed scope and switch directly between desks.
+ * Other pages remain unscoped and link to each line's release history.
  */
 export const SCOPED_ROUTES: readonly string[] = ['/releases', '/retractions'];
 
 /** The frame with no scope read: what renders before the URL is known. */
-export function VerticalContextFrame({ active }: { active?: Domain }) {
+export function VerticalContextFrame({ active, desks = false }: { active?: Domain; desks?: boolean }) {
   return (
     <div className="terminal-products" role="group" aria-label="Product" data-testid="product-control">
       <span className="terminal-products-label">Product</span>
@@ -40,7 +39,7 @@ export function VerticalContextFrame({ active }: { active?: Domain }) {
         return (
           <Link
             key={d.id}
-            href={`/releases?domain=${d.id}`}
+            href={desks && d.id !== 'CARAVAN' ? `/${d.id.toLowerCase()}` : `/releases?domain=${d.id}`}
             aria-current={on ? 'true' : undefined}
             data-domain={d.id}
             data-scoped={String(on)}
@@ -60,6 +59,7 @@ export function VerticalContext() {
   const params = useSearchParams();
   const requested = params?.get('domain');
   const scopable = SCOPED_ROUTES.includes(pathname);
-  const active = scopable && DOMAINS.some((d) => d.id === requested) ? (requested as Domain) : undefined;
-  return <VerticalContextFrame active={active} />;
+  const desk = pathname === '/landshark' ? 'LANDSHARK' : pathname === '/tradewind' ? 'TRADEWIND' : undefined;
+  const active = desk ?? (scopable && DOMAINS.some((d) => d.id === requested) ? (requested as Domain) : undefined);
+  return <VerticalContextFrame active={active} desks={Boolean(desk)} />;
 }

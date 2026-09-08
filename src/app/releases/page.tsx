@@ -46,7 +46,7 @@ export default async function ReleasesPage({ searchParams }: { searchParams: Pro
                 <h1 id={`corpus-${corpus.corpusId}`} className="m-0 text-[18px] font-semibold" style={{ color: 'var(--text-heading)' }}>{corpus.title}</h1>
                 <p className="m-0 text-[13px]" style={{ color: 'var(--text-secondary)' }}>{corpus.description}</p>
                 <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }}>
-                  {corpus.records.length} records · {corpus.retractions.length} retractions · {corpus.releases.length} releases · feed <Link href={`/api/v1/releases?corpus=${encodeURIComponent(corpus.corpusId)}`} className="id" style={{ color: 'var(--info)' }}>/api/v1/releases</Link> · <Link href="/stream" style={{ color: 'var(--info)' }}>query as-of</Link> · <Link href="/retractions" style={{ color: 'var(--info)' }}>retraction feed</Link>
+                  {corpus.records.length} records · {corpus.retractions.length} retractions · {corpus.releases.length} releases · feed <Link href={`/api/v1/releases?corpus=${encodeURIComponent(corpus.corpusId)}`} className="id" style={{ color: 'var(--info)' }}>/api/v1/releases</Link> · <Link href={`/stream?corpus=${encodeURIComponent(corpus.corpusId)}&question=WHAT_WE_HELD`} style={{ color: 'var(--info)' }}>query as-of</Link> · <Link href={`/retractions?domain=${corpus.domain}`} style={{ color: 'var(--info)' }}>retraction feed</Link>
                 </p>
               </header>
               <div className="surface overflow-x-auto" tabIndex={0}>

@@ -19,6 +19,7 @@ about it and a reader should be too.
 | | |
 |---|---|
 | Corpora with records | All three lines. Caravan is the deepest, with cases, rulings and captured artifact bytes; Tradewind and Landshark carry records, releases, rights and one retraction each, with no captured bytes |
+| Landshark and Tradewind desks | `/landshark` and `/tradewind`: release selection, gated evidence inquiry, prior-vintage comparison, exact-reading JSON and release-scoped Earth record exploration. Operational on demonstration records, not live source pipelines. See [`docs/product-desks.md`](docs/product-desks.md) |
 | The Caravan corpus | 3 releases, 21 records, 2 retractions, 7 sources — committed, synthetic, `fixture_only: true` on every response |
 | Admission and retained inventory | Admission, identity/time rules and a guarded PostgreSQL writer exist. The supplied-byte statutory rail can evaluate admission in memory. A retained real customer inventory is not established by that demonstration |
 | Source operation | Two bounded FMCSA observations and their immutable internal qualification packages are retained locally; the second source response was unchanged. Samsara is offline-tested. Recurring collection and live customer feeds are not established. Capture requires the operator's explicit flag and source-use basis |

@@ -12,6 +12,7 @@ import { CARAVAN_LOT_STATE as product } from '@/domain/informationProduct';
 import { CUSTOMER_CATEGORIES } from '@/domain/product';
 import { CARAVAN_CORPUS, CARAVAN_RELEASES } from '@/fixtures/caravan/release';
 import { fmtUtc } from '@/lib/format';
+import { streamLink } from '@/domain/streamLink';
 
 export const metadata: Metadata = { title: 'Products' };
 
@@ -24,7 +25,7 @@ export default async function ProductsPage() {
     asOfPayload(current.releaseId, { ...q, knownAt: '2026-08-20T00:00:00Z' }),
     asOfPayload(current.releaseId, { ...q, knownAt: current.knownAt }),
   ]);
-  const streamHref = (knownAt: string) => `/stream?subject=${q.subjectId}&predicate=${q.predicate}&validAt=${q.validAt}&knownAt=${knownAt}`;
+  const streamHref = (knownAt: string) => streamLink({ release: current.releaseId, subject: q.subjectId, predicate: q.predicate, validAt: q.validAt, knownAt, question: q.question });
   const categories = CUSTOMER_CATEGORIES.filter((c) => (product.customerCategories as readonly string[]).includes(c.id));
   const coverage = product.fields.map((f) => {
     const records = CARAVAN_CORPUS.records.filter((r) => r.predicate === f.predicate);
@@ -52,6 +53,7 @@ export default async function ProductsPage() {
                 </div>
                 <div className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{d.scope}</div>
                 <div className="text-[11.5px]" style={{ color: d.enabled ? 'var(--text-muted)' : 'var(--status-conditional)' }}>{d.note}</div>
+                <Link className="btn self-start mt-2" href={d.id === 'CARAVAN' ? '/stream' : `/${d.id.toLowerCase()}`}>Open {d.label}</Link>
               </li>
             ))}
           </ul>

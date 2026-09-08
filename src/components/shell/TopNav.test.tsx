@@ -64,4 +64,14 @@ describe('the shared terminal header', () => {
     expect(screen.getAllByRole('link')).toHaveLength(DOMAINS.length);
     for (const link of screen.getAllByRole('link')) expect(link).not.toHaveAttribute('aria-current');
   });
+
+  it.each(['/landshark', '/tradewind'])('selects the fixed product desk at %s and offers the other desk', (route) => {
+    pathname = route;
+    params.set('domain', 'CARAVAN');
+    render(<TopNav />);
+    const links = within(screen.getByRole('group', { name: 'Product' })).getAllByRole('link');
+    expect(links.find((link) => link.getAttribute('aria-current') === 'true')).toHaveAttribute('href', route);
+    expect(screen.getByRole('link', { name: 'Landshark' })).toHaveAttribute('href', '/landshark');
+    expect(screen.getByRole('link', { name: 'Tradewind' })).toHaveAttribute('href', '/tradewind');
+  });
 });

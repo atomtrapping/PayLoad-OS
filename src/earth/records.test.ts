@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Children, isValidElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import EarthPage from '@/app/earth/page';
 import { EarthTwin, type EarthTwinProps } from '@/components/earth/EarthTwin';
 import { currentRelease, deliverableRecords, recordStatusAt } from '@/domain/corpus';
@@ -8,6 +9,11 @@ import { readInstrument } from '@/domain/operatorInstrument';
 import { locateAll } from '@/domain/locatedClaims';
 import { SPECIMEN_HEADLINES } from '@/fixtures/caravan/headlines';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
+import { LANDSHARK_CORPUS } from '@/fixtures/landshark/release';
+import { TRADEWIND_CORPUS } from '@/fixtures/tradewind/release';
+import { SpatialKeys } from '@/components/earth/SpatialKeys';
+import * as projectionSource from '@/projection/source';
+import { ProjectionError } from '@/projection/spec';
 import { compileProjection } from '@/projection/compile';
 import { describeProjectionSource } from '@/projection/source';
 import { earthRecordChoices } from './records';
@@ -29,6 +35,34 @@ function freeze<T>(value: T): T {
 }
 
 describe('Earth record choices before client serialization', () => {
+  it.each([LANDSHARK_CORPUS, TRADEWIND_CORPUS])('scopes $domain Earth to the exact selected release without private events or current-only spatial helpers', async (corpus) => {
+    const release = corpus.releases[0];
+    const page = await EarthPage({ searchParams: Promise.resolve({ release: release.releaseId }) });
+    const children = Children.toArray(page.props.children);
+    const child = children.find((entry) => isValidElement(entry) && entry.type === EarthTwin);
+    if (!isValidElement<EarthTwinProps>(child)) throw new Error('Missing EarthTwin');
+    expect(child.props.release.releaseId).toBe(release.releaseId);
+    expect(child.props.records).toEqual(earthRecordChoices(corpus, release));
+    expect(child.props.located).toEqual([]);
+    expect(child.props.eventsAvailable).toBe(false);
+    expect(child.key).toContain(child.props.source.snapshotDigest.slice('sha256:'.length));
+    expect(children.some((entry) => isValidElement(entry) && entry.type === SpatialKeys)).toBe(false);
+    expect(JSON.stringify(child.props)).not.toMatch(/TW-0102|TW-0103|RET-TW-0001|LS-0121|SPEC-T-/);
+  });
+
+  it('does not substitute another release for an unknown explicit Earth selection', async () => {
+    await expect(EarthPage({ searchParams: Promise.resolve({ release: 'missing' }) })).rejects.toThrow();
+  });
+
+  it('renders an unavailable projection rather than an unhandled source-integrity failure', async () => {
+    const spy = vi.spyOn(projectionSource, 'describeProjectionSource').mockImplementationOnce(() => { throw new ProjectionError('SOURCE_INTEGRITY_FAILED', 'PRIVATE_DETAIL'); });
+    const page = await EarthPage({ searchParams: Promise.resolve({ release: 'REL-LS-2026.08.20' }) });
+    const serialized = renderToStaticMarkup(page);
+    expect(serialized).toContain('SOURCE_INTEGRITY_FAILED');
+    expect(serialized).not.toContain('PRIVATE_DETAIL');
+    spy.mockRestore();
+  });
+
   it('passes only gated choices from the server page to EarthTwin with the original source descriptor', async () => {
     const page = await EarthPage();
     const child = Children.toArray((page as React.ReactElement<{ children: React.ReactNode }>).props.children).find((entry) => isValidElement(entry) && entry.type === EarthTwin);

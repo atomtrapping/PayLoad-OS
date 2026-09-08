@@ -263,3 +263,44 @@ test('notations: the inspector follows the selection, relations are made and ins
   const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(accessibility.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual([]);
 });
+
+/**
+ * The selection is a link, against the real kernel.
+ *
+ * The interesting path is not the saved one. A notation created in this tab
+ * exists only in the previewed state the kernel rebuilds from the drafts on
+ * reload, so a link into it has to be checked against what the load *leaves*
+ * held rather than against what the store returned first — which is the one
+ * thing the workspace's own restore path could get wrong, and cannot be shown
+ * anywhere but here.
+ */
+test('notations: the selected notation is in the URL, and that URL opens on it through a draft restore', async ({ page }, testInfo) => {
+  await page.goto('/notations');
+  await loaded(page);
+  const stamp = `${testInfo.project.name} ${Date.now()}`;
+
+  await page.getByLabel('New notation title', { exact: true }).fill(`Linked ${stamp}`);
+  await page.getByLabel('New notation body', { exact: true }).fill('Created in this tab and never saved, so it exists only in the previewed state a reload rebuilds.');
+  await page.getByRole('button', { name: 'Preview new notation', exact: true }).click();
+  await expect(page.getByTestId('pending-count')).toHaveText('1');
+  const linkedId = (await page.getByTestId('selected-notation-id').textContent())!;
+  expect(linkedId).toBeTruthy();
+
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#notation=${linkedId}`);
+  const link = page.url();
+
+  // Away and back by the link: the drafts restore, the kernel re-validates the
+  // pending command, and the notation the URL names is the one on the inspector.
+  await page.goto('/releases');
+  await page.goto(link);
+  await loaded(page);
+  await expect(page.getByTestId('pending-count')).toHaveText('1');
+  await expect(page.getByTestId('selected-notation-id')).toHaveText(linkedId);
+  await expect(page.getByTestId('notation-inspector').getByRole('heading', { level: 2 })).toHaveText(`Linked ${stamp}`);
+
+  // A link naming a notation this state does not hold selects nothing rather
+  // than opening the inspector on a name it cannot resolve.
+  await page.goto('/notations#notation=00000000-0000-4000-8000-000000000000');
+  await loaded(page);
+  await expect(page.getByTestId('selected-notation-id')).not.toHaveText('00000000-0000-4000-8000-000000000000');
+});

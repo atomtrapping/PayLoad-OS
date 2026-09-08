@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { NextResponse } from 'next/server';
 import { requireLocalRequest } from '../coordination/http';
+import { CoordinationError } from '../coordination/ledger';
 import { ProductionError } from './errors';
 
 export const MAX_PRODUCTION_BODY_BYTES = 2 * 1024 * 1024;
@@ -27,8 +28,17 @@ export function productionError(error: unknown) {
 /** All operational reads and writes require explicit local mode and the same loopback origin. */
 export function requireProductionRequest(request: Request) {
   if (!productionEnabled()) throw new ProductionError('LOCAL_MODE_DISABLED', 'Start the explicitly enabled local production service first.', 403);
+  // The rail keeps one code for this refusal, which is its contract; what it
+  // no longer does is throw away what the guard actually found. A relayed
+  // request and a wrong origin are different problems with different remedies,
+  // and a 403 saying only "same loopback origin" when the real answer was "a
+  // proxy header named somewhere else" costs an operator an afternoon of
+  // looking in the wrong place — which it did.
   try { requireLocalRequest(request); }
-  catch { throw new ProductionError('LOCAL_ONLY', 'Use the production inspector from the same loopback origin.', 403); }
+  catch (error) {
+    const because = error instanceof CoordinationError ? ` ${error.code}: ${error.message}` : '';
+    throw new ProductionError('LOCAL_ONLY', `Use the production inspector from the same loopback origin.${because}`, 403);
+  }
 }
 
 export async function readProductionBody(request: Request, maxBytes = MAX_PRODUCTION_BODY_BYTES): Promise<unknown> {

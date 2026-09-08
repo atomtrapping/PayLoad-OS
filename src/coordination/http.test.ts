@@ -55,6 +55,86 @@ describe('a forwarding header is the one thing about a request’s origin that a
   });
 });
 
+describe('the headers this server writes on a direct request are not a proxy', () => {
+  /**
+   * What Next hands a route handler for a bare loopback request with no proxy
+   * anywhere near it. Measured, not supposed: a
+   * `curl http://127.0.0.1:3115/api/state-kernel` on this server arrives
+   * carrying all four of these.
+   */
+  const AS_NEXT_WRITES_THEM = {
+    'x-forwarded-for': '127.0.0.1',
+    'x-forwarded-host': '127.0.0.1:3000',
+    'x-forwarded-port': '3000',
+    'x-forwarded-proto': 'http',
+  };
+
+  it('admits the request every local rail was refusing', () => {
+    // The guard refused any request carrying any forwarding header at all,
+    // which was correct about proxies and wrong about this server: the
+    // notation kernel, the coordination board and the production inspector
+    // refused their own browser, on a machine with no proxy in sight.
+    expect(() => requireLocalRequest(ask(AS_NEXT_WRITES_THEM))).not.toThrow();
+  });
+
+  it('still refuses a reverse proxy, which writes none of those values', () => {
+    // nginx in front of a public host: the forwarded host is the public one,
+    // the scheme is https, the peer is the real client. Each on its own is
+    // enough, and each is named in the refusal.
+    for (const [header, value] of Object.entries({
+      'x-forwarded-for': '203.0.113.7',
+      'x-forwarded-host': 'payload.example.com',
+      'x-forwarded-proto': 'https',
+      'x-forwarded-port': '443',
+    })) {
+      const error = refusal({ ...AS_NEXT_WRITES_THEM, [header]: value });
+      expect(error.code, header).toBe('RELAYED_REQUEST');
+      expect(error.message, header).toContain(header);
+    }
+  });
+
+  it('refuses a forwarded-for that names one more hop than the socket', () => {
+    // A proxy appends; the list is the giveaway even when it ends in loopback.
+    for (const value of ['203.0.113.7, 127.0.0.1', '127.0.0.1, 203.0.113.7', '']) {
+      expect(refusal({ ...AS_NEXT_WRITES_THEM, 'x-forwarded-for': value }).code, value).toBe('RELAYED_REQUEST');
+    }
+  });
+
+  it('accepts the loopback addresses a socket actually reports', () => {
+    for (const value of ['127.0.0.1', '127.0.0.53', '::1', '::ffff:127.0.0.1']) {
+      expect(() => requireLocalRequest(ask({ ...AS_NEXT_WRITES_THEM, 'x-forwarded-for': value })), value).not.toThrow();
+    }
+  });
+
+  it('reads the forwarded host against this host rather than against a constant', () => {
+    const headers = { host: '127.0.0.1:4321', origin: 'http://127.0.0.1:4321', 'sec-fetch-site': 'same-origin' };
+    const url = 'http://localhost:4321/api/coordination';
+    expect(() => requireLocalRequest(ask({ ...headers, 'x-forwarded-host': '127.0.0.1:4321', 'x-forwarded-port': '4321', 'x-forwarded-proto': 'http', 'x-forwarded-for': '127.0.0.1' }, url))).not.toThrow();
+    // The same values against a different port are another service's.
+    expect(refusal({ ...headers, 'x-forwarded-host': '127.0.0.1:3000' }, url).code).toBe('RELAYED_REQUEST');
+    expect(refusal({ ...headers, 'x-forwarded-port': '3000' }, url).code).toBe('RELAYED_REQUEST');
+  });
+
+  it('never admits the headers Next does not write, whatever they say', () => {
+    // No value in these is consistent with a direct arrival, because this
+    // server never produces one.
+    for (const header of ['forwarded', 'via', 'x-real-ip', 'x-cluster-client-ip']) {
+      for (const value of ['127.0.0.1', 'for=127.0.0.1', '']) {
+        expect(refusal({ [header]: value }).code, `${header}: ${value}`).toBe('RELAYED_REQUEST');
+      }
+    }
+  });
+
+  it('says that a consistent forgery is not distinguished, because it is not', () => {
+    // A caller who writes all four to look like a direct arrival is admitted,
+    // and this is stated rather than hoped. Nothing a handler can read proves
+    // how a request reached the socket; what keeps these rails local is the
+    // operator's — off by default, bound to loopback.
+    expect(LOCAL_GUARD_LOSS.map((entry) => entry.what).join(' ')).toMatch(/arrived directly/);
+    expect(LOCAL_GUARD_LOSS.map((entry) => entry.because).join(' ')).toMatch(/Next writes those headers itself/);
+  });
+});
+
 describe('the host check still rejects what it can, and is no longer the boundary', () => {
   it('admits a direct loopback request', () => {
     expect(() => requireLocalRequest(ask())).not.toThrow();

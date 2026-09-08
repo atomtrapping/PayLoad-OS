@@ -1,12 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { bodyRefusal, FeedBodyError, readBoundedJson } from '../../../_lib';
 import type { TaskingOrderRecord } from '@/domain/productionPipeline';
 import { calibrateInstrumentFromHistory } from '@/domain/productionPipeline';
 import { FIXTURE_TASKING_ORDERS } from '@/fixtures/frontier/productionCorpus';
 import type { MeasurementInstrumentId } from '@/domain/n11MeasurementEconomy';
 
+/** Everything this route reads off the wire, so no field arrives as `unknown` and is defaulted by accident. */
+interface ObservationRequest {
+  orderId?: string;
+  instrumentId?: string;
+  projectId?: string;
+  targetMilestone?: string;
+  dispatchedAt?: string;
+  defectActuallyExisted?: boolean;
+  instrumentDetectedDefect?: boolean;
+  turnaroundHoursElapsed?: number;
+  assumedSensitivity?: number;
+  assumedFalseAlarmRate?: number;
+  authorizedCostCents?: number;
+  measuredNoiseVarianceMm?: number;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = ((await readBoundedJson(req)) ?? {}) as ObservationRequest;
     const { orderId, instrumentId, defectActuallyExisted, instrumentDetectedDefect, turnaroundHoursElapsed } = body;
 
     if (!orderId || !instrumentId) {
@@ -39,7 +56,7 @@ export async function POST(req: NextRequest) {
     };
 
     const combinedHistory = [...FIXTURE_TASKING_ORDERS, newOrder];
-    const calibration = calibrateInstrumentFromHistory(instrumentId, combinedHistory);
+    const calibration = calibrateInstrumentFromHistory(instrumentId as MeasurementInstrumentId, combinedHistory);
 
     return NextResponse.json({
       schema: 'payload.frontier.measurement-economy.tasking.observe.v1',
@@ -52,6 +69,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof FeedBodyError) return bodyRefusal(error);
     return NextResponse.json(
       {
         error: 'invalid_request',

@@ -19,7 +19,7 @@
  * defaulted.
  */
 import { NextRequest } from 'next/server';
-import { json, refusal } from '../../_lib';
+import { bodyRefusal, FeedBodyError, json, readBoundedJson, refusal } from '../../_lib';
 import {
   HARVEST_LOSS,
   JURISDICTION_GRAMMAR,
@@ -40,6 +40,14 @@ import type { Registration } from '@/domain/identityResolution';
 
 export const MAX_DOCUMENTS = 32;
 export const MAX_DOCUMENT_BYTES = 512 * 1024;
+/**
+ * The wire cap and the document cap are one limit stated twice. Thirty-two
+ * documents of 512 KiB is 16 MiB of text, and JSON escaping expands it, so the
+ * doubling is the escaping allowance a caller gets. The route used to read the
+ * whole body before either cap applied, which meant the document limits were
+ * enforced on memory this process had already spent.
+ */
+export const MAX_HARVEST_BODY_BYTES = 2 * MAX_DOCUMENTS * MAX_DOCUMENT_BYTES;
 
 const SURFACE = {
   schema: 'payload.insurability.harvester.v1',
@@ -113,9 +121,11 @@ export async function POST(req: NextRequest) {
     persist?: Pick<PersistenceTarget, 'corpusId' | 'releaseId'>;
   };
   try {
-    const text = await req.text();
-    body = text.trim().length > 0 ? JSON.parse(text) : {};
-  } catch {
+    body = ((await readBoundedJson(req, MAX_HARVEST_BODY_BYTES)) ?? {}) as typeof body;
+  } catch (error) {
+    // Only the size refusal is new. UNREADABLE_BODY is this route's published
+    // code for a body it cannot parse, and a caller reading for it keeps reading for it.
+    if (error instanceof FeedBodyError && error.code === 'BODY_TOO_LARGE') return bodyRefusal(error);
     return refusal(400, 'UNREADABLE_BODY', 'The request body is not readable JSON.', 'Send a JSON object with documents, buildId, knownThrough, context and authority.');
   }
 

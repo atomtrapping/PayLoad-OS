@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { json, refusal } from '../../_lib';
+import { bodyRefusal, FeedBodyError, json, readBoundedJson, refusal } from '../../_lib';
 import { evaluatePortfolioCollateralShock, type LoanCollateralAsset } from '@/domain/insurabilityDynamics';
 import { FIXTURE_STATE_DOI_FILINGS, FIXTURE_LOAN_PORTFOLIO } from '@/fixtures/frontier/insurabilityAndN11';
 import { getActiveParameterSet } from '@/domain/parameterRegistry';
@@ -14,11 +14,7 @@ export async function POST(req: NextRequest) {
       return refusal(401, 'UNAUTHORIZED', 'Invalid or missing Authorization Bearer token.', 'Provide Authorization: Bearer <API_KEY> header.');
     }
 
-    let body: { loans?: LoanCollateralAsset[]; asOf?: string } = {};
-    const text = await req.text();
-    if (text.trim().length > 0) {
-      body = JSON.parse(text);
-    }
+    const body = ((await readBoundedJson(req)) ?? {}) as { loans?: LoanCollateralAsset[]; asOf?: string };
 
     const loansToTest = body.loans && Array.isArray(body.loans) && body.loans.length > 0
       ? body.loans
@@ -61,6 +57,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof FeedBodyError) return bodyRefusal(error);
     return refusal(
       400,
       'INVALID_REQUEST',

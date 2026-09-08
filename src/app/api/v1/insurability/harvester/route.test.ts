@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST, MAX_DOCUMENTS } from './route';
+import { GET, POST, MAX_DOCUMENTS, MAX_DOCUMENT_BYTES, MAX_HARVEST_BODY_BYTES } from './route';
 import { STATUTORY_SPECIMENS, STATUTORY_SPECIMEN_CONTEXT, NAIC_REGISTRY } from '@/fixtures/insurability/statutoryFilings';
 
 const get = (query = '') => GET(new NextRequest(`http://127.0.0.1:3111/api/v1/insurability/harvester${query}`));
@@ -158,6 +158,18 @@ describe('POST /api/v1/insurability/harvester', () => {
     expect((await post({ ...base, documents: many })).status).toBe(413);
     const huge = [{ declaration: SPECIMEN_DOCUMENTS[0].declaration, text: 'x'.repeat(512 * 1024 + 1) }];
     expect((await post({ ...base, documents: huge })).status).toBe(413);
+  });
+
+  it('refuses a body larger than its own document limits could ever require', async () => {
+    // The wire cap used to not exist: req.text() buffered whatever arrived and
+    // the document limits below were then applied to memory already spent.
+    expect(MAX_HARVEST_BODY_BYTES).toBe(2 * MAX_DOCUMENTS * MAX_DOCUMENT_BYTES);
+    const oversized = new NextRequest('http://127.0.0.1:3111/api/v1/insurability/harvester', {
+      method: 'POST', headers: { 'content-length': String(MAX_HARVEST_BODY_BYTES + 1) }, body: '{}',
+    });
+    const res = await POST(oversized);
+    expect(res.status).toBe(413);
+    expect((await res.json()).error).toBe('BODY_TOO_LARGE');
   });
 
   it('refuses an unreadable body', async () => {

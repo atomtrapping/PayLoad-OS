@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { bodyRefusal, FeedBodyError, readBoundedJson } from '../../_lib';
 import { optimizeInspectionTasking, type ProjectMilestoneDrawContext } from '@/domain/n11MeasurementEconomy';
 import { FIXTURE_PROJECT_DRAWS } from '@/fixtures/frontier/insurabilityAndN11';
 import { getActiveParameterSet } from '@/domain/parameterRegistry';
@@ -7,15 +8,9 @@ import { FIXTURE_TASKING_ORDERS } from '@/fixtures/frontier/productionCorpus';
 export async function POST(req: NextRequest) {
   try {
     let context: ProjectMilestoneDrawContext = FIXTURE_PROJECT_DRAWS[0];
-    const text = await req.text();
-    if (text.trim().length > 0) {
-      const parsed = JSON.parse(text);
-      if (parsed.context) {
-        context = parsed.context;
-      } else if (parsed.requestedDrawAmountCents) {
-        context = parsed as ProjectMilestoneDrawContext;
-      }
-    }
+    const parsed = (await readBoundedJson(req)) as { context?: ProjectMilestoneDrawContext; requestedDrawAmountCents?: unknown } | undefined;
+    if (parsed?.context) context = parsed.context;
+    else if (parsed?.requestedDrawAmountCents) context = parsed as ProjectMilestoneDrawContext;
 
     const paramSet = getActiveParameterSet();
     const schedule = optimizeInspectionTasking(context, {
@@ -31,6 +26,7 @@ export async function POST(req: NextRequest) {
       ...schedule,
     });
   } catch (error) {
+    if (error instanceof FeedBodyError) return bodyRefusal(error);
     return NextResponse.json(
       {
         error: 'invalid_request',

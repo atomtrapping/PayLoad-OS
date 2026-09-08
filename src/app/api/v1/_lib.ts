@@ -46,3 +46,60 @@ export function refusal(status: number, error: string, detail: string, remedy: s
   return json({ fixture_only: true, error, detail, remedy }, status);
 }
 
+
+/**
+ * A body this process has not finished reading has already cost it the memory.
+ *
+ * Every POST under /api/v1 used to call `req.json()` or `req.text()`, which
+ * buffer whatever the caller sends before any handler code runs. None of these
+ * routes has a use for a body larger than a small JSON document, so the cap is
+ * the document size rather than a guess at what a client might need, and the
+ * stream is cancelled at the byte that crosses it rather than after the
+ * allocation.
+ */
+export const MAX_FEED_BODY_BYTES = 256 * 1024;
+
+export class FeedBodyError extends Error {
+  constructor(public code: string, message: string, public remedy: string, public status = 400) { super(message); }
+}
+
+/** Turns a body refusal into the same envelope every other refusal on this feed uses. */
+export function bodyRefusal(error: FeedBodyError) {
+  return refusal(error.status, error.code, error.message, error.remedy);
+}
+
+/**
+ * Reads a request body to at most `maxBytes` and parses it as UTF-8 JSON.
+ * An empty body is `undefined` rather than a parse failure: four of these
+ * routes accept no body at all and fall back to a fixture.
+ */
+export async function readBoundedJson(request: Request, maxBytes = MAX_FEED_BODY_BYTES): Promise<unknown> {
+  if (!request.body) return undefined;
+  const declared = Number(request.headers.get('content-length') ?? Number.NaN);
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new FeedBodyError('BODY_TOO_LARGE', `The request body declares ${declared} bytes and this feed reads at most ${maxBytes}.`, `Send at most ${maxBytes} bytes of JSON.`, 413);
+  }
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      length += chunk.value.byteLength;
+      if (length > maxBytes) {
+        void reader.cancel().catch(() => { /* A broken caller stream must not replace the size refusal. */ });
+        throw new FeedBodyError('BODY_TOO_LARGE', `The request body exceeds the ${maxBytes} bytes this feed reads.`, `Send at most ${maxBytes} bytes of JSON.`, 413);
+      }
+      chunks.push(chunk.value);
+    }
+  } finally { reader.releaseLock(); }
+  // The decode is inside the refusal, not beside it: a fatal TextDecoder throws
+  // a raw TypeError, and a route that catches only FeedBodyError would have
+  // reported malformed bytes as an internal failure.
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks));
+    if (text.trim().length === 0) return undefined;
+    return JSON.parse(text);
+  } catch { throw new FeedBodyError('INVALID_JSON', 'The request body must be valid UTF-8 JSON.', 'Send a JSON object.'); }
+}

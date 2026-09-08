@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
-import { json, refusal } from '../../_lib';
+import { bodyRefusal, FeedBodyError, json, readBoundedJson, refusal } from '../../_lib';
 import { FIXTURE_DISPATCH_STREAM, DEFENSE_RECONSTRUCTION_CASE_0803 } from '@/fixtures/caravan/dispatchLiability';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const decisionId = body.decisionId;
+    const body = (await readBoundedJson(request)) as { decisionId?: unknown } | undefined;
+    const decisionId = typeof body?.decisionId === 'string' ? body.decisionId : undefined;
 
     if (!decisionId) {
       return refusal(400, 'missing_decision_id', 'Provide a decisionId in JSON body', 'Provide { "decisionId": "DISP-EVT-2026-0803" }');
@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
         evidentiaryFinding: `At knowledge cutoff Tk (${found.knowledgeCutoff}), automated dispatch selection conformed strictly to ${found.broker.algorithmPolicyId}. Carrier had active authority and compliant safety metrics.`,
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof FeedBodyError) return bodyRefusal(error);
     return refusal(400, 'invalid_payload', 'Request must be valid JSON', 'Send { "decisionId": string }');
   }
 }

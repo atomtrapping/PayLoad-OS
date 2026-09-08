@@ -1,12 +1,12 @@
 import type { NextRequest } from 'next/server';
-import { json, refusal } from '../../_lib';
+import { bodyRefusal, FeedBodyError, json, readBoundedJson, refusal } from '../../_lib';
 import { FIXTURE_FACTORING_RECEIPTS } from '@/fixtures/caravan/factoring';
 import { verifyFactoringReceiptIntegrity } from '@/domain/factoring';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const receiptId = body.receiptId;
+    const body = (await readBoundedJson(request)) as { receiptId?: unknown } | undefined;
+    const receiptId = typeof body?.receiptId === 'string' ? body.receiptId : undefined;
 
     if (!receiptId) {
       return refusal(400, 'missing_receipt_id', 'Provide a receiptId in JSON body', 'Provide { "receiptId": "RCP-FACT-2026-0901" }');
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
       })),
       notary: found.notary,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof FeedBodyError) return bodyRefusal(error);
     return refusal(400, 'invalid_payload', 'Request must be valid JSON', 'Send { "receiptId": string }');
   }
 }

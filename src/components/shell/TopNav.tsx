@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CommandPalette } from './CommandPalette';
+import { NotationMark } from './NotationMark';
 import { VerticalContext } from './VerticalContext';
 import { locate } from './nav';
 
@@ -21,8 +22,8 @@ export function TopNav() {
       className="sticky top-0 z-40 flex items-center gap-3 px-3 sm:px-4 border-b"
       style={{ height: 'var(--topbar-h)', background: 'var(--bg-void)', borderColor: 'var(--border-default)' }}
     >
-      <span className="flex items-baseline gap-2 shrink-0">
-        <Link href="/releases" className="font-semibold tracking-tight" style={{ color: 'var(--text-heading)' }} aria-label="Payload OS home" title="Payload OS — the internal terminal for the backend behind Caravan, Tradewind and Landshark">Payload OS</Link>
+      <span className="flex items-center gap-2 shrink-0">
+        <Link href="/releases" className="inline-flex items-center gap-1.5 font-semibold tracking-tight" style={{ color: 'var(--text-heading)' }} aria-label="Payload OS home" title="Payload OS — the internal terminal for the backend behind Caravan, Tradewind and Landshark"><NotationMark size={15} />Payload OS</Link>
         <Link href="/product" className="label-sm hidden sm:inline" aria-label="Notation Systems product model">Notation Systems</Link>
       </span>
       <div className="flex-1 min-w-0 flex items-center gap-2 text-[13px]" aria-label="Where you are" data-testid="where">

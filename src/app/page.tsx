@@ -51,6 +51,7 @@ export default async function ConsolePage() {
       STATE_KERNEL: process.env.PAYLOAD_STATE_KERNEL_LOCAL === '1',
       COORDINATION: process.env.PAYLOAD_COORDINATION_LOCAL === '1',
       SOURCE_COLLECTION: process.env.PAYLOAD_SOURCE_COLLECTION === '1',
+      SELF_CAPTURE: process.env.PAYLOAD_SELF_CAPTURE_LOCAL === '1',
     },
   });
 

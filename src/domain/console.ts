@@ -96,6 +96,10 @@ export const LOCAL_RAILS = [
   { id: 'STATE_KERNEL', label: 'Notation state kernel', flag: 'PAYLOAD_STATE_KERNEL_LOCAL', enableWith: 'npm run dev:state-kernel', what: 'Saving a notation version through the Rust kernel. Previewing works without it; saving does not.' },
   { id: 'COORDINATION', label: 'Coordination board', flag: 'PAYLOAD_COORDINATION_LOCAL', enableWith: 'npm run dev:coordination', what: 'Posting, registering and acknowledging on the agent board. Reading works without it.' },
   { id: 'SOURCE_COLLECTION', label: 'Source collection', flag: 'PAYLOAD_SOURCE_COLLECTION', enableWith: 'PAYLOAD_SOURCE_COLLECTION=1', what: 'Permission to make a new outbound source capture. Replaying a capture already on disk never needs it and never contacts the provider.' },
+  // The only rail whose source is this repository. It reaches no network and
+  // needs no credential, which is what lets it exist at all; it still spawns a
+  // process on the operator's machine, which is why it is off like the rest.
+  { id: 'SELF_CAPTURE', label: 'Self observation', flag: 'PAYLOAD_SELF_CAPTURE_LOCAL', enableWith: 'PAYLOAD_SELF_CAPTURE_LOCAL=1', what: 'Reading this repository’s own commit objects and putting their content-derived fields through the admission gate. Local, read-only, and the one source here that needs nobody’s permission but the operator’s.' },
 ] as const;
 
 export interface ConsoleInputs {

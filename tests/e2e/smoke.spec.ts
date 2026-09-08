@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { LOCAL_RAILS } from '../../src/domain/console';
 
 const ROUTES = ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
 
@@ -519,12 +520,14 @@ test('the console reports the terminal on itself, and never turns an unreadable 
 
   // Every rail is off by configuration, drawn as DECLARED and never as a
   // refusal, and each prints the command that enables it.
-  await expect(page.locator('[data-console-state="DISABLED"]')).toHaveCount(4);
+  // Derived from the rail list, so adding a rail cannot silently make this
+  // assertion describe a page that no longer exists.
+  await expect(page.locator('[data-console-state="DISABLED"]')).toHaveCount(LOCAL_RAILS.length);
   await expect(page.locator('[data-console-state="DISABLED"] [data-epistemic="REFUSED"]')).toHaveCount(0);
   await expect(page.locator('[data-enable-with="PRODUCTION"]')).toHaveText('npm run dev:production');
 
   // The page declares that it writes nothing, and offers no control that could.
   await expect(page.getByTestId('console-loss')).toContainText('NONE');
-  await expect(page.getByTestId('console-because')).toContainText('4 of 4 local rails are off');
+  await expect(page.getByTestId('console-because')).toContainText(`${LOCAL_RAILS.length} of ${LOCAL_RAILS.length} local rails are off`);
   await expect(page.getByTestId('console').locator('button')).toHaveCount(0);
 });

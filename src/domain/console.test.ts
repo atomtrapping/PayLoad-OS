@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { CONSOLE_LOSS, CONSOLE_METHOD, CONSOLE_STATE_MEANING, LOCAL_RAILS, readConsole, type ConsoleInputs, type ConsoleState } from './console';
 import { EPISTEMIC_OF_CONSOLE } from './epistemic';
 
-const RAILS_OFF = { PRODUCTION: false, STATE_KERNEL: false, COORDINATION: false, SOURCE_COLLECTION: false } as const;
+const RAILS_OFF = { PRODUCTION: false, STATE_KERNEL: false, COORDINATION: false, SOURCE_COLLECTION: false, SELF_CAPTURE: false } as const;
 
 const inputs = (over: Partial<ConsoleInputs> = {}): ConsoleInputs => ({
   readAt: '2026-09-08T12:00:00.000Z',
@@ -97,7 +97,7 @@ describe('a rail an operator has not enabled is not a rail that failed', () => {
 
   it('counts the disabled rails in its own summary rather than leaving it to the reader', () => {
     expect(readConsole(inputs()).because).toContain(`${LOCAL_RAILS.length} of ${LOCAL_RAILS.length} local rails are off`);
-    expect(readConsole(inputs({ rails: { ...RAILS_OFF, PRODUCTION: true, COORDINATION: true } })).because).toContain(`2 of ${LOCAL_RAILS.length} local rails are off`);
+    expect(readConsole(inputs({ rails: { ...RAILS_OFF, PRODUCTION: true, COORDINATION: true } })).because).toContain(`${LOCAL_RAILS.length - 2} of ${LOCAL_RAILS.length} local rails are off`);
   });
 });
 

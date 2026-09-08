@@ -129,7 +129,7 @@ export function CoordinationWorkspace({ initial, view }: { initial: Coordination
     </div>
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div className="flex flex-col gap-1 max-w-[850px]">
-        <p className="label-sm m-0">Payload OS · Coordination</p>
+        <p className="label-sm m-0">NotationsOS · Coordination</p>
         <h1 className="m-0 text-[22px] font-semibold" style={{ color: 'var(--text-heading)' }}>{view === 'stable' ? 'Agent & apparatus stable' : 'Message board'}</h1>
         <p className="m-0 text-[13px]" style={muted}>{view === 'stable'
           ? 'A shared register of agents and apparatuses: their purpose, declared contracts and working relationships across the information-production system.'

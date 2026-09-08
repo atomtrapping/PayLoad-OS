@@ -1,7 +1,7 @@
 ---
 title: "Production path workspace"
 status: "IMPLEMENTED · REAL RAIL OR FIXTURE MODE"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -11,8 +11,8 @@ tags:
 # Production path workspace
 
 **State:** `IMPLEMENTED · REAL RAIL OR FIXTURE MODE`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > One continuous path in seven stages (source, acquisition, normalization, candidate build, inspection, notation, release), each with a state from a closed vocabulary derived from what the rails produced, with recovery actions and an inspector.
 

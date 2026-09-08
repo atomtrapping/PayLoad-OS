@@ -11,7 +11,7 @@ tags:
 
 **State:** `FIXTURE · SYNTHETIC`  
 **Group:** World: sources, rights and recorded material  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The Caravan specialty-cargo corpus (three releases, nineteen records, two retractions, seven sources with rights) and the synthetic Carrier JSON contract drive every screen and the local rail's demonstration.
 

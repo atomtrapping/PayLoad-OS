@@ -5,18 +5,18 @@ import { FLAGSHIP_PRODUCTS, THESIS } from './product';
 
 /**
  * The founder's correction of 2026-09-06: the products are three APIs, and
- * Payload OS is the internal terminal over the backend that produces them.
- * The earlier framing put Payload OS above the three as a platform, which read
+ * NotationsOS is the internal terminal over the backend that produces them.
+ * The earlier framing put NotationsOS above the three as a platform, which read
  * as though the platform were the product. These assertions keep it corrected.
  */
-describe('the three APIs are the products; Payload OS is the terminal', () => {
+describe('the three APIs are the products; NotationsOS is the terminal', () => {
   it('names three products, each delivered as an API and MCP', () => {
     expect(DOMAINS.map((d) => d.label)).toEqual(['Caravan', 'Tradewind', 'Landshark']);
     for (const d of DOMAINS) expect(d.delivery).toBe('API and MCP');
   });
 
-  it('calls Payload OS a terminal and never a product', () => {
-    expect(PRODUCT_ROOT.terminal).toBe('Payload OS');
+  it('calls NotationsOS a terminal and never a product', () => {
+    expect(PRODUCT_ROOT.terminal).toBe('NotationsOS');
     expect(PRODUCT_ROOT.terminalRole).toMatch(/internal terminal/i);
     expect(PRODUCT_ROOT.terminalRole).toMatch(/not a customer product/i);
     // The old shape must not come back.
@@ -38,7 +38,7 @@ describe('the three APIs are the products; Payload OS is the terminal', () => {
   it('keeps the authoritative document in step with the data', () => {
     const doc = readFileSync(new URL('../../docs/ECONOMIC_ARCHITECTURE.md', import.meta.url), 'utf8');
     expect(doc).toMatch(/The three APIs are the flagship products/);
-    expect(doc).toMatch(/Payload OS is the terminal, not a product/);
-    expect(doc).not.toMatch(/Payload OS is the shared production layer/);
+    expect(doc).toMatch(/NotationsOS is the terminal, not a product/);
+    expect(doc).not.toMatch(/NotationsOS is the shared production layer/);
   });
 });

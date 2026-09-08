@@ -11,7 +11,7 @@ tags:
 
 **State:** `COMMITTED · UNSIGNED`  
 **Group:** Corpus Fabric — evidence → candidates, releases, products  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Each release carries a manifest (build, release digest, record count, retractions applied, sources with rights, certification, governance) whose commitment is the digest of its canonical JSON, and a production record across the twelve stages.
 

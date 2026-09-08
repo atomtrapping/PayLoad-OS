@@ -125,7 +125,7 @@ The adapter starts only `.stamp/production-worker.mjs` through the current Node 
 
 [`connector.ts`](../src/production/connector.ts) declares future scope, transport, pagination, resource limits, retries/cursors, credential reference and extraction version. It activates **no connector**. No URL is fetched, scheduler/fleet created or customer workload accepted. Field-level comparison, independent rights verification, canonical identity/admission, release activation and public delivery remain absent.
 
-[Source integration inventory](SOURCE_INTEGRATION_INVENTORY.md) establishes the 21 named entries in the existing Payload Terminal registry as integration inputs. Seven external adapter declarations, one curated assembly and thirteen entries without adapters remain distinct; none is represented as a connected Payload OS source. The first live connector still requires exact source and collection-scope selection.
+[Source integration inventory](SOURCE_INTEGRATION_INVENTORY.md) establishes the 21 named entries in the existing Payload Terminal registry as integration inputs. Seven external adapter declarations, one curated assembly and thirteen entries without adapters remain distinct; none is represented as a connected NotationsOS source. The first live connector still requires exact source and collection-scope selection.
 
 ```console
 npm run check

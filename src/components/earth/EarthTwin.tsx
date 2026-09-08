@@ -606,7 +606,7 @@ export function EarthTwin({ release, source, records, instrument, located, asset
         <div className="inspector-head">
           <div className="min-w-0">
             <div className="label-sm">Instrument · projection fabric</div>
-            <h2 id="earth-inspector-title" className="m-0 text-[15px] font-semibold leading-snug" style={{ color: 'var(--text-heading)' }}>Payload OS Earth Twin</h2>
+            <h2 id="earth-inspector-title" className="m-0 text-[15px] font-semibold leading-snug" style={{ color: 'var(--text-heading)' }}>NotationsOS Earth Twin</h2>
             <div className="text-[12px] mt-0.5" style={faint}>{EARTH_ENGINE.name} {EARTH_ENGINE.version} · {EARTH_ENGINE.license} · keyless · served from this origin</div>
           </div>
         </div>
@@ -826,7 +826,7 @@ export function EarthTwin({ release, source, records, instrument, located, asset
           </Part>
 
           <Part title={`World signals · ${GEV_SIGNAL_SOURCES.length} named, 0 integrated`} testId="earth-signals" folded>
-            <p className="m-0 text-[12px]" style={muted}>The public signals {EARTH_TWIN_ORIGIN.name} reads, with their terms as its source list records them. Each would enter Payload OS through the acquisition rail under a registration and a rights decision. None has.</p>
+            <p className="m-0 text-[12px]" style={muted}>The public signals {EARTH_TWIN_ORIGIN.name} reads, with their terms as its source list records them. Each would enter NotationsOS through the acquisition rail under a registration and a rights decision. None has.</p>
             <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Signal sources">
               {GEV_SIGNAL_SOURCES.map((s) => (
                 <li key={s.id} className="surface-inset p-2 text-[12px]" data-signal={s.id} data-integration={s.integrationState}>

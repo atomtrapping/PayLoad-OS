@@ -12,13 +12,13 @@ tags:
 
 **State:** `CANDIDATE · NOT_IMPORTED`  
 **Group:** World: sources, rights and recorded material  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The first qualification candidate for an independently checkable recorded-data case: Toronto traversals with camera, LiDAR, GNSS/inertial evidence and calibrations. Documentation reviewed, nothing downloaded, no receipts created.
 
 ## What it is
 
-- Provider capabilities are PRESENT in documentation; every Payload OS state is NOT_IMPORTED.
+- Provider capabilities are PRESENT in documentation; every NotationsOS state is NOT_IMPORTED.
 - Would feed the recorded-observation manifest as real frames, clocks, calibrations and poses.
 
 ## Where it lives

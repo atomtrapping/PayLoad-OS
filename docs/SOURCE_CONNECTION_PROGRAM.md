@@ -66,7 +66,7 @@ No initial collection here implies recurring automation. After one accepted capt
 5. Run one explicitly opt-in, bounded live acceptance using the same guarded path. Record success, rejection or unresolved rights honestly. Successful transport is not canonical admission, corpus release, customer delivery or independent verification.
 6. Verify tests and readback, commit only code/docs/safe fixtures, push the existing branch and verify the remote commit. Keep acquired evidence outside Git. State precisely which source variant and slice passed, then choose the next eligible source.
 
-Unresolved provider selection, credentials, entitlement, privacy, redistribution rights or endpoint behavior remain explicit blockers. These sources feed Payload OS production; they do not merge Caravan, Tradewind or Landshark domain ownership, add a new corporate mandate, or give proprietary capital activity access to customer material.
+Unresolved provider selection, credentials, entitlement, privacy, redistribution rights or endpoint behavior remain explicit blockers. These sources feed NotationsOS production; they do not merge Caravan, Tradewind or Landshark domain ownership, add a new corporate mandate, or give proprietary capital activity access to customer material.
 
 ## Primary documentation reviewed
 

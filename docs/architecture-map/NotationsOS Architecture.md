@@ -1,17 +1,17 @@
 ---
-title: "Payload OS Architecture"
+title: "NotationsOS Architecture"
 tags:
   - architecture-map
 ---
 
-# Payload OS architecture map
+# NotationsOS architecture map
 
-An editable map of the Notation Systems / Payload OS repository as it exists on the branch, drawn for brainstorming and refinement. Every card is one part with its present state, what it is, where it lives, what it must not do, what it connects to, and open questions.
+An editable map of the Notation Systems / NotationsOS repository as it exists on the branch, drawn for brainstorming and refinement. Every card is one part with its present state, what it is, where it lives, what it must not do, what it connects to, and open questions.
 
 ## Open it
 
 - Open this folder (`docs/architecture-map`) as an Obsidian vault, or open the repository root as a vault: links resolve either way.
-- **Payload OS Architecture.canvas** is the graph. Cards link to their notes under `parts/`. Drag, regroup, add cards and arrows; the canvas is a plain JSON Canvas file and survives a commit.
+- **NotationsOS Architecture.canvas** is the graph. Cards link to their notes under `parts/`. Drag, regroup, add cards and arrows; the canvas is a plain JSON Canvas file and survives a commit.
 - Graph view: filter by tag `#architecture-map`, then by `fabric/…` or `layer/…` to see one fabric at a time.
 - The Mermaid overview below renders in reading view.
 
@@ -29,7 +29,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 
 ### Firm, domain products and customers
 
-- [[Notation Systems and Payload OS]] — `AUTHORITATIVE POSITIONING` — A systems and intelligence firm for the physical economy.
+- [[Notation Systems and NotationsOS]] — `AUTHORITATIVE POSITIONING` — A systems and intelligence firm for the physical economy.
 - [[Domain products (Caravan, Tradewind, Landshark)]] — `CARAVAN ACTIVE · TWO MODULE SLOTS` — Three domain products over one platform.
 - [[Usage as telemetry]] — `MODELLED · NOTHING METERED · EVENT HALF ABSENT` — Every query and compute run is a lap; what a response would have to carry before a bill could point at it.
 - [[The serving boundary and the reasoner]] — `SPECIFIED · NOTHING ENFORCED · NO CALLER IDENTIFIED` — What a transport can enforce that a key cannot, the two-part rule, policy attestation, and the three rules a reasoner over the surface is held to.
@@ -104,7 +104,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 - [[Scene interchange and the learned tier]] — `ROUTED · NOTHING WRITTEN · NOTHING EMBEDDED` — OpenUSD as a scene target and never a store, the layer stack as the release ABI, and the learned hyperbolic manifold as the tier below the corpus.
 - [[Ruling projections and result manifests]] — `IMPLEMENTED · FIXTURE CASES` — The same case bundle projected for sponsor, internal reviewer, named counterparty or public; rulings commit to a result manifest with a commitment, evidence root and anchor, exported machine-readably with an API example.
 
-### Application layer — the Payload OS workbench (Next.js)
+### Application layer — the NotationsOS workbench (Next.js)
 
 - [[App shell, navigation and design system]] — `IMPLEMENTED` — One shell: a top bar that says where you are, the domain-product control, five activity areas (Acquisition, Corpus, Notations, Inquiry, Coordination) declared as data, a center surface and an inspector pattern with responsive sheets.
 - [[Production path workspace]] — `IMPLEMENTED · REAL RAIL OR FIXTURE MODE` — One continuous path in seven stages (source, acquisition, normalization, candidate build, inspection, notation, release), each with a state from a closed vocabulary derived from what the rails produced, with recovery actions and an inspector.
@@ -132,7 +132,7 @@ An editable map of the Notation Systems / Payload OS repository as it exists on 
 flowchart TB
   subgraph firm["Firm, domain products and customers"]
     direction LR
-    firm["Notation Systems and Payload OS"]
+    firm["Notation Systems and NotationsOS"]
     products["Domain products (Caravan, Tradewind, Landshark)"]
     customers["Customers and distribution channels"]
     serving["The serving boundary and the reasoner"]
@@ -203,7 +203,7 @@ flowchart TB
     scenetier["Scene interchange and the learned tier"]
     workbenchproj["Ruling projections and result manifests"]
   end
-  subgraph app["Application layer  the Payload OS workbench (Nextjs)"]
+  subgraph app["Application layer  the NotationsOS workbench (Nextjs)"]
     direction LR
     shell["App shell, navigation and design system"]
     productionpath["Production path workspace"]

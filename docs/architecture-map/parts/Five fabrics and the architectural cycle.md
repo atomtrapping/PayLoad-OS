@@ -11,7 +11,7 @@ tags:
 
 **State:** `DOCTRINE AS DATA`  
 **Group:** Doctrine and governance (applies to every layer)  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Acquire → Preserve evidence → Compile corpus → Establish state → Project → Compute → Investigate → Act → Observe. Five fabrics share provenance-bearing references over one substrate; feedback re-enters as evidence, never straight into canonical state.
 

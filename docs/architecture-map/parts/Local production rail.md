@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · OPT-IN · LOOPBACK`  
 **Group:** Corpus Fabric — evidence → candidates, releases, products  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > One command contract drives registration, capture, fixed normalization and candidate-build assembly with structured stage receipts, historical retry, conflict detection, quarantine of invalid input and request-bound failed-run integrity.
 

@@ -12,7 +12,7 @@ tags:
 
 **State:** `SURFACE`  
 **Group:** Acquisition Fabric — world → evidence  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The navigation area for coverage, sources, collection attempts and failures: the acquisitions section of the candidates rail and the evidence list across cases.
 

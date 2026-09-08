@@ -104,7 +104,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
               </span>
             </div>
             <p className="m-0 mt-1 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-              Underwriting receipt attested by Payload OS Notary under Caravan Specialty Cargo specifications.
+              Underwriting receipt attested by NotationsOS Notary under Caravan Specialty Cargo specifications.
             </p>
           </div>
 

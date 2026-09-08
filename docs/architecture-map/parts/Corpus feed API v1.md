@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · FIXTURE-BACKED`  
 **Group:** Projection Fabric — representations, APIs and instruments  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Releases, records, manifests, as-of queries, retractions and rulings as JSON over the same payloads the screens use; the stream page shows the feed URL that reproduces every answer.
 

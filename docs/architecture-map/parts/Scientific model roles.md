@@ -12,7 +12,7 @@ tags:
 
 **State:** `DOCTRINE`  
 **Group:** Compute / Decision Fabric — derived objects, never truth by default  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Different methods answer different questions: factor graphs first for estimation, then physics-informed and operator models where they earn their place; a prediction never grants canonical admission or distribution rights.
 

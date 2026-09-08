@@ -11,7 +11,7 @@ tags:
 
 **State:** `MODELLED · JOIN ABSENT`  
 **Group:** Corpus Fabric — evidence → candidates, releases, products  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Identity is line-agnostic; the verticals are not. One core solves resolution, provenance, bitemporality and linkage for every line; the identifiers beneath belong to their line. The moat is the cross-line join, and it is absent.
 

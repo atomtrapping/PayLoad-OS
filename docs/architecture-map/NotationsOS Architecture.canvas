@@ -363,7 +363,7 @@
   {
    "id": "cf8d0bd4b75e8c2c",
    "type": "group",
-   "label": "Application layer — the Payload OS workbench (Next.js)",
+   "label": "Application layer — the NotationsOS workbench (Next.js)",
    "x": 0,
    "y": 4016,
    "width": 1548,
@@ -502,7 +502,7 @@
   {
    "id": "fd1bb4656f4c6f0f",
    "type": "text",
-   "text": "## Notation Systems and Payload OS\n`AUTHORITATIVE POSITIONING`\n\nA systems and intelligence firm for the physical economy. Payload OS is the shared information-production and operating platform; the corpora and their API are the product.\n\n[[Notation Systems and Payload OS]]",
+   "text": "## Notation Systems and NotationsOS\n`AUTHORITATIVE POSITIONING`\n\nA systems and intelligence firm for the physical economy. NotationsOS is the shared information-production and operating platform; the corpora and their API are the product.\n\n[[Notation Systems and NotationsOS]]",
    "x": 1748,
    "y": 56,
    "width": 340,

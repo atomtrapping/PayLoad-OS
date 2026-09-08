@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · SYNTHETIC PREVIEW`  
 **Group:** Compute / Decision Fabric — derived objects, never truth by default  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A bounded 3D rigid weighted-least-squares estimator with local conditional covariance and held-out check points, plus explicit access geometry: Cartesian distance, permitted-network shortest paths and closure scenarios.
 

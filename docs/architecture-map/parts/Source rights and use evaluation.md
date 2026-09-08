@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED`  
 **Group:** Acquisition Fabric — world → evidence  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > One exact decision per purpose, operation and audience at one instant: ALLOWED, APPROVAL_REQUIRED or DENIED, with reasons. Every capture, normalization and build evaluates it before acting.
 

@@ -1,7 +1,7 @@
 ---
 title: "Corpus and product pages"
 status: "IMPLEMENTED"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -11,8 +11,8 @@ tags:
 # Corpus and product pages
 
 **State:** `IMPLEMENTED`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > /model (the operating model as data), /products (the three products, then what Caravan delivers), /releases and release detail with certification and rights, /stream (as-of), /retractions and /api (endpoints with live examples).
 

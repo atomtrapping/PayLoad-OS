@@ -12,7 +12,7 @@ tags:
 
 **State:** `STATED · ONE OF SIX BUILT`
 **Group:** Space as a working dimension
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The display was built first and derives nothing. Space has four other jobs — resolver, join key, validity clock, inference engine — and a fifth that decides what to buy.
 

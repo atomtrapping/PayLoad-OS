@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · LOCAL REGISTRATION`  
 **Group:** Coordination layer — participants, requests, results  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Definitions of each participant: purpose, authority, runtime, version, domains, input and output contracts, capabilities and references; synastry is the declared connections between contracts with missing inputs stated.
 

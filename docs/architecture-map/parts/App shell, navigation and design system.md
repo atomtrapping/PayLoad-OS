@@ -1,7 +1,7 @@
 ---
 title: "App shell, navigation and design system"
 status: "IMPLEMENTED"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -10,8 +10,8 @@ tags:
 # App shell, navigation and design system
 
 **State:** `IMPLEMENTED`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > One shell: a top bar that says where you are, the domain-product control, five activity areas (Acquisition, Corpus, Notations, Inquiry, Coordination) declared as data, a center surface and an inspector pattern with responsive sheets.
 

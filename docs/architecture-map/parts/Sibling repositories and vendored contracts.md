@@ -11,7 +11,7 @@ tags:
 
 **State:** `PINNED · READ-ONLY`  
 **Group:** Runtimes, local stores and verification  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The control-plane result-manifest and canonical-URI code is vendored verbatim from Notations-Ecosystem at a pinned commit, used only by tests. Notations Kernel and the Payload Terminal V0 prototype were audited read-only.
 

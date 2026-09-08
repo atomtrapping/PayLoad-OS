@@ -397,7 +397,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
             <div className="surface p-3 rounded flex flex-col gap-2 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="font-semibold text-white">The Notary Defense Architecture:</div>
               <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-                Payload OS creates an indisputable audit trail for commercial transportation. By locking the exact carrier qualifications into a rolling cryptographic stream at decision time (Tk), 3PLs and underwriters can decisively refute allegations of negligent carrier selection during post-accident discovery.
+                NotationsOS creates an indisputable audit trail for commercial transportation. By locking the exact carrier qualifications into a rolling cryptographic stream at decision time (Tk), 3PLs and underwriters can decisively refute allegations of negligent carrier selection during post-accident discovery.
               </p>
             </div>
           </div>

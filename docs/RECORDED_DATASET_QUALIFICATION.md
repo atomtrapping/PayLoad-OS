@@ -6,7 +6,7 @@ Qualification study: 2026-09-06 UTC. **Boreas is a candidate source, not an impo
 
 The original Boreas dataset is the first qualification candidate: outdoor Toronto traversals, repeated across seasons, with camera, LiDAR and GNSS/inertial evidence. The provider reference is pinned to pyboreas revision `c4fb97e74741ca8537259682456ee3cbca265444`; a documentation pin does not pin mutable S3 objects. [Provider reference](https://github.com/utiasASRL/pyboreas/blob/c4fb97e74741ca8537259682456ee3cbca265444/DATA_REFERENCE.md)
 
-| Capability | Provider documentation | Payload OS actual state |
+| Capability | Provider documentation | NotationsOS actual state |
 |---|---|---|
 | Camera, LiDAR, poses, IMU | PRESENT | NOT_IMPORTED |
 | Intrinsics and sensor extrinsics | PRESENT | NOT_IMPORTED; calibration not verified locally |

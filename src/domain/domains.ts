@@ -8,17 +8,17 @@ import type { Domain } from './types';
  *   ├─ Tradewind — API and MCP — markets, instruments, pricing, risk
  *   └─ Landshark — API and MCP — parcels, zoning, entitlements, development state
  *
- *   Payload OS — the internal terminal that operates, monitors and navigates
+ *   NotationsOS — the internal terminal that operates, monitors and navigates
  *                the backend those three are produced from. Not sold.
  *
- * The three APIs are the flagship products. Payload OS is the instrument the
+ * The three APIs are the flagship products. NotationsOS is the instrument the
  * firm runs them from; this repository is that terminal. Caravan is the only
  * product with a corpus and a feed here; Tradewind and Landshark are declared
  * and empty.
  */
 export const PRODUCT_ROOT = {
   company: 'Notation Systems',
-  terminal: 'Payload OS',
+  terminal: 'NotationsOS',
   terminalRole: 'Internal terminal: operates, monitors and navigates the backend. Not a customer product.',
   productsRole: 'Three APIs, delivered as HTTP feeds and MCP tools, are the flagship products.',
 } as const;

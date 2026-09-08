@@ -11,7 +11,7 @@ tags:
 
 **State:** `V0, V1 REACHED`  
 **Group:** Doctrine and governance (applies to every layer)  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > V0 provenance and V1 deterministic reproducibility are reached. V2 signed releases, V3 independent recomputation, V4 execution attestation and V5 formal proof are not, and are stated so.
 

@@ -11,7 +11,7 @@ tags:
 
 **State:** `HOUSE VOCABULARY`  
 **Group:** Doctrine and governance (applies to every layer)  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Evidence ≠ assertion. Evaluation ≠ verification. Refused ≠ false. Valid time ≠ knowledge time. History stays visible. Visibility classes are explicit. Output is never called a warrant.
 

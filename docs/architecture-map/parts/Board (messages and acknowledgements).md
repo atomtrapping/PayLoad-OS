@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · LOCAL POSTING`  
 **Group:** Coordination layer — participants, requests, results  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Shared messages by topic and kind: requests, handoffs, blockers, results and acknowledgements, directed or broadcast, with replies and release context.
 

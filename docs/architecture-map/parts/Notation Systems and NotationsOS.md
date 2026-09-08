@@ -1,5 +1,5 @@
 ---
-title: "Notation Systems and Payload OS"
+title: "Notation Systems and NotationsOS"
 status: "AUTHORITATIVE POSITIONING"
 group: "Firm, domain products and customers"
 tags:
@@ -7,20 +7,20 @@ tags:
   - layer/firm
 ---
 
-# Notation Systems and Payload OS
+# Notation Systems and NotationsOS
 
 **State:** `AUTHORITATIVE POSITIONING`  
 **Group:** Firm, domain products and customers  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
-> A systems and intelligence firm for the physical economy. Payload OS is the shared information-production and operating platform; the corpora and their API are the product.
+> A systems and intelligence firm for the physical economy. NotationsOS is the shared information-production and operating platform; the corpora and their API are the product.
 
 ## What it is
 
 - Notation Systems builds provenance-bearing computational corpora from authorized geospatial, remote-sensing, operational and scientific source material.
 - The internal production system (acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, recall) is a means of production, not the product.
 - The corpora are the finished information inventory. APIs, feeds, reports, workbenches and MCP tools distribute it. Customers apply their own inference to the streams.
-- Payload OS is the shared platform under the three domain products.
+- NotationsOS is the shared platform under the three domain products.
 
 ## Where it lives
 

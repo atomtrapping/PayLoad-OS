@@ -11,7 +11,7 @@ tags:
 
 **State:** `PRESENT · LOCAL · AUTHORED STATE ONLY`  
 **Group:** State Fabric — validation, admission and canonical versions  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A deterministic Rust command and history core for authored notation objects and explicit relationships: the frontend sends commands over a loopback API; Rust replays and validates; Save writes a versioned local snapshot.
 

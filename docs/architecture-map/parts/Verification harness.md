@@ -11,7 +11,7 @@ tags:
 
 **State:** `GREEN ON THE BRANCH`  
 **Group:** Runtimes, local stores and verification  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Vitest unit and component tests, three Playwright configurations (regular desktop and Pixel 7, production rail with a real worker, real Rust kernel), axe accessibility checks, horizontal-overflow guards and regenerated screenshots.
 

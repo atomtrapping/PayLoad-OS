@@ -1,7 +1,7 @@
 ---
 title: "Case workbench"
 status: "IMPLEMENTED · FIXTURE CASES"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -11,8 +11,8 @@ tags:
 # Case workbench
 
 **State:** `IMPLEMENTED · FIXTURE CASES`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > The optional prescribed control over the corpus: CASE → USE → CLAIMS → EVIDENCE → CHECKS → RULING → REMEDIATION → RELEASE → MONITORING, with staged intake, a decision rail, lineage from artifact to ruling, bitemporal replay and admission profiles.
 

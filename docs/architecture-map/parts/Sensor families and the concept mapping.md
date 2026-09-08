@@ -11,7 +11,7 @@ tags:
 
 **State:** `CONTRACT ONLY · NOTHING REGISTERED · NOTHING FUSED`
 **Group:** Acquisition Fabric — world → evidence
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The sensor convergence is free — two observation models over one state. The semantic one is the work: neither family emits corpus concepts, so fusion at the fact level is blocked however good the estimator is. And meteorology is not a third sensor; it drives the state the others observe and decides whether they can observe at all.
 

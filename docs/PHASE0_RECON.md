@@ -4,7 +4,7 @@ Factual findings only. Produced 2026-09-04 by reading the sibling repositories u
 
 ## Target state
 
-`notationsystems/NotationsOS` had **no commits** and no remote branches when this work began. Everything in this repository was created in the session that produced this document. There was no existing Payload OS frontend to preserve; the sibling repositories were the substrate to shadow.
+`notationsystems/NotationsOS` had **no commits** and no remote branches when this work began. Everything in this repository was created in the session that produced this document. There was no existing NotationsOS frontend to preserve; the sibling repositories were the substrate to shadow.
 
 Sibling repositories inspected (all public, cloned shallow, read-only):
 
@@ -40,7 +40,7 @@ Control plane: `/health`, `/v1/snapshot`, `/v1/events`, `/v1/commands`, `/v1/pro
 
 `payload-terminal-v0/src/app/globals.css:9-69` is authoritative per `docs/UX_UI_V0.md:52-54`: void backgrounds (`--bg-void #04040A`, `--bg-primary #06060C`, `--bg-secondary #0C0E1A`, `--bg-tertiary #121628`), gold accent (`--gold-primary #D4AF37`, `--gold-light #F0D060`), cyan telemetry (`--cyan-primary #00E5FF`), alert red/orange/green/blue (`#FF3D3D`, `#FF9500`, `#00E676`, `#448AFF`), text (`#E8E6E0`, `#9B978E`, `#5C5A54`, `#F5F0E0`), Inter for body and JetBrains Mono for HUD values, and a Tailwind 4 `@theme inline` bridge (`:120-125`). Semantic conventions: gold = primary state/action, cyan = information, green = confirmed healthy, red/orange = exceptions.
 
-Not carried into Payload OS (recorded deviations): glass blur and glow, scanline and pulse keyframes, the global 0.6 s colour transition on `*` (`:74-79`), the violet `theme-ghost` variant (`:84-118`), the fixed viewport overflow lock, the Google Fonts import (a blocked font host blocked page rendering behind this environment's proxy). Gaps Terminal has that Payload OS had to add: no global `:focus-visible` rule, no status tokens for verdict states, no light/print theme, no spacing scale, `--text-muted #5C5A54` fails 4.5:1 on the primary background.
+Not carried into NotationsOS (recorded deviations): glass blur and glow, scanline and pulse keyframes, the global 0.6 s colour transition on `*` (`:74-79`), the violet `theme-ghost` variant (`:84-118`), the fixed viewport overflow lock, the Google Fonts import (a blocked font host blocked page rendering behind this environment's proxy). Gaps Terminal has that NotationsOS had to add: no global `:focus-visible` rule, no status tokens for verdict states, no light/print theme, no spacing scale, `--text-muted #5C5A54` fails 4.5:1 on the primary background.
 
 The Render Engine's `src/ui/theme.css` is a different palette (`--accent #4da6ff`, IBM Plex Mono) and was not mixed in. Its `docs/ARCHITECTURE.md:306` cites a Terminal `--unk` token that does not exist.
 
@@ -63,7 +63,7 @@ The `CaseSource` adapter interface is the only seam this repository introduces. 
 
 ## Conflicts or duplicated concepts
 
-- **Product name**: Terminal (`layout.tsx:6-8`) was OSIRIS then Sea Dog Terminal; `identity.ts:16-19` records rename churn as a defect class. "Payload OS" is a third name.
+- **Product name**: Terminal (`layout.tsx:6-8`) was OSIRIS then Sea Dog Terminal; `identity.ts:16-19` records rename churn as a defect class. "NotationsOS" is a third name.
 - **"attestation"** has three code meanings (evidence lattice, sensor trust, carrier attestation class) plus Ed25519 posture statements in the control plane. None is the brief's VERIFIED_ATTESTATION.
 - **"admissible"** in Terminal means "rests on no representative input"; it is not a ruling.
 - **"refused"** has at least five meanings (authorization decision, a carrier refusing a tender, an emit result, a search family, a contract translation).
@@ -114,8 +114,8 @@ These could not be resolved by inspection. Where the implementation needed an an
 1. No substrate object carries a ruling status, assurance class or visibility class. Any mapping from held/breached/unproven, authorized/refused/undetermined, verified/partially_verified/unverified/challenged and `Anchor.kind` onto the brief's enums is an adapter policy, not a fact read from code.
 2. HUMAN_REVIEWED has no substrate source beyond `decidedBy.kind 'operator'` and `override.approvedBy`.
 3. Timestamp casing on the wire (camelCase substrate vs snake_case brief).
-4. Whether Payload OS namespaces the brief's senses of "attestation", "admissible", "refused", "evidence class", "manifest", "claim" and "INTERNAL_ONLY", or overloads existing words.
-5. Whether "Payload OS" is a rename of Payload Terminal or a third product.
+4. Whether NotationsOS namespaces the brief's senses of "attestation", "admissible", "refused", "evidence class", "manifest", "claim" and "INTERNAL_ONLY", or overloads existing words.
+5. Whether "NotationsOS" is a rename of Payload Terminal or a third product.
 6. Direction of the supersession edge (status on the earlier ruling vs pointer from the later one).
 7. Whether `production_class` is shown as a third axis (with `unclassified`) or omitted until an acquisition corpus feeds it.
 8. No live case, manifest or receipt store exists; the adapter can only be specified against fixtures until persistence exists.

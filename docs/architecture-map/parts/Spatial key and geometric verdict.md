@@ -12,7 +12,7 @@ tags:
 
 **State:** `BUILT · POINTS ONLY · NO RESOLUTION DECISION`
 **Group:** Space as a working dimension
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A cell may never be finer than the evidence, and the cell is not the answer. The key decides which pairs are worth comparing; the comparison is metric, and it refutes far more often than it confirms.
 

@@ -11,7 +11,7 @@ tags:
 
 **State:** `PINNED ENGINE · SPECIALIST`  
 **Group:** Compute / Decision Fabric — derived objects, never truth by default  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A preserved IFC (Industry Foundation Classes) building-model artifact is audited by the exact pinned GAT engine; the original report, a separate safe projection and an immutable execution receipt keep distinct identities.
 

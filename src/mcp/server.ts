@@ -1,5 +1,5 @@
 /**
- * Payload OS — MCP server (stdio).
+ * NotationsOS — MCP server (stdio).
  *
  *   npm run mcp
  *

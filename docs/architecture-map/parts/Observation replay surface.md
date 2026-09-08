@@ -1,7 +1,7 @@
 ---
 title: "Observation replay surface"
 status: "IMPLEMENTED · SYNTHETIC PREVIEW"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -11,8 +11,8 @@ tags:
 # Observation replay surface
 
 **State:** `IMPLEMENTED · SYNTHETIC PREVIEW`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > The recorded-observation contract made understandable: a linked frame diagram (sensor → calibration → body → pose → world), a timeline of clock alignments, calibration validity, stamps and pose mismatches, an observation register, and an inspector connecting a selection to its evidence, estimate, placement and comparisons.
 

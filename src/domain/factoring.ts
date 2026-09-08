@@ -1,5 +1,5 @@
 /**
- * Payload OS — Freight Factoring Underwriting Receipts.
+ * NotationsOS — Freight Factoring Underwriting Receipts.
  *
  * NOTARY, NOT SETTLER.
  * This module does not execute funds transmission, banking float, or UCC 4A settlement.

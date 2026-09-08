@@ -1,4 +1,4 @@
-/** Shared Payload OS coordination contracts. These are operational records, not Kernel entities. */
+/** Shared NotationsOS coordination contracts. These are operational records, not Kernel entities. */
 export const MESSAGE_KINDS = ['NOTE', 'REQUEST', 'HANDOFF', 'BLOCKER', 'RESULT'] as const;
 export const DOMAINS = ['CARAVAN', 'TRADEWIND', 'LANDSHARK'] as const;
 export const AUTHORITIES = ['canonical', 'evidence', 'coordination', 'derived', 'projection', 'verification'] as const;

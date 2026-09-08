@@ -12,7 +12,7 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   const navigation = await page.goto('/earth');
   // Withheld metadata must never arrive in the document/RSC payload, not merely be hidden by the UI.
   expect(await navigation!.text()).not.toMatch(/REC-0305|REC-0401|REC-0402/);
-  await expect(page.getByRole('heading', { level: 2, name: 'Payload OS Earth Twin' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'NotationsOS Earth Twin' })).toBeVisible();
   const status = page.getByTestId('twin-status');
   await expect(status).toHaveAttribute('data-state', 'READY', { timeout: 45_000 });
   await expect(page.getByTestId('earth-renderer')).toContainText('CesiumJS on');

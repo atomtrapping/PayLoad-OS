@@ -11,7 +11,7 @@ tags:
 
 **State:** `NODE · RUST · PYTHON`  
 **Group:** Runtimes, local stores and verification  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Node.js/TypeScript is the facade and workbench; Rust is the deterministic notation state kernel; Python runs the pinned GAT engine. Everything local is retained under ignored `.payload/` roots.
 

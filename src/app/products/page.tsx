@@ -55,7 +55,7 @@ export default async function ProductsPage() {
               </li>
             ))}
           </ul>
-          <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>Payload OS, the terminal you are reading this in, is not among them. It operates, monitors and navigates the backend these are produced from. <Link href="/model" style={{ color: 'var(--info)' }}>The operating model</Link> states the rest.</p>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>NotationsOS, the terminal you are reading this in, is not among them. It operates, monitors and navigates the backend these are produced from. <Link href="/model" style={{ color: 'var(--info)' }}>The operating model</Link> states the rest.</p>
         </Section>
 
         <Section title="Usage, and what a bill could point at" id="ip-metering">

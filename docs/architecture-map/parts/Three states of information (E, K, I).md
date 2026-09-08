@@ -12,7 +12,7 @@ tags:
 
 **State:** `DOCTRINE AS DATA`  
 **Group:** State Fabric — validation, admission and canonical versions  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Evidence (what was observed; append-only, content-addressed), Canonical (admitted under a schema as a version; immutable per version), Inquiry (what one investigation manipulates; allowed to be wrong; promotion crosses validation).
 

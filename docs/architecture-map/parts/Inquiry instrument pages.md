@@ -1,7 +1,7 @@
 ---
 title: "Inquiry instrument pages"
 status: "IMPLEMENTED · SYNTHETIC PREVIEWS"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -11,8 +11,8 @@ tags:
 # Inquiry instrument pages
 
 **State:** `IMPLEMENTED · SYNTHETIC PREVIEWS`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > Spatial Inquiry (/spatial), Registration and access (/compute/registration), Clearance (/compute/clearance) and the Earth Twin (/earth): each a page over one compute or projection contract, marked as synthetic preview where it is one.
 

@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · MANUAL ANNOTATION`  
 **Group:** Compute / Decision Fabric — derived objects, never truth by default  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > How does opening or closing one explicit passage change access through one floor? A validated layout with spaces and passages, a scenario, and a directed-room-access analysis with CONFIRMED, POSSIBLE_ONLY and DISCONNECTED reachability.
 

@@ -11,7 +11,7 @@ tags:
 
 **State:** `PRESENT · KEYLESS · OFFLINE`  
 **Group:** Projection Fabric — representations, APIs and instruments  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A CesiumJS globe served from this origin with bundled imagery on the WGS84 ellipsoid, computed day and night at the twin's world time, and one point per geodetic position declared as a corpus record; the inspector names every layer's source and state.
 

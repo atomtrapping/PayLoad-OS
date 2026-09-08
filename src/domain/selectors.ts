@@ -1,5 +1,5 @@
 /**
- * Payload OS — presentation selectors.
+ * NotationsOS — presentation selectors.
  *
  * Pure functions over a ClaimCaseBundle. They PROJECT (filter, group, link,
  * label) and never ADJUDICATE: nothing here decides whether a claim is

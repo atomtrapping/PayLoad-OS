@@ -1,6 +1,6 @@
 # Local source connectors
 
-Payload OS has an operator-only acquisition connector for **FMCSA Company Census**, dataset `az4n-8mr2`. It feeds the existing local evidence rail, not the fixture customer API. The source is `fmcsa-company-census`; the prototype's `fmcsa-qcmobile` remains a different, credential-dependent API. See the [market-value connection queue](SOURCE_CONNECTION_PROGRAM.md) for all 21 inventoried sources and their blockers.
+NotationsOS has an operator-only acquisition connector for **FMCSA Company Census**, dataset `az4n-8mr2`. It feeds the existing local evidence rail, not the fixture customer API. The source is `fmcsa-company-census`; the prototype's `fmcsa-qcmobile` remains a different, credential-dependent API. See the [market-value connection queue](SOURCE_CONNECTION_PROGRAM.md) for all 21 inventoried sources and their blockers.
 
 ## Exact initial slice
 

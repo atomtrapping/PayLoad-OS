@@ -64,7 +64,7 @@ export interface BitemporalFilingObservation {
   // Bitemporal Coordinates
   validTime: ISODateTime;     // When the rule/order takes legal effect in the world
   validTo?: ISODateTime;      // Expiration / sunset if applicable
-  knowledgeTime: ISODateTime; // When Payload OS captured & committed the evidence into the archive
+  knowledgeTime: ISODateTime; // When NotationsOS captured & committed the evidence into the archive
 
   admissionStatus: AdmissionStatus;
   supersedesId?: string;       // If this amends, rescinds, or replaces an earlier order
@@ -286,7 +286,7 @@ export function generateComputationReceipt(
     evaluatedAt: new Date().toISOString(),
     asOfKnowledgeTime,
     confidentialityGuarantee: 'EPHEMERAL_IN_MEMORY_ZERO_PERSISTENCE',
-    notaryStatement: 'Payload OS Computation Receipt: Input payload hashed ephemerally; no borrower or loan level positions retained in canonical corpus.',
+    notaryStatement: 'NotationsOS Computation Receipt: Input payload hashed ephemerally; no borrower or loan level positions retained in canonical corpus.',
   };
 }
 

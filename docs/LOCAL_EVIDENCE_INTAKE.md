@@ -2,7 +2,7 @@
 
 Status update (2026-09-05): references below to six absences or no live connectors describe this document's earlier milestone. One bounded, operator-only FMCSA Company Census connector is now implemented for internal qualification; see [Local source connectors](LOCAL_SOURCE_CONNECTORS.md). It establishes neither recurring ingestion nor customer live feeds. All other authority, storage, identity, execution and verification boundaries below remain unchanged.
 
-Payload OS has a local evidence rail for capturing a file under a declared source-use policy and reopening the resulting acquisition to recompute its byte and receipt integrity. This is an internal means of information production. The company mandate and three domain products remain defined in [Economic architecture](ECONOMIC_ARCHITECTURE.md).
+NotationsOS has a local evidence rail for capturing a file under a declared source-use policy and reopening the resulting acquisition to recompute its byte and receipt integrity. This is an internal means of information production. The company mandate and three domain products remain defined in [Economic architecture](ECONOMIC_ARCHITECTURE.md).
 
 This increment implements only this path:
 
@@ -92,7 +92,7 @@ A process crash can leave an unreferenced object or temporary file. There is no 
 
 ## What was reused from Notations Bench
 
-The sibling `Notations Kernel` was studied read-only, including its `AGENTS.md`, `PROJECT_CONTEXT.md`, Caravan product contract and the source files below. The normalization, connector, corpus and profile tests were also reviewed. Its product boundary remains Payload OS shared rails with Caravan, Tradewind and Landshark owning their respective domains.
+The sibling `Notations Kernel` was studied read-only, including its `AGENTS.md`, `PROJECT_CONTEXT.md`, Caravan product contract and the source files below. The normalization, connector, corpus and profile tests were also reviewed. Its product boundary remains NotationsOS shared rails with Caravan, Tradewind and Landshark owning their respective domains.
 
 | Bench source | Concrete lesson carried into this increment or retained for its successor |
 |---|---|

@@ -11,7 +11,7 @@ tags:
 
 **State:** `BOUND · TESTED`  
 **Group:** Doctrine and governance (applies to every layer)  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Evidence is not state; canonical state is not the entire corpus; inquiry is allowed to be wrong; computation produces derived objects; projection never mutates its source; identity survives representation; every promoted result crosses an explicit validation boundary.
 

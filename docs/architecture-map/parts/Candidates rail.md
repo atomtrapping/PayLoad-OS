@@ -1,7 +1,7 @@
 ---
 title: "Candidates rail"
 status: "IMPLEMENTED"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -11,8 +11,8 @@ tags:
 # Candidates rail
 
 **State:** `IMPLEMENTED`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > The candidate-production rail before admission as an observable process: collection, extraction, normalization, candidate readiness; every metric names the field it is read from and every instant its clock; where coverage stops and what would change it.
 

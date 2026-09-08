@@ -11,7 +11,7 @@ tags:
 
 **State:** `MODELLED · NOTHING METERED · EVENT HALF ABSENT`  
 **Group:** Firm, domain products and customers  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Every query, compute run and agent invocation over a corpus is a lap. A lap is billable by construction only when the response it produced can be pointed at afterwards. Today a response says what the corpus was and not which response it is or who received it.
 

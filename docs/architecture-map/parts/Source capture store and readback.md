@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · READ-ONLY ROUTE`  
 **Group:** Acquisition Fabric — world → evidence  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The operator's qualification root holds real captures. A guarded loopback route reads one capture back without collection or provider contact, returning the store's own inspection or an exact not-found state.
 

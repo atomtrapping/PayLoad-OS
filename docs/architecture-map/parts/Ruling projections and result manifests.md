@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · FIXTURE CASES`  
 **Group:** Projection Fabric — representations, APIs and instruments  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The same case bundle projected for sponsor, internal reviewer, named counterparty or public; rulings commit to a result manifest with a commitment, evidence root and anchor, exported machine-readably with an API example.
 

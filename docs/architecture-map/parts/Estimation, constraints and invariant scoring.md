@@ -11,7 +11,7 @@ tags:
 
 **State:** `SPECIFIED · NOTHING SOLVED · NOTHING SCORED`
 **Group:** Compute / Decision Fabric — derived objects, never truth by default
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A hard constraint is a measurement with R = 0, so constraints are beliefs with provenance rather than solver settings. A wrong hard constraint is the most efficient certainty-forgery device an estimator can own. And no filter set, however good, can tell you the frame is the world.
 

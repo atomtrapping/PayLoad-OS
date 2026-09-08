@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · STDIO`  
 **Group:** Projection Fabric — representations, APIs and instruments  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Eight Model Context Protocol tools wrap the same payloads as the feed: list and get releases, manifests, records, as-of queries, retractions and rulings.
 

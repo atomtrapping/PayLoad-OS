@@ -44,14 +44,14 @@ workloads, and proprietary capital activity remain separated.
 
 ```yaml
 Notation Systems Ecosystem
-  → Payload OS
+  → NotationsOS
       → Caravan: logistics, freight, cargo, supply-chain movement
       → Tradewind: markets, instruments, pricing, and risk
       → Landshark: parcels, zoning, entitlements, and development state
 ```
 
 Caravan, Tradewind and Landshark are the flagship products: three APIs,
-delivered as HTTP feeds and MCP tools. Payload OS is the internal terminal that
+delivered as HTTP feeds and MCP tools. NotationsOS is the internal terminal that
 operates, monitors and navigates the backend those three are produced from. It
 is not sold, it is not a fourth customer-facing API, and it is not a universal
 domain database. (Founder correction, 2026-09-06.)

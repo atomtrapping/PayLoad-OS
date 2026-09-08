@@ -1,6 +1,6 @@
 /**
- * The Payload OS Earth Twin: the CesiumJS instrument of the projection
- * fabric, a geodetic realization surface for whatever Payload OS can place
+ * The NotationsOS Earth Twin: the CesiumJS instrument of the projection
+ * fabric, a geodetic realization surface for whatever NotationsOS can place
  * on the Earth. It is built on God's Eye View's globe stack and borrows its
  * discipline: every layer names its source and its state, a modeled or
  * missing thing is labelled as such, and a view is a link. It runs keyless
@@ -100,7 +100,7 @@ export interface SignalSource {
 }
 
 const COMMON_BLOCKERS = [
-  'No source registration exists for it in Payload OS.',
+  'No source registration exists for it in NotationsOS.',
   'No rights decision has been requested for any purpose, operation or audience.',
   'No connector exists on the acquisition rail; nothing has been captured or receipted.',
 ] as const;
@@ -116,7 +116,7 @@ export function integrationBlockers(source: SignalSource): string[] {
 /**
  * The live sources God's Eye View reads, as its DATA_SOURCES.md records them
  * at the pinned commit. This is a registry of names and terms, not
- * connectors: none is contacted, selected or collected by Payload OS.
+ * connectors: none is contacted, selected or collected by NotationsOS.
  */
 export const GEV_SIGNAL_SOURCES: readonly SignalSource[] = [
   { id: 'google-map-tiles', name: 'Google Map Tiles API (Photorealistic 3D Tiles), Places, Geocoding', supplies: 'The photorealistic globe, scene context, nearby search', termsClass: 'PROPRIETARY_OWN_KEY', terms: 'Google Maps Platform ToS; content may not be cached, stored or rehosted', attribution: '"Google" / "Google Maps" logo, required while displayed', key: 'METERED_KEY', integrationState: 'NOT_INTEGRATED' },

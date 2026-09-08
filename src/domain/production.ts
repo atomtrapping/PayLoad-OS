@@ -1,5 +1,5 @@
 /**
- * Candidate production: the view model over Payload OS's local rails
+ * Candidate production: the view model over NotationsOS's local rails
  * (acquisition → normalization → candidate build). Browser-safe: only types
  * are taken from src/data-os, whose implementations use node:crypto and the
  * filesystem. Every record here is UNADMITTED. None of it is corpus

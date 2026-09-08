@@ -11,7 +11,7 @@ tags:
 
 **State:** `TYPED · NOTHING ACQUIRED · NOTHING ADJUDICATED`
 **Group:** Corpus Fabric — evidence → candidates, releases, products
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The vessel is not a fifth source; it is the state the other four were defined around. And a port is not a polygon — it is a time-indexed set whose membership is adjudicated, not observed.
 

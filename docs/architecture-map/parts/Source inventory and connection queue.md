@@ -12,7 +12,7 @@ tags:
 
 **State:** `21 INVENTORIED · 1 CONNECTED`  
 **Group:** World: sources, rights and recorded material  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Twenty-one historical registry entries ranked by expected market value, with readiness separate from rank. One source (FMCSA Company Census) is connected for internal qualification.
 

@@ -80,10 +80,10 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-stage]')).toHaveCount(12);
   await expect(page.locator('[data-customer]')).toHaveCount(3);
   await expect(page.locator('[data-step]')).toHaveCount(4);
-  // The three APIs are the products; Payload OS is the terminal, listed apart from them.
+  // The three APIs are the products; NotationsOS is the terminal, listed apart from them.
   const tree = page.getByLabel('Product architecture tree');
   await expect(tree).toContainText('Landshark — API and MCP — parcels, zoning, entitlements, development state');
-  await expect(tree).toContainText('Payload OS — internal terminal');
+  await expect(tree).toContainText('NotationsOS — internal terminal');
   await expect(page.locator('#pm-architecture')).toContainText('flagship products');
   await expect(page.locator('[data-fabric]')).toHaveCount(5);
   await expect(page.locator('[data-fabric="state"][data-presence="PRESENT"]')).toHaveCount(1);

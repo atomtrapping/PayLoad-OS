@@ -11,7 +11,7 @@ tags:
 
 **State:** `TWO ADAPTERS`  
 **Group:** Corpus Fabric — evidence → candidates, releases, products  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A fixed Caravan Carrier adapter and the FMCSA Census normalization turn captured bytes into typed candidates; every derived quantity names its method and version and every run carries the adapter digest.
 

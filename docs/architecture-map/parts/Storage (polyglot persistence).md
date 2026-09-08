@@ -11,7 +11,7 @@ tags:
 
 **State:** `ONE STORE SELECTED · FIVE DECLARED`  
 **Group:** Runtimes, local stores and verification  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Six classes of information ask for six kinds of store. One is now selected: PostgreSQL holds the corpus tables and the adapter reads them when a database is configured, falling back to the committed demonstration when none is. The other five remain candidates.
 

@@ -1,5 +1,5 @@
 /**
- * Payload OS — presentation view model.
+ * NotationsOS — presentation view model.
  *
  * AUTHORITY BOUNDARY. Nothing in this file adjudicates. These types describe
  * the shape of a case bundle AS RETURNED by the adapter/fixture boundary; the

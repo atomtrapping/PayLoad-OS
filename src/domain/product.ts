@@ -13,10 +13,10 @@ export const THESIS = {
   production: 'Its internal production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.',
   inventory: 'The corpora are the finished information inventory. Customers apply their own inference, models, agents, and workflows to the data streams.',
   separation: 'Customer evidence, customer workloads, and proprietary-capital activity remain separated.',
-  platform: 'Caravan, Tradewind and Landshark are the flagship products: three APIs, delivered as HTTP feeds and MCP tools. Payload OS is the internal terminal the firm operates, monitors and navigates that backend from. It is not sold, and it is not a fourth API.',
+  platform: 'Caravan, Tradewind and Landshark are the flagship products: three APIs, delivered as HTTP feeds and MCP tools. NotationsOS is the internal terminal the firm operates, monitors and navigates that backend from. It is not sold, and it is not a fourth API.',
   layers: [
     { layer: 'Caravan, Tradewind, Landshark — API and MCP', role: 'The three flagship products' },
-    { layer: 'Payload OS terminal', role: 'Internal: operates, monitors and navigates the backend that produces them' },
+    { layer: 'NotationsOS terminal', role: 'Internal: operates, monitors and navigates the backend that produces them' },
     { layer: 'Inference, model, agent', role: 'Customer computation, or hosted computation over authorized releases' },
     { layer: 'Ruling, admission profile, case workbench', role: 'Optional application layer over a corpus' },
   ],

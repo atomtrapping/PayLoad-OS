@@ -11,7 +11,7 @@ tags:
 
 **State:** `BASELINE · SYNTHETIC`  
 **Group:** Compute / Decision Fabric — derived objects, never truth by default  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > One conventional scalar linear-Gaussian estimator with an evidence-bound benchmark and held-out-reference metrics: the baseline every later model must beat on the same evidence.
 

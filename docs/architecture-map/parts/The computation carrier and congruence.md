@@ -12,7 +12,7 @@ tags:
 
 **State:** `DOCTRINE · TWO OF FOUR CARD PROPERTIES · NOTHING EXPORTED`
 **Group:** Doctrine and governance (applies to every layer)
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The punch card, not the proof. Credibility lives in the estate, the rulings and the two clocks; the carrier's only job is to carry that across decades. And a manifest is a perfect mirror of the model, which makes it a perfect mirror of the model's errors.
 

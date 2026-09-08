@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · UNADMITTED`  
 **Group:** Corpus Fabric — evidence → candidates, releases, products  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Exact, inspectable candidate builds assembled from normalizations, each member carrying its derivation decision, source class and knowledge time; two builds can be compared by source-scoped membership and immutable references.
 

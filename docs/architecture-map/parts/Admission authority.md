@@ -11,7 +11,7 @@ tags:
 
 **State:** `ABSENT · MILESTONE PRIORITY`  
 **Group:** State Fabric — validation, admission and canonical versions  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The explicit validation boundary that turns a candidate into an admitted canonical version. It does not exist yet, and every surface says so; the rails refuse what they cannot vouch for.
 

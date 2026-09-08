@@ -2,13 +2,13 @@
 
 **Subsequent implementation:** this document and the v1 inventory endpoint preserve the original prototype inventory baseline. The separately named `fmcsa-company-census` connector has since been implemented and live-qualified; it does not promote `fmcsa-qcmobile`. Current queue and scope are in [Source connection program](SOURCE_CONNECTION_PROGRAM.md); actual local capture standing is available through the [source connector CLI](LOCAL_SOURCE_CONNECTORS.md). Baseline `NOT_INTEGRATED` labels below are not a runtime health report for later variants.
 
-Payload OS now has a named inventory of the sources already recorded in the Payload Terminal prototype. It is the starting list for integration, not a list of sources currently being scraped or a new choice of market, geography or customer. No source was selected or contacted in this increment.
+NotationsOS now has a named inventory of the sources already recorded in the Payload Terminal prototype. It is the starting list for integration, not a list of sources currently being scraped or a new choice of market, geography or customer. No source was selected or contacted in this increment.
 
 ## Exact origin and observed standing
 
 The inventory is grounded in [`Payload-Terminal-V0/src/lib/economy/sourceRegistry.ts`](https://github.com/notationsystems/Payload-Terminal-V0/blob/b5c99dd1d40cfb125a322b67904a622c6f6fde74/src/lib/economy/sourceRegistry.ts), commit `b5c99dd1d40cfb125a322b67904a622c6f6fde74`, Git blob `c7b67421bf153daba7d0fa3f11cdca102bf8d30a`.
 
-It contains **21 historical registry entries: seven external adapter declarations, one curated snapshot assembly declaration, and thirteen entries without adapter declarations**. These are statements about that exact registry. They do not establish current provider availability, successful historical collection, reviewed rights, or working Payload OS connectors.
+It contains **21 historical registry entries: seven external adapter declarations, one curated snapshot assembly declaration, and thirteen entries without adapter declarations**. These are statements about that exact registry. They do not establish current provider availability, successful historical collection, reviewed rights, or working NotationsOS connectors.
 
 | Prototype source ID | Named source | Declared adapter |
 |---|---|---|

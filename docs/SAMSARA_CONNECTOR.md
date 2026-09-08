@@ -1,6 +1,6 @@
 # Samsara GPS history: bounded Caravan acquisition
 
-Status: **implemented and offline-tested; no live fleet qualification**. This operator-only connector supplies source observations to Payload OS. It does not implement fleet operations, infer visits, publish a customer feed, or give proprietary capital activity access to customer evidence. No Samsara customer API was contacted for this increment.
+Status: **implemented and offline-tested; no live fleet qualification**. This operator-only connector supplies source observations to NotationsOS. It does not implement fleet operations, infer visits, publish a customer feed, or give proprietary capital activity access to customer evidence. No Samsara customer API was contacted for this increment.
 
 ## One explicit slice
 

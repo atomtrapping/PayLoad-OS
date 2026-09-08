@@ -7,7 +7,7 @@ import {
 } from '@/fixtures/frontier/anchors';
 
 export const metadata: Metadata = {
-  title: 'Frontier Wedges — Payload OS',
+  title: 'Frontier Wedges — NotationsOS',
   description: 'Evidence substrate for mandatory disclosure assurance, insurability dynamics, and capex progress verification.',
 };
 

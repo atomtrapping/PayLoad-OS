@@ -1,6 +1,6 @@
 # Frontier Wedges & Strategic Expansion Architecture
 
-Authoritative specification for expanding Payload OS along the eight frontier passages, observing the core productization gate:
+Authoritative specification for expanding NotationsOS along the eight frontier passages, observing the core productization gate:
 
 > **The Invariant Rule:** Sell the substrate, leave liability, capital, and network positions to others.
 > The evidence, not the liability; the scheduling, not the sensors; the index, not the trigger; the compute, not the platform; the corpus, not the coalition.

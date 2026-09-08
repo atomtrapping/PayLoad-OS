@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · payload.coordination.v1`  
 **Group:** Coordination layer — participants, requests, results  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The contract behind stable and board: validated commands, references restricted to the current scope, directed contract connections, an inbox, a seed, and two thin clients (Python and JavaScript). Two manually started workers consume it: contract review and candidate-build review.
 

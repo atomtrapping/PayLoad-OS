@@ -11,7 +11,7 @@ tags:
 
 **State:** `ROUTED · NOTHING WRITTEN · NOTHING EMBEDDED`
 **Group:** Projection Fabric — representations, APIs and instruments
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > USD composition resolves opinions to one value; the corpus preserves disagreement. That single asymmetry makes USD a strong output and an impossible store. And a smooth manifold has a value everywhere, so the most beautiful surface in the system is the most efficient fabrication machine in it unless void renders void.
 

@@ -11,7 +11,7 @@ tags:
 
 **State:** `CONTRACT + COMPILER · SYNTHETIC MANIFEST`  
 **Group:** Compute / Decision Fabric — derived objects, never truth by default  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > A strict manifest of frames, sessions, clocks with alignments, sensors, calibrations with validity, poses with stamps, operator associations and observations with point estimates; the compiler places each observation or states exactly why it is unplaced.
 

@@ -1,6 +1,6 @@
 # Workspace design: one shell, one inspector pattern, two slices
 
-Payload OS is one workspace, not a set of pages. This document records the design language, the interaction pattern every surface shares, the two slices built on it so far, the truths the design is not allowed to bend, and the verification receipt. Everything here is present tense: what the code does today.
+NotationsOS is one workspace, not a set of pages. This document records the design language, the interaction pattern every surface shares, the two slices built on it so far, the truths the design is not allowed to bend, and the verification receipt. Everything here is present tense: what the code does today.
 
 ## The design language
 

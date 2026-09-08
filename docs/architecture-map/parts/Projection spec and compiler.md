@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · READ-ONLY`  
 **Group:** Projection Fabric — representations, APIs and instruments  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > One closed spec (`payload.projection-spec.v1`) and one router; the compiler works over one exact fixture release, enforces rights, visibility and time bounds, returns detached copies and states `sourceMutated: false`.
 

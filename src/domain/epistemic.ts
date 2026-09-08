@@ -4,7 +4,7 @@
  * The instrument references all use colour as a channel: on an air-traffic
  * screen the hue says which class of traffic, on a LiDAR return it says
  * elevation. It never says "this panel is important". This module is that
- * channel for Payload OS, and what it carries is the distinction the whole
+ * channel for NotationsOS, and what it carries is the distinction the whole
  * system exists to keep — how a thing came to be known.
  *
  * IT IS A PROJECTION, NOT A SEVENTH VOCABULARY

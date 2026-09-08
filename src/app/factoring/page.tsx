@@ -19,7 +19,7 @@ export default function FactoringPage() {
           </h1>
           <p className="m-0 mt-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
             Neutral evidence receipts (fact + condition + provenance + validation status) for factoring advances.
-            Payload OS acts as notary of the physical economy, attesting shipment completion and invariant satisfaction without funds transmission or settlement exposure.
+            NotationsOS acts as notary of the physical economy, attesting shipment completion and invariant satisfaction without funds transmission or settlement exposure.
           </p>
         </div>
 

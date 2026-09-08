@@ -1,5 +1,5 @@
 /**
- * Payload OS workbench compatibility contracts.
+ * NotationsOS workbench compatibility contracts.
  *
  * These are small TypeScript counterparts of the Notations Bench source-policy
  * and evidence-capture workflows. The Bench remains the reference provenance

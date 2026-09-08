@@ -2,7 +2,7 @@
  * Freight Factoring Underwriting Receipts Fixtures — fixture_only: true.
  *
  * Demonstrates the notary wedge for invoice factoring desks and commercial asset-backed
- * lenders. Payload OS provides the evidence-grade shipment receipt (fact + condition +
+ * lenders. NotationsOS provides the evidence-grade shipment receipt (fact + condition +
  * provenance + validation status + bitemporal basis) that factoring desks underwrite against.
  */
 import type { FreightFactoringReceipt } from '@/domain/factoring';
@@ -120,13 +120,13 @@ const rawReceipt1 = {
     riskRationale: 'All critical underwriting invariants satisfied. Clean signed POD, compliant reefer logs, and continuous telematics validation.',
   },
   notary: {
-    notaryEngine: 'Payload OS Notary Attestation Service v1.2',
+    notaryEngine: 'NotationsOS Notary Attestation Service v1.2',
     corpusReleaseId: 'REL-CAR-2026.09.01',
     validAt: '2026-08-31T14:40:00Z',
     knownAt: '2026-09-01T12:00:00Z',
     manifestCommitment: MANIFEST_COMMITMENT,
     attestationStatement:
-      'Payload OS attests that as of knowledge cutoff 2026-09-01T12:00:00Z, delivery facts and carrier qualification invariants were verified against corpus release REL-CAR-2026.09.01 without modification.',
+      'NotationsOS attests that as of knowledge cutoff 2026-09-01T12:00:00Z, delivery facts and carrier qualification invariants were verified against corpus release REL-CAR-2026.09.01 without modification.',
   },
 };
 
@@ -234,13 +234,13 @@ const rawReceipt2 = {
       'REJECT ADVANCE. High probability unauthorized re-brokering scheme. Equipment telematics coordinates contradict transit lane and portal submission originated from anonymized offshore IP.',
   },
   notary: {
-    notaryEngine: 'Payload OS Notary Attestation Service v1.2',
+    notaryEngine: 'NotationsOS Notary Attestation Service v1.2',
     corpusReleaseId: 'REL-CAR-2026.09.01',
     validAt: '2026-08-31T09:15:00Z',
     knownAt: '2026-09-01T12:00:00Z',
     manifestCommitment: MANIFEST_COMMITMENT,
     attestationStatement:
-      'Payload OS certifies that as of knowledge cutoff 2026-09-01T12:00:00Z, invariant evaluation detected irreconcilable equipment and telematics fraud signatures.',
+      'NotationsOS certifies that as of knowledge cutoff 2026-09-01T12:00:00Z, invariant evaluation detected irreconcilable equipment and telematics fraud signatures.',
   },
 };
 
@@ -348,13 +348,13 @@ const rawReceipt3 = {
       'Advance approved at reduced 70.0% rate with $1,860.00 escrow reserve pending final QA produce spoilage inspection and claim waiver.',
   },
   notary: {
-    notaryEngine: 'Payload OS Notary Attestation Service v1.2',
+    notaryEngine: 'NotationsOS Notary Attestation Service v1.2',
     corpusReleaseId: 'REL-CAR-2026.09.01',
     validAt: '2026-08-30T11:20:00Z',
     knownAt: '2026-09-01T12:00:00Z',
     manifestCommitment: MANIFEST_COMMITMENT,
     attestationStatement:
-      'Payload OS certifies that as of knowledge cutoff 2026-09-01T12:00:00Z, delivery occurred with a recorded cold-chain variance of 85 minutes exceeding 3.5°C.',
+      'NotationsOS certifies that as of knowledge cutoff 2026-09-01T12:00:00Z, delivery occurred with a recorded cold-chain variance of 85 minutes exceeding 3.5°C.',
   },
 };
 

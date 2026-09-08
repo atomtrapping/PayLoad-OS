@@ -29,9 +29,9 @@ Customer evidence, customer workloads, and proprietary-capital activity remain s
 
 ## Product architecture
 
-Corrected by the founder, 2026-09-06. The earlier formulation placed Payload OS
+Corrected by the founder, 2026-09-06. The earlier formulation placed NotationsOS
 above the three names as a platform, which read as though the platform were the
-product. It is not. Payload OS is the internal terminal.
+product. It is not. NotationsOS is the internal terminal.
 
 ```
 Notation Systems
@@ -39,7 +39,7 @@ Notation Systems
 ├─ Tradewind — API and MCP — markets, instruments, pricing, risk
 └─ Landshark — API and MCP — parcels, zoning, entitlements, development state
 
-   Payload OS — the internal terminal: operates, monitors and navigates the
+   NotationsOS — the internal terminal: operates, monitors and navigates the
                 backend those three are produced from. Not sold.
 ```
 
@@ -47,7 +47,7 @@ Notation Systems
 and a set of MCP tools over one provenance-bearing corpus. Customers apply their
 own inference to those streams.
 
-**Payload OS is the terminal, not a product.** It is the instrument the firm runs
+**NotationsOS is the terminal, not a product.** It is the instrument the firm runs
 the backend from: acquisition, evidence, normalization, candidates, releases,
 corrections and the coordination facilities. This repository is that terminal. It
 is not a fourth API and it is not offered to customers.
@@ -70,11 +70,11 @@ Providing the API is enough. The API exposes the governed substrate: point-in-ti
 - Provenance that survives downstream use, audit, and resale.
 - A customer can automate a decision against the feed without blindly trusting a black box.
 
-## Shared production facilities inside Payload OS
+## Shared production facilities inside NotationsOS
 
 Two internal facilities are implemented as local rails. Neither is a customer product, and neither creates canonical domain state.
 
-The agent and apparatus stable and shared message board are internal coordination facilities within Payload OS. They record participant definitions and their working contracts, expose compatible connections and missing inputs, and carry scoped requests, handoffs, blockers, results and acknowledgements. A participant inbox and JavaScript/Python clients let local processes coordinate through these records. A manually started local contract-review worker reports declared suppliers and missing inputs, then acknowledges the request. A separate candidate-build-review worker can inspect an exact local build reference and report a bounded historical observation before acknowledging; it grants no retrieval or admission authority. This supports assembly of the shared production system. It does not change the customer categories, make inference a requirement for buying the corpus, or establish managed customer compute. The implementations and present limits are recorded in [Agent coordination](AGENT_COORDINATION.md) and [Candidate-build review worker](CANDIDATE_BUILD_REVIEW_WORKER.md).
+The agent and apparatus stable and shared message board are internal coordination facilities within NotationsOS. They record participant definitions and their working contracts, expose compatible connections and missing inputs, and carry scoped requests, handoffs, blockers, results and acknowledgements. A participant inbox and JavaScript/Python clients let local processes coordinate through these records. A manually started local contract-review worker reports declared suppliers and missing inputs, then acknowledges the request. A separate candidate-build-review worker can inspect an exact local build reference and report a bounded historical observation before acknowledging; it grants no retrieval or admission authority. This supports assembly of the shared production system. It does not change the customer categories, make inference a requirement for buying the corpus, or establish managed customer compute. The implementations and present limits are recorded in [Agent coordination](AGENT_COORDINATION.md) and [Candidate-build review worker](CANDIDATE_BUILD_REVIEW_WORKER.md).
 
 The local evidence rail is another shared production facility: it evaluates a declared source policy, captures local bytes with a storage receipt and reopens the acquisition for integrity checks. Its authorization basis is an operator declaration. Capture alone creates no normalized record. A separate local normalization step evaluates INTERNAL DERIVE and parses a fixed Caravan Carrier JSON contract into a source-scoped, unresolved and unadmitted candidate, or persists a quarantine with no candidate. A subsequent local candidate builder assembles explicitly selected candidates under a definition and knowledge cutoff, reopening their evidence and separately evaluating DERIVE at build time. Its manifest remains unadmitted; none of these steps creates canonical domain state, admits a corpus or activates a release. The implementations are documented in [Local evidence intake](LOCAL_EVIDENCE_INTAKE.md), [Local normalization](LOCAL_NORMALIZATION.md) and [Local candidate builds](LOCAL_CANDIDATE_BUILDS.md).
 
@@ -138,7 +138,7 @@ The [local production workflow](LOCAL_PRODUCTION_WORKFLOW.md) makes the existing
 | Evidence bound to its bytes: content digest, storage key, receipt, source truth not claimed | data-os `captureEvidence` / `verifyEvidenceCapture`; every fixture artifact's capture binding reproduced by `src/fixtures/capture.contract.test.ts`; shown in evidence detail and record provenance | Fixture bindings, reproduced under the contract |
 | The Notations Bench is the reference implementation of the shared machinery | `docs/COMPANY_MANDATE.md`; `REFERENCE_IMPLEMENTATION` on `/model`; `src/data-os` as its TypeScript counterparts | Not in this repository |
 | Tenant isolation, information barrier, release timing, non-use | `Corpus.governance`, shown on every release page and in the release manifest | Recorded as policy only |
-| Caravan, Tradewind and Landshark are the flagship products, delivered as APIs and MCP tools; Payload OS is the internal terminal over the backend | `src/domain/domains.ts`, the product control in the shell, `/model` | Caravan has a demonstration corpus, the fixture feed and the MCP tools; Tradewind and Landshark are declared and empty; the terminal is this repository |
+| Caravan, Tradewind and Landshark are the flagship products, delivered as APIs and MCP tools; NotationsOS is the internal terminal over the backend | `src/domain/domains.ts`, the product control in the shell, `/model` | Caravan has a demonstration corpus, the fixture feed and the MCP tools; Tradewind and Landshark are declared and empty; the terminal is this repository |
 | A shared stable of agents and apparatuses, declaring purpose, authority, domains, contracts and capabilities | `src/coordination/types.ts`, `seed.ts`, `ledger.ts`; `/agents` | Seed definitions; local registrations in opt-in sandbox; registration does not launch a worker |
 | Synastry across apparatuses and agents through declared input/output compatibility | `connectionsFor`; the stable's directed connections and explicit missing inputs | Local prototype calculation over definitions in a common scope and domain; no execution or deployment attestation |
 | A shared message board for requests, handoffs, blockers, results and acknowledgements | `/board`, `GET` / `POST /api/coordination`; `src/coordination/store.ts` | Read-only seed board by default; append-only local event history with serialized writes in opt-in sandbox; simulated authors, no production authentication |

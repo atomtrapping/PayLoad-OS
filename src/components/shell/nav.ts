@@ -1,5 +1,5 @@
 /**
- * The primary navigation as data. Payload OS is the terminal; the products are
+ * The primary navigation as data. NotationsOS is the terminal; the products are
  * the Caravan, Tradewind and Landshark APIs, so the products lead and the means
  * of production follow. Every page route appears here exactly once, which is
  * what lets the top bar name where you are; nav.test.ts holds that true.

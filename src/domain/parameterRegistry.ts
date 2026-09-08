@@ -174,7 +174,7 @@ export const PARAMETER_SET_v2026_09: ParameterSet = {
   version: 'param_set_2026_09_v1',
   parameterSetDigest: computeParameterSetDigest(CANONICAL_PARAMETER_ROWS),
   publishedAt: '2026-09-01T00:00:00Z',
-  authorizingEntity: 'Payload OS Model Validation Committee (ISAE 3000 / Basel Committee on Banking Supervision)',
+  authorizingEntity: 'NotationsOS Model Validation Committee (ISAE 3000 / Basel Committee on Banking Supervision)',
   parameters: CANONICAL_PARAMETER_ROWS,
 };
 

@@ -12,7 +12,7 @@ tags:
 
 **State:** `BOUNDED · LIVE-QUALIFIED · OPERATOR ONLY`  
 **Group:** World: sources, rights and recorded material  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > The first real source. One checked-in request (USDOT 80806, corporations, US) against dataset az4n-8mr2 under a declared policy window; original bytes and receipts are retained; no recurring ingestion, no customer feed.
 

@@ -1,7 +1,7 @@
 ---
 title: "Notation workspace"
 status: "IMPLEMENTED · LOCAL AUTHORING"
-group: "Application layer — the Payload OS workbench (Next.js)"
+group: "Application layer — the NotationsOS workbench (Next.js)"
 tags:
   - architecture-map
   - layer/app
@@ -11,8 +11,8 @@ tags:
 # Notation workspace
 
 **State:** `IMPLEMENTED · LOCAL AUTHORING`  
-**Group:** Application layer — the Payload OS workbench (Next.js)  
-**Map:** [[Payload OS Architecture]]
+**Group:** Application layer — the NotationsOS workbench (Next.js)  
+**Map:** [[NotationsOS Architecture]]
 
 > Author, relate and preserve interpretations against the Rust kernel: drafts survive navigation and reload, three states told apart (unapplied, previewed, saved), undo and redo, conflict recovery, capacity, and an evidence-reference panel whose persistence waits for the backend.
 

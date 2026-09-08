@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED`  
 **Group:** Acquisition Fabric — world → evidence  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Bytes are bound to a source only under an allowed use, content-addressed, with a capture receipt and `sourceTruthClaimed: false`. The local evidence rail reopens an acquisition to recompute byte and receipt integrity.
 

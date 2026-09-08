@@ -11,7 +11,7 @@ tags:
 
 **State:** `IMPLEMENTED · SYNTHETIC PREVIEW`  
 **Group:** Compute / Decision Fabric — derived objects, never truth by default  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Exact finite Bayesian decision analysis over a declared joint model: expected decision-loss reduction minus acquisition cost for a measurement, without executing any action.
 

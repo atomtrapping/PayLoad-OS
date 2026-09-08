@@ -12,11 +12,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'Payload OS',
-    template: '%s · Payload OS',
+    default: 'NotationsOS',
+    template: '%s · NotationsOS',
   },
   description:
-    'Payload OS — Notation Systems\u2019 internal terminal: it operates, monitors and navigates the backend behind the Caravan, Tradewind and Landshark APIs. Corpus data here is a committed demonstration; the terminal executes no customer inference and constructs no production canonical state.',
+    'NotationsOS — Notation Systems\u2019 internal terminal: it operates, monitors and navigates the backend behind the Caravan, Tradewind and Landshark APIs. Corpus data here is a committed demonstration; the terminal executes no customer inference and constructs no production canonical state.',
   robots: { index: false, follow: false },
   authors: [{ name: 'Notation Systems' }],
 };

@@ -12,7 +12,7 @@ tags:
 
 **State:** `SPECIFIED · NOTHING ENFORCED · NO CALLER IDENTIFIED`
 **Group:** Firm, domain products and customers
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Serve the corpus under a purpose. Serve the estates never. And the reasoner is the most powerful witness in the system with no authority in it.
 

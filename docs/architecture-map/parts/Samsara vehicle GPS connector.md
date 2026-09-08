@@ -12,7 +12,7 @@ tags:
 
 **State:** `BOUNDED · CREDENTIAL-GATED · NOT RUN HERE`  
 **Group:** World: sources, rights and recorded material  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > An operator-only capture of vehicle GPS observations: collection is off unless the operator process sets the flag with a scoped token. Offline tests and a synthetic demo exist; no request has been made from this environment.
 

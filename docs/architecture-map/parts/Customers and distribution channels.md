@@ -11,7 +11,7 @@ tags:
 
 **State:** `DECLARED`  
 **Group:** Firm, domain products and customers  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > Physical-economy brokers, asset and portfolio managers, insurance and financing firms. Distribution is by APIs, feeds, reports, workbenches and MCP tools; customer inference runs downstream over the stream.
 

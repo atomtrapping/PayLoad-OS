@@ -1,5 +1,5 @@
 /**
- * Payload OS — the corpus layer: the product.
+ * NotationsOS — the corpus layer: the product.
  *
  * A corpus release is governed, time-bounded information inventory. Its
  * records carry value, unit, basis, machine-readable uncertainty and

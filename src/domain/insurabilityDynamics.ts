@@ -194,7 +194,7 @@ export function evaluatePortfolioCollateralShock(
       );
       const stressedLtvPct = Number(((loan.outstandingLoanBalanceCents / revaluedCollateralCents) * 100).toFixed(1));
 
-      // Bitemporal Lead Time: from when Payload OS admitted the knowledge to the filing effective date
+      // Bitemporal Lead Time: from when NotationsOS admitted the knowledge to the filing effective date
       const effectiveTime = new Date(matchingFiling.effectiveDate).getTime();
       const rawKt = matchingFiling.knowledgeTime || matchingFiling.provenance?.capturedAt || matchingFiling.filingDate;
       const knowledgeTime = new Date(rawKt).getTime();

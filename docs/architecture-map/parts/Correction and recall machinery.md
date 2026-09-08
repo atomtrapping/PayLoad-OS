@@ -11,7 +11,7 @@ tags:
 
 **State:** `MODELLED · LEDGER SPECIFIED AND EMPTY`  
 **Group:** Corpus Fabric — evidence → candidates, releases, products  
-**Map:** [[Payload OS Architecture]]
+**Map:** [[NotationsOS Architecture]]
 
 > For one retraction, which derived artifacts does a corrected fact taint? Seven classes are decided by whether their producer retained the reference that would answer. A class that cannot be decided returns undetermined with the reason, never clean.
 

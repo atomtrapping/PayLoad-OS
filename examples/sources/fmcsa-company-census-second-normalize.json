@@ -1,0 +1,10 @@
+{
+  "schema": "payload.fmcsa-census-normalization-request.v1",
+  "normalizationId": "fmcsa-census-80806-2026-09-08-normalized-v2",
+  "purpose": "source-qualification",
+  "capture": {
+    "requestId": "fmcsa-census-80806-2026-09-08-observation-v2",
+    "receiptDigest": "sha256:618393dd557ed60586dae8188d6a198b9451914e0ff66ee55e96382c664a9d91"
+  },
+  "usdot": "80806"
+}

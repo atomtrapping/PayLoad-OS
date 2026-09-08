@@ -128,6 +128,9 @@ function readRequest(path: string, maximum = SOURCE_REQUEST_MAX_BYTES): unknown 
   } catch { throw fault(maximum === CENSUS_BUILD_REQUEST_MAX_BYTES ? 'INVALID_CENSUS_BUILD_REQUEST_FILE' : 'INVALID_SOURCE_REQUEST_FILE'); }
 }
 
+/** Shared operator request reader: bounded UTF-8, regular files, duplicate keys refused. */
+export { readRequest as readBoundedSourceRequest };
+
 type SourceCliStore = Pick<SourceCaptureStore, 'capture' | 'inspect'>;
 export interface SourceCliDependencies {
   /** Tests can replace transport/storage without adding any operator-facing execution knobs. */

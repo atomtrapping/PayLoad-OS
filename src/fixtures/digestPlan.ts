@@ -12,7 +12,7 @@
  */
 import type { AdmissionProfile, ClaimCaseBundle, Ruling } from '@/domain/types';
 import type { Corpus } from '@/domain/corpus';
-import { releaseRecords } from '@/domain/corpus';
+import { legacyFixtureReleaseRecords } from './legacyReleaseMembership';
 import { allRulings } from '@/domain/selectors';
 import { buildResultManifest } from './manifest';
 import { buildReleaseManifest } from './releaseManifest';
@@ -51,7 +51,7 @@ export function artifactCanonical(e: ClaimCaseBundle['evidence'][number]) {
 export function releaseCanonical(corpus: Corpus, releaseId: string) {
   const release = corpus.releases.find((r) => r.releaseId === releaseId);
   if (!release) return null;
-  return releaseRecords(corpus, release)
+  return legacyFixtureReleaseRecords(corpus, release)
     .map((r) => ({ recordId: r.recordId, canonicalId: r.canonicalId, subjectId: r.subjectId, predicate: r.predicate, value: r.value, unit: r.unit ?? null, basis: r.basis ?? null, uncertainty: r.uncertainty ?? null, validFrom: r.validFrom, validTo: r.validTo ?? null, knownAt: r.knownAt, sourceId: r.provenance.sourceId, artifactId: r.provenance.artifactId ?? null, geometry: r.geometry ?? null }))
     .sort((a, b) => a.recordId.localeCompare(b.recordId));
 }

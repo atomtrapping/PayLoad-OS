@@ -12,12 +12,10 @@
  *
  * Three things, each with a precedent already in this codebase.
  *
- * It may not assert that its records were admitted. A `Corpus` value carries no
- * admission status — that lives at the write boundary — so `buildSlice` takes
- * the grade as a required argument typed the same three ways
- * `compressionAvailable` takes its count. A caller with no store access says
- * UNKNOWN, and UNKNOWN is not a pass: an unchecked grade is not an admitted
- * one, exactly as an unreadable count is not a zero.
+ * A caller's grade or an aggregate admitted count cannot establish the status
+ * of these records. Export needs a separate trusted verifier that reopens their
+ * exact admission history and verifies current source/recipient permission.
+ * No production verifier is wired; the existing caller remains a preview.
  *
  * It may not quote a correction rate off a handful of events. `RATE_GATE` in
  * `collateralVehicle.ts` already holds that line for exposure, and the reason
@@ -32,13 +30,13 @@
  * that. Coverage is a fact about the extract, and completeness is a claim about
  * reality.
  */
-import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import type { Corpus, CorpusRecord, CorpusRelease, Retraction } from './corpus';
-import { releaseRecords, releaseRetractions } from './corpus';
 import type { AdmittedCount } from './compression';
 import type { ISODateTime } from './types';
+import { authorizeCatalogExport, catalogDigest, refusedCatalogAuthorization, type CatalogAuthorization, type CatalogVerifier } from './catalogAuthorization';
 
-export const SLICE_METHOD = 'notationsos.catalog-slice.v1';
+export const SLICE_METHOD = 'notationsos.catalog-slice.v2';
 
 /**
  * How the records in a slice got there.
@@ -96,7 +94,9 @@ export interface SliceManifest {
   sliceId: string;
   title: string;
   question: string;
-  release: { releaseId: string; knowledgeCutoff: ISODateTime };
+  release: { releaseId: string; knowledgeCutoff: ISODateTime; declaredManifestCommitment: string; contentCommitment: string };
+  /** Hash of complete selected records, sorted by record ID. */
+  recordsCommitment: string;
   bounds: {
     subjectTypes: readonly string[] | 'UNBOUNDED';
     predicates: readonly string[] | 'UNBOUNDED';
@@ -107,6 +107,7 @@ export interface SliceManifest {
   corrections: CorrectionSummary;
   admissionGrade: AdmissionGrade;
   readiness: SaleReadiness;
+  authorization: CatalogAuthorization;
   /** Over the manifest's own derived content, so a changed extract cannot reuse a manifest. */
   digest: string;
   because: string;
@@ -151,29 +152,28 @@ export interface SliceRefused {
  */
 export type SliceResult = SliceCut | SliceRefused;
 
-const digestOf = (value: unknown): string =>
-  `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}`;
-
 const SLICE_LOSS = [
   'Coverage is a fact about this extract and not a claim about the world. It says which predicates are carried and how many records of each; it does not say those are all that exist.',
   'A manifest states what the records are, never that they are true. Every record still carries its own evidence class, and a slice of asserted values is a slice of assertions however many there are.',
   'The correction summary counts what this release has issued. It is not a forecast, and below the stated gate it is not a rate either.',
   'An extract has a vintage. A buyer holding it after the next release holds an answer that was correct as of its cutoff, which is what the cutoff is for.',
   'An unsellable slice is described and not cut. This manifest comes back so a reader can see what the extract would have been; the records do not, because a readiness a caller can decline to read is advice rather than a boundary.',
+  'An aggregate admitted count and a caller grade establish no exact record admission. Export requires a trusted verifier over this membership, release, current source grants and recipient agreement. No production verifier is wired here.',
 ] as const;
 
-/** How a grade decides whether the extract may be sold, and why. */
-function readinessOf(grade: AdmissionGrade, records: number): { readiness: SaleReadiness; because: string } {
+function readinessOf(grade: AdmissionGrade, records: number, authorization: CatalogAuthorization): { readiness: SaleReadiness; because: string } {
   if (records === 0) {
     return { readiness: 'NOT_FOR_SALE', because: 'The bounds selected no records. An empty extract is not a product, and shipping one would sell a manifest describing nothing.' };
   }
   switch (grade) {
     case 'ADMITTED':
-      return { readiness: 'SELLABLE', because: `${records} admitted ${records === 1 ? 'record' : 'records'}: each crossed the gate, and the manifest below is derived from them rather than written about them.` };
+      return authorization.state === 'VERIFIED'
+        ? { readiness: 'SELLABLE', because: `${records} exact records have verified admission and current export permission for the named recipient and use.` }
+        : { readiness: 'NOT_FOR_SALE', because: `Export verification refused: ${authorization.reasons.join(', ')}.` };
     case 'DEMONSTRATION':
       return { readiness: 'NOT_FOR_SALE', because: `${records} ${records === 1 ? 'record' : 'records'}, all DEMONSTRATION. These were seeded so the pages have something to show; none crossed the admission gate, and selling them would be selling the demonstration as the corpus.` };
     case 'UNKNOWN':
-      return { readiness: 'NOT_FOR_SALE', because: `${records} ${records === 1 ? 'record' : 'records'} of an unchecked grade. Nothing here read the admission status, and an unchecked grade is not an admitted one — the same reason an unreadable count is not a zero.` };
+      return { readiness: 'NOT_FOR_SALE', because: `${records} records of an unchecked grade; an unchecked grade is not an admitted one. Export verification: ${authorization.reasons.join(', ')}.` };
   }
 }
 
@@ -196,18 +196,69 @@ function summariseCorrections(retractions: readonly Retraction[], records: numbe
 /**
  * Pure: build a bounded extract and the manifest that describes it.
  *
- * The grade is required rather than defaulted, so a call site that gains store
- * access has to change the argument to compile — the same anti-rot device the
- * compression derivation uses, and for the same reason: a default would let a
- * page report a fact it never checked.
+ * The legacy grade keeps preview callers compatible. No grade grants export;
+ * an export service must verify these exact records and their delivery rights.
  */
-export function buildSlice(corpus: Corpus, spec: SliceSpec, admissionGrade: AdmissionGrade): SliceResult {
-  const release: CorpusRelease | undefined = corpus.releases.find((entry) => entry.releaseId === spec.releaseId);
+type CatalogRelease = Omit<CorpusRelease, 'fixture_only'> & { fixture_only: boolean };
+export type CatalogCorpus = Omit<Corpus, 'fixture_only' | 'releases'> & { fixture_only: boolean; releases: CatalogRelease[] };
+export interface CatalogDelivery {
+  context: unknown;
+  verifier?: CatalogVerifier;
+}
+
+const specText = z.string().min(1).max(512).refine((s) => !!s.trim() && !/[\u0000-\u001f\u007f]/.test(s));
+const bounds = z.array(specText).min(1).max(128).refine((values) => new Set(values).size === values.length).transform((values) => [...values].sort());
+const specSchema = z.object({ sliceId: specText, title: specText, question: specText, releaseId: specText,
+  subjectTypes: bounds.optional(), predicates: bounds.optional() }).strict();
+
+/** JSON snapshots omit absent optional object fields, but reject lossy values. */
+function snapshot(value: unknown, depth = 0): unknown {
+  if (depth > 20) throw new Error('CATALOG_INPUT_TOO_DEEP');
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (Array.isArray(value)) return Array.from(value, (entry) => snapshot(entry, depth + 1));
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    const result: Record<string, unknown> = {};
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== 'string') throw new Error('CATALOG_INPUT_NOT_JSON');
+      const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
+      if (!Object.hasOwn(descriptor, 'value')) throw new Error('CATALOG_INPUT_NOT_JSON');
+      if (descriptor.value !== undefined) Object.defineProperty(result, key, { value: snapshot(descriptor.value, depth + 1), enumerable: true });
+    }
+    return result;
+  }
+  throw new Error('CATALOG_INPUT_NOT_JSON');
+}
+
+function time(value: string): number {
+  if (typeof value !== 'string') throw new Error('CATALOG_TIME_INVALID');
+  const at = Date.parse(value);
+  if (!Number.isFinite(at)) throw new Error('CATALOG_TIME_INVALID');
+  return at;
+}
+const byId = (left: { recordId: string }, right: { recordId: string }) => left.recordId < right.recordId ? -1 : left.recordId > right.recordId ? 1 : 0;
+
+export function buildSlice(corpusValue: CatalogCorpus, specValue: SliceSpec, requestedGrade: AdmissionGrade, delivery?: CatalogDelivery): SliceResult {
+  try { return build(corpusValue, specValue, requestedGrade, delivery); }
+  catch { return { manifest: null, records: null, because: 'INVALID_CATALOG_INPUT: the exact bounded extract could not be described; no records were cut.' }; }
+}
+
+function build(corpusValue: CatalogCorpus, specValue: SliceSpec, requestedGrade: AdmissionGrade, delivery?: CatalogDelivery): SliceResult {
+  const spec = specSchema.parse(specValue);
+  if (!['ADMITTED', 'DEMONSTRATION', 'UNKNOWN'].includes(requestedGrade)) throw new Error('INVALID_GRADE');
+  const corpus = snapshot(corpusValue) as CatalogCorpus;
+  catalogDigest(corpus); // Bound total finite JSON before constructing commitments or calling a service.
+  if (!Array.isArray(corpus.records) || corpus.records.length > 50_000 || !Array.isArray(corpus.releases) ||
+    new Set(corpus.records.map((r) => r.recordId)).size !== corpus.records.length ||
+    new Set(corpus.releases.map((r) => r.releaseId)).size !== corpus.releases.length) throw new Error('AMBIGUOUS_MEMBERSHIP');
+  const release = corpus.releases.find((entry) => entry.releaseId === spec.releaseId);
   if (!release) {
     return { manifest: null, records: null, because: `No release ${spec.releaseId} in this corpus, so there is nothing to extract from. A slice names its release because an extract without one has no cutoff and therefore no vintage.` };
   }
 
-  const all = releaseRecords(corpus, release);
+  if (release.corpusId !== corpus.corpusId || typeof release.fixture_only !== 'boolean' || typeof corpus.fixture_only !== 'boolean') throw new Error('INVALID_RELEASE_BINDING');
+  const all = corpus.records.filter((r) => time(r.knownAt) <= time(release.knownAt)).sort(byId);
+  const retractions = corpus.retractions.filter((r) => time(r.issuedAt) <= time(release.knownAt)).sort((a, b) => a.retractionId < b.retractionId ? -1 : a.retractionId > b.retractionId ? 1 : 0);
   const subjectTypes = spec.subjectTypes && spec.subjectTypes.length > 0 ? spec.subjectTypes : null;
   const predicates = spec.predicates && spec.predicates.length > 0 ? spec.predicates : null;
   const records = all.filter((record) =>
@@ -231,18 +282,41 @@ export function buildSlice(corpus: Corpus, spec: SliceSpec, admissionGrade: Admi
     if (existing) existing.records += 1;
     else evidenceCounts.set(key, { productionClass: klass.productionClass, claimStrength: klass.claimStrength, interest: klass.interest, records: 1 });
   }
-  const evidence = [...evidenceCounts.values()].sort((a, b) => (b.records - a.records) || (a.productionClass < b.productionClass ? -1 : 1));
+  const evidence = [...evidenceCounts.values()].sort((a, b) => (b.records - a.records) ||
+    (`${a.productionClass}|${a.claimStrength}|${a.interest}` < `${b.productionClass}|${b.claimStrength}|${b.interest}` ? -1 : 1));
 
   const inSlice = new Set(records.map((record) => record.recordId));
-  const corrections = summariseCorrections(releaseRetractions(corpus, release), records.length, inSlice);
-  const { readiness, because } = readinessOf(admissionGrade, records.length);
+  const corrections = summariseCorrections(retractions, records.length, inSlice);
+  const contentCommitment = catalogDigest({ corpusId: corpus.corpusId, release, records: all, retractions });
+  const recordsCommitment = catalogDigest(records);
+  const demonstration = corpus.fixture_only || release.fixture_only || requestedGrade === 'DEMONSTRATION';
+  let authorization = refusedCatalogAuthorization('VERIFIER_UNAVAILABLE');
+  if (demonstration) authorization = refusedCatalogAuthorization('DEMONSTRATION_NOT_EXPORTABLE');
+  else if (!records.length) authorization = refusedCatalogAuthorization('EMPTY_SELECTION');
+  else if (records.some((r) => !['COUNTERPARTY_SHARED', 'PUBLIC_RULING'].includes(r.visibility))) authorization = refusedCatalogAuthorization('RECORD_VISIBILITY_NOT_EXPORTABLE');
+  else if (delivery) {
+    const sourceIds = [...new Set(records.map((record) => record.provenance.sourceId))].sort();
+    const sources = sourceIds.map((sourceId) => {
+      const matches = release.sources.filter((source) => source.sourceId === sourceId);
+      if (matches.length !== 1 || matches[0].canonicalId !== matches[0].registration.sourceId) throw new Error('INVALID_SOURCE_BINDING');
+      return { sourceId, policyDigest: catalogDigest(matches[0].registration), registration: matches[0].registration };
+    });
+    authorization = authorizeCatalogExport({ sliceId: spec.sliceId, corpusId: corpus.corpusId, releaseId: release.releaseId,
+      releaseCommitment: contentCommitment, recordsCommitment,
+      records: records.map((r) => ({ recordId: r.recordId, recordDigest: catalogDigest(r), sourceId: r.provenance.sourceId })), sources,
+    }, delivery.context, delivery.verifier);
+  }
+  const admissionGrade: AdmissionGrade = demonstration ? 'DEMONSTRATION' : authorization.state === 'VERIFIED' ? 'ADMITTED' : 'UNKNOWN';
+  const { readiness, because } = readinessOf(admissionGrade, records.length, authorization);
 
   const body = {
     schema: SLICE_METHOD as typeof SLICE_METHOD,
     sliceId: spec.sliceId,
     title: spec.title,
     question: spec.question,
-    release: { releaseId: release.releaseId, knowledgeCutoff: release.knownAt },
+    release: { releaseId: release.releaseId, knowledgeCutoff: release.knownAt,
+      declaredManifestCommitment: release.certification.manifestCommitment, contentCommitment },
+    recordsCommitment,
     bounds: {
       subjectTypes: (subjectTypes ?? 'UNBOUNDED') as readonly string[] | 'UNBOUNDED',
       predicates: (predicates ?? 'UNBOUNDED') as readonly string[] | 'UNBOUNDED',
@@ -253,9 +327,11 @@ export function buildSlice(corpus: Corpus, spec: SliceSpec, admissionGrade: Admi
     corrections,
     admissionGrade,
     readiness,
+    authorization,
   };
 
-  const manifest: SliceManifest = { ...body, digest: digestOf(body), because, loss: SLICE_LOSS };
+  const manifestContent = { ...body, because, loss: SLICE_LOSS };
+  const manifest: SliceManifest = { ...manifestContent, digest: catalogDigest(manifestContent) };
   // The export boundary, made mechanical: an unsellable manifest yields no
   // records at all. The description survives so a reader can see what the
   // extract would have been; the bytes do not, so nothing downstream can ship
@@ -268,13 +344,13 @@ export function buildSlice(corpus: Corpus, spec: SliceSpec, admissionGrade: Admi
 
 /** Convenience for a caller with no store access, which is every caller today. */
 export function gradeFrom(admitted: AdmittedCount): AdmissionGrade {
-  if (admitted === 'UNKNOWN') return 'UNKNOWN';
-  return admitted > 0 ? 'ADMITTED' : 'DEMONSTRATION';
+  void admitted;
+  return 'UNKNOWN';
 }
 
 export const CATALOG_LOSS = [
   'A manifest is the product’s whole surface in a closed catalog, so every claim on it is derived from the records it describes. Nothing here is written beside them.',
-  'The admission grade is required and three-valued. A caller that cannot read the store says UNKNOWN, and UNKNOWN does not sell: an unchecked grade is not an admitted one.',
+  'An aggregate count proves no individual record admission. UNKNOWN does not sell; a caller-supplied ADMITTED grade also stays a preview until exact current verification succeeds.',
   'A correction count is reported at every size; a correction rate is refused below a stated gate, because a frequency from a handful of events will be multiplied by a real portfolio by someone who did not read the caveat.',
   'Coverage is not completeness. The manifest says what the extract carries, never that the extract is everything there is.',
 ] as const;

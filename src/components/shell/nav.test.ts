@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { NAV_AREAS, NAV_DESTINATIONS, indexOf, locate, searchNav, step } from './nav';
 
@@ -18,7 +19,7 @@ function routes(dir: string, prefix = ''): string[] {
   return out;
 }
 
-const APP = new URL('../../app', import.meta.url).pathname;
+const APP = fileURLToPath(new URL('../../app', import.meta.url));
 /** Dynamic segments are not destinations the rail names; `/` redirects to the releases. */
 const NAMED = routes(APP).filter((r) => !r.includes('[') && r !== '/');
 

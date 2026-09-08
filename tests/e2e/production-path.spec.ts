@@ -43,7 +43,11 @@ test('production path: registers, captures, normalizes, builds and inspects on t
   await expect(step(page, 'source')).toHaveAttribute('data-run-state', 'COMPLETED', { timeout: 30_000 });
   await expect(stage(page, 'acquisition')).toHaveAttribute('data-state', 'READY');
 
+  const captureResponse = page.waitForResponse((response) =>
+    response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/production');
   await page.getByTestId('send-capture').click();
+  const captured = await captureResponse;
+  expect(captured.ok(), JSON.stringify(await captured.json())).toBe(true);
   await expect(stage(page, 'acquisition')).toHaveAttribute('data-state', 'DONE', { timeout: 30_000 });
   await expect(step(page, 'capture').locator('[data-run-stage="EXTRACTION"]')).toHaveAttribute('data-state', 'NOT_RUN');
   // The identical command again: the original receipt, no new execution.

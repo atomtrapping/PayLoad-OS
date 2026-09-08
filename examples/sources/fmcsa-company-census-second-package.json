@@ -1,0 +1,12 @@
+{
+  "schema": "notations.census-package-request.v2",
+  "packageId": "fmcsa-census-80806-qualification-package-v2",
+  "build": {
+    "id": "fmcsa-census-80806-2026-09-08-candidate-build-v2",
+    "digest": "sha256:0d2d40afeea923ca7e32f284f8b34d0bdbc6abd919ed22637b24d2a4aa89dd71"
+  },
+  "previous": {
+    "id": "fmcsa-census-80806-qualification-package-v1",
+    "digest": "sha256:3e1ba43e16bacb44ab905328bf5c564d5252bb4677c6a3d88f4b088cdaf5f49d"
+  }
+}

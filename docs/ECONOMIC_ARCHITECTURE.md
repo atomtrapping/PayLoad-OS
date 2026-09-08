@@ -1,14 +1,14 @@
 # Economic architecture
 
-Authoritative positioning, as set by the founder. Every other document and every user-facing string in this repository is subordinate to it. The statement below (2026-09-05) supersedes the earlier formulation, which is kept beneath it for the detail it adds.
+Current positioning, as set by the founder on 2026-09-08. The mandate is licensed boutique data and analytics prepared using the firm's internal systems. Earlier economic formulations and implementation receipts are retained below as history; they are not active product commitments or a current capability inventory.
 
 ## The firm
 
-Notation Systems is a systems and intelligence firm for the physical economy. It builds computational representations of physical systems from authorized geospatial, remote-sensing, operational, and scientific source material.
+Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
 
 Its internal production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.
 
-The corpora are the finished information inventory. APIs, feeds, reports, workbenches, and MCP tools distribute it. Customers apply their own inference, models, agents, and workflows to the data streams.
+The corpora are the information inventory from which the firm prepares boutique data and analytics packages. A package defines its fields, coverage, methods, quality, provenance, version and permitted use. APIs, feeds, reports and MCP tools can distribute the prepared information. Customers apply their own inference, models, agents and workflows to delivered data; the firm's workbenches are internal preparation and inspection tools.
 
 ## Customer categories
 
@@ -19,33 +19,33 @@ The corpora are the finished information inventory. APIs, feeds, reports, workbe
 ## Economic architecture
 
 ```
-Build governed computational corpora
-→ distribute them as data systems and products
-→ host compute over authorized corpus releases
-→ separately govern any proprietary trading/speculation activity
+Acquire and organize permitted real-world data
+→ prepare versioned boutique data and analytics packages
+→ license the prepared information to customers
+→ maintain quality, provenance and correction history
 ```
 
-Customer evidence, customer workloads, and proprietary-capital activity remain separated.
+Internal computation supports preparation and quality review. Hosted customer computation and principal trading are outside the active offering. Existing source-use, customer-data, redistribution and trading restrictions remain unchanged.
 
 ## Product architecture
 
-Corrected by the founder, 2026-09-06. The earlier formulation placed NotationsOS
-above the three names as a platform, which read as though the platform were the
-product. It is not. NotationsOS is the internal terminal.
+The founder's 2026-09-06 distinction between internal terminal and customer
+products continues under the 2026-09-08 boutique-data mandate.
 
 ```
-Notation Systems
-├─ Caravan   — API and MCP — logistics, freight, cargo, supply-chain movement
-├─ Tradewind — API and MCP — markets, instruments, pricing, risk
-└─ Landshark — API and MCP — parcels, zoning, entitlements, development state
+Notation Systems Inc. — licensed data and analytics packages
+├─ Caravan   — logistics, freight, cargo, supply-chain movement
+├─ Tradewind — markets, instruments, pricing, risk
+└─ Landshark — parcels, zoning, entitlements, development state
 
    NotationsOS — the internal terminal: operates, monitors and navigates the
                 backend those three are produced from. Not sold.
 ```
 
-**The three APIs are the flagship products.** Each is delivered as an HTTP feed
-and a set of MCP tools over one provenance-bearing corpus. Customers apply their
-own inference to those streams.
+**The three lines organize boutique data and analytics packages.** HTTP feeds
+and MCP tools are existing delivery interfaces over their corpora. The licensed
+package's information and scope are the customer value. Customers can apply
+their own inference to what they receive.
 
 **NotationsOS is the terminal, not a product.** It is the instrument the firm runs
 the backend from: acquisition, evidence, normalization, candidates, releases,
@@ -56,11 +56,11 @@ is not a fourth API and it is not offered to customers.
 
 | Layer | Who supplies it |
 |---|---|
-| Corpus + API / feed | The product |
-| Inference, model, agent | Customer computation, or hosted computation over authorized releases |
-| Ruling, admission profile, case workbench | Optional application layer over the corpus |
+| Licensed data and analytics package | The customer product, prepared from the corpus |
+| HTTP feed, MCP tool, report | Distribution of the prepared information |
+| Model, agent, admission profile, workbench | Internal preparation, quality review and inquiry |
 
-Providing the API is enough. The API exposes the governed substrate: point-in-time state, lineage, uncertainty, rights, corrections, and stable identity. A customer runs their own inference against the stream without receiving an opaque conclusion from Notation Systems. A ruling is one possible application built over the corpus, useful where a customer wants a prescribed control; it is not a requirement for value creation.
+Providing the data interface is sufficient for a customer to use the information. It can expose point-in-time state, lineage, uncertainty, rights, corrections and stable identity. Internal analytics may prepare additional fields under declared methods; buying the data does not require using the firm's workbenches or inference stack.
 
 ## The value proposition, kept concrete
 
@@ -72,6 +72,18 @@ Providing the API is enough. The API exposes the governed substrate: point-in-ti
 
 ## Shared production facilities inside NotationsOS
 
+Current implementation boundary: PostgreSQL/Drizzle corpus storage and a guarded
+admission writer are wired when configured. Admission, issued-identifier
+resolution and world-time rules exist; the supplied-byte statutory harvester
+can return admission rulings and as-of results in memory. These are implemented
+mechanisms, not evidence of a retained customer inventory or deployed delivery.
+All three product lines carry demonstration corpora. One historical bounded
+FMCSA capture is documented; Samsara is offline-tested and recurring source
+operation is not established. The delivery ledger is specified and empty;
+completed customer deliveries, independent verification and a pilot are not
+established. See [Statutory harvester](STATUTORY_HARVESTER.md),
+[Storage](STORAGE.md) and [Real-source continuity](REAL_SOURCE_CONTINUITY.md).
+
 Two internal facilities are implemented as local rails. Neither is a customer product, and neither creates canonical domain state.
 
 The agent and apparatus stable and shared message board are internal coordination facilities within NotationsOS. They record participant definitions and their working contracts, expose compatible connections and missing inputs, and carry scoped requests, handoffs, blockers, results and acknowledgements. A participant inbox and JavaScript/Python clients let local processes coordinate through these records. A manually started local contract-review worker reports declared suppliers and missing inputs, then acknowledges the request. A separate candidate-build-review worker can inspect an exact local build reference and report a bounded historical observation before acknowledging; it grants no retrieval or admission authority. This supports assembly of the shared production system. It does not change the customer categories, make inference a requirement for buying the corpus, or establish managed customer compute. The implementations and present limits are recorded in [Agent coordination](AGENT_COORDINATION.md) and [Candidate-build review worker](CANDIDATE_BUILD_REVIEW_WORKER.md).
@@ -80,15 +92,20 @@ The local evidence rail is another shared production facility: it evaluates a de
 
 The first [local source connector](LOCAL_SOURCE_CONNECTORS.md) now acquires a bounded FMCSA Company Census response through an operator-only CLI for internal qualification. It preserves original bytes, an immutable request intent and outcome history, with source-scoped observations or quarantine. This is the distinct `fmcsa-company-census` source, not QCMobile or the synthetic Carrier source contract. Its operator-declared qualification policy does not permit customer redistribution. One live qualification capture does not establish recurring ingestion, a public source-connector fleet, a released corpus or a customer live feed.
 
-The [synthesized architecture](SYNTHESIZED_ARCHITECTURE.md) organizes these responsibilities into Acquisition, Corpus, State, Compute/Decision and Projection fabrics while preserving the same mandate and product hierarchy. kepler.gl, CesiumJS and Three.js are assigned distinct, non-authoritative projection roles over the same corpus, not separate information products. The implemented [Projection Fabric](PROJECTION_FABRIC.md) slice is a read-only preview over exact fixture releases: safe selected records or a record-to-subject graph, with spatial geometry explicitly unavailable. It serves no local unadmitted build and installs no renderer. A separate small [Rust notation state kernel](LOCAL_NOTATION_STATE_KERNEL.md) implements authored objects, commands, undo/redo and local frontend save/reload; InquiryState, Morpho and canonical domain-state admission remain target architecture.
+The [synthesized architecture](SYNTHESIZED_ARCHITECTURE.md) organizes internal responsibilities into Acquisition, Corpus, State, Compute/Decision and Projection fabrics. CesiumJS is installed as the Earth Twin and draws declared fixture geometry through the read-only projection compiler; kepler.gl and Three.js remain routing targets. The small [Rust notation state kernel](LOCAL_NOTATION_STATE_KERNEL.md) implements authored objects, commands, undo/redo and local save/reload. It remains distinct from the admission rules and structured corpus store. Scientific, spatial, custody and settlement experiments are internal research instruments; their existence does not establish an additional commercial offering.
 
 ## Rules for this repository
 
-- Lead with data systems and compute. Public-facing text does not lead with principal capital.
-- Do not call any output a warrant. Ruling, assurance or admission decision describes what the current system can sell.
-- The honest present tense: this repository holds a demonstration corpus with its feed, MCP tools and a fixture-only ruling workbench, the latter an optional application over the corpus. Its shared agent/apparatus stable and board open with read-only seed data; opt-in `LOCAL_SANDBOX` mode persists local definitions, messages and acknowledgements, with a participant inbox, JavaScript/Python clients and manually started local contract-review and candidate-build-review workers, which inspect declarations or a saved local build and record results; the board has no process launcher or managed agent fleet, and identities remain simulated. A local evidence intake CLI persists source bytes and acquisition receipts after evaluating operator-declared policy; a fixed Carrier normalizer parses evidence after a distinct derivation-policy check and persists candidate or quarantine metadata; a bounded local candidate builder persists explicit membership roots, a knowledge cutoff and build-time source-use decisions; all three rails support historical integrity reinspection and none provides canonical admission or a public delivery path. The board-connected build reviewer returns only a bounded summary and does not mutate those files or establish current retrieval rights. One bounded, operator-only FMCSA Company Census live connector is implemented for internal qualification; a public source-connector fleet, recurring ingestion and customer live feeds remain absent. Production storage and identity, deployed customer delivery, managed execution of customer workloads, independent verification, reports, and a completed pilot also remain absent.
+- Lead with the prepared data and analytics, their scope and licensed use.
+- Internal software prepares and inspects packages; its instrument count is not a measure of customer delivery.
+- Distinguish implemented mechanisms, demonstrated runs, retained real records, deployed operations and delivered customer products. A gate result or a database dependency alone establishes none of the later stages.
+- Preserve source restrictions and historical evidence; a new mandate does not change the authority under which old material was acquired.
+- Prioritize a reproducible permitted-source-to-package workflow with review, release, delivery and correction records. The current repository does not establish a completed licensed customer delivery.
 
-## Earlier formulation (2026-09-04), retained for detail
+## Historical formulation (2026-09-04; superseded)
+
+The following earlier business model is retained as historical context only.
+Hosted compute and principal trading below are not current product commitments.
 
 Notation Systems builds provenance-bearing computational corpora: governed, time-bounded information inventory that can be inspected, computed against, corrected, and distributed with its evidence, method lineage, rights, uncertainty, and release history intact.
 
@@ -101,7 +118,11 @@ Over time, a separately governed principal-capital activity may deploy the firm'
 
 The underlying production system is shared. The customer-facing API, feed, report, agent, or workbench is not the finished good itself; it is the distribution mechanism for a certified corpus release. The manufacturing analogy makes the moat legible: scraping is extraction; it is not the business. The durable asset is the continuously maintained corpus plus its identity mappings, release history, corrections, and computable interfaces.
 
-## How this repository reflects it
+## Historical implementation record accompanying the earlier formulation
+
+This table records the earlier milestone and its then-current absences. Later
+admission, identity, PostgreSQL, statutory-harvester and Earth Twin work supersedes
+its blanket absence statements; use the current boundary above for planning.
 
 The [local production workflow](LOCAL_PRODUCTION_WORKFLOW.md) makes the existing acquisition-to-candidate rail operable through an opt-in loopback API, with configuration records, stage receipts and historical inspection. The [GAT IFC inspector](GAT_INSPECTOR.md) adds a pinned, bounded specialist audit over preserved evidence. The separate [FMCSA Company Census connector](LOCAL_SOURCE_CONNECTORS.md) adds one local operator-only live acquisition path, verified with one 371-byte response for USDOT 80806 on 2026-09-05 and unchanged historical inspection/replay. These are internal local capabilities, not public customer delivery, canonical admission, independent verification or managed customer compute. Only the earlier blanket absence of live connectors has changed; the other five firm-wide absences remain.
 

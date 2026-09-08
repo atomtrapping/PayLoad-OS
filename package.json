@@ -2,7 +2,7 @@
   "name": "payload-os",
   "version": "0.1.0",
   "private": true,
-  "description": "NotationsOS \u2014 the shared information-production system and distribution-workbench prototype for Notation Systems.",
+  "description": "NotationsOS — the shared information-production system and distribution-workbench prototype for Notation Systems.",
   "scripts": {
     "predev": "node scripts/earth-assets.mjs",
     "dev": "next dev -p 3000 -H 0.0.0.0",
@@ -18,6 +18,7 @@
     "evidence": "esbuild scripts/evidence.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/evidence.mjs --log-level=warning && node .stamp/evidence.mjs",
     "prebuild": "node scripts/earth-assets.mjs",
     "source": "esbuild scripts/source.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/source.mjs --log-level=warning && node .stamp/source.mjs",
+    "boutique": "esbuild scripts/boutique.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/boutique.mjs --log-level=warning && node .stamp/boutique.mjs",
     "replay": "esbuild scripts/replay.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/replay.mjs --log-level=warning && node .stamp/replay.mjs",
     "benchmark": "esbuild scripts/benchmark.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/benchmark.mjs --log-level=warning && node .stamp/benchmark.mjs",
     "spatial": "esbuild scripts/spatial.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/spatial.mjs --log-level=warning && node .stamp/spatial.mjs",
@@ -54,6 +55,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "4.3.0",
     "@testing-library/dom": "10.4.1",

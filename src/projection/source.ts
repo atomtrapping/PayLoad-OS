@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Corpus, CorpusRecord, CorpusRelease, RecordStatus } from '../domain/corpus';
-import { releaseRecords } from '../domain/corpus';
+import { legacyFixtureReleaseRecords } from '../fixtures/legacyReleaseMembership';
 import { recordPayload } from '../adapter/feedShapes';
 import { FIXTURE_CORPORA } from '../fixtures';
 import { canonicalJson } from '../fixtures/digest';
@@ -19,7 +19,7 @@ const SNAPSHOT_CODEC = 'payload.fixture-projection-source.v1';
 function statusAt(corpus: Corpus, release: CorpusRelease, record: CorpusRecord, knownAt: number): RecordStatus {
   const retraction = corpus.retractions.find((item) => item.retractionId === record.retractedByRetractionId);
   if (retraction && sourceTime(retraction.issuedAt) <= knownAt) return 'RETRACTED';
-  const replacement = releaseRecords(corpus, release).find((item) => item.recordId === record.supersededByRecordId);
+  const replacement = legacyFixtureReleaseRecords(corpus, release).find((item) => item.recordId === record.supersededByRecordId);
   if (replacement && sourceTime(replacement.knownAt) <= knownAt) return 'SUPERSEDED';
   return 'CURRENT';
 }
@@ -51,7 +51,7 @@ export function projectionSource(corpus: Corpus, release: CorpusRelease): Projec
     const contentDigest = projectionHash({ releaseId: release.releaseId, corpusId: corpus.corpusId, knownAt: release.knownAt, records });
     if (!records || contentDigest !== release.releaseDigest || projectionHash(buildReleaseManifest(corpus, release)) !== release.certification.manifestCommitment) throw new Error('Legacy commitment drift.');
     const cutoff = sourceTime(release.knownAt);
-    const members = releaseRecords(corpus, release);
+    const members = legacyFixtureReleaseRecords(corpus, release);
     const memberIds = new Set(members.map((record) => record.recordId));
     if (memberIds.size !== members.length) throw new Error('Duplicate committed record identities.');
     for (const record of members) {

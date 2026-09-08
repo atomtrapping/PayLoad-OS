@@ -80,11 +80,11 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-stage]')).toHaveCount(12);
   await expect(page.locator('[data-customer]')).toHaveCount(3);
   await expect(page.locator('[data-step]')).toHaveCount(4);
-  // The three APIs are the products; NotationsOS is the terminal, listed apart from them.
+  // The three data-product lines use API/MCP delivery; NotationsOS stays internal.
   const tree = page.getByLabel('Product architecture tree');
   await expect(tree).toContainText('Landshark — API and MCP — parcels, zoning, entitlements, development state');
   await expect(tree).toContainText('NotationsOS — internal terminal');
-  await expect(page.locator('#pm-architecture')).toContainText('flagship products');
+  await expect(page.locator('#pm-architecture')).toContainText('data-product lines');
   await expect(page.locator('[data-fabric]')).toHaveCount(5);
   await expect(page.locator('[data-fabric="state"][data-presence="PRESENT"]')).toHaveCount(1);
   await expect(page.locator('[data-fabric="compute"][data-presence="PRESENT"]')).toContainText('benchmark demonstration is synthetic');
@@ -384,19 +384,20 @@ test('the products page meters usage honestly: the content half is carried, the 
   await expect(page.getByTestId('metering-readiness')).toContainText('not which response it is or who received it');
   // No unit of usage is counted yet, and the page never implies one is.
   await expect(page.locator('[data-usage-unit][data-counted="true"]')).toHaveCount(0);
-  await expect(page.locator('[data-usage-unit]')).toHaveCount(4);
+  await expect(page.locator('[data-usage-unit]')).toHaveCount(3);
   // The boundary is stated: meter the usage, do not become the rails.
-  await expect(page.getByTestId('metering-boundary')).toContainText('not like a payments network');
+  await expect(page.getByTestId('metering-boundary')).toContainText('License prepared data and analytics packages');
   await expect(page.getByTestId('metering-boundary')).toContainText('Not settlement participant');
   // The federation defence is stated as work to do, not as protection already held.
-  await expect(page.getByTestId('federation-risk')).toContainText('None of the three is implemented');
+  await expect(page.getByTestId('federation-risk')).toContainText('Issued-identifier resolution and source-comparison mechanisms exist');
 
-  // A catalog slice states its own readiness: no store access here, so the
-  // admission grade is unreadable rather than zero, and unreadable does not sell.
+  // Declared fixture identity makes the grade DEMONSTRATION, not a live sale.
+  // Exact admission and current recipient/source permission still need a verifier.
   const catalogSlice = page.getByTestId('catalog-slice');
   await expect(catalogSlice).toContainText('NOT_FOR_SALE');
-  await expect(catalogSlice).toContainText('grade UNKNOWN');
-  await expect(catalogSlice).toContainText('an unchecked grade is not an admitted one');
+  await expect(catalogSlice).toContainText('grade DEMONSTRATION');
+  await expect(catalogSlice).toContainText('selling the demonstration as the corpus');
+  await expect(catalogSlice).toContainText('No production verifier is wired here');
   await expect(page.getByTestId('slice-corrections')).toContainText('would be multiplied by a real portfolio');
 });
 

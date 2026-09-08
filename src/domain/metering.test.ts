@@ -49,12 +49,13 @@ describe('usage as telemetry', () => {
   });
 
   it('meters usage and refuses to become the rails', () => {
-    expect(METERING_BOUNDARY.posture).toMatch(/not like a payments network/);
+    expect(METERING_BOUNDARY.posture).toMatch(/License prepared data and analytics packages/);
     const roles = METERING_BOUNDARY.notThis.map((n) => n.role);
     expect(roles).toContain('Settlement participant');
     expect(roles).toContain('The tax');
     for (const n of METERING_BOUNDARY.notThis) expect(n.why.trim().length).toBeGreaterThan(40);
-    expect(METERING_BOUNDARY.instead).toMatch(/per query, per compute run, per clean-room hour/);
+    expect(METERING_BOUNDARY.instead).toMatch(/internal compute usage does not establish a customer charge/);
+    expect(USAGE_UNITS.map((unit) => unit.id)).not.toContain('CLEAN_ROOM_HOUR');
   });
 
   it('chooses the dependency posture and records the provider one as rejected', () => {
@@ -66,14 +67,14 @@ describe('usage as telemetry', () => {
 
   it('states the federation defence as work to do, not as protection already held', () => {
     expect(FEDERATION_RISK.whatCannotBePooled.length).toBe(3);
-    expect(FEDERATION_RISK.here).toMatch(/None of the three is implemented/);
+    expect(FEDERATION_RISK.here).toMatch(/Issued-identifier resolution and source-comparison mechanisms exist/);
     expect(FEDERATION_RISK.here).toMatch(/not a claim about what protects the firm today/);
   });
 
-  it('sells the same asset three ways, with the capital arm separated', () => {
+  it('describes licensed information and its internal support without offering compute or capital services', () => {
     expect(TELEMETRY_PILLARS.length).toBe(3);
-    const capital = TELEMETRY_PILLARS.find((p) => p.pillar === 'Proprietary capital')!;
-    expect(capital.here).toMatch(/no source in the corpus permits proprietary strategy or trading/);
+    expect(TELEMETRY_PILLARS.map((entry) => entry.pillar)).toEqual(['Licensed data and analytics', 'Internal preparation', 'Delivery and correction records']);
+    expect(TELEMETRY_PILLARS[2].here).toMatch(/prohibited proprietary strategy and trading/);
   });
 
   it('points the metering ledger at the delivery ledger rather than defining a second one', () => {

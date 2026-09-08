@@ -58,8 +58,8 @@ export default async function ProductsPage() {
           <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>NotationsOS, the terminal you are reading this in, is not among them. It operates, monitors and navigates the backend these are produced from. <Link href="/model" style={{ color: 'var(--info)' }}>The operating model</Link> states the rest.</p>
         </Section>
 
-        <Section title="Usage, and what a bill could point at" id="ip-metering">
-          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Every query against a corpus, every compute run over it and every agent invocation through it is a lap. A lap is billable by construction only when the response it produced can be pointed at afterwards, so what a response carries is the whole question.</p>
+        <Section title="Delivery records and internal usage" id="ip-metering">
+          <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>A package license identifies the information a customer purchases. Delivery records identify what was supplied, to whom and under which version. Internal compute and agent activity measure preparation work; they do not establish a customer charge. The current response fields show what remains missing for attributable delivery.</p>
           <div className="surface overflow-x-auto" tabIndex={0}>
             <table className="ledger-table text-[12px]" aria-label="What a response carries, and what a bill line needs">
               <thead><tr><th scope="col">Field</th><th scope="col">Half</th><th scope="col">Why a bill needs it</th><th scope="col">State</th></tr></thead>
@@ -78,13 +78,13 @@ export default async function ProductsPage() {
           <p className="m-0 text-[12.5px]" style={{ color: 'var(--status-conditional)' }} data-testid="metering-readiness">{meteringReadiness().statement}</p>
           <div className="grid gap-3 md:grid-cols-2">
             <article className="surface p-3 flex flex-col gap-1.5">
-              <h3 className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>The units</h3>
+              <h3 className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>Internal usage categories</h3>
               <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }}>
                 {USAGE_UNITS.map((u) => <li key={u.id} data-usage-unit={u.id} data-counted={String(u.counted)}><span style={{ color: 'var(--text-heading)' }}>{u.title}</span> — {u.what} <span style={{ color: 'var(--text-muted)' }}>{u.here}</span></li>)}
               </ul>
             </article>
             <article className="surface p-3 flex flex-col gap-1.5" data-testid="metering-boundary">
-              <h3 className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>Meter the usage; do not become the rails</h3>
+              <h3 className="m-0 text-[13px] font-semibold" style={{ color: 'var(--text-heading)' }}>The licensed information boundary</h3>
               <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{METERING_BOUNDARY.posture}</p>
               <ul className="m-0 pl-5 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-muted)' }}>
                 {METERING_BOUNDARY.notThis.map((n) => <li key={n.role}><span style={{ color: 'var(--status-refused)' }}>Not {n.role.toLowerCase()}</span> — {n.why}</li>)}
@@ -102,8 +102,8 @@ export default async function ProductsPage() {
             <p className="m-0 text-[12px]" style={{ color: 'var(--status-conditional)' }}>{FEDERATION_RISK.here}</p>
           </div>
           <div className="surface overflow-x-auto" tabIndex={0}>
-            <table className="ledger-table text-[12px]" aria-label="One asset, three ways">
-              <thead><tr><th scope="col">Pillar</th><th scope="col">Sells</th><th scope="col">Here</th></tr></thead>
+            <table className="ledger-table text-[12px]" aria-label="Licensed products and internal support">
+              <thead><tr><th scope="col">Role</th><th scope="col">Contribution</th><th scope="col">Here</th></tr></thead>
               <tbody>
                 {TELEMETRY_PILLARS.map((p) => (
                   <tr key={p.pillar} data-pillar={p.pillar}><td style={{ color: 'var(--text-heading)' }}>{p.pillar}</td><td>{p.sells}</td><td style={{ color: 'var(--text-muted)' }}>{p.here}</td></tr>

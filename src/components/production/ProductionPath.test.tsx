@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import demoJson from '@/fixtures/production/demo.json';
@@ -96,6 +96,70 @@ const step = (key: string) => screen.getByTestId(`step-${key}`);
 afterEach(() => { vi.restoreAllMocks(); });
 
 describe('ProductionPath', () => {
+  it.each(['SUCCESS', 'REJECTED'] as const)('coalesces slow catalog reads and refreshes the latest receipt after %s without starving capture', async (firstRead) => {
+    const rail = fakeRail(); const user = userEvent.setup();
+    let hold = false; let activeCatalogs = 0; let catalogReads = 0;
+    let settleRead: (() => void) | undefined;
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/production' && (init?.method ?? 'GET') === 'GET' && hold) {
+        catalogReads += 1; activeCatalogs += 1;
+        const response = await rail.fetch(input, init);
+        try {
+          await new Promise<void>((resolve, reject) => { settleRead = firstRead === 'SUCCESS' ? resolve : () => reject(new Error('read disconnected')); });
+          return response;
+        } finally { activeCatalogs -= 1; }
+      }
+      if (String(input) === '/api/production' && init?.method === 'POST' && activeCatalogs >= 2) {
+        return json(refusal('PRODUCTION_BUSY', 'The local production worker limit is occupied.'), 503) as Response;
+      }
+      return rail.fetch(input, init);
+    }) as typeof globalThis.fetch;
+    render(<ProductionPath {...props({ fetchImpl })} />);
+    await waitFor(() => expect(screen.getByTestId('source-build')).toHaveAttribute('data-status', 'NOT_FOUND'));
+    hold = true;
+    try {
+      await user.click(screen.getByTestId('send-corpus'));
+      await waitFor(() => expect(step('corpus')).toHaveAttribute('data-run-state', 'COMPLETED'));
+      await user.click(screen.getByTestId('send-source'));
+      await waitFor(() => expect(step('source')).toHaveAttribute('data-run-state', 'COMPLETED'));
+      expect(activeCatalogs).toBe(1);
+      expect(catalogReads).toBe(1);
+      await user.click(screen.getByTestId('send-capture'));
+      await waitFor(() => expect(stage('acquisition')).toHaveAttribute('data-state', 'DONE'));
+    } finally {
+      await act(async () => { hold = false; settleRead?.(); });
+    }
+    // The stale or failed read does not swallow the requested follow-up.
+    await waitFor(() => expect(screen.getByTestId('catalog-runs')).toHaveTextContent('path-test-capture'));
+    expect(activeCatalogs).toBe(0);
+    // Nor is the single-flight reservation wedged after it settles.
+    await user.click(screen.getByTestId('send-normalize'));
+    await waitFor(() => expect(screen.getByTestId('catalog-runs')).toHaveTextContent('path-test-normalize'));
+  });
+
+  it('does not launch a queued catalog worker after unmount', async () => {
+    const rail = fakeRail(); const user = userEvent.setup();
+    let hold = false; let reads = 0; let settleRead: (() => void) | undefined;
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/production' && (init?.method ?? 'GET') === 'GET') {
+        reads += 1;
+        if (hold) await new Promise<void>((resolve) => { settleRead = resolve; });
+      }
+      return rail.fetch(input, init);
+    }) as typeof globalThis.fetch;
+    const view = render(<ProductionPath {...props({ fetchImpl })} />);
+    await waitFor(() => expect(screen.getByTestId('source-build')).toHaveAttribute('data-status', 'NOT_FOUND'));
+    hold = true;
+    await user.click(screen.getByTestId('send-corpus'));
+    await waitFor(() => expect(step('corpus')).toHaveAttribute('data-run-state', 'COMPLETED'));
+    await user.click(screen.getByTestId('send-source'));
+    await waitFor(() => expect(step('source')).toHaveAttribute('data-run-state', 'COMPLETED'));
+    expect(reads).toBe(2);
+    view.unmount();
+    await act(async () => { hold = false; settleRead?.(); });
+    expect(reads).toBe(2);
+  });
+
   it('in fixture mode shows the committed demonstration on the path, the enable command, the real source without readback, and every blocker, without touching the rail', () => {
     const rail = fakeRail();
     render(<ProductionPath {...props({ enabled: false, fetchImpl: rail.fetch })} />);

@@ -1,0 +1,6 @@
+{
+  "schema": "payload.source-capture-request.v1",
+  "requestId": "fmcsa-census-80806-2026-09-08-observation-v2",
+  "sourceId": "fmcsa-company-census",
+  "usdot": ["80806"]
+}

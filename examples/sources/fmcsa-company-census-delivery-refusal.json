@@ -1,0 +1,10 @@
+{
+  "schema": "notations.census-delivery-request.v1",
+  "deliveryId": "fmcsa-census-80806-qualification-refusal-check-v1",
+  "release": {
+    "id": "fmcsa-census-80806-qualification-package-v2",
+    "digest": "sha256:a8d4819a88ad6725d792094b4612836e201b62e2944ce3a9765e9dc50bd3fcda"
+  },
+  "recipientId": "synthetic-recipient-no-customer",
+  "purpose": "qualification-export-refusal-check"
+}

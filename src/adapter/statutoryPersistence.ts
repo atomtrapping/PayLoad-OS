@@ -37,11 +37,15 @@
  * whether to open.
  */
 import type { AdmissionCandidate } from '@/domain/admission';
+import { databaseConfigured } from '@/db/config';
+export { databaseConfigured } from '@/db/config';
 import type { HarvestRun } from './statutoryHarvester';
 
 export type PersistenceOutcome =
   /** Rows reached the sanctioned door and it wrote them. */
   | 'WRITTEN'
+  /** An identical retained version was verified; no canonical row was inserted. */
+  | 'EXISTING'
   /** The caller did not ask. The default, and the state of every served demonstration. */
   | 'NOT_REQUESTED'
   /** Asked for, and refused: these bytes were declared drafted. */
@@ -64,11 +68,6 @@ export interface PersistenceTarget {
   releaseId: string;
   authority: string;
   ruledAt: string;
-}
-
-/** A configured database, or not. An empty string is not a database. */
-export function databaseConfigured(): boolean {
-  return typeof process.env.DATABASE_URL === 'string' && process.env.DATABASE_URL.trim() !== '';
 }
 
 const state = (outcome: PersistenceOutcome, because: string, written = 0): PersistenceState => ({
@@ -96,7 +95,7 @@ export function persistenceVerdict(run: HarvestRun): PersistenceState | null {
     return state('NOTHING_ADMITTED', 'No candidate was admitted, so there is no row to write. A refusal is a record, but it is not a version.');
   }
   if (!databaseConfigured()) {
-    return state('NO_DATABASE', 'No DATABASE_URL is configured, so the sanctioned door cannot be reached. The candidates are admissible and unwritten, which is a fact about this environment rather than about them.');
+    return state('NO_DATABASE', 'No database is configured through DATABASE_URL or SQL_HOST with SQL_USER and SQL_DB_NAME. The candidates are admissible and unwritten, which is a fact about this environment rather than about them.');
   }
   return null;
 }
@@ -122,7 +121,7 @@ export async function persistHarvest(run: HarvestRun, target: PersistenceTarget)
     ruledAt: target.ruledAt,
     candidates,
   });
-  return state('WRITTEN', `${result.admitted.length} rows written through src/db/admitRecords.ts, with every ruling — admitted and refused — recorded in the same transaction. ${result.because}`, result.admitted.length);
+  return state(result.inserted.length > 0 ? 'WRITTEN' : result.existing.length > 0 ? 'EXISTING' : 'NOTHING_ADMITTED', `${result.inserted.length} rows inserted and ${result.existing.length} identical rows verified through src/db/admitRecords.ts. ${result.because}`, result.inserted.length);
 }
 
 export const PERSISTENCE_LOSS = [

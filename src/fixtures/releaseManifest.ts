@@ -11,7 +11,7 @@
  * and this one says so in its schema id.
  */
 import type { Corpus, CorpusRelease } from '@/domain/corpus';
-import { releaseRecords, releaseRetractions } from '@/domain/corpus';
+import { legacyFixtureReleaseRecords, legacyFixtureReleaseRetractions } from './legacyReleaseMembership';
 
 export interface ReleaseManifestV0 {
   schema: 'payload-os.release-manifest.v0-demo';
@@ -41,8 +41,8 @@ export function buildReleaseManifest(corpus: Corpus, release: CorpusRelease): Re
     knownAt: release.knownAt,
     build: release.build,
     releaseDigest: release.releaseDigest,
-    recordCount: releaseRecords(corpus, release).length,
-    retractionsApplied: releaseRetractions(corpus, release).map((r) => r.retractionId),
+    recordCount: legacyFixtureReleaseRecords(corpus, release).length,
+    retractionsApplied: legacyFixtureReleaseRetractions(corpus, release).map((r) => r.retractionId),
     supersedesReleaseId: release.supersedesReleaseId ?? null,
     coverage: release.coverage,
     sources: release.sources.map((s) => ({ sourceId: s.sourceId, canonicalId: s.canonicalId, materialClass: s.materialClass, licence: s.licence, registration: s.registration, permittedUses: s.permittedUses, nonUse: s.nonUse, redistribution: s.redistribution, attributionRequired: s.attributionRequired })),

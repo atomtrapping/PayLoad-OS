@@ -11,25 +11,25 @@ import { MATERIAL_CLASSES, MATERIAL_LABEL, PRODUCTION_STAGES, STAGE_LABEL, type 
 export const THESIS = {
   firm: 'Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.',
   production: 'Its internal production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.',
-  inventory: 'The corpora are the finished information inventory. Customers apply their own inference, models, agents, and workflows to the data streams.',
-  separation: 'Customer evidence, customer workloads, and proprietary-capital activity remain separated.',
-  platform: 'Caravan, Tradewind and Landshark are the flagship products: three APIs, delivered as HTTP feeds and MCP tools. NotationsOS is the internal terminal the firm operates, monitors and navigates that backend from. It is not sold, and it is not a fourth API.',
+  inventory: 'The corpora are the information inventory from which the firm prepares boutique data and analytics packages for licensing. Each package defines its fields, coverage, methods, quality, permitted use and version. Customers can apply their own inference, models, agents, and workflows to delivered data.',
+  separation: 'Source-use and customer-data restrictions remain attached to the information throughout internal preparation and licensed delivery. The change in company positioning grants no new permission to use or redistribute existing evidence.',
+  platform: 'Caravan, Tradewind and Landshark are the data-product lines, with HTTP feeds and MCP tools as existing delivery interfaces. NotationsOS is the internal terminal the firm operates, monitors and navigates that backend from. It is not sold, and it is not a fourth API.',
   layers: [
-    { layer: 'Caravan, Tradewind, Landshark — API and MCP', role: 'The three flagship products' },
+    { layer: 'Caravan, Tradewind, Landshark', role: 'Boutique data and analytics product lines; packages are licensed to customers' },
     { layer: 'NotationsOS terminal', role: 'Internal: operates, monitors and navigates the backend that produces them' },
-    { layer: 'Inference, model, agent', role: 'Customer computation, or hosted computation over authorized releases' },
-    { layer: 'Ruling, admission profile, case workbench', role: 'Optional application layer over a corpus' },
+    { layer: 'Inference, model, agent', role: 'Internal tools prepare analytics; customers may compute over the data they license' },
+    { layer: 'Ruling, admission profile, case workbench', role: 'Internal preparation, quality review and inquiry over a corpus' },
   ],
 } as const;
 
 /** The three flagship products, and how each is delivered. */
 export const FLAGSHIP_PRODUCTS = {
-  statement: 'Three APIs are the products. Each is delivered as an HTTP feed and a set of MCP tools over one provenance-bearing corpus.',
+  statement: 'Caravan, Tradewind and Landshark organize the boutique data and analytics packages the firm licenses. HTTP feeds and MCP tools are delivery interfaces over their corpora.',
   delivery: ['HTTP feed', 'MCP tools'] as const,
   here: 'All three lines carry a demonstration corpus here, served by one corpus-generic fixture feed under /api/v1 and the MCP tools; every response says fixture_only. Caravan is the deepest — cases, rulings and captured artifact bytes; Tradewind and Landshark carry records, releases, rights and one retraction each, and no captured bytes. Nothing here is a live customer API.',
 } as const;
 
-export const DISTRIBUTION_MECHANISMS = ['APIs', 'Feeds', 'Reports', 'Workbenches', 'MCP tools'] as const;
+export const DISTRIBUTION_MECHANISMS = ['APIs', 'Feeds', 'Reports', 'MCP tools'] as const;
 
 /** Where the shared machinery is actually implemented. This repository is a fixture-only product surface and workbench prototype over it. */
 export const REFERENCE_IMPLEMENTATION = {
@@ -46,10 +46,10 @@ export const CUSTOMER_CATEGORIES = [
 
 /** The economic architecture, in order. */
 export const ECONOMIC_ARCHITECTURE = [
-  { step: 1, statement: 'Build governed computational corpora', inThisRepository: 'Corpus releases with production records, certification and rights (fixture); the local candidate rail before admission (present, unadmitted).' },
-  { step: 2, statement: 'Distribute them as data systems and products', inThisRepository: 'Feed API, stream, retractions, MCP tools, the Caravan workbench (fixture).' },
-  { step: 3, statement: 'Host compute over authorized corpus releases', inThisRepository: 'Release-bound execution context in every answer; managed execution absent.' },
-  { step: 4, statement: 'Separately govern any proprietary trading/speculation activity', inThisRepository: 'Recorded as governance and as prohibited uses in every rights schedule; no such activity here.' },
+  { step: 1, statement: 'Acquire and organize permitted real-world data', inThisRepository: 'Evidence capture, source-specific normalization and candidate history are implemented; FMCSA qualification remains restricted to its declared purpose.' },
+  { step: 2, statement: 'Prepare versioned boutique data and analytics packages', inThisRepository: 'Product specifications, admission rules, structured storage and internal analytics instruments exist; a completed real-source customer package is not established.' },
+  { step: 3, statement: 'License the prepared information to customers', inThisRepository: 'HTTP and MCP demonstration interfaces exist. Deployed licensed customer delivery and a completed pilot remain unverified.' },
+  { step: 4, statement: 'Maintain quality, provenance and correction history', inThisRepository: 'Correction, as-of queries and delivery-ledger contracts exist; no completed customer delivery or correction notification is recorded here.' },
 ] as const;
 
 export type Presence = 'PRESENT' | 'FIXTURE' | 'POLICY_ONLY' | 'ABSENT';
@@ -71,8 +71,8 @@ export interface Engine {
 export const ENGINES: readonly Engine[] = [
   {
     id: 'data_systems',
-    title: 'Data systems and products',
-    description: 'Computational corpora distributed as APIs, feeds, reports, workbenches and MCP tools, and vertical applications built on them.',
+    title: 'Licensed data and analytics products',
+    description: 'Boutique packages prepared from the information inventory, with defined scope, provenance, quality, versions and licensed use. HTTP feeds and MCP tools provide the current demonstration interfaces.',
     inThisRepository: [
       { item: 'Corpus releases with production records, release digests and certified release manifests', presence: 'FIXTURE', where: '/releases' },
       { item: 'Records with uncertainty and validity bounds, both clocks, provenance, evidence class, rights and identity', presence: 'FIXTURE', where: '/stream' },
@@ -89,7 +89,8 @@ export const ENGINES: readonly Engine[] = [
       { item: 'FMCSA typed normalization and exact-reference v2 candidate builds over retained captures: operator CLI only, UNADMITTED, outside customer feeds', presence: 'PRESENT' },
       { item: 'Samsara single-vehicle GPS-history adapter: operator-only, offline-tested; live fleet qualification, continuous sync and inferred visits remain absent', presence: 'PRESENT' },
       { item: 'Production source fleet, recurring ingestion and customer-released live data', presence: 'ABSENT' },
-      { item: 'Production storage and identity', presence: 'ABSENT' },
+      { item: 'PostgreSQL corpus schema and guarded admission writer: implemented when configured; operational deployment and retained customer inventory not established', presence: 'PRESENT' },
+      { item: 'Admission, issued-identifier resolution and world-time rules; statutory supplied-byte path can evaluate admission in memory', presence: 'PRESENT' },
       { item: 'Deployed customer delivery', presence: 'ABSENT' },
       { item: 'Independent verification', presence: 'ABSENT' },
       { item: 'A completed pilot', presence: 'ABSENT' },
@@ -97,8 +98,8 @@ export const ENGINES: readonly Engine[] = [
   },
   {
     id: 'compute',
-    title: 'Hosted compute over authorized corpus releases',
-    description: 'Customer models, simulations, agents and workloads executed against authorized releases without losing lineage, policy or recallability.',
+    title: 'Internal analytics and preparation',
+    description: 'Models, simulations, agents and inspection tools used internally to prepare and review data and analytics. They remain available as production instruments; customer-hosted execution is outside the active offering.',
     inThisRepository: [
       { item: 'Release-bound execution context: every answer names its release, build, both clocks and bounds so a workload can cite them', presence: 'FIXTURE', where: '/api' },
       { item: 'Local instruments only: pinned GAT IFC audit and evidence-bound observation replay; not managed customer workloads', presence: 'PRESENT' },

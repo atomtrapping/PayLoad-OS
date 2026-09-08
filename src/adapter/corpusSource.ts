@@ -7,6 +7,8 @@ import type { AsOfAnswer, AsOfQuery, Corpus, CorpusRecord, CorpusRelease, Retrac
 import { currentRelease, deliverableRecords, queryAsOf, releaseById, retractionsSince } from '@/domain/corpus';
 import { FIXTURE_CORPORA } from '@/fixtures';
 import { count, eq } from 'drizzle-orm';
+import { databaseConfigured } from '@/db/config';
+import { hydrateCorpusRecord } from '@/db/recordStorage';
 
 /**
  * How many records have crossed the admission gate, and how that was learned.
@@ -117,7 +119,7 @@ export class LiveCorpusSource implements CorpusSource {
     return {
       ...(c.data as Record<string, unknown>),
       releases: (rels.map((r) => r.data) as unknown as CorpusRelease[]).sort((a, b) => (a.knownAt < b.knownAt ? -1 : 1)),
-      records: recs.map((r) => r.data),
+      records: recs.map(hydrateCorpusRecord),
       retractions: rets.map((r) => r.data)
     } as Corpus;
   }
@@ -224,7 +226,7 @@ let source: CorpusSource | undefined;
  * screen reads it, so a reader is never told a demonstration is a live corpus.
  */
 export function corpusDatabaseConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL || process.env.SQL_HOST);
+  return databaseConfigured();
 }
 
 export function getCorpusSource(): CorpusSource {

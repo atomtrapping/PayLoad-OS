@@ -219,6 +219,16 @@ export interface CorpusRecord {
   knownAt: ISODateTime;
   observedAt?: ISODateTime;
   evidenceClass: EvidenceClass;
+  /** Present only after persisted admission; carried separately from source evidence. */
+  admission?: {
+    authority: string;
+    ruledAt: ISODateTime;
+    outcome: 'ADMITTED' | 'ADMITTED_WITH_CONDITIONS';
+    conditions: string[];
+    sourceTime: ISODateTime;
+    acquisitionTime: ISODateTime;
+    provenance: 'LIVE_CAPTURE' | 'BACKFILLED';
+  };
   provenance: {
     sourceId: string;
     artifactId?: string;
@@ -376,7 +386,14 @@ export interface Corpus {
 
 /* ── Selectors ── */
 
-const le = (a: ISODateTime, b: ISODateTime) => a <= b;
+function compareInstants(a: ISODateTime, b: ISODateTime): number {
+  const left = Date.parse(a), right = Date.parse(b);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) throw new Error('CORPUS_INVALID_TIMESTAMP');
+  return left - right;
+}
+// Compare instants, not their spelling. The frozen v0 fixture digest/projection
+// codec keeps its separate legacy membership rules and original ISO bytes.
+const le = (a: ISODateTime, b: ISODateTime) => compareInstants(a, b) <= 0;
 
 /** Records a release carries: everything knowable by its cutoff. */
 export function releaseRecords(corpus: Corpus, release: CorpusRelease): CorpusRecord[] {
@@ -475,11 +492,11 @@ export const IDENTITY_LINK_PREDICATE = 'identity.sample_of_lot';
 function candidatesFor(records: CorpusRecord[], subjectId: string, predicate: string, q: AsOfQuery): CorpusRecord[] {
   return records
     .filter((r) => r.subjectId === subjectId && r.predicate === predicate && le(r.knownAt, q.knownAt))
-    .sort((a, b) => (a.knownAt < b.knownAt ? 1 : a.knownAt > b.knownAt ? -1 : 0));
+    .sort((a, b) => compareInstants(b.knownAt, a.knownAt));
 }
 
 function withinValidity(r: CorpusRecord, validAt: ISODateTime): boolean {
-  return le(r.validFrom, validAt) && (r.validTo === undefined || validAt < r.validTo);
+  return le(r.validFrom, validAt) && (r.validTo === undefined || compareInstants(validAt, r.validTo) < 0);
 }
 
 /**
@@ -490,7 +507,7 @@ function withinValidity(r: CorpusRecord, validAt: ISODateTime): boolean {
  * absent answer is a typed refusal with a remedy, never a zero.
  */
 export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, opts: { enforceRights?: boolean; viewer?: VisibilityClass } = {}): AsOfAnswer {
-  const knownAt = q.knownAt <= release.knownAt ? q.knownAt : release.knownAt;
+  const knownAt = le(q.knownAt, release.knownAt) ? q.knownAt : release.knownAt;
   const query = { ...q, knownAt };
   const boundedBy = CLOCK_FOR_QUESTION[q.question];
   const records = releaseRecords(corpus, release);
@@ -571,7 +588,7 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
   const linkedSubjects = new Set(records.filter((r) => r.predicate === IDENTITY_LINK_PREDICATE && le(r.knownAt, knownAt) && recordStatusAt(corpus, r, knownAt) === 'CURRENT').map((r) => r.subjectId));
   const sampleRecords = records
     .filter((r) => r.predicate === q.predicate && r.subjectType === 'Sample' && le(r.knownAt, knownAt) && !linkedSubjects.has(r.subjectId))
-    .sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1));
+    .sort((a, b) => compareInstants(b.knownAt, a.knownAt));
   if (sampleRecords.length > 0 && links.length === 0) {
     return {
       query, releaseId: release.releaseId, boundedBy, resolution: 'NONE', candidates: [],
@@ -593,8 +610,8 @@ export function queryAsOf(corpus: Corpus, release: CorpusRelease, q: AsOfQuery, 
 export function retractionsSince(corpus: Corpus, since: ISODateTime | undefined, viewer: VisibilityClass = 'COUNTERPARTY_SHARED'): Retraction[] {
   const visible = new Set<VisibilityClass>(viewer === 'PUBLIC_RULING' ? ['PUBLIC_RULING'] : viewer === 'COUNTERPARTY_SHARED' ? ['COUNTERPARTY_SHARED', 'PUBLIC_RULING'] : ['INTERNAL_ONLY', 'PRIVATE_PREFLIGHT', 'COUNTERPARTY_SHARED', 'PUBLIC_RULING']);
   return corpus.retractions
-    .filter((r) => (since === undefined || r.issuedAt > since) && visible.has(r.visibility))
-    .sort((a, b) => (a.issuedAt < b.issuedAt ? -1 : 1));
+    .filter((r) => (since === undefined || compareInstants(r.issuedAt, since) > 0) && visible.has(r.visibility))
+    .sort((a, b) => compareInstants(a.issuedAt, b.issuedAt));
 }
 
 export function currentRelease(corpus: Corpus): CorpusRelease {

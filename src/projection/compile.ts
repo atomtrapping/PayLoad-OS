@@ -1,8 +1,9 @@
 import type { Corpus, CorpusRecord, CorpusRelease, RecordStatus } from '../domain/corpus';
-import { LOCATION_POSITION_PREDICATE, deliverable, releaseRecords } from '../domain/corpus';
+import { LOCATION_POSITION_PREDICATE, deliverable } from '../domain/corpus';
 import type { EvidenceClass } from '../domain/types';
 import { FIXTURE_CORPORA } from '../fixtures';
 import { canonicalJson } from '../fixtures/digest';
+import { legacyFixtureReleaseRecords } from '../fixtures/legacyReleaseMembership';
 import { parseProjectionSpec, ProjectionError, routeProjection, type ProjectionSpec } from './spec';
 import { projectionDigest as addressed, projectionRecord, projectionSource, resolveProjectionRelease, sourceTime as time, type ProjectionRecord } from './source';
 export type { ProjectionRecord } from './source';
@@ -32,7 +33,7 @@ function admissible(corpus: Corpus, release: CorpusRelease, committed: Set<strin
 
 function rows(corpus: Corpus, release: CorpusRelease, spec: ProjectionSpec, b: Boundary): ProjectionRecord[] {
   const selected: ProjectionRecord[] = [];
-  const committed = new Set(releaseRecords(corpus, release).map((record) => record.recordId));
+  const committed = new Set(legacyFixtureReleaseRecords(corpus, release).map((record) => record.recordId));
   for (const recordId of spec.selection.recordIds) {
     const matches = corpus.records.filter((item) => item.recordId === recordId);
     const record = matches[0];
@@ -73,7 +74,7 @@ export interface ProjectionGeometry { datum: 'WGS84'; positions: GeodeticPositio
  * as unplaced; a position the viewer may not see is simply absent.
  */
 function geometryFor(corpus: Corpus, release: CorpusRelease, selected: ProjectionRecord[], b: Boundary): ProjectionGeometry {
-  const committed = releaseRecords(corpus, release);
+  const committed = legacyFixtureReleaseRecords(corpus, release);
   const committedIds = new Set(committed.map((record) => record.recordId));
   const positions: GeodeticPosition[] = [];
   const unplaced: string[] = [];

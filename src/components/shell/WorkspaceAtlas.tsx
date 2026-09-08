@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useRef } from 'react';
 import { Panel } from '@/components/hud/Instrument';
 import { ATLAS_LOSS, readAtlas, type Atlas } from './atlas';
+import { SHORTCUT_DESCRIPTION, usePlatformKeys } from './platformKeys';
 
 /**
  * The workspace as a figure you can move around in.
@@ -140,6 +141,9 @@ export function WorkspaceAtlas() {
  * is no position, and this says so rather than showing a plausible one.
  */
 function Position({ atlas }: { atlas: Atlas }) {
+  // The same modifier the rail names, named the same way: the figure and the
+  // rail describe one movement and must not print two different keys for it.
+  const keys = usePlatformKeys();
   if (!atlas.here) {
     return (
       <p className="atlas-position" data-testid="atlas-position">
@@ -155,7 +159,8 @@ function Position({ atlas }: { atlas: Atlas }) {
       </span>
       {atlas.previous && atlas.next && (
         <span className="atlas-position-step">
-          <kbd>Alt</kbd><kbd>←</kbd> {atlas.previous.label} · <kbd>Alt</kbd><kbd>→</kbd> {atlas.next.label}
+          <kbd>{keys.alt}</kbd><kbd>←</kbd> {atlas.previous.label} · <kbd>{keys.alt}</kbd><kbd>→</kbd> {atlas.next.label}
+          <span className="sr-only"> {SHORTCUT_DESCRIPTION.step}</span>
         </span>
       )}
     </p>

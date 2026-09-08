@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { searchNav, type NavDestination } from './nav';
+import { SHORTCUT_DESCRIPTION, usePlatformKeys } from './platformKeys';
 
 /**
  * Jump to any of the twenty-six destinations by typing part of its name.
@@ -27,6 +28,9 @@ export function CommandPalette() {
   const list = useRef<HTMLUListElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
   const listId = useId();
+  // Both keys until a browser has said which one is here; the kbd holds a
+  // constant width so narrowing it shifts nothing.
+  const keys = usePlatformKeys();
 
   const matches = useMemo(() => searchNav(query).map((entry) => entry.destination), [query]);
   const chosen: NavDestination | undefined = matches[active];
@@ -90,8 +94,8 @@ export function CommandPalette() {
       >
         <span aria-hidden="true">⌕</span>
         <span className="hidden sm:inline">Jump to…</span>
-        <kbd className="hidden md:inline palette-kbd" aria-hidden="true">⌘K</kbd>
-        <span className="sr-only">Jump to a page. Keyboard shortcut: Command or Control K.</span>
+        <kbd className="hidden md:inline palette-kbd" aria-hidden="true">{keys.paletteChord}</kbd>
+        <span className="sr-only">{SHORTCUT_DESCRIPTION.palette}</span>
       </button>
 
       {open && (
@@ -140,7 +144,7 @@ export function CommandPalette() {
               )}
             </ul>
             <p className="palette-hint" data-testid="palette-hint">
-              <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>↵</kbd> go · <kbd>Esc</kbd> close · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> step through the rail
+              <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>↵</kbd> go · <kbd>Esc</kbd> close · <kbd>{keys.alt}</kbd>+<kbd>←</kbd>/<kbd>→</kbd> step through the rail
             </p>
           </div>
         </div>

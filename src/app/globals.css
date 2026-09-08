@@ -400,6 +400,9 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
   }
   .nav-keys kbd { margin-right: 2px; }
 }
+/* The chord starts as both keys and narrows once a browser has said which one
+   is here, so it holds the width of the widest form and nothing shifts. */
+.palette-kbd { display: inline-block; min-width: 4.8em; text-align: center; }
 
 .palette-open {
   display: inline-flex; align-items: center; gap: 6px; flex: none;

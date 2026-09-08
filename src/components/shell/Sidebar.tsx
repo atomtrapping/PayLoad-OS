@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { DOMAINS } from '@/domain/domains';
 import { useNotationDraftStatus } from '@/components/notations/NotationWorkspace';
 import { NAV_AREAS, step } from './nav';
+import { SHORTCUT_DESCRIPTION, usePlatformKeys } from './platformKeys';
 
 /**
  * Keep the current destination where the reader can see it.
@@ -68,6 +69,7 @@ export function Sidebar() {
   const router = useRouter();
   const draft = useNotationDraftStatus();
   const sidebar = useRef<HTMLElement>(null);
+  const keys = usePlatformKeys();
   const scroller = useRef<HTMLUListElement>(null);
 
   const links = useCallback(
@@ -160,9 +162,14 @@ export function Sidebar() {
           ))}
         </ul>
       </nav>
-      <p className="nav-keys" data-testid="nav-keys">
+      {/* The modifiers are named for the keyboard in front of the reader. Both
+          until a browser has said which it is, because both work; naming ⌘
+          alone to a reader with no ⌘ key is the kind of small untruth this
+          terminal refuses everywhere else. */}
+      <p className="nav-keys" data-testid="nav-keys" data-platform={keys?.platform ?? 'UNKNOWN'}>
         <span className="sr-only">Keyboard: </span>
-        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move in the rail · <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> step pages · <kbd>⌘K</kbd> jump
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move in the rail · <kbd>{keys.alt}</kbd>+<kbd>←</kbd>/<kbd>→</kbd> step pages · <kbd>{keys.paletteChord}</kbd> jump
+        <span className="sr-only"> {SHORTCUT_DESCRIPTION.step}</span>
       </p>
       <div className="app-context" data-testid="shell-context">
         <span><span className="label-sm">Product lines</span> {DOMAINS.map((domain) => domain.label).join(' / ')}</span>

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceAtlas } from './WorkspaceAtlas';
 import { readAtlas } from './atlas';
 import { NAV_AREAS, NAV_DESTINATIONS } from './nav';
+import { keysFor } from './platformKeys';
 
 let pathname = '/releases';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
@@ -62,7 +63,8 @@ describe('where you are, and what is either side of it', () => {
     const atlas = readAtlas('/releases');
     expect(position).toContain(atlas.previous!.label);
     expect(position).toContain(atlas.next!.label);
-    expect(position).toContain('Alt');
+    // Both keys until a browser says which one is here, which is what jsdom is.
+    expect(position).toContain(keysFor('UNKNOWN').alt);
   });
 
   it('says it does not know where you are rather than marking a plausible cell', () => {
@@ -71,7 +73,7 @@ describe('where you are, and what is either side of it', () => {
     expect(cells().some((cell) => cell.hasAttribute('aria-current'))).toBe(false);
     const position = screen.getByTestId('atlas-position').textContent ?? '';
     expect(position).toMatch(/not one of the \d+ destinations/);
-    expect(position).not.toContain('Alt');
+    expect(position).not.toContain(keysFor('UNKNOWN').alt);
     // And the map is still drawn.
     expect(cells()).toHaveLength(NAV_DESTINATIONS.length);
   });

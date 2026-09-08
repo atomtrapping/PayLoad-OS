@@ -167,3 +167,39 @@ test('the API page states the questions the endpoints do not yet ask', async ({ 
   await expect(missing).toContainText('NOT_HELD');
   await expect(missing).toContainText('nobody told us');
 });
+
+/**
+ * The hints name the keyboard in front of the reader.
+ *
+ * Every hint used to read `⌘K` and `Alt` on every machine, so a reader on
+ * Linux or Windows was told to press a key their keyboard does not have. This
+ * runner is one of those machines, which makes it the right place to check:
+ * a hint that still said ⌘ here would be the defect, reproduced.
+ */
+test('the shell names the modifier this machine actually has', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForLoadState('load');
+
+  // userAgentData is not in the DOM lib yet; the runtime has it or it does not,
+  // and either way navigator.platform answers.
+  const platform = await page.evaluate(() =>
+    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform);
+  const apple = /^(mac|iphone|ipad|ipod)/i.test(platform);
+  const chord = apple ? '⌘K' : 'Ctrl K';
+  const alt = apple ? '⌥' : 'Alt';
+
+  // The button in the bar, the rail's key line, and the atlas's step hint all
+  // describe the same two shortcuts and must not print three different keys.
+  await expect(page.getByTestId('palette-open')).toContainText(chord);
+  await expect(page.getByTestId('nav-keys')).toContainText(chord);
+  await expect(page.getByTestId('nav-keys')).toContainText(alt);
+  await expect(page.getByTestId('atlas-position')).toContainText(alt);
+  if (!apple) {
+    await expect(page.getByTestId('nav-keys')).not.toContainText('⌘');
+    await expect(page.getByTestId('atlas-position')).not.toContainText('⌥');
+  }
+
+  // The screen-reader text names both keys and needs no detection, so it says
+  // the same true thing on every machine.
+  await expect(page.getByTestId('palette-open')).toContainText('Command or Control K');
+});

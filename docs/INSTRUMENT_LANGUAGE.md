@@ -174,6 +174,10 @@ than silently accepted.
   structured values without loosening its UNKNOWN guard — a string or a node
   with no declared state takes no hue, because a default colour on content of
   unknown kind would be a claim nobody made.
+- Located events on `/earth`: a marker's colour is the claim's current reading
+  against the corpus in the check vocabulary's own tokens, a conflict is drawn
+  loud, a ledger event takes the withdrawn hue, and the card is a drawn panel
+  whose frame is DECLARED for a claim and WITHDRAWN for a retraction.
 - The operator instrument on `/earth`: each layer as a drawn panel with a ruled
   readout, the void list under an `UNKNOWN` rule, and the release, seat and
   knowledge time stamped into the frame.

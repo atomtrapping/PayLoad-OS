@@ -5,6 +5,8 @@ import { EarthTwin, type EarthTwinProps } from '@/components/earth/EarthTwin';
 import { currentRelease, deliverableRecords, recordStatusAt } from '@/domain/corpus';
 import { globeSpec } from '@/domain/earth';
 import { readInstrument } from '@/domain/operatorInstrument';
+import { locateAll } from '@/domain/locatedClaims';
+import { SPECIMEN_HEADLINES } from '@/fixtures/caravan/headlines';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { compileProjection } from '@/projection/compile';
 import { describeProjectionSource } from '@/projection/source';
@@ -44,6 +46,9 @@ describe('Earth record choices before client serialization', () => {
     expect(child.props.instrument.writes).toBe('NONE');
     expect(child.props.instrument.isEvidence).toBe(false);
     expect(child.props.instrument.layers.find((entry) => entry.id === 'admission-queue')?.reading).toBe('UNKNOWN');
+    // The located items travel the same way, checked on the server under the twin's seat.
+    expect(child.props.located).toEqual(locateAll(CARAVAN_CORPUS, release, SPECIMEN_HEADLINES));
+    expect(child.props.located.filter((entry) => entry.placement.placed)).toHaveLength(5);
   });
 
   it('uses the existing delivery gate for every committed Caravan release and remains selectable by the exact-version compiler', () => {

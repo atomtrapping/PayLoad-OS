@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
-import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, EVENT_TONE, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { CONVENIENCE_MEANING, INSTRUMENT_RULES, conveniencesTaken, type InstrumentReading } from '@/domain/operatorInstrument';
 import { Readout, Rule } from '@/components/hud/Instrument';
 import { EPISTEMIC_OF_LAYER_STATE, EPISTEMIC_OF_PROJECTION } from '@/domain/epistemic';
+import { CORROBORATION_MEANING, type LocatedReading } from '@/domain/locatedClaims';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -30,6 +31,12 @@ export interface EarthTwinProps {
    * the component has no path from it to a write.
    */
   instrument: InstrumentReading;
+  /**
+   * The ledger's events and the checked claims, each met by the corpus at its
+   * coordinates. Computed on the server under the twin's seat; the component
+   * draws them and can select them, and has no path from any of it to a write.
+   */
+  located: LocatedReading[];
   /** Whether the local engine asset package passed verification (scripts/earth-assets.mjs). */
   assetsReady: boolean;
   /** How the engine is obtained; the default loads its prebuilt module from this origin. Tests inject a fake. */
@@ -54,6 +61,17 @@ const ASSETS_UNAVAILABLE: Status = { state: 'UNAVAILABLE', reason: 'The local en
 interface Placement { title: string; validFrom: string; positions: GeodeticPosition[] }
 interface PlaceSummary { placed: number; positions: number; unplaced: string[]; refused: Array<{ recordId: string; code: string }> }
 const ENTITY_PREFIX = 'place:';
+const EVENT_PREFIX = 'event:';
+
+const locatedId = (entry: LocatedReading) => entry.item.kind === 'CLAIM' ? entry.item.claimId : entry.item.eventId;
+const locatedPoint = (entry: LocatedReading) => entry.item.kind === 'CLAIM' ? entry.item.geocode.point : entry.item.geocode?.point;
+const locatedWord = (entry: LocatedReading): keyof typeof EVENT_TONE => entry.item.kind === 'LEDGER_EVENT' ? 'LEDGER' : (entry.reading?.now.label ?? 'NOT_IN_COVERAGE');
+/** The label at the coordinates: identifier and current reading, then the headline, cut so it reads as a label and not a paragraph. */
+function eventLabel(entry: LocatedReading): string {
+  if (entry.item.kind === 'LEDGER_EVENT') return `${entry.item.eventId} · ${entry.item.retraction.kind}`;
+  const head = entry.item.headline.length > 44 ? `${entry.item.headline.slice(0, 43)}…` : entry.item.headline;
+  return `${entry.item.claimId} · ${entry.reading?.now.label ?? 'NOT_IN_COVERAGE'}\n${head}`;
+}
 
 const muted = { color: 'var(--text-secondary)' };
 const faint = { color: 'var(--text-muted)' };
@@ -92,6 +110,95 @@ function Part({ title, right, children, testId, folded }: { title: string; right
  * engine cannot supply is an absence, not a gate declining, and the scale
  * keeps those apart with a dashed grey.
  */
+/**
+ * The card for a located item: the receipt in miniature.
+ *
+ * For a claim — what was claimed, by whom, when published, when captured, how
+ * it was located, and where the corpus stands beside it at both knowledge
+ * times. For a ledger event — the retraction itself, at its subject's last
+ * declared position. Its every control is a selection or a flight, and a test
+ * holds the whole set to that.
+ */
+function LocatedCard({ entry, records, engineReady, flyTo, onSelectRecord }: {
+  entry: LocatedReading; records: EarthRecord[]; engineReady: boolean; flyTo: (target: TwinView) => void; onSelectRecord: (id: string) => void;
+}) {
+  const point = locatedPoint(entry);
+  const word = locatedWord(entry);
+  const tone = `var(${EVENT_TONE[word].cssVar})`;
+  const where = point ? `${point.latitude.toFixed(4)}°, ${point.longitude.toFixed(4)}°` : null;
+  const flyHere = () => { if (point) flyTo({ longitude: point.longitude, latitude: point.latitude, ...PLACEMENT_VIEW }); };
+  if (entry.item.kind === 'LEDGER_EVENT') {
+    const item = entry.item;
+    const selectable = [...item.retraction.affectedRecordIds, ...(item.retraction.replacementRecordIds ?? [])].filter((id) => records.some((r) => r.recordId === id));
+    return (
+      <div className="hud-panel flex flex-col gap-1.5 text-[12px]" data-epistemic="WITHDRAWN" data-testid="event-card" data-event={item.eventId} data-state={item.retraction.kind}>
+        <div className="hud-bar"><span>{item.eventId}</span><span className="hud-bar-state" style={{ color: tone }}>{item.retraction.kind}</span></div>
+        <div style={{ color: 'var(--text-heading)' }}>{item.retraction.reason}</div>
+        <div className="hud-stamp hud-stamp-lead">
+          <span data-k="ISSUED">{fmtUtc(item.retraction.issuedAt, { seconds: true })}</span>
+          {item.retraction.sourceId && <span data-k="SOURCE">{item.retraction.sourceId}</span>}
+          <span data-k="SUBJECTS">{item.affectedSubjectIds.join(', ')}</span>
+          <span data-k="AFFECTS">{item.retraction.affectedRecordIds.join(', ')}</span>
+          {item.retraction.replacementRecordIds?.length ? <span data-k="REPLACES WITH">{item.retraction.replacementRecordIds.join(', ')}</span> : null}
+        </div>
+        <Readout label="Where" layout="row" state={entry.placement.placed ? 'DECLARED' : 'UNKNOWN'} value={entry.placement.placed && where ? `${where} · ±${entry.placement.radiusM} m` : 'UNKNOWN'} />
+        <div style={faint}>{item.geocode?.because ?? (entry.placement.placed ? '' : entry.placement.because)}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {entry.placement.placed && point && <button type="button" className="btn btn-sm" disabled={!engineReady} onClick={flyHere}>Fly to it</button>}
+          {selectable.map((id) => <button key={id} type="button" className="btn btn-sm btn-quiet" onClick={() => onSelectRecord(id)} data-event-record={id}>Select {id}</button>)}
+        </div>
+      </div>
+    );
+  }
+  const item = entry.item;
+  const reading = entry.reading;
+  const held = reading?.now.record;
+  const bounds = held?.uncertainty && (held.uncertainty.low !== undefined || held.uncertainty.high !== undefined) ? ` [${held.uncertainty.low ?? '−∞'}, ${held.uncertainty.high ?? '+∞'}]` : '';
+  return (
+    <div className="hud-panel flex flex-col gap-1.5 text-[12px]" data-epistemic="DECLARED" data-testid="event-card" data-event={item.claimId} data-state={word}>
+      <div className="hud-bar"><span>{item.claimId}</span><span className="hud-bar-state" style={{ color: tone }}>{word}</span></div>
+      <div className="text-[13px]" style={{ color: 'var(--text-heading)' }}>{item.headline}</div>
+      <div className="hud-stamp hud-stamp-lead">
+        <span data-k="SOURCE">{item.source.displayName}</span>
+        <span data-k="PUBLISHED">{fmtUtc(item.publishedAt, { seconds: true })}</span>
+        <span data-k="CAPTURED">{fmtUtc(item.capturedAt, { seconds: true })}</span>
+        <span data-k="BEGAN AS">{item.beganAs}</span>
+        <span data-k="CLASS">{item.evidenceClass.claimStrength} / {item.evidenceClass.productionClass} / {item.evidenceClass.interest}</span>
+      </div>
+      <Readout label="Geocode" layout="row" state={entry.placement.placed ? 'DECLARED' : 'UNKNOWN'} testId="event-geocode"
+        value={entry.placement.placed && where ? `${where} · ±${entry.placement.radiusM} m` : `${where ?? ''} · radius not stated · not drawn`} />
+      <div style={faint}>{item.geocode.because}{!entry.placement.placed && ` ${entry.placement.because}`}</div>
+      <Readout label="Asserts" layout="row" state="DECLARED" testId="event-asserts"
+        value={item.asserts ? `${item.asserts.subjectId} · ${item.asserts.predicate} · ${item.asserts.value} @ ${fmtUtc(item.asserts.validAt)}` : 'names no predicate this corpus holds'} />
+      {reading && <>
+        <Rule label="Against the corpus" right={word} />
+        <div className="flex flex-col gap-0.5" data-testid="event-reading-now" data-state={reading.now.label}>
+          <Readout label="Now" layout="row" value={<span style={{ color: `var(${EVENT_TONE[reading.now.label].cssVar})` }}>{reading.now.label}</span>} />
+          <div style={faint}>{reading.now.because}</div>
+        </div>
+        <div className="flex flex-col gap-0.5" data-testid="event-reading-capture" data-state={reading.atCapture.label}>
+          <Readout label="At capture" layout="row" value={<span style={{ color: `var(${EVENT_TONE[reading.atCapture.label].cssVar})` }}>{reading.atCapture.label}</span>} />
+          <div style={faint}>{reading.atCapture.because}</div>
+        </div>
+        {reading.now.label !== reading.atCapture.label && <div style={muted} data-testid="event-clocks-differ">The two clocks disagree: the corpus learned something between {fmtUtc(reading.atCapture.knownAt)} and {fmtUtc(reading.now.knownAt)}.</div>}
+        <div style={faint}>{CORROBORATION_MEANING[reading.now.status]}</div>
+        {held && (
+          <div className="hud-stamp">
+            <span data-k="RECORD">{held.recordId}</span>
+            <span data-k="HELD">{held.value}{held.unit ? ` ${held.unit}` : ''}{bounds}</span>
+            <span data-k="STANDING">{held.status}</span>
+            <span data-k="KNOWN">{fmtUtc(held.knownAt, { seconds: true })}</span>
+          </div>
+        )}
+      </>}
+      <div className="flex flex-wrap items-center gap-2">
+        {entry.placement.placed && point && <button type="button" className="btn btn-sm" disabled={!engineReady} onClick={flyHere}>Fly to it</button>}
+        {held && records.some((r) => r.recordId === held.recordId) && <button type="button" className="btn btn-sm btn-quiet" onClick={() => onSelectRecord(held.recordId)} data-event-record={held.recordId}>Select {held.recordId}</button>}
+      </div>
+    </div>
+  );
+}
+
 function StatePill({ state }: { state: LayerState }) {
   return <span className="pill text-[10px] px-1.5" data-epistemic={EPISTEMIC_OF_LAYER_STATE[state]} title={LAYER_STATE_MEANING[state]}>{state.replace('_', ' ')}</span>;
 }
@@ -186,7 +293,7 @@ function readView(Cesium: CesiumModule, viewer: Viewer): TwinView {
  * what it does not do. Nothing here fetches from anywhere but this origin;
  * nothing here invents a position.
  */
-export function EarthTwin({ release, source, records, instrument, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
+export function EarthTwin({ release, source, records, instrument, located, assetsReady, loadEngine = loadEngineFromOrigin }: EarthTwinProps) {
   const container = useRef<HTMLDivElement>(null);
   const credits = useRef<HTMLDivElement>(null);
   const engine = useRef<EngineInstance | null>(null);
@@ -225,6 +332,9 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
   const flyOnResolve = useRef(false);
   /** The records each drawn point stands for, by entity id, so a click on the globe selects one of them. */
   const drawn = useRef(new Map<string, string[]>());
+  /** Entity id → located item id, so a click on the globe selects the event drawn there. */
+  const drawnEvents = useRef(new Map<string, string>());
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const selected = useRef(recordId);
   useEffect(() => { selected.current = recordId; }, [recordId]);
   const record = records.find((r) => r.recordId === recordId);
@@ -304,6 +414,9 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
           const id = picked?.id?.id;
           const ids = typeof id === 'string' ? drawn.current.get(id) : undefined;
           if (ids?.length && !ids.includes(selected.current)) { flyOnResolve.current = false; setRecordId(ids[0]); }
+          // A marker on the globe is a located item: clicking it opens its card. Selecting is not admitting.
+          const eventId = typeof id === 'string' ? drawnEvents.current.get(id) : undefined;
+          if (eventId) setSelectedEvent(eventId);
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
         const gl = viewer.canvas.getContext('webgl2') ?? viewer.canvas.getContext('webgl');
         const info = gl?.getExtension('WEBGL_debug_renderer_info');
@@ -389,8 +502,34 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
         ...(position.point.horizontalUncertaintyM ? { ellipse: { semiMajorAxis: position.point.horizontalUncertaintyM, semiMinorAxis: position.point.horizontalUncertaintyM, material: tone.withAlpha(0.18), outline: true, outlineColor: tone.withAlpha(0.8) } } : {}),
       });
     }
+    // Located items: the ledger's events and the checked claims, each drawn only
+    // with a radius. The colour is the current reading; a conflict is drawn
+    // loud — a bigger point and a heavier ring — because a claim that disagrees
+    // with the corpus is the most useful object on the globe.
+    drawnEvents.current = new Map();
+    for (const entry of located) {
+      const point = locatedPoint(entry);
+      if (!entry.placement.placed || !point) continue;
+      const word = locatedWord(entry);
+      const tone = Cesium.Color.fromCssColorString(EVENT_TONE[word].hex);
+      const loud = word === 'CONFLICTING';
+      const id = `${EVENT_PREFIX}${locatedId(entry)}`;
+      drawnEvents.current.set(id, locatedId(entry));
+      // Only the selected item carries its label at the coordinates. Several
+      // items can share one place — a berth collects a correction and three
+      // headlines — and stacked labels read as none. The marker's colour says
+      // the state for the rest; the list is the index; and the selected
+      // label is the card at the coordinates.
+      const selectedHere = locatedId(entry) === selectedEvent;
+      viewer.entities.add({
+        id, position: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude),
+        point: { pixelSize: loud ? 12 : 8, color: tone, outlineColor: Cesium.Color.BLACK.withAlpha(0.85), outlineWidth: loud ? 3 : 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        ...(selectedHere ? { label: { text: eventLabel(entry), font: '11px ui-monospace, Menlo, monospace', fillColor: tone, outlineColor: Cesium.Color.BLACK, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -14), showBackground: true, backgroundColor: Cesium.Color.fromCssColorString('#04040a').withAlpha(0.72), disableDepthTestDistance: Number.POSITIVE_INFINITY } } : {}),
+        ellipse: { semiMajorAxis: entry.placement.radiusM, semiMinorAxis: entry.placement.radiusM, material: tone.withAlpha(loud ? 0.22 : 0.12), outline: true, outlineColor: tone.withAlpha(0.9), outlineWidth: loud ? 3 : 1 },
+      });
+    }
     viewer.scene.requestRender();
-  }, [placements, activeInstance]);
+  }, [placements, located, selectedEvent, activeInstance]);
 
   /** Across everything placed, which subjects have standing declarations that cannot all be right. One declaration counts once however many records resolved it. */
   const placedSeparations = useMemo(() => positionSeparations(Object.values(placements).flatMap((placement) => placement.positions)), [placements]);
@@ -399,6 +538,17 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
   // rule-two filter: a layer that starts interpolating appears here without
   // anyone remembering to add it to a list.
   const conveniences = useMemo(() => conveniencesTaken(instrument), [instrument]);
+
+  const placedEvents = useMemo(() => located.filter((entry) => entry.placement.placed).length, [located]);
+  const selectedReading = useMemo(() => located.find((entry) => locatedId(entry) === selectedEvent) ?? null, [located, selectedEvent]);
+  /** From the list: select, and fly if there is anywhere to fly to. A click on the globe selects without flying, like a record. */
+  /** From a card: select the record it names. Navigation, and the record resolves in place rather than flying. */
+  const selectRecordFromCard = (id: string) => { flyOnResolve.current = false; setRecordId(id); };
+  const selectEvent = (entry: LocatedReading) => {
+    setSelectedEvent(locatedId(entry));
+    const point = locatedPoint(entry);
+    if (entry.placement.placed && point) flyTo({ longitude: point.longitude, latitude: point.latitude, ...PLACEMENT_VIEW });
+  };
   const instrumentReading = useCallback((id: string) => String(instrument.layers.find((entry) => entry.id === id)?.reading ?? 'UNKNOWN'), [instrument]);
 
   /** Ask the compiler for every record of the release, each at its own validity start, and draw all that can be placed. Nothing is placed by anything but its own subject's declaration. */
@@ -440,6 +590,7 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
           <span className="pill text-[10px] px-1.5" data-testid="twin-status" data-state={status.state} style={{ color: status.state === 'READY' ? 'var(--check-passed)' : status.state === 'LOADING' ? 'var(--status-pending)' : 'var(--status-refused)', borderColor: 'currentColor' }}>{status.state}</span>
           <span className="mono text-[11px]" style={faint} data-k="WORLD">{fmtUtc(clock.validAt, { seconds: true })}</span>
           <span className="mono text-[11px]" style={faint} data-k="PLACED" data-testid="earth-placed" data-count={Object.keys(placements).length}>{Object.keys(placements).length}</span>
+          <span className="mono text-[11px]" style={faint} data-k="EVENTS" data-testid="earth-events" data-count={placedEvents}>{placedEvents}</span>
         </div>
         {status.state === 'UNAVAILABLE' && (
           <div className="earth-unavailable" role="alert" data-testid="earth-unavailable">
@@ -595,6 +746,26 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
                 {Object.entries(placements).map(([id, placement]) => <li key={id} className="flex flex-wrap items-baseline gap-x-2" data-placed-record={id}><button type="button" className="btn btn-sm btn-quiet" aria-pressed={id === recordId} onClick={() => { flyOnResolve.current = true; setRecordId(id); if (id === recordId && placement.positions[0]) flyTo({ longitude: placement.positions[0].point.longitude, latitude: placement.positions[0].point.latitude, ...PLACEMENT_VIEW }); }}>{id}</button><span style={muted}>{placement.title}</span><span style={faint}>{placement.positions.map((p) => p.subject.subjectId).join(', ')} · {fmtUtc(placement.validFrom)}</span></li>)}
               </ul>
             )}
+          </Part>
+
+          <Part title="Events on the globe" testId="earth-events-panel" right={`${placedEvents} placed, ${located.length - placedEvents} listed`}>
+            <p className="m-0 text-[12px]" style={muted}>The ledger’s own events and the drafted specimen headlines, each met by the corpus at its coordinates. A marker’s colour is where the corpus stands beside the claim now; a conflict is drawn loud.</p>
+            <ul className="m-0 p-0 list-none flex flex-col gap-0.5 text-[12px]" aria-label="Located events" data-testid="event-list">
+              {located.map((entry) => {
+                const id = locatedId(entry);
+                const word = locatedWord(entry);
+                return (
+                  <li key={id} className="flex flex-wrap items-baseline gap-x-2" data-event-item={id} data-event-state={word} data-placed={entry.placement.placed}>
+                    <button type="button" className="btn btn-sm btn-quiet mono" aria-pressed={id === selectedEvent} onClick={() => selectEvent(entry)} data-event-select={id}>{id}</button>
+                    <span className="mono text-[10.5px] tracking-wider" style={{ color: `var(${EVENT_TONE[word].cssVar})` }}>{word}</span>
+                    {!entry.placement.placed && <span className="mono text-[10.5px] tracking-wider" data-epistemic="UNKNOWN" style={{ border: 0 }}>NOT DRAWN</span>}
+                    <span style={muted} className="min-w-0">{entry.item.kind === 'CLAIM' ? entry.item.headline : entry.item.retraction.kind.toLowerCase()} {entry.item.kind === 'LEDGER_EVENT' && <span style={faint}>· {entry.item.affectedSubjectIds.join(', ')}</span>}</span>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {selectedReading && <LocatedCard entry={selectedReading} records={records} engineReady={status.state === 'READY'} flyTo={flyTo} onSelectRecord={selectRecordFromCard} />}
           </Part>
 
           <Part title={`Operator instrument · ${instrumentReading('positioned')} flyable, ${instrumentReading('void')} void`} testId="earth-operator" folded>

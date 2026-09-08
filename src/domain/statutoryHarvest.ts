@@ -68,6 +68,20 @@ import type { ISODateTime } from './types';
 export const HARVEST_METHOD = 'notationsos.statutory-harvest.v1';
 
 /** The three jurisdictions whose header grammar is declared here. */
+/**
+ * The three regulators, named once.
+ *
+ * This union was declared twice with two names — `JurisdictionId` here and
+ * `StatutoryJurisdiction` in the acquisition layer — with identical members.
+ * Two names for one vocabulary is the drift the operating rule forbids: a
+ * fourth regulator added to one of them and not the other would compile
+ * cleanly and be wrong at the boundary between them, which is exactly where a
+ * capture is matched to the grammar that reads it.
+ *
+ * It lives in the domain because a regulator's identity is a fact about the
+ * world rather than about a transport. Acquisition consumes it, which is the
+ * right direction: acquisition exists to serve the corpus.
+ */
 export type JurisdictionId = 'FL_OIR' | 'CA_CDI' | 'TX_TDI';
 
 /** What a header value is supposed to read as. A value that does not is MALFORMED, never absent. */

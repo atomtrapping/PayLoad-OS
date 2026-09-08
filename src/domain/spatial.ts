@@ -8,11 +8,20 @@
  * polygons and is never used to make a passage. Browser-safe; nothing here
  * renders.
  */
-import type { AnalysisRequest, EvidenceReference, SpatialLayout } from '@/spatial/contracts';
+import type { Access, AnalysisRequest, EvidenceReference, SpatialLayout } from '@/spatial/contracts';
 import type { AnalysisResult } from '@/spatial/analysis';
 
 export type Reachability = 'CONFIRMED' | 'POSSIBLE_ONLY' | 'DISCONNECTED';
-export type Access = 'OPEN' | 'CLOSED' | 'UNKNOWN';
+/**
+ * One vocabulary, and it is the analysis contract's.
+ *
+ * This module declared its own `Access` with the same three members while
+ * already importing from the contract that defines it, so a passage state read
+ * off an analysis result and a passage state rendered by a surface were two
+ * types the compiler happened to accept for each other. They would have gone
+ * on accepting each other right up until one of them gained a fourth member.
+ */
+export type { Access } from '@/spatial/contracts';
 /** The closed vocabularies the surfaces accept. Values are validated at this boundary, never cast: a status outside them is a refusal, not a colour. */
 export const REACHABILITY_VALUES: readonly Reachability[] = ['CONFIRMED', 'POSSIBLE_ONLY', 'DISCONNECTED'];
 export const ACCESS_VALUES: readonly Access[] = ['OPEN', 'CLOSED', 'UNKNOWN'];

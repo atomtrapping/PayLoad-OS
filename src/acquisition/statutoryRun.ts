@@ -23,7 +23,7 @@
 import { SourceConnectorError } from './errors';
 import { planCapture, type CaptureSchedule, type SchedulePlan, type ScheduleRun } from './schedule';
 import { parseCaptureSchedule } from './schedule';
-import { parseStatutoryCaptureRequest, type StatutoryCaptureRequest, type StatutoryJurisdiction } from './statutory';
+import { parseStatutoryCaptureRequest, type StatutoryCaptureRequest, type JurisdictionId } from './statutory';
 import type { StatutoryCaptureInspection } from './store';
 
 export const CAPTURE_PLAN_METHOD = 'payload.statutory-capture-plan.v1';
@@ -32,7 +32,7 @@ export interface StatutoryCapturePlan {
   schema: typeof CAPTURE_PLAN_METHOD;
   schedule: CaptureSchedule;
   /** The document this schedule collects. The request ID is derived per run and is not declared here. */
-  target: { jurisdiction: StatutoryJurisdiction; documentPath: string };
+  target: { jurisdiction: JurisdictionId; documentPath: string };
 }
 
 export interface StatutoryRunOutcome {

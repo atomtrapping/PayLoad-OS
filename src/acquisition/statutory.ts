@@ -41,20 +41,26 @@
  * read it, which is the next piece of work stated from evidence.
  */
 import type { SourceRegistration } from '../data-os/contracts';
+import type { JurisdictionId } from '@/domain/statutoryHarvest';
 import { SourceConnectorError } from './errors';
 import { type SourceEndpoint } from './http';
 
 /** The jurisdictions the harvest rail declares a grammar for. Held in step by a test. */
-export type StatutoryJurisdiction = 'FL_OIR' | 'CA_CDI' | 'TX_TDI';
+/**
+ * One vocabulary, and it is the domain's. This module used to declare its own
+ * union with the same three members under a different name; see JurisdictionId
+ * for why that was a hole rather than a duplication.
+ */
+export type { JurisdictionId } from '@/domain/statutoryHarvest';
 
-export const STATUTORY_JURISDICTIONS: readonly StatutoryJurisdiction[] = Object.freeze(['FL_OIR', 'CA_CDI', 'TX_TDI']);
+export const STATUTORY_JURISDICTIONS: readonly JurisdictionId[] = Object.freeze(['FL_OIR', 'CA_CDI', 'TX_TDI']);
 
 /** Documents are text. A response this rail cannot hand to the grammar is refused, not stored hopefully. */
 const DOCUMENT_MEDIA_TYPE = /^text\/(?:plain|html)(?:\s*;\s*charset=utf-8)?$/i;
 export const STATUTORY_MAX_BYTES = 256 * 1024;
 
 interface JurisdictionSource {
-  readonly jurisdiction: StatutoryJurisdiction;
+  readonly jurisdiction: JurisdictionId;
   readonly sourceId: string;
   readonly regulator: string;
   readonly endpoint: SourceEndpoint;
@@ -79,7 +85,7 @@ function endpoint(id: string, hostname: string, regulator: string): SourceEndpoi
   });
 }
 
-export const STATUTORY_SOURCES: Readonly<Record<StatutoryJurisdiction, JurisdictionSource>> = Object.freeze({
+export const STATUTORY_SOURCES: Readonly<Record<JurisdictionId, JurisdictionSource>> = Object.freeze({
   FL_OIR: {
     jurisdiction: 'FL_OIR', sourceId: 'fl-oir-statutory-filing',
     regulator: 'Florida Office of Insurance Regulation',
@@ -100,7 +106,7 @@ export const STATUTORY_SOURCES: Readonly<Record<StatutoryJurisdiction, Jurisdict
 export interface StatutoryCaptureRequest {
   schema: 'payload.statutory-capture-request.v1';
   requestId: string;
-  jurisdiction: StatutoryJurisdiction;
+  jurisdiction: JurisdictionId;
   /** Operator-declared, on the pinned host. Recorded as a declaration, never as a verified location. */
   documentPath: string;
 }
@@ -125,13 +131,13 @@ export function parseStatutoryCaptureRequest(value: unknown): StatutoryCaptureRe
       || !Object.hasOwn(Object.getOwnPropertyDescriptor(value, field)!, 'value'))) invalidRequest();
   if (value.schema !== 'payload.statutory-capture-request.v1'
     || typeof value.requestId !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(value.requestId)
-    || typeof value.jurisdiction !== 'string' || !STATUTORY_JURISDICTIONS.includes(value.jurisdiction as StatutoryJurisdiction)
+    || typeof value.jurisdiction !== 'string' || !STATUTORY_JURISDICTIONS.includes(value.jurisdiction as JurisdictionId)
     || typeof value.documentPath !== 'string' || value.documentPath.length > 256
     || !DOCUMENT_PATH.test(value.documentPath) || value.documentPath.split('/').some((part) => part === '.' || part === '..')) invalidRequest();
   return {
     schema: 'payload.statutory-capture-request.v1',
     requestId: value.requestId,
-    jurisdiction: value.jurisdiction as StatutoryJurisdiction,
+    jurisdiction: value.jurisdiction as JurisdictionId,
     documentPath: value.documentPath,
   };
 }
@@ -152,7 +158,7 @@ export function buildStatutoryUrl(request: StatutoryCaptureRequest): URL {
  * internal reading of a public source's terms, not a provider-issued licence,
  * and it says so in its own identifiers.
  */
-export function statutoryQualificationPolicy(jurisdiction: StatutoryJurisdiction): SourceRegistration {
+export function statutoryQualificationPolicy(jurisdiction: JurisdictionId): SourceRegistration {
   const source = STATUTORY_SOURCES[jurisdiction];
   return {
     registrationId: `${source.sourceId}:qualification:2026-09-07`,
@@ -180,7 +186,7 @@ export function statutoryQualificationPolicy(jurisdiction: StatutoryJurisdiction
  */
 export interface StatutoryDocumentObservation {
   schema: 'payload.statutory-document-observation.v1';
-  jurisdiction: StatutoryJurisdiction;
+  jurisdiction: JurisdictionId;
   sourceId: string;
   documentUrl: string;
   mediaType: string;

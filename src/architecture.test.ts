@@ -163,3 +163,36 @@ describe('identity survives representation changes', () => {
     expect(viaTool.answer!.canonicalId).toBe(asOf.answer!.canonicalId);
   });
 });
+
+describe('one vocabulary, and it is the registry’s', () => {
+  /** Every exported UPPER_CASE string union in src, with where it was declared. */
+  function vocabularies(): Map<string, string[]> {
+    const found = new Map<string, string[]>();
+    for (const file of walk(join(ROOT, 'src'))) {
+      if (!/\.tsx?$/.test(file) || /\.test\./.test(file)) continue;
+      const text = readFileSync(join(ROOT, file), 'utf8');
+      for (const match of text.matchAll(/export type (\w+)\s*=\s*((?:\s*\|?\s*'[A-Z][A-Z0-9_]*'\s*(?:\n\s*\/\*\*[\s\S]*?\*\/\s*)?)+);/g)) {
+        const members = [...match[2].matchAll(/'([A-Z][A-Z0-9_]*)'/g)].map((m) => m[1]).sort();
+        if (members.length < 2) continue;
+        const key = members.join('|');
+        found.set(key, [...(found.get(key) ?? []), `${file}:${match[1]}`]);
+      }
+    }
+    return found;
+  }
+
+  it('declares no closed vocabulary twice under two names', () => {
+    // Three of these existed: the three statutory regulators under both
+    // JurisdictionId and StatutoryJurisdiction, the passage Access declared in
+    // the spatial contract and again in the domain that imports it, and
+    // CORRECTION|WITHDRAWAL as both RetractionKind and Restatement. Two names
+    // for one closed set is how a fourth member reaches one of them and not
+    // the other, and the compiler accepts it right up until the boundary.
+    const duplicated = [...vocabularies().entries()]
+      .filter(([, homes]) => homes.length > 1)
+      // {ABSENT, PARTIAL} is a coincidence of size between two unrelated
+      // scales, not one vocabulary declared twice. Named, so it is a decision.
+      .filter(([members]) => members !== 'ABSENT|PARTIAL');
+    expect(duplicated.map(([members, homes]) => `{${members}} in ${homes.join(' and ')}`)).toEqual([]);
+  });
+});

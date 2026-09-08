@@ -51,7 +51,7 @@
 import type { Corpus, CorpusRecord, CorpusRelease, Retraction } from './corpus';
 import type { ISODateTime } from './types';
 import { queryAsOf, recordStatusAt } from './corpus';
-import { evaluateNode, type ConditionNode, type FactResolver } from './conditionGrammar';
+import { evaluateNode, type ConditionNode, type FactResolver, type NodeVerdict as ReleaseVerdict } from './conditionGrammar';
 export * from './conditionGrammar';
 
 export const VEHICLE_METHOD = 'notationsos.conditional-custody.v1';
@@ -147,7 +147,19 @@ export interface ReleaseCondition {
   agreedText: string;
 }
 
-export type ReleaseVerdict = 'GRANTED' | 'WITHHELD' | 'NOT_ADJUDICABLE';
+/**
+ * A release verdict is a node verdict at the root, so it is that vocabulary.
+ *
+ * It was declared here with the same three members as `NodeVerdict`, which is
+ * what a condition tree answers with. A release is adjudicated by evaluating
+ * its root condition, so the two were always the same set — and a fourth
+ * member added to one of them would have been silently accepted by the other
+ * right up to the point where the root's verdict became the release's.
+ *
+ * The alias keeps the word that reads correctly at this scope while there is
+ * only one declaration behind it.
+ */
+export type { NodeVerdict as ReleaseVerdict } from './conditionGrammar';
 
 /**
  * BINDING would mean money may move on this. DEMONSTRATION means the record
@@ -242,7 +254,16 @@ export function evaluateRelease(corpus: Corpus, release: CorpusRelease, conditio
 
 /* ── What happened to the facts after the money moved ── */
 
-export interface Restatement {
+/**
+ * One retraction, measured against a decision already made.
+ *
+ * It was called `Restatement`, which collided with two other things: a
+ * two-member union of the same name in ./dependencyIndex, since replaced by
+ * RetractionKind, and the summary over all of these, which is
+ * RestatementExposure below. Three uses of one word in one domain is how a
+ * reader stops trusting the words.
+ */
+export interface RestatementEvent {
   retractionId: string;
   kind: Retraction['kind'];
   issuedAt: ISODateTime;
@@ -299,7 +320,7 @@ export const POST_RELEASE_MEANING: Record<PostReleaseState, { meaning: string; a
 
 export interface ReleaseExposure {
   decision: ReleaseDecision;
-  restatements: Restatement[];
+  restatements: RestatementEvent[];
   /** The terminal state, named so a consumer cannot collapse a withdrawal into a reversal. */
   state: PostReleaseState;
   /** What the same condition evaluates to now, on everything the corpus has since learned. */
@@ -320,7 +341,7 @@ export interface ReleaseExposure {
 export function exposureAfter(corpus: Corpus, release: CorpusRelease, decision: ReleaseDecision, nowKnowledge: ISODateTime): ReleaseExposure {
   const relied = new Set(decision.reliedOn);
   const decidedMs = Date.parse(decision.decidedAtKnowledge);
-  const restatements: Restatement[] = corpus.retractions
+  const restatements: RestatementEvent[] = corpus.retractions
     .filter((r) => r.affectedRecordIds.some((id) => relied.has(id)))
     .filter((r) => r.issuedAt > decision.decidedAtKnowledge && r.issuedAt <= nowKnowledge)
     .map((r) => ({

@@ -31,6 +31,7 @@
  * implying it covers everything, because a dependency graph that quietly claims
  * completeness is worse than none: it converts an unknown into a clean bill.
  */
+import type { RetractionKind } from './corpus';
 import type { ISODateTime } from './types';
 
 export const DEPENDENCY_METHOD = 'notationsos.dependency-index.v1';
@@ -55,7 +56,18 @@ export interface DependencyEdge {
   because: string;
 }
 
-export type Restatement = 'CORRECTION' | 'WITHDRAWAL';
+/**
+ * One vocabulary, and it is the corpus's.
+ *
+ * This was declared here as `Restatement` with the same two members as
+ * `RetractionKind`, so the index that answers what depends on a corrected
+ * record spoke a different name for the same closed set the correction itself
+ * uses. Two names is how a third member gets added to one of them.
+ *
+ * The name `Restatement` was also taken by an unrelated interface in
+ * ./collateralVehicle, which is now `RestatementExposure`: one name, one thing.
+ */
+export type { RetractionKind } from './corpus';
 
 /** What a restatement means for something standing on it. Never a verdict. */
 export type Consequence = 'RESTATED' | 'UNSUPPORTED';
@@ -83,7 +95,7 @@ export interface Reached {
 
 export interface FanOut {
   restated: string[];
-  kind: Restatement;
+  kind: RetractionKind;
   reached: Reached[];
   /** The deepest chain walked, which is what a transitive derivation costs. */
   maxDepth: number;
@@ -136,7 +148,7 @@ export function buildDependencyIndex(edges: readonly DependencyEdge[]): Dependen
 export function fanOut(
   index: DependencyIndex,
   restated: readonly string[],
-  kind: Restatement,
+  kind: RetractionKind,
 ): FanOut {
   const standing = index.standing;
   const consequence: Consequence = kind === 'WITHDRAWAL' ? 'UNSUPPORTED' : 'RESTATED';

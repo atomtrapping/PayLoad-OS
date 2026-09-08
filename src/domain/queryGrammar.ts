@@ -34,7 +34,8 @@
 import { estimateQueryCost, type CostClass } from './queryCost';
 import type { Corpus, CorpusRecord, CorpusRelease, Retraction } from './corpus';
 import { releaseRecords, releaseRetractions } from './corpus';
-import { fanOut, type DependencyIndex, type FanOut, type Restatement } from './dependencyIndex';
+import { fanOut, type DependencyIndex, type FanOut } from './dependencyIndex';
+import type { RetractionKind } from './corpus';
 import type { ISODateTime } from './types';
 
 export const GRAMMAR_METHOD = 'notationsos.query-grammar.v1';
@@ -147,7 +148,7 @@ export interface Dependents {
   method: typeof GRAMMAR_METHOD;
   shape: 'WHAT_DEPENDS_ON';
   recordIds: readonly string[];
-  restatement: Restatement;
+  restatement: RetractionKind;
   reach: FanOut;
   costClass: CostClass | null;
   because: string;
@@ -160,7 +161,7 @@ export interface Dependents {
  * right shape and this exists so the question has the same surface as the other
  * two rather than being reachable only by knowing the index's own vocabulary.
  */
-export function whatDependsOn(index: DependencyIndex, recordIds: readonly string[], restatement: Restatement): Dependents {
+export function whatDependsOn(index: DependencyIndex, recordIds: readonly string[], restatement: RetractionKind): Dependents {
   const reach = fanOut(index, recordIds, restatement);
   return {
     method: GRAMMAR_METHOD,

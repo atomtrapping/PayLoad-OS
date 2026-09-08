@@ -139,9 +139,10 @@ channel that was supposed to mean something.
 
 ## Verification (2026-09-08)
 
-Typecheck; ESLint at `--max-warnings=0`; 4,691 unit tests across 190 files, 20
+Typecheck; ESLint at `--max-warnings=0`; 4,692 unit tests across 190 files, 20
 of them new for the scale and the primitives, including the structural test that
 the stylesheet declares a token for exactly the states the module declares and
-no others; `next build`; 178 Playwright tests at desktop and Pixel 7, including
-ten axe passes over the restyled surfaces with no serious or critical
-violations.
+no others; `next build`; 178 Playwright tests (88 desktop, 90 Pixel 7),
+including ten axe passes over the restyled surfaces with no serious or critical
+violations. Run on the tree merged with the parallel session's README and
+architecture-test change, not before it.

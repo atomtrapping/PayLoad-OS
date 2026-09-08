@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { ProjectionSpec } from '@/projection/spec';
 import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { CONVENIENCE_MEANING, INSTRUMENT_RULES, conveniencesTaken, type InstrumentReading } from '@/domain/operatorInstrument';
+import { Readout, Rule } from '@/components/hud/Instrument';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -559,13 +560,13 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
 
           <Part title={`Operator instrument · ${instrumentReading('positioned')} flyable, ${instrumentReading('void')} void`} testId="earth-operator" folded>
             <p className="m-0 text-[12px]" style={muted}>The release’s own spatial state from this seat, arranged to be flown rather than read. It is a way of looking and not a thing looked at: nothing here is evidence, and no ruling may cite it.</p>
-            <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Instrument layers" data-testid="operator-layers">
+            <ul className="m-0 p-0 list-none flex flex-col gap-1.5" aria-label="Instrument layers" data-testid="operator-layers">
               {instrument.layers.map((entry) => (
-                <li key={entry.id} className="surface-inset p-2 text-[12px] flex flex-col gap-0.5" data-operator-layer={entry.id} data-reading={String(entry.reading)} data-convenience={entry.convenience}>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-medium" style={{ color: 'var(--text-heading)' }}>{entry.label}</span>
-                    <span className="mono" style={entry.reading === 'UNKNOWN' ? { color: 'var(--status-conditional)' } : { color: 'var(--text-heading)' }}>{entry.reading}</span>
-                  </div>
+                <li key={entry.id} className="hud-panel text-[12px] flex flex-col gap-1" data-operator-layer={entry.id} data-reading={String(entry.reading)} data-convenience={entry.convenience}>
+                  {/* Every layer is counted from records the corpus holds, so the
+                      state is DERIVED — and Readout overrides it to UNKNOWN on a
+                      reading no caller was able to take. */}
+                  <Readout label={entry.label} value={entry.reading} state="DERIVED" layout="row" />
                   <div style={muted}>{entry.shows}</div>
                   <div style={faint}>{entry.because}</div>
                 </li>
@@ -573,7 +574,7 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
             </ul>
 
             <div className="text-[12px] flex flex-col gap-0.5" data-testid="operator-conveniences" data-taken={conveniences.length}>
-              <span className="label-sm">Conveniences taken</span>
+              <Rule label="Conveniences taken" right={conveniences.length === 0 ? 'NONE' : `${conveniences.length} declared`} />
               {conveniences.length === 0
                 ? <span style={muted}>None. Every reading above is counted from the release as it stands: nothing was interpolated, smoothed, aggregated or carried forward.</span>
                 : <ul className="m-0 pl-4">{conveniences.map((entry) => <li key={entry.id} style={muted}><span className="mono">{entry.convenience.replace('_', ' ').toLowerCase()}</span> on {entry.label} — {CONVENIENCE_MEANING[entry.convenience]}</li>)}</ul>}
@@ -581,7 +582,7 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
 
             {instrument.voids.length > 0 && (
               <div className="text-[12px] flex flex-col gap-1" data-testid="operator-voids" data-count={instrument.voids.length}>
-                <span className="label-sm">Where the instrument is blind</span>
+                <Rule label="Where the instrument is blind" right={`${instrument.voids.length} void`} state="UNKNOWN" />
                 <p className="m-0" style={muted}>Subjects this seat holds records about and no position for. There is nowhere to fly to, so they are listed instead of drawn — the records are still selectable.</p>
                 <ul className="m-0 p-0 list-none flex flex-col gap-0.5" aria-label="Subjects with no position">
                   {instrument.voids.map((hole) => {
@@ -599,8 +600,17 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
             )}
 
             <div className="text-[12px] flex flex-col gap-0.5" data-testid="operator-rules" data-writes={instrument.writes}>
-              <span className="label-sm">The two rules this instrument is held to</span>
+              <Rule label="The two rules this instrument is held to" right="WRITES NONE" />
               <ol className="m-0 pl-4 flex flex-col gap-0.5" style={faint}>{INSTRUMENT_RULES.map((rule) => <li key={rule}>{rule}</li>)}</ol>
+            </div>
+
+            {/* The frame carries the provenance, where it cannot be cropped away
+                from the readings it qualifies. */}
+            <div className="hud-stamp" data-testid="operator-stamp">
+              <span data-k="RELEASE">{instrument.releaseId}</span>
+              <span data-k="SEAT">{instrument.seat}</span>
+              <span data-k="KNOWN">{fmtUtc(instrument.knownAt, { seconds: true })}</span>
+              <span data-k="EVIDENCE">NO</span>
             </div>
           </Part>
 

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getCorpusSource } from '@/adapter/corpusSource';
+import { Readout, Segments } from '@/components/hud/Instrument';
 import Link from 'next/link';
 import { CUSTOMER_CATEGORIES, DISTRIBUTION_MECHANISMS, ECONOMIC_ARCHITECTURE, ENGINES, MATERIAL_CLASSES_IN_CORPUS, PRESENCE_LABEL, PRODUCTION_SYSTEM, PRODUCT_ARCHITECTURE, REFERENCE_IMPLEMENTATION, THESIS, VALUE_PROPOSITION } from '@/domain/product';
 import { DOCTRINE, EXTRACTION_INTERFACE, FABRICS, IDENTITY_CHAIN, INFORMATION_STATES, OPERATIONAL_RULE, PROJECTION_ENGINES_IN_REPOSITORY, VERIFICATION_TIERS, WORKBENCH_RUNTIME } from '@/domain/doctrine';
@@ -689,9 +690,28 @@ ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─'
           <span style={{ color: 'var(--text-heading)' }}>{WHAT_IS_BEING_CLAIMED.is}</span> {WHAT_IS_BEING_CLAIMED.isNot} {WHAT_IS_BEING_CLAIMED.theTest}
         </p>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="compression-standing">{compression.statement}</p>
+        {/* Two readings side by side, drawn as instruments. The meter shows its
+            empty cells so the denominator is visible: five translation steps,
+            and however many of them the corpus can currently carry.
+            The meter is DERIVED and not UNKNOWN. How many steps collapse is
+            computed from records the corpus holds and is a real number; what is
+            unreadable is the admitted count beside it, which is why two of the
+            five are unlit. Painting the whole meter as unknown would overstate
+            the uncertainty, which is the same failure as understating it. */}
+        <div className="flex flex-wrap items-end gap-6" data-testid="compression-instruments">
+          <div className="min-w-[220px] flex-1 max-w-[380px]">
+            <Segments
+              label="Translation steps that collapse"
+              filled={compression.availableNow}
+              of={compression.translationSteps}
+              state="DERIVED"
+              testId="compression-meter"
+            />
+          </div>
+          <Readout label="Admitted records" value={admitted.count} state="MEASURED" testId="admitted-readout" />
+        </div>
         <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }} data-testid="admitted-standing" data-admitted={String(admitted.count)}>
-          <span className="label-sm">Admitted records</span>{' '}
-          <span className="mono" style={{ color: admitted.count === 'UNKNOWN' ? 'var(--status-conditional)' : 'var(--text-heading)' }}>{admitted.count}</span>{' — '}{admitted.because}
+          {admitted.because}
         </p>
         <div className="overflow-x-auto" tabIndex={0}>
           <table className="ledger-table text-[12px]" aria-label="The distrust stack, and which layer each step is in">

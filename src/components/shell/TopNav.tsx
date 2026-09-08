@@ -19,7 +19,7 @@ export function TopNav() {
   const here = locate(pathname);
   return (
     <header
-      className="sticky top-0 z-40 flex items-center gap-3 px-3 sm:px-4 border-b"
+      className="app-topbar sticky top-0 z-40 flex items-center gap-3 px-3 sm:px-4 border-b"
       style={{ height: 'var(--topbar-h)', background: 'var(--bg-void)', borderColor: 'var(--border-default)' }}
     >
       <span className="flex items-center gap-2 shrink-0">

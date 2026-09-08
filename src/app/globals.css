@@ -4,11 +4,16 @@
 
 /* ═══════════════════════════════════════════════════════════════════════
    Payload OS — token layer
-   Derived from Payload Terminal V0 (src/app/globals.css): the void/near-black
-   workspace, restrained gold for primary state and action, Inter for
-   explanatory text and JetBrains Mono for operational values. Glass surfaces,
-   glow, scanlines and looping animation are deliberately NOT carried over:
-   this instrument is an industrial ledger, not a HUD.
+   Derived from Payload Terminal V0: the void/near-black workspace, restrained
+   gold for primary state and action, Inter for explanatory text and JetBrains
+   Mono for operational values.
+
+   The instrument language (below) sharpened this in 2026-09: drawn frames,
+   registration marks, segmented meters and colour-as-epistemic-channel are in.
+   Glass, bloom, gradient fills and looping ambient animation stay out — the
+   reference is a phosphor instrument and a pen plotter, not a film HUD. An
+   instrument earns density by labelling everything in it; a HUD spends light
+   on implying competence it has not demonstrated.
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -533,3 +538,273 @@ details[open] > summary::before { transform: rotate(90deg); }
 .path-rail > li[data-state='FAILED'], .path-rail > li[data-state='QUARANTINED'] { border-color: color-mix(in srgb, var(--status-refused) 55%, transparent); }
 .path-rail > li[data-state='RUNNING'] { border-color: color-mix(in srgb, var(--status-pending) 55%, transparent); }
 .path-rail > li[data-state='BLOCKED'] { border-style: dashed; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INSTRUMENT LANGUAGE
+   ═══════════════════════════════════════════════════════════════════════
+
+   The references are instruments, not dashboards: a frequency counter, a pen
+   plotter, an air-traffic screen, a LiDAR return, a MAGI panel. Four things
+   are true of all of them, and all four are already this system's doctrine.
+
+   BLACK IS THE DEFAULT STATE, NOT A BACKGROUND. Nothing is drawn where nothing
+   is held. A plotter leaves the paper alone; a screen leaves the phosphor dark.
+   That is SILENCE-IS-NOT-ZERO as a ground rule: emptiness on these surfaces
+   means the corpus holds nothing there, so no surface may fill space to look
+   busy, and no panel may render a placeholder shaped like a value.
+
+   LINE, NOT FILL. Frames are drawn at one pixel. A fill is a claim that
+   something occupies that area, so fills are reserved for quantities actually
+   measured and are drawn as discrete segments — a segmented meter cannot imply
+   a precision between its cells, where a smooth gradient bar always does.
+
+   COLOUR IS A CHANNEL. On an air-traffic screen the colour says which class of
+   traffic; on a LiDAR return it says elevation. Here it says what kind of
+   knowledge a thing is, and it says nothing else. Six states, one scale,
+   every surface. Decoration gets no hue at all.
+
+   THE FRAME CARRIES PROVENANCE. Every reference prints its own serial, session
+   ID and coordinates into the chrome. So does this: a panel over corpus state
+   stamps the release, the digest and the knowledge time into its own border,
+   where it cannot be cropped away from the number it qualifies.
+   ─────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── The epistemic scale: what kind of knowledge a rendered thing is ──
+        Every value ≥ 6.3:1 on every workspace ground, measured rather than
+        judged by eye. Colour is never the only channel: each state also
+        carries a stroke treatment below and a word in the markup. */
+
+  /* Read from a source. An observation somebody made. */
+  --ep-measured: #3df08f;
+  /* Computed here from records the corpus holds. Reproducible, not observed. */
+  --ep-derived: #6fd7e8;
+  /* A party asserts it. Recorded as their claim, not checked. */
+  --ep-declared: #e8b53a;
+  /* Not readable from here. An unreadable count is not a zero. */
+  --ep-unknown: #98a1ae;
+  /* A gate declined. The reason travels with it. */
+  --ep-refused: #ff7a5c;
+  /* Support removed, and nothing put in its place. Not an adverse finding. */
+  --ep-withdrawn: #b795f2;
+
+  /* ── Instrument geometry ── */
+  --hud-hair: 1px;
+  --hud-tick: 9px;          /* corner registration mark arm length */
+  --hud-grid: 32px;         /* registration ground pitch */
+  --hud-seg-gap: 2px;       /* segmented meter cell gap */
+  /* The registration marks read as drawn rather than as a faint edge: brighter
+     than the border they sit on, so a panel announces where it begins. */
+  --tick-neutral: rgba(255, 255, 255, 0.42);
+}
+
+/* ── Epistemic state, applied ────────────────────────────────────────────
+   `data-epistemic` on any element colours its stroke and text from the scale
+   and gives it a second, non-colour channel. UNKNOWN is dashed and hollow
+   because it is an absence of reading; WITHDRAWN is double-ruled because a
+   retraction is not a refusal and the two must never look alike. */
+[data-epistemic] { --ep: var(--ep-unknown); border-color: var(--ep); color: var(--ep); }
+[data-epistemic='MEASURED'] { --ep: var(--ep-measured); }
+[data-epistemic='DERIVED'] { --ep: var(--ep-derived); }
+[data-epistemic='DECLARED'] { --ep: var(--ep-declared); }
+[data-epistemic='UNKNOWN'] { --ep: var(--ep-unknown); border-style: dashed; }
+[data-epistemic='REFUSED'] { --ep: var(--ep-refused); }
+[data-epistemic='WITHDRAWN'] { --ep: var(--ep-withdrawn); border-style: double; border-width: 3px; }
+
+/* ── The drawn frame ─────────────────────────────────────────────────────
+   One hairline and four corner marks. The marks are the registration ticks
+   every reference draws: they say where the panel begins without a heavy
+   border, and they read at a glance as an instrument rather than a card. */
+.hud-panel {
+  position: relative;
+  border: var(--hud-hair) solid var(--border-default);
+  background: var(--bg-primary);
+  padding: 9px 11px;
+}
+.hud-panel::before,
+.hud-panel::after {
+  content: '';
+  position: absolute;
+  width: var(--hud-tick);
+  height: var(--hud-tick);
+  border: var(--hud-hair) solid var(--ep, var(--tick-neutral));
+  pointer-events: none;
+}
+.hud-panel::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.hud-panel::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* ── The section bar ─────────────────────────────────────────────────────
+   The labelled rule from the plotter references: a name at the left, a hairline
+   carrying to the right edge, and room at the end for a state word. */
+.hud-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 18px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hud-bar::after { content: ''; flex: 1; height: var(--hud-hair); background: var(--border-default); }
+.hud-bar > .hud-bar-state { order: 3; color: var(--ep, var(--text-secondary)); white-space: nowrap; }
+
+/* ── The provenance stamp ────────────────────────────────────────────────
+   Printed into the frame, in the chrome, so the qualification cannot be
+   cropped away from the number it qualifies. */
+.hud-stamp {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-top: 6px;
+  margin-top: 8px;
+  border-top: var(--hud-hair) solid var(--border-subtle);
+}
+.hud-stamp > span::before { content: attr(data-k) ' '; color: var(--border-strong); }
+
+/* ── The registration ground ─────────────────────────────────────────────
+   A grid at one pitch, drawn faintly, so a surface reads as ruled rather than
+   blank. It is decoration and takes no hue, per the colour rule above. */
+.hud-ground {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.028) var(--hud-hair), transparent var(--hud-hair)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) var(--hud-hair), transparent var(--hud-hair));
+  background-size: var(--hud-grid) var(--hud-grid);
+}
+
+/* ── The readout ─────────────────────────────────────────────────────────
+   A tiny caps label over a mono value. An UNKNOWN readout is drawn hollow: it
+   prints the word, never a digit, and never a dash that could read as a zero. */
+.hud-readout { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hud-readout > .hud-readout-label {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hud-readout > .hud-readout-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--ep, var(--text-heading));
+}
+.hud-readout[data-epistemic='UNKNOWN'] > .hud-readout-value { font-size: var(--text-sm); letter-spacing: 0.08em; }
+
+/* The ruled line: label at the left, hairline carrying across, value at the
+   right. The default for a reading that sits among others; the stacked form
+   above is for the one number a panel exists to show. */
+.hud-readout[data-layout='row'] { flex-direction: row; align-items: baseline; gap: 8px; }
+.hud-readout[data-layout='row'] > .hud-readout-label { flex: none; }
+.hud-readout[data-layout='row']::after {
+  content: '';
+  order: 1;
+  flex: 1;
+  height: var(--hud-hair);
+  background: var(--border-subtle);
+  align-self: center;
+}
+.hud-readout[data-layout='row'] > .hud-readout-value { order: 2; flex: none; font-size: var(--text-md); }
+
+/* ── The segmented meter ─────────────────────────────────────────────────
+   Discrete cells, never a continuous bar. A filled cell means a measured
+   quantity reached it; the empty cells are the rest of the scale and are
+   drawn, so the denominator is visible rather than implied. */
+.hud-seg { display: flex; gap: var(--hud-seg-gap); align-items: stretch; height: 10px; }
+.hud-seg > i {
+  flex: 1;
+  border: var(--hud-hair) solid var(--border-default);
+  background: transparent;
+}
+.hud-seg > i[data-on='true'] { background: var(--ep, var(--text-secondary)); border-color: var(--ep, var(--text-secondary)); }
+/* No reading, no cells: a meter with nothing measured shows its scale dashed
+   rather than showing an empty bar, which would read as a measured zero. */
+.hud-seg[data-epistemic='UNKNOWN'] > i { border-style: dashed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-panel, .hud-seg > i { transition: none; }
+}
+
+/* ── The language, applied to the shell ──────────────────────────────────
+   Applied in CSS against classes the markup already carries, so the estate
+   inherits the instrument without every page being rewritten and without the
+   navigation, table and inspector tests changing what they assert.
+
+   The registration ground goes on the working surface only. The rail and the
+   top bar are chrome and stay flat: a grid behind the navigation would compete
+   with the thing the operator came to read. */
+.app-main { background-image: inherit; }
+.workspace, .app-main > * { position: relative; }
+
+/* Section headings become ruled labels: the name, then a hairline carrying to
+   the edge. One mark, used everywhere a section begins. */
+.inspector-section > h3,
+.inspector-fold > summary > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+}
+.inspector-section > h3::after,
+.inspector-fold > summary > h3::after {
+  content: '';
+  flex: 1;
+  height: var(--hud-hair);
+  background: var(--border-subtle);
+}
+
+/* The rail's area headings take the same rule, so the navigation and the
+   inspector are visibly the same instrument. */
+@media (min-width: 1024px) {
+  /* The label alone takes the rule. The activity line beneath it is prose and
+     stays a block, which is what the first attempt at this got wrong. */
+  .app-sidebar .nav-area-head > .label-sm { display: flex; align-items: center; gap: 8px; }
+  .app-sidebar .nav-area-head > .label-sm::after {
+    content: '';
+    flex: 1;
+    height: var(--hud-hair);
+    background: var(--border-subtle);
+  }
+}
+
+/* Table headers are labels, not prose: mono, spaced, and ruled beneath. */
+.ledger-table th {
+  font-family: var(--font-mono);
+  letter-spacing: 0.09em;
+}
+
+/* The working surface is registered against a grid at one pitch. Faint enough
+   that a dense table still reads, present enough that an empty region reads as
+   ruled paper rather than as a loading state — which matters here, because an
+   empty region on these surfaces is a fact about the corpus. */
+.app-main {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) var(--hud-hair), transparent var(--hud-hair)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) var(--hud-hair), transparent var(--hud-hair));
+  background-size: var(--hud-grid) var(--hud-grid);
+  background-attachment: local;
+}
+
+/* The top bar carries a tick at each end, the way every reference frames its
+   chrome. Decoration, so it takes a border colour and no hue. */
+.app-topbar { position: relative; }
+.app-topbar::before,
+.app-topbar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  width: var(--hud-tick);
+  height: var(--hud-tick);
+  border: var(--hud-hair) solid var(--tick-neutral);
+  pointer-events: none;
+}
+.app-topbar::before { left: 0; border-right: 0; border-top: 0; }
+.app-topbar::after { right: 0; border-left: 0; border-top: 0; }

@@ -1,0 +1,110 @@
+# Every check this repository already runs locally, run on every push.
+#
+# There was no CI. One hundred and eighty-five commits on one branch, 4,879
+# unit tests, 210 browser tests, a Rust kernel with 29 of its own, and nothing
+# that ran any of them except a person remembering to. The verification ladder
+# served at /api/v1/status reports rungs 0 through 3 as VERIFIED and names CI as
+# what asserts them; this file is that party.
+#
+# Two jobs rather than one: `check` is the fast gate (Rust, types, lint, unit
+# tests, build) and `browser` is the slow one (Playwright at desktop and Pixel
+# 7, which needs the production build the config serves). Splitting them means a
+# type error is reported in two minutes instead of eight.
+name: check
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push to the same ref supersedes this run. The one exception is the
+  # default branch, where every commit's result is worth keeping.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  # The screenshot and asset steps must never reach a font or tile host.
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  check:
+    name: kernel, types, lint, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.9'
+          cache: npm
+
+      # The kernel is a build input, not an optional extra: `npm test` builds it
+      # first because src/state-kernel/store.test.ts runs against the real
+      # executable rather than a stub.
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/state-kernel/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('native/state-kernel/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - run: npm ci
+
+      # `npm run check` is kernel:test && typecheck && lint && test, in that
+      # order, and it is what a contributor runs. Running the same command means
+      # CI cannot drift from the local gate.
+      - run: npm run check
+
+      - run: npm run build
+
+      # The digest fixtures are recomputed by src/fixtures/digest.test.ts, which
+      # `npm test` already ran. This asserts the working tree is unchanged by
+      # the build itself — a generated file committed stale is the failure mode.
+      - name: Working tree is clean after the build
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo 'The build modified tracked files. Commit the regenerated output.'
+            git status --porcelain
+            git diff
+            exit 1
+          fi
+
+  browser:
+    name: browser tests (desktop and Pixel 7)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.9'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      # playwright.config.ts serves the production build, so a source change is
+      # invisible to these tests until this step runs.
+      - run: npm run build
+
+      - run: npx playwright test --project=desktop --project=mobile
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

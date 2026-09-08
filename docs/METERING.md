@@ -79,7 +79,7 @@ participant, absorbing liability the corpus does not support.
 
 | Pillar | Sells | Here |
 |---|---|---|
-| Data products | The telemetry itself, as the three APIs | Caravan has a demonstration corpus behind a fixture feed; the other two are declared and empty |
+| Data products | The telemetry itself, as the three APIs | All three lines have a demonstration corpus behind one fixture feed; none is live and none is metered, because nothing has been delivered |
 | Hosting and compute | Runs of it, over authorized releases | The instruments run locally on the operator's machine; no hosted execution exists |
 | Proprietary capital | Nothing: it trades on the same exhaust, under a separate governance boundary | Absent, and separated by declaration: no source permits proprietary strategy or trading |
 

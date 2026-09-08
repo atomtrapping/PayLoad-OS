@@ -68,7 +68,7 @@ const rights = (sourceId: string, r: Omit<RightsSchedule, 'sourceId' | 'canonica
     sourceName: registration.displayName,
     licence: registration.licenseId,
     registration,
-    permittedUses: derivePermittedUses(registration, RIGHTS_AT, sourceId),
+    permittedUses: derivePermittedUses(registration, RIGHTS_AT, sourceId, 'CARAVAN'),
     ...r,
   };
 };

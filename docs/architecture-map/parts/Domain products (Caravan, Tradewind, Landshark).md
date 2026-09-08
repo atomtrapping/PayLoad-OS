@@ -13,7 +13,7 @@ tags:
 **Group:** Firm, domain products and customers  
 **Map:** [[NotationsOS Architecture]]
 
-> The three flagship products, each an API delivered as an HTTP feed and MCP tools over one provenance-bearing corpus. Caravan (logistics, freight, cargo, supply-chain movement) is the only one with a corpus here, and it is a committed demonstration; Tradewind (markets, pricing, risk) and Landshark (parcels, zoning, entitlements) are declared and empty. NotationsOS is not among them: it is the internal terminal over the backend.
+> The three flagship products, each an API delivered as an HTTP feed and MCP tools over one provenance-bearing corpus. All three now carry a committed demonstration corpus served by one corpus-generic feed: Caravan (logistics, freight, cargo, supply-chain movement) is the deepest, with cases, rulings and captured artifact bytes; Tradewind (markets, pricing, risk) and Landshark (parcels, zoning, entitlements) carry records, releases, rights and one retraction each, with no captured bytes. NotationsOS is not among them: it is the internal terminal over the backend.
 
 ## What it is
 
@@ -29,7 +29,7 @@ tags:
 
 ## Boundaries
 
-- NotationsOS is not a product and is not sold. Historical `PayloadOS` naming is an ancestor, not a rename instruction.
+- NotationsOS is not a product and is not sold. It was called Payload OS until 2026-09-08; the brand renamed and the identifiers deliberately did not (`payload.*` schemas, `.payload/`, `PAYLOAD_*`, `payload-os-demo` in canonical URIs), because a name inside a sealed receipt is a fact about what was written.
 - Cross-domain connections require explicit evidence-bearing mappings, never matching labels.
 
 ## Connects to

@@ -158,7 +158,7 @@ export const METERING_BOUNDARY = {
 /* ── The same asset, three ways ── */
 
 export const TELEMETRY_PILLARS = [
-  { pillar: 'Data products', sells: 'The telemetry itself, as the three APIs.', here: 'Caravan has a demonstration corpus behind a fixture feed; Tradewind and Landshark are declared and empty.' },
+  { pillar: 'Data products', sells: 'The telemetry itself, as the three APIs.', here: 'All three lines have a demonstration corpus behind one fixture feed; none is a live customer API and none is metered, because nothing has been delivered.' },
   { pillar: 'Hosting and compute', sells: 'Runs of it, over authorized releases.', here: 'The instruments run locally on the operator’s machine. No hosted execution exists.' },
   { pillar: 'Proprietary capital', sells: 'Nothing: it trades on the same exhaust, under a separate governance boundary.', here: 'Absent, and separated by declaration: no source in the corpus permits proprietary strategy or trading, and the rights matrix says so on every release.' },
 ] as const;

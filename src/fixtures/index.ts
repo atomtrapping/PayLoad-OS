@@ -10,6 +10,8 @@
 import type { AdmissionProfile, ClaimCaseBundle, Remediation } from '@/domain/types';
 import type { Corpus } from '@/domain/corpus';
 import { CARAVAN_CORPUS } from './caravan/release';
+import { TRADEWIND_CORPUS } from './tradewind/release';
+import { LANDSHARK_CORPUS } from './landshark/release';
 import { CASE_5B221, REMEDIATIONS_5B221 } from './caravan/admitted-5b221';
 import { CASE_7C104, REMEDIATIONS_7C104 } from './caravan/refused-7c104';
 import { CARAVAN_PROFILE } from './caravan/profile';
@@ -29,8 +31,16 @@ export const FIXTURE_CASES: readonly ClaimCaseBundle[] = [
 
 export const FIXTURE_PROFILES: readonly AdmissionProfile[] = [CARAVAN_PROFILE];
 
-/** The product: corpora with their releases, records, retractions and rights. */
-export const FIXTURE_CORPORA: readonly Corpus[] = [CARAVAN_CORPUS];
+/**
+ * The product: corpora with their releases, records, retractions and rights.
+ *
+ * One per line. The feed, the MCP tools and the corpus pages are all
+ * corpus-generic and read this list, so a line becomes servable by appearing
+ * here — which is what "operational" means for Tradewind and Landshark. It
+ * does not mean they carry live data: every corpus in this list is
+ * fixture_only and says so in every response.
+ */
+export const FIXTURE_CORPORA: readonly Corpus[] = [CARAVAN_CORPUS, TRADEWIND_CORPUS, LANDSHARK_CORPUS];
 
 export const FIXTURE_REMEDIATIONS: Record<string, Remediation> = {
   ...REMEDIATIONS_7C104,

@@ -9,7 +9,7 @@ test('desktop screenshots', async ({ page }) => {
   await page.getByRole('heading', { level: 1 }).waitFor();
   await page.screenshot({ path: `${OUT}/000-product-model.png`, fullPage: true });
   await page.goto('/releases');
-  await page.getByRole('table', { name: /Releases of/ }).waitFor();
+  await page.getByRole('table', { name: 'Releases of caravan.specialty-cargo' }).waitFor();
   await page.screenshot({ path: `${OUT}/00a-releases.png`, fullPage: true });
   await page.goto('/releases/REL-CAR-2026.09.01');
   await page.getByTestId('certification').waitFor();

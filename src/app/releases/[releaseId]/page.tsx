@@ -88,7 +88,7 @@ export default async function ReleasePage({ params }: { params: Promise<{ releas
 
         <Section title={`Authorized sources and the intelligence-rights schedule (${release.sources.length})`} id="rl-rights">
           <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>For every source, whether the material may be used for each purpose. A use not listed is prohibited. The feed enforces customer delivery before visibility; the rest is recorded as policy.</p>
-          <RightsMatrix sources={release.sources} at={release.knownAt} />
+          <RightsMatrix sources={release.sources} at={release.knownAt} domain={release.domain} />
           <details className="surface-inset p-2">
             <summary className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Source registrations of record (data-os SourceRegistration)</summary>
             <div className="overflow-x-auto mt-2" tabIndex={0}>

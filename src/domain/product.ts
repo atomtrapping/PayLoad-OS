@@ -26,7 +26,7 @@ export const THESIS = {
 export const FLAGSHIP_PRODUCTS = {
   statement: 'Three APIs are the products. Each is delivered as an HTTP feed and a set of MCP tools over one provenance-bearing corpus.',
   delivery: ['HTTP feed', 'MCP tools'] as const,
-  here: 'Caravan alone has a corpus here, served by the fixture feed under /api/v1 and the MCP tools; every response says fixture_only. Tradewind and Landshark are declared and empty. Nothing here is a live customer API.',
+  here: 'All three lines carry a demonstration corpus here, served by one corpus-generic fixture feed under /api/v1 and the MCP tools; every response says fixture_only. Caravan is the deepest — cases, rulings and captured artifact bytes; Tradewind and Landshark carry records, releases, rights and one retraction each, and no captured bytes. Nothing here is a live customer API.',
 } as const;
 
 export const DISTRIBUTION_MECHANISMS = ['APIs', 'Feeds', 'Reports', 'Workbenches', 'MCP tools'] as const;

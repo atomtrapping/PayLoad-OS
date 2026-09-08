@@ -13,7 +13,7 @@ import { CAPTURE_SOURCE } from './capture';
 import { CARAVAN_REGISTRATIONS, CARAVAN_CORPUS } from './caravan/release';
 import { evaluateSourceUse } from '@/data-os/source-policy';
 import { captureEvidence, InMemoryContentAddressedStore, storageKeyFor, verifyEvidenceCapture } from '@/data-os/evidence-capture';
-import { deliveryDecision, currentRelease, derivePermittedUses, USE_REQUESTS } from '@/domain/corpus';
+import { deliveryDecision, currentRelease, derivePermittedUses, sourceUseRequests } from '@/domain/corpus';
 
 describe('fixture captures reproduce under the data-os evidence-capture contract', () => {
   const artifacts = new Map<string, (typeof FIXTURE_CASES)[number]['evidence'][number]>();
@@ -64,7 +64,7 @@ describe('the rights matrix is the data-os policy evaluated exactly', () => {
 
   it('permitted uses are derived from each registration, and no registration permits proprietary strategy or trading', () => {
     for (const s of release.sources) {
-      expect(s.permittedUses).toEqual(derivePermittedUses(s.registration, release.knownAt, s.sourceId));
+      expect(s.permittedUses).toEqual(derivePermittedUses(s.registration, release.knownAt, s.sourceId, release.domain));
       expect(s.registration.prohibitedPurposes).toEqual(expect.arrayContaining(['PROPRIETARY_STRATEGY', 'TRADING']));
       expect(s.permittedUses).not.toContain('proprietary_strategy');
       expect(s.permittedUses).not.toContain('trading');
@@ -81,6 +81,12 @@ describe('the rights matrix is the data-os policy evaluated exactly', () => {
     // publishing to the public needs explicit approval for a certificate source
     const moisture = CARAVAN_CORPUS.records.find((r) => r.recordId === 'REC-0201')!;
     expect(deliveryDecision(release, moisture, 'PUBLIC_RULING')!.state).toBe('APPROVAL_REQUIRED');
-    expect(USE_REQUESTS.customer_delivery).toEqual({ purpose: 'CARAVAN_CORPUS', operation: 'EXPORT', audience: 'CUSTOMER' });
+    // The corpus-scoped purpose follows the line: a Tradewind source is
+    // registered for its own corpus and is not thereby registered for Caravan's.
+    expect(sourceUseRequests('CARAVAN').customer_delivery).toEqual({ purpose: 'CARAVAN_CORPUS', operation: 'EXPORT', audience: 'CUSTOMER' });
+    expect(sourceUseRequests('TRADEWIND').customer_delivery).toEqual({ purpose: 'TRADEWIND_CORPUS', operation: 'EXPORT', audience: 'CUSTOMER' });
+    expect(sourceUseRequests('LANDSHARK').redistribution).toEqual({ purpose: 'LANDSHARK_CORPUS', operation: 'PUBLISH', audience: 'PUBLIC' });
+    // The cross-cutting purposes are the same question whichever line asks.
+    expect(sourceUseRequests('TRADEWIND').trading).toEqual(sourceUseRequests('CARAVAN').trading);
   });
 });

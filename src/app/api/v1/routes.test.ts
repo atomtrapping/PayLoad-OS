@@ -25,7 +25,9 @@ describe('/api/v1 route handlers (fixture feed)', () => {
     expect(res.headers.get('Cache-Control')).toBe('no-store');
     const body = await res.json();
     expect(body.fixture_only).toBe(true);
-    expect(body.releases.length).toBe(3);
+    // Three lines, and every release of each: Caravan's three, Tradewind's two, Landshark's two.
+    expect(body.releases.length).toBe(7);
+    expect(body.releases.filter((r: { corpusId: string }) => r.corpusId === 'caravan.specialty-cargo').length).toBe(3);
   });
 
   /**
@@ -121,7 +123,7 @@ describe('/api/v1 route handlers (fixture feed)', () => {
   it('serves the retraction feed since a cursor', async () => {
     const res = await retractions(req('/api/v1/retractions?since=2026-08-26T00:00:00Z'));
     const body = await res.json();
-    expect(body.retractions.map((r: { retractionId: string }) => r.retractionId)).toEqual(['RET-0002']);
+    expect(body.retractions.map((r: { retractionId: string }) => r.retractionId).sort()).toEqual(['RET-0002', 'RET-LS-0001', 'RET-TW-0001']);
   });
 
   it('serves the application layer with 403 when the projection cannot see the ruling', async () => {

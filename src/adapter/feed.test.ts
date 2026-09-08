@@ -11,7 +11,16 @@ describe('feed payloads', () => {
     expect(rel?.release?.buildId).toBe('build-caravan-sc-2026.09.01');
     const list = await releasesPayload();
     expect(list.fixture_only).toBe(true);
-    expect(list.releases.map((r) => r.releaseId)).toEqual([CURRENT, 'REL-CAR-2026.08.25', 'REL-CAR-2026.08.11']);
+    // The feed spans every line the estate carries, newest first. Caravan's own
+    // three stay in order within it; the assertion is about Caravan's releases,
+    // not about Caravan being the only corpus.
+    expect(list.releases.filter((r) => r.corpusId === 'caravan.specialty-cargo').map((r) => r.releaseId))
+      .toEqual([CURRENT, 'REL-CAR-2026.08.25', 'REL-CAR-2026.08.11']);
+    expect(new Set(list.releases.map((r) => r.corpusId)))
+      .toEqual(new Set(['caravan.specialty-cargo', 'tradewind.freight-rates', 'landshark.terminal-parcels']));
+    // Filtering to one line returns that line alone.
+    const caravanOnly = await releasesPayload('caravan.specialty-cargo');
+    expect(caravanOnly.releases.map((r) => r.releaseId)).toEqual([CURRENT, 'REL-CAR-2026.08.25', 'REL-CAR-2026.08.11']);
   });
 
   it('records carry bounds, validity, both clocks, provenance, class and rights; withheld counts are counts only', async () => {
@@ -60,13 +69,20 @@ describe('feed payloads', () => {
   });
 
   it('retractions since a cursor name affected records, replacements and rulings', async () => {
+    // Every line's corrections and withdrawals arrive on one feed, so a cursor
+    // spans them. Each is still named by its own line's retraction id.
     const p = await retractionsPayload('2026-08-26T00:00:00Z', 'COUNTERPARTY_SHARED');
-    expect(p.count).toBe(1);
-    expect(p.retractions[0].retractionId).toBe('RET-0002');
-    expect(p.retractions[0].affectedRulingIds).toEqual(['RUL-3F440-r1']);
+    expect(p.retractions.map((r) => r.retractionId).sort()).toEqual(['RET-0002', 'RET-LS-0001', 'RET-TW-0001']);
+    expect(p.count).toBe(3);
+    const withdrawal = p.retractions.find((r) => r.retractionId === 'RET-0002')!;
+    expect(withdrawal.affectedRulingIds).toEqual(['RUL-3F440-r1']);
     const all = await retractionsPayload(undefined, 'COUNTERPARTY_SHARED');
-    expect(all.retractions.map((r) => r.kind)).toEqual(['CORRECTION', 'WITHDRAWAL']);
-    expect(all.retractions[0].replacementRecordIds).toEqual(['REC-0204']);
+    const caravan = all.retractions.filter((r) => r.retractionId.startsWith('RET-00'));
+    expect(caravan.map((r) => r.kind)).toEqual(['CORRECTION', 'WITHDRAWAL']);
+    expect(caravan[0].replacementRecordIds).toEqual(['REC-0204']);
+    // A withdrawal removes support and names no replacement; a correction names one.
+    expect(all.retractions.find((r) => r.retractionId === 'RET-LS-0001')?.kind).toBe('WITHDRAWAL');
+    expect(all.retractions.find((r) => r.retractionId === 'RET-TW-0001')?.replacementRecordIds).toEqual(['TW-0201']);
   });
 
   it('the application layer is served beside the corpus and respects projection', async () => {
@@ -96,7 +112,9 @@ describe('certification, rights and attribution', () => {
     expect(m?.manifest.build.stages.find((s) => s.stage === 'recall')?.status).toBe('COMPLETED');
     expect(m?.manifest.sources[0].materialClass).toBe('scientific');
     expect(m?.manifest.governance.informationBarrier).toMatch(/prohibited by construction/);
-    expect(m?.manifestCommitment).toBe(list.releases[0].certification.manifestCommitment);
+    // Found by release id, not by position. This compared against releases[0]
+    // and passed only while Caravan was the only corpus in the feed.
+    expect(m?.manifestCommitment).toBe(list.releases.find((r) => r.releaseId === CURRENT)!.certification.manifestCommitment);
   });
 
   it('no source in the corpus permits proprietary strategy or trading; attribution travels with delivered records', async () => {

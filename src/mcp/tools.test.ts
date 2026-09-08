@@ -66,7 +66,8 @@ describe('MCP tools (a distribution mechanism over the same feed)', () => {
 
   it('list_retractions since a cursor and get_ruling respect projection', async () => {
     const t = (await runMcpTool('list_retractions', { since: '2026-08-26T00:00:00Z' })) as { retractions: Array<{ retractionId: string }> };
-    expect(t.retractions.map((x) => x.retractionId)).toEqual(['RET-0002']);
+    // One feed over three lines; the cursor spans them all.
+    expect(t.retractions.map((x) => x.retractionId).sort()).toEqual(['RET-0002', 'RET-LS-0001', 'RET-TW-0001']);
     const pub = (await runMcpTool('get_ruling', { rulingId: 'RUL-7C104-r2', projection: 'PUBLIC_RULING' })) as { error?: string };
     expect(pub.error).toBe('not_visible');
   });

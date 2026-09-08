@@ -21,7 +21,7 @@ about it and a reader should be too.
 
 | | |
 |---|---|
-| Corpora with records | Caravan only. Tradewind and Landshark are declared and empty |
+| Corpora with records | All three lines. Caravan is the deepest, with cases, rulings and captured artifact bytes; Tradewind and Landshark carry records, releases, rights and one retraction each, with no captured bytes |
 | The Caravan corpus | 3 releases, 21 records, 2 retractions, 7 sources — committed, synthetic, `fixture_only: true` on every response |
 | Admitted records | **0.** The admission ruling exists, the write boundary carries an admission status, and the response pipeline refuses to serve a row that never crossed the gate. No candidate has been admitted |
 | Live sources | None acquired. Two connectors are implemented and operator-gated; collection needs an explicit flag the operator holds |

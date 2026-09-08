@@ -96,39 +96,74 @@ export interface RightsSchedule {
  */
 export interface UseRequest { purpose: string; operation: SourceOperation; audience: SourceAudience }
 
-export const USE_REQUESTS: Record<PermittedUse, UseRequest> = {
-  acquisition: { purpose: 'CARAVAN_CORPUS', operation: 'INGEST', audience: 'INTERNAL' },
-  normalization: { purpose: 'CARAVAN_CORPUS', operation: 'DERIVE', audience: 'INTERNAL' },
-  customer_delivery: { purpose: 'CARAVAN_CORPUS', operation: 'EXPORT', audience: 'CUSTOMER' },
-  aggregation: { purpose: 'AGGREGATION', operation: 'DERIVE', audience: 'INTERNAL' },
-  model_training: { purpose: 'MODEL_TRAINING', operation: 'MODEL_TRAINING', audience: 'INTERNAL' },
-  internal_research: { purpose: 'INTERNAL_RESEARCH', operation: 'RETRIEVE', audience: 'INTERNAL' },
-  redistribution: { purpose: 'CARAVAN_CORPUS', operation: 'PUBLISH', audience: 'PUBLIC' },
-  proprietary_strategy: { purpose: 'PROPRIETARY_STRATEGY', operation: 'RETRIEVE', audience: 'INTERNAL' },
-  trading: { purpose: 'TRADING', operation: 'RETRIEVE', audience: 'INTERNAL' },
+/**
+ * The corpus purpose a line's own sources are registered for. One line, one
+ * purpose, and a source registered for one line's corpus is not thereby
+ * registered for another's.
+ *
+ * This was the literal 'CARAVAN_CORPUS' until Tradewind and Landshark carried
+ * records. The rights vocabulary had been solved once, for one line, and the
+ * second line's sources were refused delivery by a purpose that named a
+ * corpus they had nothing to do with — which is precisely the cost the
+ * identity core warns of when a capability is built per line. The fix is a
+ * rule rather than an exception: the purpose is a function of the domain, and
+ * a fixture that wanted to be delivered had to be registered for its own line.
+ */
+export const CORPUS_PURPOSE: Record<Domain, string> = {
+  CARAVAN: 'CARAVAN_CORPUS',
+  TRADEWIND: 'TRADEWIND_CORPUS',
+  LANDSHARK: 'LANDSHARK_CORPUS',
 };
 
+/**
+ * The nine uses, as exact policy requests, for one line.
+ *
+ * The corpus-scoped uses take that line's own purpose. The cross-cutting ones
+ * — aggregation, model training, internal research, proprietary strategy,
+ * trading — name purposes that are the same question whichever line asks it,
+ * and are unchanged.
+ */
+/* Named `sourceUseRequests` and never `useRequestsFor`: a domain function whose
+   name begins with `use` is a React hook by convention, and the lint rule that
+   enforces that convention was right to object. */
+export function sourceUseRequests(domain: Domain): Record<PermittedUse, UseRequest> {
+  const corpus = CORPUS_PURPOSE[domain];
+  return {
+    acquisition: { purpose: corpus, operation: 'INGEST', audience: 'INTERNAL' },
+    normalization: { purpose: corpus, operation: 'DERIVE', audience: 'INTERNAL' },
+    customer_delivery: { purpose: corpus, operation: 'EXPORT', audience: 'CUSTOMER' },
+    aggregation: { purpose: 'AGGREGATION', operation: 'DERIVE', audience: 'INTERNAL' },
+    model_training: { purpose: 'MODEL_TRAINING', operation: 'MODEL_TRAINING', audience: 'INTERNAL' },
+    internal_research: { purpose: 'INTERNAL_RESEARCH', operation: 'RETRIEVE', audience: 'INTERNAL' },
+    redistribution: { purpose: corpus, operation: 'PUBLISH', audience: 'PUBLIC' },
+    proprietary_strategy: { purpose: 'PROPRIETARY_STRATEGY', operation: 'RETRIEVE', audience: 'INTERNAL' },
+    trading: { purpose: 'TRADING', operation: 'RETRIEVE', audience: 'INTERNAL' },
+  };
+}
+
 /** Evaluate one use of a source at an instant. Policy evaluation only; it is not a claim that the source is true. */
-export function evaluateUse(rights: RightsSchedule, use: PermittedUse, at: ISODateTime): SourceUseDecision {
-  const r = USE_REQUESTS[use];
+export function evaluateUse(rights: RightsSchedule, use: PermittedUse, at: ISODateTime, domain: Domain): SourceUseDecision {
+  const r = sourceUseRequests(domain)[use];
   return evaluateSourceUse(rights.registration, { requestId: `${rights.sourceId}:${use}:${at}`, registrationId: rights.registration.registrationId, purpose: r.purpose, operation: r.operation, audience: r.audience, requestedAt: at });
 }
 
-export function isUsePermitted(rights: RightsSchedule, use: PermittedUse, at: ISODateTime): boolean {
-  return evaluateUse(rights, use, at).state === 'ALLOWED';
+export function isUsePermitted(rights: RightsSchedule, use: PermittedUse, at: ISODateTime, domain: Domain): boolean {
+  return evaluateUse(rights, use, at, domain).state === 'ALLOWED';
 }
 
 /** The uses a registration permits at an instant, derived so the list and the matrix cannot disagree. */
-export function derivePermittedUses(registration: SourceRegistration, at: ISODateTime, sourceId: string): PermittedUse[] {
+export function derivePermittedUses(registration: SourceRegistration, at: ISODateTime, sourceId: string, domain: Domain): PermittedUse[] {
+  const requests = sourceUseRequests(domain);
   return PERMITTED_USES.filter((use) => {
-    const r = USE_REQUESTS[use];
+    const r = requests[use];
     return evaluateSourceUse(registration, { requestId: `${sourceId}:${use}:${at}`, registrationId: registration.registrationId, purpose: r.purpose, operation: r.operation, audience: r.audience, requestedAt: at }).state === 'ALLOWED';
   });
 }
 
 /** The delivery request the feed evaluates for a projection. */
-export function deliveryRequestFor(viewer: VisibilityClass): UseRequest {
-  return viewer === 'PUBLIC_RULING' ? USE_REQUESTS.redistribution : USE_REQUESTS.customer_delivery;
+export function deliveryRequestFor(viewer: VisibilityClass, domain: Domain): UseRequest {
+  const requests = sourceUseRequests(domain);
+  return viewer === 'PUBLIC_RULING' ? requests.redistribution : requests.customer_delivery;
 }
 
 /** Evidence bound to bytes by the data-os capture contract: the binary-evidence record and its storage receipt. */
@@ -369,7 +404,7 @@ export function recordStatusAt(corpus: Corpus, record: CorpusRecord, knownAt: IS
 export function deliveryDecision(release: CorpusRelease, record: CorpusRecord, viewer: VisibilityClass = 'COUNTERPARTY_SHARED'): SourceUseDecision | undefined {
   const rights = release.sources.find((s) => s.sourceId === record.provenance.sourceId);
   if (!rights) return undefined;
-  const r = deliveryRequestFor(viewer);
+  const r = deliveryRequestFor(viewer, release.domain);
   return evaluateSourceUse(rights.registration, { requestId: `${record.recordId}:${r.operation}:${r.audience}:${release.knownAt}`, registrationId: rights.registration.registrationId, purpose: r.purpose, operation: r.operation, audience: r.audience, requestedAt: release.knownAt });
 }
 

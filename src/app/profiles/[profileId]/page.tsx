@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ profileId
 }
 
 const AUTHORITY: Array<{ id: AuthorityClass; title: string; meaning: string }> = [
-  { id: 'CORE_DISTRIBUTION', title: 'Core distribution requirements', meaning: 'Apply to every Payload result regardless of domain: identity, knowledge time, claim strength, manifest completeness.' },
+  { id: 'CORE_DISTRIBUTION', title: 'Core distribution requirements', meaning: 'Apply to every NotationsOS result regardless of domain: identity, knowledge time, claim strength, manifest completeness.' },
   { id: 'DOMAIN_PROFILE', title: 'Domain-profile requirements', meaning: 'Specific to this domain profile and its use codes. These are the rules a real brokerage case would replace.' },
   { id: 'GOVERNANCE_POLICY', title: 'Governance-policy requirements', meaning: 'Disclosure, assurance and attribution policy. They govern how a ruling may be stated and shared.' },
 ];

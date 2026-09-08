@@ -75,7 +75,7 @@ export const SPATIAL_ROLES: readonly SpatialRole[] = [
     job: 'Let two records with no shared identifier meet, at a stated resolution, without bespoke geometry glue in every query.',
     state: 'PARTIAL',
     here: `A cell key is computed for every position that states its uncertainty, at the finest resolution that uncertainty supports and no finer, using ${CELL_SCHEME.id} so that another party computes the same key. Two keys block at the coarser of their two resolutions.`,
-    missing: 'A second line with records. The key is line-agnostic by construction, but Tradewind and Landshark hold nothing to join to, so the cross-line join remains a claim about a key rather than a demonstrated answer.',
+    missing: 'A resolution, not a key. The second and third lines now hold records, so the key is exercised rather than asserted: ./crossLineJoin blocks every cross-line pair the three corpora offer, at the coarser of each pair\u2019s two precisions, and a cargo lot, a freight instrument and a parcel block together at one loading terminal. What is missing is what blocking never supplies \u2014 a resolution decision object carrying two identifiers to one subject with evidence, method, version and both clocks. The derivation reports resolved: 0 for exactly that reason.',
   },
   {
     id: 'VALIDITY_CLOCK',

@@ -9,7 +9,7 @@
  * amount of per-line work produces it if the core was built per line.
  *
  * This module states the core, the identifier families, and the join, each
- * with the state that is true here. Caravan is the only line with records, so
+ * with the state that is true here. All three lines now carry records, so
  * it is the only family with anything PRESENT; the other two are declared and
  * empty. The join is stated as ABSENT with
  * the exact three things it needs, because it is the part that gets expensive
@@ -143,7 +143,7 @@ export const JOIN_KEYS: readonly JoinKey[] = [
     title: 'Spatial cell',
     what: 'A discrete cell identifier at a stated resolution, so a trajectory and a parcel meet without bespoke geometry glue.',
     state: 'PRESENT',
-    here: 'Computed. Every declared position that states its horizontal uncertainty is keyed to a geohash cell at the finest resolution that uncertainty supports and no finer, and two keys block at the coarser of their two resolutions. A position whose source stated no uncertainty is refused a key rather than given a default one. See ./spatialKey.',
+    here: 'Computed, and now exercised across lines. Every declared position that states its horizontal uncertainty is keyed to a geohash cell at the finest resolution that uncertainty supports and no finer, and two keys block at the coarser of their two resolutions. A position whose source stated no uncertainty is refused a key rather than given a default one. With all three lines carrying records, ./crossLineJoin runs the key over every cross-line pair: a Caravan lot, a Tradewind instrument and a Landshark parcel block together at one terminal. See ./spatialKey and ./crossLineJoin.',
     hazard: 'A shared cell is co-location at a resolution, not a relationship. Two things in one cell have been placed near each other, and nothing more has been established. The cell is a blocking key: it decides which pairs are worth comparing, never what the comparison concludes.',
   },
   {
@@ -159,7 +159,7 @@ export const JOIN_KEYS: readonly JoinKey[] = [
     title: 'Resolved entity',
     what: 'Two identifiers from two lines carried to the same subject by an evidence-bearing resolution decision.',
     state: 'ABSENT',
-    here: 'Nothing resolves. One authored link predicate joins a sample to a lot inside one line, and the as-of query refuses where no link exists.',
+    here: 'Nothing resolves. One authored link predicate joins a sample to a lot inside one line, and the as-of query refuses where no link exists. Across lines, ./crossLineJoin now blocks subjects into shared cells over shared intervals and reports resolved: 0 — running the two present keys does not produce the third.',
     hazard: 'A matching name is not a resolution, and a matching label across two lines is the cheapest way to manufacture a moat that is not there.',
   },
 ];
@@ -173,6 +173,11 @@ export const CROSS_LINE_JOIN = {
     'A link vocabulary richer than one predicate, so a join names what kind of relationship it is and what evidence that kind demands.',
     'Areal geometry, so the line-agnostic keys reach containment rather than proximity. The spatial cell and the valid-time interval both exist now, and a point inside a cell is still only a point near another point.',
   ],
+  /**
+   * What running the present keys did and did not change. The keys are
+   * exercised across three lines now; the state above is still ABSENT.
+   */
+  demonstrated: 'The spatial cell and the time interval block cross-line pairs today: see ./crossLineJoin, which reports co-located pairs and resolved: 0. Blocking decides which pairs are worth comparing. It is not the join, and no number of co-located pairs becomes one.',
   /** Why it is worth stating before it exists. */
   why: 'A join built per line is not a join. If resolution, provenance and bitemporality are solved once for Caravan alone, the second line pays the whole cost again and the third pays it a third time, and the cross-line answer is never reachable from any of them.',
   /** The rule that keeps the join from being faked. */

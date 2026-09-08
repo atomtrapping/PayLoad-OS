@@ -28,7 +28,10 @@ describe('the three APIs are the products; NotationsOS is the terminal', () => {
     expect(FLAGSHIP_PRODUCTS.statement).toMatch(/Three APIs are the products/);
     expect(FLAGSHIP_PRODUCTS.delivery).toEqual(['HTTP feed', 'MCP tools']);
     // Only Caravan has a corpus here, and it is a demonstration.
-    expect(DOMAINS.filter((d) => d.enabled).map((d) => d.id)).toEqual(['CARAVAN']);
+    // All three lines carry a demonstration corpus and are served by the same
+    // corpus-generic feed. `enabled` means servable here, never live.
+    expect(DOMAINS.filter((d) => d.enabled).map((d) => d.id)).toEqual(['CARAVAN', 'TRADEWIND', 'LANDSHARK']);
+    for (const d of DOMAINS) expect(d.note).toMatch(/Not a live customer API\./);
     expect(FLAGSHIP_PRODUCTS.here).toMatch(/fixture_only/);
     expect(FLAGSHIP_PRODUCTS.here).toMatch(/Nothing here is a live customer API/i);
     expect(THESIS.platform).toMatch(/flagship products/);

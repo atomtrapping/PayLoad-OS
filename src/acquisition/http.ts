@@ -7,9 +7,59 @@ import { SourceConnectorError } from './errors';
 export const SOURCE_HTTP_TIMEOUT_MS = 10_000;
 export const SOURCE_HTTP_MAX_BYTES = 256 * 1024;
 const SOURCE_HTTP_MAX_HEADER_BYTES = 8192;
-const HOSTNAME = 'data.transportation.gov';
-const PATHNAME = '/resource/az4n-8mr2.json';
 const QUERY_LIMITS = { '$select': 1024, '$where': 1024, '$order': 256, '$limit': 2 } as const;
+
+/**
+ * One transport, several declared destinations.
+ *
+ * The guard below — the URL shape, the public-address check, the pinned
+ * connection, the redirect refusal, the byte ceiling — is the only place in
+ * this codebase that opens a socket to somebody else's machine. A second
+ * connector must not bring a second copy of it: a bug fixed in one copy and not
+ * the other is precisely the hole this shape exists to close. So the guard
+ * takes a declared endpoint and the endpoints are data.
+ *
+ * What an endpoint may declare is deliberately narrow. It names one hostname,
+ * exactly; a pathname the guard checks against a pattern; whether a query is
+ * permitted at all and under which grammar; the media types it will accept; and
+ * its own byte ceiling. It cannot declare a protocol, a port, a credential, a
+ * redirect policy or a retry — those are the transport's and stay fixed.
+ */
+export type QueryGrammar =
+  /** Socrata's four bounded parameters, all four required, `$limit` at most 25. */
+  | 'SOCRATA_BOUNDED'
+  /** No query string at all. A document is addressed by path or it is not addressed. */
+  | 'NONE';
+
+export interface SourceEndpoint {
+  readonly id: string;
+  /** Exact. Never a suffix match: `evil-data.transportation.gov` is not this host. */
+  readonly hostname: string;
+  /**
+   * The permitted path. A literal pattern where this code owns the dataset; a
+   * shape where the operator declares the document and the code owns the host.
+   */
+  readonly pathname: RegExp;
+  readonly query: QueryGrammar;
+  readonly accept: string;
+  /** Checked against the response's own Content-Type, parameters and all. */
+  readonly mediaType: RegExp;
+  readonly maxBytes: number;
+  /** Why this destination is permitted, carried for the reader of a receipt. */
+  readonly because: string;
+}
+
+/** The dataset this code owns: one path, one query grammar, at most 25 rows. */
+export const FMCSA_CENSUS_ENDPOINT: SourceEndpoint = Object.freeze({
+  id: 'fmcsa-company-census',
+  hostname: 'data.transportation.gov',
+  pathname: /^\/resource\/az4n-8mr2\.json$/,
+  query: 'SOCRATA_BOUNDED',
+  accept: 'application/json',
+  mediaType: /^application\/json(?:\s*;\s*charset=utf-8)?$/i,
+  maxBytes: SOURCE_HTTP_MAX_BYTES,
+  because: 'The public FMCSA Company Census dataset, addressed by the exact resource path this connector was written against.',
+});
 
 export interface SourceBytes {
   bytes: Buffer;
@@ -22,13 +72,19 @@ function fault(code: string, message: string, status = 502) {
   return new SourceConnectorError(code, message, status);
 }
 
-function validateUrl(input: URL): URL {
+function validateUrl(input: URL, endpoint: SourceEndpoint): URL {
   if (!(input instanceof URL)) throw fault('SOURCE_URL_DISALLOWED', 'The source URL is not permitted.', 400);
   // Snapshot the URL before any asynchronous work; caller mutation must not change the target.
   const url = new URL(input.href);
-  if (url.href.length > 4096 || url.protocol !== 'https:' || url.hostname !== HOSTNAME
-    || url.pathname !== PATHNAME || url.username || url.password || url.hash || (url.port && url.port !== '443')) {
+  if (url.href.length > 4096 || url.protocol !== 'https:' || url.hostname !== endpoint.hostname
+    || !endpoint.pathname.test(url.pathname) || url.username || url.password || url.hash || (url.port && url.port !== '443')) {
     throw fault('SOURCE_URL_DISALLOWED', 'The source URL is not permitted.', 400);
+  }
+  if (endpoint.query === 'NONE') {
+    // A path and nothing else. A document endpoint that accepted parameters
+    // would be an open proxy wearing a regulator's hostname.
+    if (url.search !== '') throw fault('SOURCE_URL_DISALLOWED', 'The source query is not permitted.', 400);
+    return url;
   }
   const entries = [...url.searchParams];
   if (entries.length !== 4 || new Set(entries.map(([key]) => key)).size !== 4
@@ -74,8 +130,13 @@ function safeLastModified(value: string | string[] | undefined): string | null {
 
 /** One bounded, authenticated-TLS request to the code-owned FMCSA endpoint; never retries. */
 export function fetchSourceBytes(input: URL): Promise<SourceBytes> {
+  return fetchEndpointBytes(input, FMCSA_CENSUS_ENDPOINT);
+}
+
+/** One bounded, authenticated-TLS request to a declared endpoint; never retries. */
+export function fetchEndpointBytes(input: URL, endpoint: SourceEndpoint): Promise<SourceBytes> {
   let url: URL;
-  try { url = validateUrl(input); } catch (error) { return Promise.reject(error); }
+  try { url = validateUrl(input, endpoint); } catch (error) { return Promise.reject(error); }
   return new Promise((resolve, reject) => {
     let settled = false;
     let outgoing: ClientRequest | undefined;
@@ -90,7 +151,7 @@ export function fetchSourceBytes(input: URL): Promise<SourceBytes> {
       incoming?.destroy();
       outgoing?.destroy();
     }
-    lookup(HOSTNAME, { all: true, family: 4, verbatim: true }).then((answers) => {
+    lookup(endpoint.hostname, { all: true, family: 4, verbatim: true }).then((answers) => {
       if (settled) return;
       if (answers.length === 0 || answers.length > 32
         || answers.some((answer) => answer.family !== 4 || !isPublicV4(answer.address))) {
@@ -99,14 +160,14 @@ export function fetchSourceBytes(input: URL): Promise<SourceBytes> {
       }
       const address = answers[0].address;
       const options: RequestOptions & { autoSelectFamily: boolean } = {
-        protocol: 'https:', hostname: HOSTNAME, servername: HOSTNAME, port: 443,
+        protocol: 'https:', hostname: endpoint.hostname, servername: endpoint.hostname, port: 443,
         path: `${url.pathname}${url.search}`, method: 'GET',
         agent: false, family: 4, autoSelectFamily: false, rejectUnauthorized: true,
         maxHeaderSize: SOURCE_HTTP_MAX_HEADER_BYTES,
         // Pin this connection to the address already checked, retaining the original TLS identity.
         lookup: (_hostname, _options, callback) => callback(null, address, 4),
         headers: {
-          Accept: 'application/json',
+          Accept: endpoint.accept,
           'Accept-Encoding': 'identity',
           'User-Agent': 'PayloadOS/0.1 local-source-qualification',
         },
@@ -140,9 +201,11 @@ export function fetchSourceBytes(input: URL): Promise<SourceBytes> {
             seen.add(name);
           }
           const type = response.headers['content-type'];
-          if (typeof type !== 'string' || !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(type)) {
-            fail(fault('SOURCE_MEDIA_TYPE_UNSUPPORTED', 'The source response is not supported JSON.')); return;
+          if (typeof type !== 'string' || !endpoint.mediaType.test(type)) {
+            fail(fault('SOURCE_MEDIA_TYPE_UNSUPPORTED', 'The source response media type is not one this endpoint accepts.')); return;
           }
+          // The type without its parameters, lowercased: what the receipt records.
+          const canonicalType = type.split(';')[0].trim().toLowerCase();
           const encoding = response.headers['content-encoding'];
           if (encoding !== undefined && (typeof encoding !== 'string' || encoding.toLowerCase() !== 'identity')) {
             fail(fault('SOURCE_ENCODING_UNSUPPORTED', 'Encoded source responses are not permitted.')); return;
@@ -154,7 +217,7 @@ export function fetchSourceBytes(input: URL): Promise<SourceBytes> {
               fail(fault('SOURCE_INVALID_RESPONSE', 'The source content length is invalid.')); return;
             }
             expectedLength = Number(lengthHeader);
-            if (expectedLength > SOURCE_HTTP_MAX_BYTES) {
+            if (expectedLength > endpoint.maxBytes) {
               fail(fault('SOURCE_BODY_TOO_LARGE', 'The source response exceeds the byte limit.')); return;
             }
           }
@@ -166,7 +229,7 @@ export function fetchSourceBytes(input: URL): Promise<SourceBytes> {
               fail(fault('SOURCE_INVALID_RESPONSE', 'The source response is not a byte stream.')); return;
             }
             size += chunk.length;
-            if (size > SOURCE_HTTP_MAX_BYTES) {
+            if (size > endpoint.maxBytes) {
               fail(fault('SOURCE_BODY_TOO_LARGE', 'The source response exceeds the byte limit.')); return;
             }
             chunks.push(chunk);
@@ -179,7 +242,7 @@ export function fetchSourceBytes(input: URL): Promise<SourceBytes> {
             settled = true;
             clearTimeout(deadline);
             resolve({
-              bytes: Buffer.concat(chunks, size), mediaType: 'application/json',
+              bytes: Buffer.concat(chunks, size), mediaType: canonicalType,
               lastModified: safeLastModified(response.headers['last-modified']),
               etag: safeEtag(response.headers.etag),
             });

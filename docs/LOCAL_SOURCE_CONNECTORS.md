@@ -67,3 +67,142 @@ The checked-in request completed through the actual guarded HTTPS/CLI path: one 
 A separate built-CLI `inspect` and same-request `capture` with collection disabled both succeeded with the identical historical receipt. All six files in the qualification root were hash-identical before/after those reads. No second provider capture occurred. These references permit local verification where the ignored evidence is retained; the acquired records are not published in Git, and digests alone are not independent certification.
 
 Verification completed for this increment: `npm run check` passed TypeScript, ESLint, 29 Rust tests and 1,676 JavaScript/TypeScript tests across 62 files (six optional GAT tests skipped). This includes 393 new offline acquisition tests and two product-presence tests. With `GAT_INTEGRATION=1`, `npm run e2e:production` passed the production build, history/runtime trace exclusion guard and all three real-HTTP workflows. Lint and TypeScript now exclude ignored `.payload` operator histories and dependency checkouts; none of those files were modified to satisfy tooling. Existing evidence/board hashes, the dirty sibling Kernel checkout and the clean pinned GAT runtime were preserved.
+
+## Statutory filings: the second connector, and the first scheduled one
+
+Added 2026-09-08. The harvest rail (`src/domain/statutoryHarvest.ts`) has read
+bytes since it was written, and every one of those bytes was handed to it by a
+person through `POST /api/v1/insurability/harvester`. This is the path that
+does not need a person: a declared regulator document, fetched once per due
+invocation, into the same evidence intake rail the census connector uses.
+
+**Nothing here has been run.** No statutory capture has been performed, against
+any regulator, by this code. The section below describes machinery, not a
+result, and the live acceptance record for it is deliberately empty.
+
+### What the code pins and what the operator declares
+
+The **host** is the code's. `www.floir.com`, `www.insurance.ca.gov` and
+`www.tdi.texas.gov` are pinned per jurisdiction in `STATUTORY_SOURCES`, and the
+transport checks the hostname exactly, resolves it to a public IPv4 address,
+and pins the connection to the address it checked.
+
+The hostnames are a declaration this session did not verify. They are written
+from knowledge of the regulators' primary domains and no request has been sent
+to any of them, so if one is wrong the transport refuses every capture against
+that jurisdiction rather than fetching from somewhere else — the safe direction
+for the mistake, and one the operator can settle in a browser in a second.
+
+The **document** is the operator's. This connector ships no document path,
+because it has never fetched one; a plausible-looking bulletin URL cited in a
+receipt would be a claim nobody had checked. The path is declared in the capture
+request, validated for shape — one document, on that host, no query, no dot
+segments, no percent-encoding, never a trailing slash — and recorded in the
+intent's qualification basis as `hostPinnedBy: CODE`,
+`documentPathDeclaredBy: OPERATOR`. That split is PROVENANCE-IS-DECLARED,
+NEVER-INFERRED at the transport layer: the code asserts what it can check and
+declares what it cannot.
+
+### Why a document and not a dataset
+
+The harvest rail reads a header block out of text under labels declared per
+jurisdiction. It does not read JSON rows and it does not read PDFs. A connector
+that fetched a state open-data dataset would have to invent a mapping from
+somebody's column names to this rail's fields, which is the discovery
+`extractFiling` already refuses. So this connector fetches the document the
+grammar was written for. Where the grammar reads nothing, the extraction reports
+`ABSENT` and `MALFORMED` per field — a legible outcome saying the document is
+real and this grammar cannot yet read it, which is the next piece of work stated
+from evidence rather than from a guess.
+
+### One transport, two destinations
+
+`src/acquisition/http.ts` is the only place in this repository that opens a
+socket to somebody else's machine, and it stayed that way. It now takes a
+declared `SourceEndpoint` — one hostname, a pathname pattern, a query grammar
+(`SOCRATA_BOUNDED` or `NONE`), the media types it accepts and its own byte
+ceiling — and `fetchSourceBytes` is a thin binding of the FMCSA endpoint, so the
+census connector's behaviour is unchanged. An endpoint cannot declare a
+protocol, a port, a credential, a redirect policy or a retry; those stay the
+transport's.
+
+`SourceCaptureStore` was generalized the same way, over a `CaptureAdapter`. The
+adapter chooses how a request is parsed, where it points, which registration
+authorises it, and how its bytes are read. It cannot choose that a failure is
+retried, that a budget slot is reclaimed, that a digest is accepted unverified,
+or that bytes reach the evidence rail after parsing rather than before. The two
+connectors keep separate on-disk namespaces (`source-captures/` and
+`statutory-captures/`) and separate budget namespaces, so neither can consume
+the other's slots or collide on an identifier.
+
+### The schedule decides; it never collects
+
+`src/acquisition/schedule.ts` holds no timer, sleeps for nothing and reaches no
+network — a structural test holds it to importing no transport. The operator's
+own scheduler (cron, a systemd timer, a CI cadence) invokes the command, and
+each invocation asks the planner whether it is due. A timer inside the
+application would be a second actor with its own unlogged state: it decides to
+collect, and the only record that it decided is the collection itself.
+
+Six decisions, and `collects` is true for exactly one of them:
+
+| decision | means |
+| --- | --- |
+| `DUE` | inside the window, budget remaining, interval elapsed. Collect once. |
+| `NOT_DUE` | the declared floor since the last attempt has not elapsed. |
+| `WINDOW_NOT_OPEN` | before `notBefore`; collecting early is collecting outside the qualification. |
+| `WINDOW_CLOSED` | at or after `notAfter`. Finished, not merely quiet. |
+| `RUN_BUDGET_SPENT` | every declared run is spent. Spent slots are never reclaimed. |
+| `HISTORY_INCOMPLETE` | a run wrote no receipt. Whether the source was contacted is unknown. |
+| `DISABLED` | the operator turned it off. Nothing else may be inferred from that. |
+
+Three of those exist because flattening them would assert something nobody
+observed. **A run is a run whatever it returned:** `FAILED` and `QUARANTINED`
+attempts spend their slots exactly as captures do, because an attempt the source
+saw is traffic the source saw, and a scheduler that counted only successes would
+answer a rate limit by trying harder. **`INCOMPLETE` is a fourth outcome**, not a
+flavour of failure — an intent with no receipt means the regulator may or may
+not have been contacted, so the schedule stops and names the run rather than
+guessing which. There is deliberately no command that clears that state: history
+is append-only, so an operator who inspects the run and chooses to continue
+declares a new schedule rather than editing the old one's past. **Absence is
+typed:** a schedule that has never run reports
+`lastRunAt: null`, never an epoch; one with no run left reports
+`nextEligibleAt: null` and says why, rather than naming a date it will never
+reach.
+
+Run identity is derived and never stored: run N of schedule S is capture `S-N`,
+so the captures on disk *are* the run history and nothing summarises them.
+That also removes a way to lie by accident — had the operator declared one
+request ID for a recurring schedule, the store's replay would have returned the
+first capture forever and every later run would have looked like a success that
+never happened.
+
+`readRunHistory` probes `S-1`, `S-2`, … until one is absent, so an invocation
+costs one inspection per run already on disk. At the declared ceiling of 1000
+runs that is a thousand digest-verified reads per invocation — fine for a weekly
+cadence, and worth knowing before anyone declares an hourly one.
+
+### Operator commands
+
+```powershell
+npm run source -- statutory-run --plan examples/sources/statutory-schedule.json
+```
+
+with no collection flag set, prints the decision and collects nothing. Adding
+`$env:PAYLOAD_SOURCE_COLLECTION = '1'` for one invocation lets a `DUE` decision
+perform exactly one request. `statutory-capture --request <file>` performs a
+single unscheduled capture; `statutory-inspect --request-id <id>` reopens
+history and never contacts anyone.
+
+Exit `0` covers a capture and every not-due decision — a cron job that finds
+nothing to do is healthy. Exit `2` is reserved for the two decisions that want
+an operator's eyes (`HISTORY_INCOMPLETE`, `RUN_BUDGET_SPENT`) and for a capture
+that did not reach `CAPTURED`.
+
+### Live acceptance
+
+None. No statutory capture has been performed. When the operator runs one, the
+result belongs here in the shape of the 2026-09-05 census entry above:
+identifiers, byte digest, acquisition digest, receipt digest, and what the
+declared grammar did and did not read from the retained bytes.

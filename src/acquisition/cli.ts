@@ -2,7 +2,9 @@ import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SourceConnectorError } from './errors';
 import { parseSourceCaptureRequest } from './fmcsa';
-import { SourceCaptureStore, type SourceCaptureInspection } from './store';
+import { SourceCaptureStore, StatutoryCaptureStore, type SourceCaptureInspection, type StatutoryCaptureInspection } from './store';
+import { parseStatutoryCaptureRequest } from './statutory';
+import { runScheduledCapture, type StatutoryRunOutcome, type StatutoryRunStore } from './statutoryRun';
 import { CensusNormalizationStore, parseCensusNormalizationRequest, type CensusNormalizationRun } from './census-normalization';
 import { CensusCandidateBuildStore, parseCensusCandidateBuildRequest, type LocalCensusCandidateBuild } from '../data-os/local-census-candidate-build';
 
@@ -16,6 +18,10 @@ export const SOURCE_CLI_USAGE = [
   'npm run source -- inspect-normalization --normalization-id <id> [--root <directory>]',
   'npm run source -- build --request <request.json> [--root <directory>]',
   'npm run source -- inspect-build --build-id <id> [--root <directory>]',
+  'npm run source -- statutory-capture --request <request.json> [--root <directory>]',
+  'npm run source -- statutory-inspect --request-id <id> [--root <directory>]',
+  'npm run source -- statutory-run --plan <plan.json> [--root <directory>]',
+  'statutory-run decides from the declared schedule and the captures on disk, then collects at most once.',
   'New captures require PAYLOAD_SOURCE_COLLECTION=1. Historical inspection never collects.',
   'Normalization/build read retained captures only; no source collection, admission or release activation.',
 ].join('\n');
@@ -26,6 +32,10 @@ const SAFE_ERRORS = {
   INVALID_CENSUS_BUILD_REQUEST_FILE: 'Use a readable regular UTF-8 JSON build request file no larger than 32 KiB, without duplicate keys.',
   INVALID_REQUEST: 'Provide an exact source capture request and 1 to 25 unique USDOT identifiers.',
   SOURCE_CAPTURE_NOT_FOUND: 'No stored source capture has this request ID.',
+  INVALID_STATUTORY_REQUEST: 'Provide an exact statutory capture request naming a declared jurisdiction and one document path on that regulator’s host.',
+  INVALID_STATUTORY_CAPTURE_PLAN: 'Provide an exact statutory capture plan: schema, schedule and target, with the request ID derived per run.',
+  INVALID_CAPTURE_SCHEDULE: 'The declared capture schedule is not a bounded schedule: check the window, the whole-hour floor and the total run budget.',
+  STATUTORY_CAPTURE_NOT_FOUND: 'No stored statutory capture has this request ID.',
   SOURCE_COLLECTION_DISABLED: 'Set PAYLOAD_SOURCE_COLLECTION=1 explicitly to collect a new source response.',
   SOURCE_POLICY_DENIED: 'The internal source qualification policy is not active.',
   SOURCE_REQUEST_CONFLICT: 'This request ID already names a different source scope.',
@@ -122,10 +132,15 @@ type SourceCliStore = Pick<SourceCaptureStore, 'capture' | 'inspect'>;
 export interface SourceCliDependencies {
   /** Tests can replace transport/storage without adding any operator-facing execution knobs. */
   storeFactory?: (root: string) => SourceCliStore;
+  statutoryFactory?: (root: string) => StatutoryRunStore;
+  /** The invocation clock. Supplied so a plan is decided against one instant a receipt can be read against. */
+  now?: () => string;
   normalizationFactory?: (root: string) => Pick<CensusNormalizationStore, 'normalize' | 'inspect'>;
   buildFactory?: (root: string) => Pick<CensusCandidateBuildStore, 'build' | 'inspect'>;
 }
 type SourceCliResult = { help: string } | (SourceCaptureInspection & { rawBytesIncluded: false })
+  | (StatutoryCaptureInspection & { rawBytesIncluded: false })
+  | (StatutoryRunOutcome & { rawBytesIncluded: false })
   | { status: 'CREATED' | 'EXISTING' | 'INSPECTED'; run: CensusNormalizationRun; rawBytesIncluded: false }
   | { status: 'CREATED' | 'EXISTING' | 'INSPECTED'; build: LocalCensusCandidateBuild; rawBytesIncluded: false };
 
@@ -134,7 +149,8 @@ export async function executeSourceCli(args: readonly string[], dependencies: So
   if (args.length === 0 || (args.length === 1 && ['--help', '-h'].includes(args[0]))) return { help: SOURCE_CLI_USAGE };
   const [command, ...flags] = args;
   const commands: Record<string, string> = { capture: '--request', inspect: '--request-id', normalize: '--request',
-    'inspect-normalization': '--normalization-id', build: '--request', 'inspect-build': '--build-id' };
+    'inspect-normalization': '--normalization-id', build: '--request', 'inspect-build': '--build-id',
+    'statutory-capture': '--request', 'statutory-inspect': '--request-id', 'statutory-run': '--plan' };
   if (!Object.hasOwn(commands, command) || flags.length % 2 !== 0) throw fault('INVALID_SOURCE_CLI_ARGUMENTS');
   const required = commands[command];
   const allowed = [required, '--root'];
@@ -166,6 +182,21 @@ export async function executeSourceCli(args: readonly string[], dependencies: So
     if (!build) throw fault('CENSUS_BUILD_NOT_FOUND');
     return { status: 'INSPECTED', build, rawBytesIncluded: false };
   }
+  if (command.startsWith('statutory-')) {
+    const statutory = (dependencies.statutoryFactory ?? ((directory) => new StatutoryCaptureStore(directory)))(root);
+    if (command === 'statutory-run') {
+      const now = (dependencies.now ?? (() => new Date().toISOString()))();
+      const outcome = await runScheduledCapture(readRequest(input), statutory, now, process.env.PAYLOAD_SOURCE_COLLECTION === '1');
+      return { ...outcome, rawBytesIncluded: false };
+    }
+    if (command === 'statutory-capture') {
+      return { ...await statutory.capture(parseStatutoryCaptureRequest(readRequest(input)), process.env.PAYLOAD_SOURCE_COLLECTION === '1'), rawBytesIncluded: false };
+    }
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(input)) throw fault('INVALID_SOURCE_CLI_ARGUMENTS');
+    const inspected = statutory.inspect(input);
+    if (!inspected) throw fault('STATUTORY_CAPTURE_NOT_FOUND');
+    return { ...inspected, rawBytesIncluded: false };
+  }
   const request = command === 'capture' ? parseSourceCaptureRequest(readRequest(input)) : undefined;
   if (command === 'inspect' && !/^[A-Za-z0-9_-]{1,80}$/.test(input)) throw fault('INVALID_SOURCE_CLI_ARGUMENTS');
   const store = (dependencies.storeFactory ?? ((directory) => new SourceCaptureStore(directory)))(root);
@@ -185,6 +216,12 @@ export async function runSourceCli(args: readonly string[], io: {
     const result = await executeSourceCli(args, dependencies);
     io.stdout('help' in result ? result.help : JSON.stringify(result, null, 2));
     if ('run' in result && result.run.state === 'NOT_RETURNED') return 2;
+    // A scheduled invocation that was not due is a healthy outcome and exits 0.
+    // Two decisions want an operator's eyes and say so with a non-zero code.
+    if ('plan' in result && 'runId' in result) {
+      if (['HISTORY_INCOMPLETE', 'RUN_BUDGET_SPENT'].includes(result.plan.decision)) return 2;
+      return result.captured && result.captured.state !== 'CAPTURED' ? 2 : 0;
+    }
     return 'state' in result && ['FAILED', 'QUARANTINED', 'INCOMPLETE'].includes(result.state) ? 2 : 0;
   } catch (failure) {
     const code = failure instanceof SourceConnectorError && Object.hasOwn(SAFE_ERRORS, failure.code)

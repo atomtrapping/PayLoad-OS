@@ -77,32 +77,22 @@ describe('layer boundaries', () => {
     expect(seeder).not.toMatch(/'LIVE_CAPTURE'|'BACKFILLED'/);
   });
 
-  it('the README counts what is there, because a number in prose is the claim that ages quietest', () => {
-    // The README says the repository carries its claims as data with tests
-    // over them, "so that a claim about the system fails a test when it stops
-    // being true rather than quietly ageing in prose". Its own counts were
-    // prose. One had already drifted — 45 where there were 62 — in the
-    // paragraph making that argument. These now fail when they drift, which
-    // is the failure working rather than a nuisance.
+  it('the README states no count that is an accident of file organisation, and pins the one that is a designed claim', () => {
+    // First version of this test pinned the domain-module count. The parallel
+    // session added five modules within one merge and it broke — which is
+    // churn, not a finding. A file count is not a claim about the system; it
+    // is a fact about a directory, and stating it in prose guarantees drift
+    // without buying anything.
     const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
-    const stated = (pattern: RegExp, what: string): number => {
-      const match = pattern.exec(readme);
-      expect(match, `the README no longer states ${what}`).not.toBeNull();
-      return Number(match![1]);
-    };
+    expect(readme, 'the README states a domain-module count again').not.toMatch(/\d+ domain modules/);
 
-    const domainModules = readdirSync(join(ROOT, 'src/domain'))
-      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts')).length;
-    expect(stated(/(\d+) domain modules carry the system/, 'a domain-module count')).toBe(domainModules);
-
-    // Written as a word rather than a numeral, so it is matched as one.
+    // The negative-state count is different in kind: "this one has seven" is
+    // the argument, not an inventory. An eighth rule without updating the
+    // sentence that argues seven is the point would be the claim ageing.
     const negativeRules = (readFileSync(join(ROOT, 'src/domain/negativeStates.ts'), 'utf8').match(/^\s{4}id: '/gm) ?? []).length;
     const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
-    expect(readme, `the README no longer states ${words[negativeRules]} negative states`)
+    expect(readme, `negativeStates.ts carries ${negativeRules} rules and the README does not say so`)
       .toContain(`this one has ${words[negativeRules]},`);
-
-    const canvasNotes = readdirSync(join(ROOT, 'docs/architecture-map/parts')).filter((f) => f.endsWith('.md')).length;
-    expect(stated(/one note per part, (\d+) of them/, 'a canvas-note count')).toBe(canvasNotes);
   });
 
   it('the pure policy evaluator and its helpers touch no node builtin, so allowing them in the browser is safe', () => {

@@ -5,6 +5,7 @@ import type { ProjectionSpec } from '@/projection/spec';
 import { ADOPTED, CLOCK_MEANING, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, PLACEMENT_VIEW, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { CONVENIENCE_MEANING, INSTRUMENT_RULES, conveniencesTaken, type InstrumentReading } from '@/domain/operatorInstrument';
 import { Readout, Rule } from '@/components/hud/Instrument';
+import { EPISTEMIC_OF_LAYER_STATE, EPISTEMIC_OF_PROJECTION } from '@/domain/epistemic';
 import { fmtUtc } from '@/lib/format';
 
 type CesiumModule = typeof import('cesium');
@@ -54,7 +55,6 @@ interface Placement { title: string; validFrom: string; positions: GeodeticPosit
 interface PlaceSummary { placed: number; positions: number; unplaced: string[]; refused: Array<{ recordId: string; code: string }> }
 const ENTITY_PREFIX = 'place:';
 
-const STATE_COLOR: Record<LayerState, string> = { BUNDLED: 'var(--check-passed)', COMPUTED: 'var(--info)', FIXTURE: 'var(--status-conditional)', UNAVAILABLE: 'var(--status-refused)', NOT_INTEGRATED: 'var(--text-muted)' };
 const muted = { color: 'var(--text-secondary)' };
 const faint = { color: 'var(--text-muted)' };
 
@@ -70,21 +70,30 @@ const KEY_LABEL = { NONE: 'no key', FREE_KEY: 'free key', OPTIONAL_KEY: 'optiona
  * nothing: the summary carries the count, so the registry still says
  * twenty-one named and none integrated with the section shut.
  */
-function Part({ title, children, testId, folded }: { title: string; children: ReactNode; testId?: string; folded?: boolean }) {
+function Part({ title, right, children, testId, folded }: { title: string; right?: ReactNode; children: ReactNode; testId?: string; folded?: boolean }) {
   const id = `earth-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  // The state word rides in the rule after the hairline, so a folded section
+  // still reads its one fact with the section shut.
+  const heading = <h3 id={id}>{title}{right !== undefined && <span className="hud-bar-state">{right}</span>}</h3>;
   if (folded) {
     return (
       <details className="inspector-section inspector-fold" data-testid={testId}>
-        <summary><h3 id={id}>{title}</h3></summary>
+        <summary>{heading}</summary>
         <div className="inspector-fold-body">{children}</div>
       </details>
     );
   }
-  return <section className="inspector-section" aria-labelledby={id} data-testid={testId}><h3 id={id}>{title}</h3>{children}</section>;
+  return <section className="inspector-section" aria-labelledby={id} data-testid={testId}>{heading}{children}</section>;
 }
 
+/**
+ * A layer's state, drawn from the epistemic scale rather than a map of its
+ * own. The map this replaced drew UNAVAILABLE in the refusal red: a layer the
+ * engine cannot supply is an absence, not a gate declining, and the scale
+ * keeps those apart with a dashed grey.
+ */
 function StatePill({ state }: { state: LayerState }) {
-  return <span className="pill text-[10px] px-1.5" style={{ color: STATE_COLOR[state], borderColor: 'currentColor' }} title={LAYER_STATE_MEANING[state]}>{state.replace('_', ' ')}</span>;
+  return <span className="pill text-[10px] px-1.5" data-epistemic={EPISTEMIC_OF_LAYER_STATE[state]} title={LAYER_STATE_MEANING[state]}>{state.replace('_', ' ')}</span>;
 }
 
 /**
@@ -429,8 +438,8 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
         <div className="earth-hud" aria-live="polite">
           <span className="label-sm">Earth Twin</span>
           <span className="pill text-[10px] px-1.5" data-testid="twin-status" data-state={status.state} style={{ color: status.state === 'READY' ? 'var(--check-passed)' : status.state === 'LOADING' ? 'var(--status-pending)' : 'var(--status-refused)', borderColor: 'currentColor' }}>{status.state}</span>
-          <span className="mono text-[11px]" style={faint}>{fmtUtc(clock.validAt, { seconds: true })} world time</span>
-          <span className="mono text-[11px]" style={faint} data-testid="earth-placed" data-count={Object.keys(placements).length}>{Object.keys(placements).length} placed</span>
+          <span className="mono text-[11px]" style={faint} data-k="WORLD">{fmtUtc(clock.validAt, { seconds: true })}</span>
+          <span className="mono text-[11px]" style={faint} data-k="PLACED" data-testid="earth-placed" data-count={Object.keys(placements).length}>{Object.keys(placements).length}</span>
         </div>
         {status.state === 'UNAVAILABLE' && (
           <div className="earth-unavailable" role="alert" data-testid="earth-unavailable">
@@ -451,9 +460,11 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
           </div>
         </div>
         <div className="inspector-body">
-          <Part title="What this instrument is" testId="earth-instrument">
+          <Part title="What this instrument is" testId="earth-instrument" folded
+            right={status.state === 'READY' ? 'RUNNING' : status.state === 'LOADING' ? 'STARTING' : <span style={{ color: 'var(--status-refused)' }}>NOT RUNNING</span>}>
             <p className="m-0 text-[12.5px]" style={muted}><span className="font-medium" style={{ color: 'var(--text-heading)' }}>{EARTH_ENGINE.role.question}</span> {EARTH_ENGINE.role.role}</p>
             <dl className="kv m-0 text-[12px]">
+              {/* The renderer string can run to a hundred characters on a software GPU; it belongs in the body, not the rule. */}
               <dt>Engine</dt><dd>{status.state === 'READY' ? <span data-testid="earth-renderer">{EARTH_ENGINE.name} on {status.renderer}</span> : status.state === 'LOADING' ? 'Starting…' : <span style={{ color: 'var(--status-refused)' }}>Not running</span>}</dd>
               <dt>Built on</dt><dd><a href={EARTH_TWIN_ORIGIN.repository} style={{ color: 'var(--info)' }}>{EARTH_TWIN_ORIGIN.name}</a> at <span className="mono">{EARTH_TWIN_ORIGIN.commit.slice(0, 12)}</span> · {EARTH_TWIN_ORIGIN.codeLicense}</dd>
               <dt>Source list</dt><dd><span className="mono">{EARTH_TWIN_ORIGIN.dataSourcesPath}</span> blob <span className="mono">{EARTH_TWIN_ORIGIN.dataSourcesBlob.slice(0, 12)}</span></dd>
@@ -478,16 +489,33 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
           </Part>
 
           <Part title="Time" testId="earth-time">
-            <dl className="kv m-0 text-[12px]">
-              <dt>Known at</dt><dd><span className="ts">{fmtUtc(clock.knownAt, { seconds: true })}</span><div style={faint}>{CLOCK_MEANING.knownAt}</div></dd>
-              <dt>World time</dt><dd><span className="ts" data-testid="earth-valid-at">{fmtUtc(clock.validAt, { seconds: true })}</span><div style={faint}>{CLOCK_MEANING.validAt} It follows the selected record’s validity start.</div></dd>
-              <dt>Sub-solar</dt><dd data-testid="earth-subsolar">{sun ? <><span className="mono">{sun.latitude.toFixed(2)}°, {sun.longitude.toFixed(2)}°</span> <span style={faint}>· computed by {EARTH_ENGINE.name}{sun.precise ? '' : ' (TEME approximation until the frame data loads)'}</span></> : <span style={faint}>{status.state === 'READY' ? 'computing…' : 'not computed: the engine is not running'}</span>}</dd>
-            </dl>
-            <div><button type="button" className="btn btn-sm" disabled={!sun || status.state !== 'READY'} onClick={() => sun && flyTo({ ...GLOBAL_VIEW, longitude: sun.longitude, latitude: sun.latitude })} data-testid="fly-subsolar">Fly to the sub-solar point</button></div>
+            <div className="flex flex-col gap-1 text-[12px]">
+              <Readout label="Known at" layout="row" value={<span className="ts">{fmtUtc(clock.knownAt, { seconds: true })}</span>} />
+              <Readout label="World time" layout="row" testId="earth-valid-at" value={<span className="ts">{fmtUtc(clock.validAt, { seconds: true })}</span>} />
+              {/* Computed by the engine, so DERIVED when it is; UNKNOWN when there is no engine to compute it. */}
+              <Readout label="Sub-solar" layout="row" testId="earth-subsolar" state={sun ? 'DERIVED' : 'UNKNOWN'}
+                value={sun
+                  ? <><span className="mono">{sun.latitude.toFixed(2)}°, {sun.longitude.toFixed(2)}°</span> <span style={faint}>· computed by {EARTH_ENGINE.name}{sun.precise ? '' : ' (TEME approximation until the frame data loads)'}</span></>
+                  : (status.state === 'READY' ? 'computing…' : 'not computed: the engine is not running')} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="btn btn-sm" disabled={!sun || status.state !== 'READY'} onClick={() => sun && flyTo({ ...GLOBAL_VIEW, longitude: sun.longitude, latitude: sun.latitude })} data-testid="fly-subsolar">Fly to the sub-solar point</button>
+            </div>
+            <details className="text-[11.5px]" style={faint}><summary className="cursor-pointer">What the clocks mean</summary>
+              <dl className="kv m-0 mt-1">
+                <dt>Known at</dt><dd>{CLOCK_MEANING.knownAt}</dd>
+                <dt>World time</dt><dd>{CLOCK_MEANING.validAt} It follows the selected record’s validity start.</dd>
+              </dl>
+            </details>
           </Part>
 
-          <Part title="Corpus on the globe" testId="earth-corpus">
-            <p className="m-0 text-[12px]" style={muted}>Release <span className="id">{release.releaseId}</span> asked for one record at a time, view <span className="mono">GLOBE / GEODETIC / GLOBAL_3D</span>, viewer <span className="mono">COUNTERPARTY_SHARED</span>. The compiler decides; the twin inherits its answer.</p>
+          <Part title="Corpus on the globe" testId="earth-corpus"
+            right={outcome.state === 'ASKING' || outcome.state === 'NONE' ? outcome.state : <span data-epistemic={EPISTEMIC_OF_PROJECTION[outcome.state]}>{outcome.state}</span>}>
+            <div className="hud-stamp hud-stamp-lead">
+              <span data-k="RELEASE">{release.releaseId}</span>
+              <span data-k="VIEW">GLOBE / GEODETIC / GLOBAL_3D</span>
+              <span data-k="VIEWER">COUNTERPARTY_SHARED</span>
+            </div>
             {records.length ? (
               <div className="flex flex-col gap-1">
                 <label htmlFor="earth-record" className="text-[12px]">Record</label>
@@ -508,17 +536,26 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
               {outcome.state === 'READY' && <><span style={{ color: 'var(--check-passed)' }}>READY</span><span style={muted}>{outcome.detail}</span>
                 <ul className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Declared positions">
                   {outcome.positions.map((position) => (
-                    <li key={position.positionRecordId} className="surface p-2 flex flex-col gap-0.5" data-position-record={position.positionRecordId} data-interest={position.evidenceClass.interest}>
-                      <div className="flex flex-wrap items-baseline gap-x-2"><span className="id">{position.positionRecordId}</span><span className="label-sm" style={{ color: PLACEMENT_TONE[position.evidenceClass.interest].hex }}>{PLACEMENT_TONE[position.evidenceClass.interest].label}</span><span style={faint}>{position.statusAtKnownAt}</span></div>
-                      <div className="mono">{position.value} <span style={faint}>· ±{position.point.horizontalUncertaintyM ?? '?'} m · {position.point.datum}</span></div>
+                    <li key={position.positionRecordId} className="hud-panel flex flex-col gap-1" data-position-record={position.positionRecordId} data-interest={position.evidenceClass.interest}>
+                      {/* The interest is the one thing the colour on the globe says, so it is the one thing coloured here. */}
+                      <div className="hud-bar"><span>{position.positionRecordId}</span><span className="hud-bar-state" style={{ color: PLACEMENT_TONE[position.evidenceClass.interest].hex }}>{PLACEMENT_TONE[position.evidenceClass.interest].label} · {position.statusAtKnownAt}</span></div>
+                      <div className="mono text-[13px]" style={{ color: 'var(--text-heading)' }}>{position.value} <span style={faint}>· ±{position.point.horizontalUncertaintyM ?? '?'} m · {position.point.datum}</span></div>
                       <div style={faint}>{position.basis}</div>
-                      <div style={faint}>source <span className="mono break-all">{position.source.sourceName ?? position.source.sourceId}</span> · {position.evidenceClass.claimStrength} / {position.evidenceClass.productionClass} / {position.evidenceClass.interest}</div>
-                      <div style={faint}>valid <span className="ts">{fmtUtc(position.validity.validFrom)}</span> → {position.validity.validTo ? <span className="ts">{fmtUtc(position.validity.validTo)}</span> : 'open'} · known <span className="ts">{fmtUtc(position.knownAt)}</span></div>
+                      <div className="hud-stamp" style={{ marginTop: 2, paddingTop: 4 }}>
+                        <span data-k="SOURCE" className="break-all">{position.source.sourceName ?? position.source.sourceId}</span>
+                        <span data-k="CLASS">{position.evidenceClass.claimStrength} / {position.evidenceClass.productionClass} / {position.evidenceClass.interest}</span>
+                        <span data-k="VALID">{fmtUtc(position.validity.validFrom)} → {position.validity.validTo ? fmtUtc(position.validity.validTo) : 'open'}</span>
+                        <span data-k="KNOWN">{fmtUtc(position.knownAt)}</span>
+                      </div>
                       <div><button type="button" className="btn btn-sm" disabled={status.state !== 'READY'} onClick={() => flyTo({ longitude: position.point.longitude, latitude: position.point.latitude, ...PLACEMENT_VIEW })}>Fly to it</button></div>
                     </li>
                   ))}
                 </ul>
-                <span style={faint}>Drawn where the source says the subject was over that interval, not where it is. The point’s colour is the declaring source’s interest; the ring is the stated uncertainty.</span>
+                <div className="hud-stamp" data-testid="earth-legend">
+                  <span data-k="WHERE">as declared over the interval, not where it is now</span>
+                  <span data-k="COLOUR">the declaring source’s interest</span>
+                  <span data-k="RING">the stated uncertainty</span>
+                </div>
                 <DeclaredPositionReading groups={positionSeparations(outcome.positions)} />
                 {soleDeclaration(outcome.positions) && (
                   <span style={faint} data-testid="sole-declaration">{soleDeclaration(outcome.positions)}</span>
@@ -528,8 +565,10 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
             </div>
           </Part>
 
-          <Part title="Placed on the globe" testId="earth-placements">
-            <p className="m-0 text-[12px]" style={muted}>Every record of the release, each asked for at its own validity start, drawn wherever its subject’s own position record declares. The label carries each record’s value and the declaring source’s interest; the twin’s world time stays the selected record’s.</p>
+          <Part title="Placed on the globe" testId="earth-placements" right={Object.keys(placements).length > 0 ? `${Object.keys(placements).length} drawn` : undefined}>
+            <details className="text-[11.5px]" style={faint}><summary className="cursor-pointer">How every record is placed</summary>
+              <p className="m-0 mt-1">Every record of the release, each asked for at its own validity start, drawn wherever its subject’s own position record declares. The label carries each record’s value and the declaring source’s interest; the twin’s world time stays the selected record’s.</p>
+            </details>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" className="btn btn-sm btn-primary" disabled={status.state !== 'READY' || Boolean(placing) || !records.length} onClick={() => void placeAll()} data-testid="place-all">Place every record</button>
               {placing && <span className="text-[12px]" style={faint} role="status">Asking the compiler… {placing.done} / {placing.total}</span>}
@@ -559,7 +598,7 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
           </Part>
 
           <Part title={`Operator instrument · ${instrumentReading('positioned')} flyable, ${instrumentReading('void')} void`} testId="earth-operator" folded>
-            <p className="m-0 text-[12px]" style={muted}>The release’s own spatial state from this seat, arranged to be flown rather than read. It is a way of looking and not a thing looked at: nothing here is evidence, and no ruling may cite it.</p>
+            <p className="m-0 text-[12px]" style={muted}>The release’s own spatial state from this seat, arranged to be flown rather than read.</p>
             <ul className="m-0 p-0 list-none flex flex-col gap-1.5" aria-label="Instrument layers" data-testid="operator-layers">
               {instrument.layers.map((entry) => (
                 <li key={entry.id} className="hud-panel text-[12px] flex flex-col gap-1" data-operator-layer={entry.id} data-reading={String(entry.reading)} data-convenience={entry.convenience}>
@@ -583,7 +622,6 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
             {instrument.voids.length > 0 && (
               <div className="text-[12px] flex flex-col gap-1" data-testid="operator-voids" data-count={instrument.voids.length}>
                 <Rule label="Where the instrument is blind" right={`${instrument.voids.length} void`} state="UNKNOWN" />
-                <p className="m-0" style={muted}>Subjects this seat holds records about and no position for. There is nowhere to fly to, so they are listed instead of drawn — the records are still selectable.</p>
                 <ul className="m-0 p-0 list-none flex flex-col gap-0.5" aria-label="Subjects with no position">
                   {instrument.voids.map((hole) => {
                     const first = records.find((entry) => entry.subjectId === hole.subjectId);
@@ -601,7 +639,9 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
 
             <div className="text-[12px] flex flex-col gap-0.5" data-testid="operator-rules" data-writes={instrument.writes}>
               <Rule label="The two rules this instrument is held to" right="WRITES NONE" />
-              <ol className="m-0 pl-4 flex flex-col gap-0.5" style={faint}>{INSTRUMENT_RULES.map((rule) => <li key={rule}>{rule}</li>)}</ol>
+              <details className="text-[11.5px]" style={faint}><summary className="cursor-pointer">Read the rules</summary>
+                <ol className="m-0 mt-1 pl-4 flex flex-col gap-0.5">{INSTRUMENT_RULES.map((rule) => <li key={rule}>{rule}</li>)}</ol>
+              </details>
             </div>
 
             {/* The frame carries the provenance, where it cannot be cropped away
@@ -643,7 +683,11 @@ export function EarthTwin({ release, source, records, instrument, assetsReady, l
               <button type="button" className="btn btn-sm" disabled={!linkable} onClick={() => void copyLink()}>Copy link</button>
               <span className="text-[11.5px] break-all" style={faint} role="status">{copied}</span>
             </div>
-            <p className="m-0 text-[11.5px]" style={faint}>Drag to orbit, scroll to zoom. A view is a link: the camera is in the URL hash, bounded and validated; a bad hash is ignored, never clamped.</p>
+            <div className="hud-stamp">
+              <span data-k="ORBIT">drag</span>
+              <span data-k="ZOOM">scroll</span>
+              <span data-k="LINK">the camera, in the hash, bounded and validated — a bad hash is ignored, never clamped</span>
+            </div>
           </Part>
         </div>
       </aside>

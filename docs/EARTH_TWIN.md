@@ -317,3 +317,36 @@ regular Playwright tests pass at desktop and Pixel 7, with a second axe pass
 taken with the section open (the page's own pass runs with it shut, so its
 contents are `display:none` and unexamined); screenshot
 `docs/screenshots/00m-earth-operator-instrument.png`.
+
+## The density pass (2026-09-08)
+
+The references are dense with labelled data and the inspector was dense with
+prose. Same information, restructured so a reading is a label and a value and
+an explanation is one click away.
+
+- **The strip over the globe** keys its readings: `WORLD`, `PLACED`.
+- **What this instrument is** folds, with the engine state carried in its rule.
+  The renderer string — a hundred characters on a software GPU — stays in the
+  body; a rule that carried it wrapped the heading four deep.
+- **Time** is three ruled readouts. Sub-solar draws `DERIVED` when the engine
+  computed it and `UNKNOWN` when there is no engine to compute it. The two
+  clock meanings sit behind one disclosure.
+- **Corpus on the globe** opens with a `RELEASE / VIEW / VIEWER` stamp instead
+  of a sentence; the outcome word rides in the section rule, coloured from the
+  epistemic scale; each declared position is a ruled panel — the identifier
+  ruled to the source's interest and standing, the value, the source's own
+  basis, and a `SOURCE / CLASS / VALID / KNOWN` stamp — and the legend sentence
+  became `WHERE / COLOUR / RING`.
+- **Placed on the globe** carries its drawn count in the rule and folds the
+  paragraph on how placement works.
+- **Operator instrument** lost the paragraph over the void list (the rule and
+  the rows say it) and folds its two rules behind the `WRITES NONE` label.
+- **View** turned its trailing prose into `ORBIT / ZOOM / LINK`.
+
+The layer pill had a private colour map that drew `UNAVAILABLE` in the refusal
+red. A layer the engine cannot supply is an absence, not a gate declining, so
+it now draws from the epistemic scale as `UNKNOWN`: dashed grey. Same class of
+flattening as the retracted record chip, found the same way.
+
+Every pinned string stayed inside the container its test reads: 136 twin and
+primitive unit tests, the earth browser spec at desktop and Pixel 7.

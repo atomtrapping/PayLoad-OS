@@ -168,6 +168,12 @@ than silently accepted.
   working surface. Applied in CSS against classes the markup already carried, so
   the estate inherited the language without every page being rewritten and
   without the navigation, table and inspector tests changing what they assert.
+- The whole Earth Twin inspector, in a density pass recorded in
+  [Earth Twin](EARTH_TWIN.md): readings as ruled label-and-value lines, provenance
+  as keyed stamps, explanations behind disclosures. `Readout` grew to accept
+  structured values without loosening its UNKNOWN guard — a string or a node
+  with no declared state takes no hue, because a default colour on content of
+  unknown kind would be a claim nobody made.
 - The operator instrument on `/earth`: each layer as a drawn panel with a ruled
   readout, the void list under an `UNKNOWN` rule, and the release, seat and
   knowledge time stamped into the frame.

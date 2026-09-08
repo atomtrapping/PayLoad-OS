@@ -70,7 +70,13 @@ export function Rule({ label, right, state }: { label: string; right?: ReactNode
  */
 export function Readout({ label, value, state, unit, layout = 'stack', testId }: {
   label: string;
-  value: number | string;
+  /**
+   * A number, a string, or structured content. The string 'UNKNOWN' is drawn
+   * as unknown whatever `state` says. A bare number with no state is MEASURED,
+   * as before; a string or a node with no state takes no hue at all, because a
+   * default colour on content of unknown kind would be a claim nobody made.
+   */
+  value: ReactNode;
   /** Ignored when the value is UNKNOWN, which is drawn as unknown regardless. */
   state?: Epistemic;
   unit?: string;
@@ -79,9 +85,10 @@ export function Readout({ label, value, state, unit, layout = 'stack', testId }:
   testId?: string;
 }) {
   const unknown = value === 'UNKNOWN';
-  const resolved: Epistemic = unknown ? 'UNKNOWN' : (state ?? epistemicOfReading(typeof value === 'number' ? value : 0));
+  const primitive = typeof value === 'number' || typeof value === 'string';
+  const resolved: Epistemic | undefined = unknown ? 'UNKNOWN' : (state ?? (typeof value === 'number' ? epistemicOfReading(value) : undefined));
   return (
-    <div className="hud-readout" data-layout={layout} data-epistemic={resolved} data-testid={testId} data-value={String(value)}>
+    <div className="hud-readout" data-layout={layout} data-epistemic={resolved} data-testid={testId} data-value={primitive ? String(value) : undefined}>
       <span className="hud-readout-label">{label}</span>
       <span className="hud-readout-value">
         {typeof value === 'number' ? value.toLocaleString('en-US') : value}

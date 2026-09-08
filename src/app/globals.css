@@ -686,6 +686,10 @@ details[open] > summary::before { transform: rotate(90deg); }
   border-top: var(--hud-hair) solid var(--border-subtle);
 }
 .hud-stamp > span::before { content: attr(data-k) ' '; color: var(--border-strong); }
+/* A stamp that opens a section rather than closing one: no rule above it. */
+.hud-stamp-lead { margin-top: 0; padding-top: 0; border-top: 0; }
+/* The strip over the globe keys its readings the same way. */
+.earth-hud > [data-k]::before { content: attr(data-k) ' '; color: var(--border-strong); font-weight: 600; letter-spacing: 0.08em; }
 
 /* ── The registration ground ─────────────────────────────────────────────
    A grid at one pitch, drawn faintly, so a surface reads as ruled rather than
@@ -730,7 +734,8 @@ details[open] > summary::before { transform: rotate(90deg); }
   background: var(--border-subtle);
   align-self: center;
 }
-.hud-readout[data-layout='row'] > .hud-readout-value { order: 2; flex: none; font-size: var(--text-md); }
+.hud-readout[data-layout='row'] > .hud-readout-value { order: 2; flex: 0 1 auto; min-width: 0; text-align: right; overflow-wrap: anywhere; font-size: var(--text-md); }
+.hud-readout[data-layout='row']::after { flex: 1 0 12px; }
 
 /* ── The segmented meter ─────────────────────────────────────────────────
    Discrete cells, never a continuous bar. A filled cell means a measured

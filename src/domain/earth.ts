@@ -328,6 +328,28 @@ export function placementHeightM(boundedByM: number | null | undefined): number 
   return Math.min(PLACEMENT_FRAME.ceilingM, Math.max(PLACEMENT_FRAME.floorM, boundedByM * PLACEMENT_FRAME.multiple));
 }
 
+/**
+ * The camera's height, read as a number a person can act on.
+ *
+ * This was `Math.round(height / 1000)` kilometres, and the placement heights
+ * this application actually produces land on the rounding boundary: a position
+ * stating ±250 m gives 3,500 m, which is 3.5 km. Whether that displayed as
+ * "4 km" or "3 km" depended on whether the live camera settled at 3500.02 or
+ * 3499.98 after its flight — the same view, two readouts, and a browser test
+ * that passed on one machine and failed on another.
+ *
+ * Below ten kilometres the reading is in metres, which is the unit the
+ * derivation works in and is nowhere near a boundary. At or above it, whole
+ * kilometres, where a metre is noise. An instrument that rounds a 3.5 km camera
+ * to 4 km has also thrown away the precision that makes the height meaningful:
+ * it is derived from the claim's own stated uncertainty, and that is the point.
+ */
+export function cameraHeightLabel(heightM: number): string {
+  if (!Number.isFinite(heightM)) return 'unknown';
+  if (Math.abs(heightM) < 10_000) return `${Math.round(heightM).toLocaleString('en-US')} m`;
+  return `${Math.round(heightM / 1000).toLocaleString('en-US')} km`;
+}
+
 /** The camera over one declared position, framed by what that position claims. */
 export function placementViewFor(geometry: RecordGeometry | undefined): { height: number; heading: number; pitch: number } {
   const outcome = geometry ? spatialKeyFor(geometry) : null;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseProjectionSpec } from '@/projection/spec';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { describeProjectionSource } from '@/projection/source';
-import { ADOPTED, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, globeSpec, integrationBlockers, parseView, projectionOutcome } from './earth';
+import { ADOPTED, cameraHeightLabel, EARTH_ENGINE, EARTH_TWIN_ORIGIN, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, globeSpec, integrationBlockers, parseView, projectionOutcome } from './earth';
 
 describe('the Earth Twin as data', () => {
   it('pins exactly what it is built from and names what it adopted and refused', () => {
@@ -333,5 +333,49 @@ describe('the camera frames what it flies to', () => {
     const framed = placementViewFor({ kind: 'POINT', datum: 'WGS84', longitude: 0, latitude: 0, horizontalUncertaintyM: 250 });
     expect(framed.heading).toBe(PLACEMENT_VIEW.heading);
     expect(framed.pitch).toBe(PLACEMENT_VIEW.pitch);
+  });
+});
+
+/**
+ * The readout that disagreed with itself across two machines.
+ *
+ * Every placement height this application produces is a stated uncertainty
+ * times fourteen, and ±250 m — the uncertainty on the Rotterdam position —
+ * gives exactly 3,500 m. Rounded to kilometres that is 3.5, the one value where
+ * the answer depends on which side of the boundary a live camera happens to
+ * settle after its flight. CI read 3 km where this machine read 4 km, for the
+ * same view.
+ */
+describe('a camera height reads the same wherever it is rendered', () => {
+  it('reads a placement height in metres, so a half-kilometre is never rounded', () => {
+    expect(cameraHeightLabel(3500)).toBe('3,500 m');
+    // The float noise that produced the disagreement, on both sides.
+    expect(cameraHeightLabel(3500.02)).toBe('3,500 m');
+    expect(cameraHeightLabel(3499.98)).toBe('3,500 m');
+    expect(cameraHeightLabel(7000)).toBe('7,000 m');
+  });
+
+  it('reads a regional or global height in kilometres, where a metre is noise', () => {
+    expect(cameraHeightLabel(70_000)).toBe('70 km');
+    expect(cameraHeightLabel(1_200_000)).toBe('1,200 km');
+    expect(cameraHeightLabel(12_000_000)).toBe('12,000 km');
+  });
+
+  it('switches unit at ten kilometres and nowhere else', () => {
+    expect(cameraHeightLabel(9999)).toBe('9,999 m');
+    expect(cameraHeightLabel(10_000)).toBe('10 km');
+  });
+
+  it('says unknown rather than printing NaN', () => {
+    expect(cameraHeightLabel(Number.NaN)).toBe('unknown');
+    expect(cameraHeightLabel(Number.POSITIVE_INFINITY)).toBe('unknown');
+  });
+
+  it('labels every height the placement frame can produce without hitting a boundary', () => {
+    // The frame's floor, its ceiling, and the multiple between them.
+    for (const uncertainty of [1, 30, 100, 120, 250, 500, 5000, 100_000]) {
+      const label = cameraHeightLabel(placementHeightM(uncertainty));
+      expect(label).toMatch(/^[\d,]+ (m|km)$/);
+    }
   });
 });

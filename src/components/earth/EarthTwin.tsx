@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ProjectionSpec } from '@/projection/spec';
-import { ADOPTED, CLOCK_MEANING, SUPERSEDED_TONE, EARTH_ENGINE, EARTH_TWIN_ORIGIN, EVENT_TONE, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, placementViewFor, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
+import { ADOPTED, CLOCK_MEANING, SUPERSEDED_TONE, EARTH_ENGINE, EARTH_TWIN_ORIGIN, EVENT_TONE, GEV_SIGNAL_SOURCES, GLOBAL_VIEW, LAYER_STATE_MEANING, NOT_ADOPTED, PLACEMENT_TONE, placementViewFor, TERMS_CLASS_LABEL, TWIN_LAYERS, TWIN_NONCLAIMS, formatView, formatLink, parseLink, selectionFromLink, globeSpec, integrationBlockers, parseView, placementLabel, positionSeparations, soleDeclaration, projectionOutcome, SEPARATION_LOSS, SEPARATION_METHOD, SEPARATION_METRIC, formatMetres, cameraHeightLabel, type GeodeticPosition, type PositionConsistency, type SubjectPositions, type LayerState, type ProjectionOutcome, type TwinView } from '@/domain/earth';
 import { CONVENIENCE_MEANING, INSTRUMENT_RULES, conveniencesTaken, type InstrumentReading } from '@/domain/operatorInstrument';
 import { Readout, Rule } from '@/components/hud/Instrument';
 import { EPISTEMIC_OF_LAYER_STATE, EPISTEMIC_OF_PROJECTION } from '@/domain/epistemic';
@@ -887,7 +887,7 @@ export function EarthTwin({ release, source, records, instrument, located, asset
 
           <Part title="View" testId="earth-view">
             <dl className="kv m-0 text-[12px]">
-              <dt>Camera</dt><dd className="mono" data-testid="earth-camera">{view.latitude.toFixed(4)}°, {view.longitude.toFixed(4)}° · {Math.round(view.height / 1000).toLocaleString('en-US')} km · heading {view.heading.toFixed(1)}° · pitch {view.pitch.toFixed(1)}°</dd>
+              <dt>Camera</dt><dd className="mono" data-testid="earth-camera">{view.latitude.toFixed(4)}°, {view.longitude.toFixed(4)}° · {cameraHeightLabel(view.height)} · heading {view.heading.toFixed(1)}° · pitch {view.pitch.toFixed(1)}°</dd>
               <dt>Link</dt><dd>{linkable ? <span className="mono break-all" data-testid="earth-link">#{formatView(view)}</span> : <span style={faint}>This view cannot be linked: the camera is above the horizon.</span>}</dd>
             </dl>
             <div className="flex flex-wrap items-center gap-2">

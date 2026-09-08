@@ -107,7 +107,7 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await expect(page.getByTestId('earth-placed')).toHaveAttribute('data-count', '1');
   // The height is framed by the position's own stated uncertainty (±250 m),
   // not by a fixed regional preset a parcel would be invisible in.
-  await expect(page.getByTestId('earth-camera')).toContainText('51.9497°, 4.0250° · 4 km', { timeout: 20_000 });
+  await expect(page.getByTestId('earth-camera')).toContainText('51.9497°, 4.0250° · 3,500 m', { timeout: 20_000 });
   await expect.poll(async () => new URL(page.url()).hash, { timeout: 20_000 }).toMatch(/^#v=4\.0250,51\.9497,3500,/);
 
   // Every record offered, each at its own validity start: two lots declare a position, so their records are placed; samples, identity links and retracted inventory are not, and nothing is inferred across the sample-of-lot link. The records this viewer may not select were never offered, so the compiler refuses none.
@@ -125,7 +125,7 @@ test('earth twin: a keyless globe served from this origin, every layer with its 
   await expect(projection).toHaveAttribute('data-outcome', 'READY', { timeout: 15_000 });
   await expect(projection.locator('[data-position-record="REC-0306"]')).toHaveAttribute('data-interest', 'self_reported');
   await expect(projection).toContainText('self-reported');
-  await expect(page.getByTestId('earth-camera')).toContainText('-23.9535°, -46.3130° · 7 km', { timeout: 20_000 });
+  await expect(page.getByTestId('earth-camera')).toContainText('-23.9535°, -46.3130° · 7,000 m', { timeout: 20_000 });
   await expect(page.getByTestId('earth-placed')).toHaveAttribute('data-count', '9');
 
   const dimensions = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: window.innerWidth }));

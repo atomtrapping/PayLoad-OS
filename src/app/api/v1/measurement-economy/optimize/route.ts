@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { bodyRefusal, FeedBodyError, readBoundedJson } from '../../_lib';
+import type { NextRequest } from 'next/server';
+import { bodyRefusal, FeedBodyError, json, readBoundedJson, refusal } from '../../_lib';
 import { optimizeInspectionTasking, type ProjectMilestoneDrawContext } from '@/domain/n11MeasurementEconomy';
 import { FIXTURE_PROJECT_DRAWS } from '@/fixtures/frontier/insurabilityAndN11';
 import { getActiveParameterSet } from '@/domain/parameterRegistry';
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       taskingHistory: FIXTURE_TASKING_ORDERS,
     });
 
-    return NextResponse.json({
+    return json({
       schema: 'payload.frontier.measurement-economy.optimization.v1',
       parameterSetVersion: paramSet.version,
       parameterSetDigest: paramSet.parameterSetDigest,
@@ -27,12 +27,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof FeedBodyError) return bodyRefusal(error);
-    return NextResponse.json(
-      {
-        error: 'invalid_request',
-        message: error instanceof Error ? error.message : 'Failed to optimize measurement tasking',
-      },
-      { status: 400 }
-    );
+    return refusal(400, 'invalid_request', error instanceof Error ? error.message : 'Failed to optimize measurement tasking', 'Send { context: ProjectMilestoneDrawContext } or a draw context object, or no body at all to use the committed fixture.');
   }
 }

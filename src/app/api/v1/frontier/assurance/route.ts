@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { json } from '../../_lib';
 import { FIXTURE_DISCLOSURE_PACKS } from '@/fixtures/frontier/anchors';
 
 export async function GET() {
-  return NextResponse.json({
+  return json({
     schema: 'payload.frontier.disclosure-assurance.v1',
     doctrine: {
       role: 'ASSURANCE_SUBSTRATE_PROVIDER',

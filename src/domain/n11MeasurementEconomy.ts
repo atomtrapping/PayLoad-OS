@@ -2,7 +2,7 @@ import type { Hash, ISODateTime } from './types';
 import type { ParameterSet } from './parameterRegistry';
 import { getActiveParameterSet, getParameter } from './parameterRegistry';
 import type { ComputationReceipt, TaskingOrderRecord } from './productionPipeline';
-import { calibrateInstrumentFromHistory, generateComputationReceipt } from './productionPipeline';
+import { calibrateInstrumentFromHistory, generateComputationReceipt, type InstrumentCalibrationEvidence } from './productionPipeline';
 import { FIXTURE_TASKING_ORDERS } from '@/fixtures/frontier/productionCorpus';
 
 /**
@@ -42,9 +42,23 @@ export interface MeasurementInstrumentProfile {
   weatherPenetration: 'ALL_WEATHER_RADAR' | 'CLOUD_VULNERABLE_OPTICAL' | 'LOCAL_GROUND_TRUTH';
   defectDetectionSensitivity: number; // 0.0 to 1.0
   falseAlarmRate: number; // 0.0 to 1.0
-  calibrationSource: 'VENDOR_SPEC_PRIOR' | 'CALIBRATED_EMPIRICAL';
+  /**
+   * VENDOR_SPEC_PRIOR: the number below is the vendor's, unmeasured here.
+   * PROVISIONAL_FROM_HISTORY: estimated, from fewer completed observations than
+   * MIN_OBSERVATIONS_FOR_EMPIRICAL_CALIBRATION. CALIBRATED_EMPIRICAL: estimated
+   * from at least that many.
+   */
+  calibrationSource: InstrumentCalibrationSource;
   vendorSpecCitation: string;
+  /** The counts and nulls the estimate came from, present once a history has been read. */
+  calibrationEvidence?: InstrumentCalibrationEvidence;
 }
+
+/**
+ * Where a profile's sensitivity and false-alarm rate came from. One
+ * declaration, used by both the profile and the evaluation that reports it.
+ */
+export type InstrumentCalibrationSource = 'VENDOR_SPEC_PRIOR' | 'PROVISIONAL_FROM_HISTORY' | 'CALIBRATED_EMPIRICAL';
 
 export const BASELINE_MEASUREMENT_INSTRUMENTS: readonly MeasurementInstrumentProfile[] = [
   {
@@ -146,7 +160,7 @@ export interface InstrumentEvaluationResult {
   netMeasurementSurplusCents: number;
   returnOnMeasurementSpendRatio: number;
   recommendationStatus: 'OPTIMAL_SELECTION' | 'SURPLUS_POSITIVE' | 'MARGINAL' | 'UNECONOMIC_EXCESS_COST' | 'LATENCY_EXCEEDED';
-  calibrationStatus: 'VENDOR_SPEC_PRIOR' | 'CALIBRATED_EMPIRICAL';
+  calibrationStatus: InstrumentCalibrationSource;
   reasoning: string;
 }
 
@@ -167,23 +181,36 @@ export interface N11OptimizationSchedule {
 }
 
 /**
- * Resolves instrument profiles, incorporating empirical closed-loop calibration
- * from historical tasking orders.
+ * Resolves instrument profiles, replacing a declared prior with an estimate only
+ * where the history actually produced one, and never calling one observation
+ * empirical.
+ *
+ * This function used to stamp CALIBRATED_EMPIRICAL whenever a single completed
+ * order existed, while the calibration it was reading already carried a
+ * confidence of PROVISIONAL below five observations — a field it discarded. The
+ * committed history holds one order per instrument, so every instrument in the
+ * served table was labelled empirical at n = 1. Worse, a class the history could
+ * not speak to had its declared prior replaced by a hardcoded default and then
+ * relabelled: RTK_DRONE_PHOTOGRAMMETRY's declared 0.985 sensitivity became 0.90
+ * because the fixture holds no defect site for it.
+ *
+ * Now the confidence decides the label, each rate is substituted only if it was
+ * estimated, and the sample sizes travel with the profile so a reader can see
+ * what a rate is standing on.
  */
 export function getCalibratedInstruments(
   history: readonly TaskingOrderRecord[] = FIXTURE_TASKING_ORDERS
 ): MeasurementInstrumentProfile[] {
   return BASELINE_MEASUREMENT_INSTRUMENTS.map((inst) => {
     const calibration = calibrateInstrumentFromHistory(inst.id, history);
-    if (calibration.completedObservationsCount > 0) {
-      return {
-        ...inst,
-        defectDetectionSensitivity: calibration.empiricalSensitivity,
-        falseAlarmRate: calibration.empiricalFalseAlarmRate,
-        calibrationSource: 'CALIBRATED_EMPIRICAL',
-      };
-    }
-    return inst;
+    if (calibration.calibrationConfidence === 'NOT_ESTIMATED') return { ...inst, calibrationEvidence: calibration };
+    return {
+      ...inst,
+      defectDetectionSensitivity: calibration.empiricalSensitivity ?? inst.defectDetectionSensitivity,
+      falseAlarmRate: calibration.empiricalFalseAlarmRate ?? inst.falseAlarmRate,
+      calibrationSource: calibration.calibrationConfidence === 'CALIBRATED_EMPIRICAL' ? 'CALIBRATED_EMPIRICAL' : 'PROVISIONAL_FROM_HISTORY',
+      calibrationEvidence: calibration,
+    };
   });
 }
 

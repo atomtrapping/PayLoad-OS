@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { json } from '../_lib';
 import { getActiveParameterSet } from '@/domain/parameterRegistry';
 
 export async function GET() {
   const paramSet = getActiveParameterSet();
 
-  return NextResponse.json({
+  return json({
     schema: 'payload.frontier.parameter-registry.v1',
     version: paramSet.version,
     parameterSetDigest: paramSet.parameterSetDigest,

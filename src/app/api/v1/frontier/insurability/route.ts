@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { json } from '../../_lib';
 import { FIXTURE_INSURABILITY_EVENTS } from '@/fixtures/frontier/anchors';
 
 export async function GET() {
-  return NextResponse.json({
+  return json({
     schema: 'payload.frontier.insurability-change-feed.v1',
     doctrine: {
       role: 'INSURABILITY_CHANGE_FEED_PROVIDER',

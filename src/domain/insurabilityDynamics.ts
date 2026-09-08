@@ -120,8 +120,12 @@ export interface CollateralRepricingStressResult {
       baselineDscr: number;
       stressedDscr: number;
       dscrBreach: boolean;
-      projectedCollateralDevaluationPct: number;
-      stressedLoanToValuePct: number;
+      /** null when the loan's cap rate is not positive, so direct capitalisation has no answer. */
+      projectedCollateralDevaluationPct: number | null;
+      /** null for the same reason: there is no revalued collateral to divide by. */
+      stressedLoanToValuePct: number | null;
+      /** Present only when the two above are null, naming why. */
+      revaluationUnavailableBecause?: string;
     };
     estimatedLeadTimeToRepricingDays: number;
   }[];
@@ -145,7 +149,11 @@ export function evaluatePortfolioCollateralShock(
 ): CollateralRepricingStressResult {
   const paramSet = options?.paramSet || getActiveParameterSet();
   const asOfKnowledgeTime = options?.asOfKnowledgeTime || new Date().toISOString();
-  const corpusReleaseDigest = options?.corpusReleaseDigest || 'sha256:d8120fa29103cba4420182390142981023910283019283019283019283019283';
+  // A caller who names no corpus release gets that fact in the receipt. The
+  // default here used to be a hand-typed 64-hex literal, which put a digest
+  // shaped exactly like a real one into a document whose whole purpose is to
+  // say which bytes a computation ran over.
+  const corpusReleaseDigest = options?.corpusReleaseDigest ?? CORPUS_RELEASE_NOT_DECLARED;
 
   // Read versioned, cited parameters from Registry (NO MAGIC NUMBERS)
   const fullWithdrawalMult = getParameter<number>('insurability.forced_place.full_withdrawal_multiplier', paramSet);
@@ -187,12 +195,17 @@ export function evaluatePortfolioCollateralShock(
       const stressedDscr = Number((stressedNoiCents / loan.annualDebtServiceCents).toFixed(2));
       const dscrBreach = stressedDscr < dscrCovenantThreshold;
 
+      // Direct capitalisation needs a positive cap rate. A loan whose current NOI
+      // is zero or negative has none, and the revaluation is then not derivable
+      // rather than derivable to 85% of appraised value — which is what the
+      // previous fallback asserted, in a module whose stated doctrine is that
+      // model constants come from the registry and never from the code.
       const capRate = loan.currentAnnualNoiCents / loan.originalAppraisedValueCents;
-      const revaluedCollateralCents = capRate > 0 ? stressedNoiCents / capRate : loan.originalAppraisedValueCents * 0.85;
-      const devaluationPct = Number(
+      const revaluedCollateralCents = capRate > 0 ? stressedNoiCents / capRate : null;
+      const devaluationPct = revaluedCollateralCents === null ? null : Number(
         (((loan.originalAppraisedValueCents - revaluedCollateralCents) / loan.originalAppraisedValueCents) * 100).toFixed(1)
       );
-      const stressedLtvPct = Number(((loan.outstandingLoanBalanceCents / revaluedCollateralCents) * 100).toFixed(1));
+      const stressedLtvPct = revaluedCollateralCents === null ? null : Number(((loan.outstandingLoanBalanceCents / revaluedCollateralCents) * 100).toFixed(1));
 
       // Bitemporal Lead Time: from when NotationsOS admitted the knowledge to the filing effective date
       const effectiveTime = new Date(matchingFiling.effectiveDate).getTime();
@@ -223,6 +236,9 @@ export function evaluatePortfolioCollateralShock(
           dscrBreach,
           projectedCollateralDevaluationPct: devaluationPct,
           stressedLoanToValuePct: stressedLtvPct,
+          ...(revaluedCollateralCents === null
+            ? { revaluationUnavailableBecause: 'The loan\'s current NOI is not positive, so it has no cap rate and direct capitalisation cannot revalue the collateral.' }
+            : {}),
         },
         estimatedLeadTimeToRepricingDays: leadTimeDays,
       });
@@ -262,10 +278,38 @@ export function evaluatePortfolioCollateralShock(
 }
 
 /**
- * Historical Natural Experiment Backtest:
- * Reconstructs Florida 2022-2023 Insolvency Wave and California 2023 Constriction.
- * Evaluates week-by-week knowledge without lookahead bias, measuring lead time ahead of repricing.
- * Retains unresolved and excluded cases as required by doctrine.
+ * The digest a receipt carries when the caller named no corpus release. It is
+ * not 64 hex characters, so nothing downstream can mistake it for one.
+ */
+export const CORPUS_RELEASE_NOT_DECLARED = 'NOT_DECLARED_BY_CALLER';
+
+/**
+ * The lead time each corridor must show for its feed to count as timely. These
+ * are declared thresholds, not fitted ones: 21 days is the Florida policy
+ * cancellation notice period and 30 days is one CMBS issuance cycle. They are
+ * named here rather than typed into the comparison so that a reader can see
+ * what the verdict below is a verdict about.
+ */
+export const FL_TIMELY_LEAD_DAYS = 21;
+export const CA_TIMELY_LEAD_DAYS = 30;
+
+/**
+ * TWO CORRIDORS, RECONSTRUCTED FROM DECLARED DATES.
+ *
+ * What this function computes is the number of days between two timestamps that
+ * are written into its own body, for each of the Florida 2022 insolvency wave
+ * and the California 2023 constriction. It does not evaluate week-by-week
+ * knowledge, and it does not query a feed for the interval: both endpoints are
+ * constants, so the lead time is arithmetic over declared dates.
+ *
+ * One number in each report is read from the corpus — `admittedFilingsCount`,
+ * via `queryFilingsAsOf` at the stated knowledge time, which is the part that
+ * would change if the corpus changed. Every report carries `derivation` saying
+ * which of its fields are which, because a document titled "backtest" whose
+ * verdict does not move when the data moves is the exact shape of claim this
+ * system exists to refuse.
+ *
+ * Unresolved and excluded cases are retained, as doctrine requires.
  */
 export interface BacktestEvaluationReport {
   backtestName: string;
@@ -281,6 +325,13 @@ export interface BacktestEvaluationReport {
   }[];
   feedSignaledTimely: boolean;
   verdict: 'SUBSTANTIATED_LEAD_TIME' | 'FALSIFIED_OR_LATENT';
+  /** Which fields of this report moved with the corpus and which did not. */
+  derivation: {
+    method: 'ARITHMETIC_OVER_DECLARED_DATES';
+    fromCorpus: readonly string[];
+    declaredInSource: readonly string[];
+    timelyThresholdDays: number;
+  };
 }
 
 export function runHistoricalCorpusBacktest(): BacktestEvaluationReport[] {
@@ -291,6 +342,8 @@ export function runHistoricalCorpusBacktest(): BacktestEvaluationReport[] {
   const flLeadDays = Math.round(
     (new Date('2022-03-27T00:00:00Z').getTime() - new Date('2022-02-25T14:10:00Z').getTime()) / (1000 * 60 * 60 * 24)
   );
+
+  const flTimely = flLeadDays >= FL_TIMELY_LEAD_DAYS;
 
   const flReport: BacktestEvaluationReport = {
     backtestName: 'Florida 2022 Insolvency Wave (St. Johns Liquidation)',
@@ -306,8 +359,14 @@ export function runHistoricalCorpusBacktest(): BacktestEvaluationReport[] {
         reasonForExclusion: 'Preliminary administrative rumor excluded until official Leon County Circuit Court liquidation order entered March 2022.',
       },
     ],
-    feedSignaledTimely: flLeadDays >= 21,
-    verdict: 'SUBSTANTIATED_LEAD_TIME',
+    feedSignaledTimely: flTimely,
+    verdict: flTimely ? 'SUBSTANTIATED_LEAD_TIME' : 'FALSIFIED_OR_LATENT',
+    derivation: {
+      method: 'ARITHMETIC_OVER_DECLARED_DATES',
+      fromCorpus: ['admittedFilingsCount'],
+      declaredInSource: ['asOfKnowledgeTime', 'observableRepricingDate', 'experimentCorridor', 'unresolvedOrExcludedCases'],
+      timelyThresholdDays: FL_TIMELY_LEAD_DAYS,
+    },
   };
 
   // 2. California 2023 Wildfire Pause (State Farm)
@@ -317,6 +376,8 @@ export function runHistoricalCorpusBacktest(): BacktestEvaluationReport[] {
   const caLeadDays = Math.round(
     (new Date('2023-07-15T00:00:00Z').getTime() - new Date('2023-05-27T08:30:00Z').getTime()) / (1000 * 60 * 60 * 24)
   );
+
+  const caTimely = caLeadDays >= CA_TIMELY_LEAD_DAYS;
 
   const caReport: BacktestEvaluationReport = {
     backtestName: 'California 2023 Property Market Constriction (State Farm Pause)',
@@ -332,8 +393,14 @@ export function runHistoricalCorpusBacktest(): BacktestEvaluationReport[] {
         reasonForExclusion: 'Personal lines homeowner filings segregated from commercial underwriting debt books.',
       },
     ],
-    feedSignaledTimely: caLeadDays >= 30,
-    verdict: 'SUBSTANTIATED_LEAD_TIME',
+    feedSignaledTimely: caTimely,
+    verdict: caTimely ? 'SUBSTANTIATED_LEAD_TIME' : 'FALSIFIED_OR_LATENT',
+    derivation: {
+      method: 'ARITHMETIC_OVER_DECLARED_DATES',
+      fromCorpus: ['admittedFilingsCount'],
+      declaredInSource: ['asOfKnowledgeTime', 'observableRepricingDate', 'experimentCorridor', 'unresolvedOrExcludedCases'],
+      timelyThresholdDays: CA_TIMELY_LEAD_DAYS,
+    },
   };
 
   return [flReport, caReport];

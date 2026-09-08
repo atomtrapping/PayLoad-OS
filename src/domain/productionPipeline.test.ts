@@ -12,11 +12,13 @@ import {
 import {
   optimizeInspectionTasking,
   getCalibratedInstruments,
+  BASELINE_MEASUREMENT_INSTRUMENTS,
 } from './n11MeasurementEconomy';
 import {
   queryFilingsAsOf,
   buildInsurabilityPressureMart,
   calibrateInstrumentFromHistory,
+  MIN_OBSERVATIONS_FOR_EMPIRICAL_CALIBRATION,
   type TaskingOrderRecord,
 } from './productionPipeline';
 import {
@@ -210,35 +212,74 @@ describe('Production Substrate: Non-Negotiables & Acceptance Checks', () => {
   });
 
   describe('5. Closed-Loop N11 Tasking Calibration', () => {
-    it('calibrates sensor noise and sensitivity from empirical tasking order outcomes', () => {
-      // Prior baseline before extra orders
-      const calibratedProfiles = getCalibratedInstruments(FIXTURE_TASKING_ORDERS);
-      const lidar = calibratedProfiles.find((p) => p.id === 'TERRESTRIAL_LIDAR_SCAN');
-      expect(lidar?.calibrationSource).toBe('CALIBRATED_EMPIRICAL');
+    /** One completed order per instrument is what the committed corpus holds. */
+    const extraOrder = (over: Partial<TaskingOrderRecord> = {}): TaskingOrderRecord => ({
+      orderId: 'N11-TASK-CALIB-TEST',
+      projectId: 'PRJ-TEST',
+      targetMilestone: 'Test Milestone',
+      instrumentId: 'SENTINEL_SAR_OPTICAL',
+      status: 'CALIBRATED',
+      dispatchedAt: '2026-08-01T00:00:00Z',
+      priors: { assumedSensitivity: 0.72, assumedFalseAlarmRate: 0.18, authorizedCostCents: 0 },
+      observationOutcome: { defectActuallyExisted: true, instrumentDetectedDefect: true, turnaroundHoursElapsed: 44, measuredNoiseVarianceMm: 9500 },
+      ...over,
+    });
 
-      // Add a test order with verified observation
-      const extraOrders: TaskingOrderRecord[] = [
-        ...FIXTURE_TASKING_ORDERS,
-        {
-          orderId: 'N11-TASK-CALIB-TEST',
-          projectId: 'PRJ-TEST',
-          targetMilestone: 'Test Milestone',
-          instrumentId: 'SENTINEL_SAR_OPTICAL',
-          status: 'CALIBRATED',
-          dispatchedAt: '2026-08-01T00:00:00Z',
-          priors: { assumedSensitivity: 0.72, assumedFalseAlarmRate: 0.18, authorizedCostCents: 0 },
-          observationOutcome: {
-            defectActuallyExisted: true,
-            instrumentDetectedDefect: true,
-            turnaroundHoursElapsed: 44,
-            measuredNoiseVarianceMm: 9500,
-          },
-        },
-      ];
-
-      const calib = calibrateInstrumentFromHistory('SENTINEL_SAR_OPTICAL', extraOrders);
+    it('estimates a rate from the class that has cases and answers null for the class that does not', () => {
+      // One defect site, detected. Sensitivity is 1.000 over a denominator of
+      // one — which the counts say out loud — and there is no sound site, so
+      // the false-alarm rate is not estimated rather than being defaulted.
+      const calib = calibrateInstrumentFromHistory('SENTINEL_SAR_OPTICAL', [...FIXTURE_TASKING_ORDERS, extraOrder()]);
       expect(calib.completedObservationsCount).toBe(1);
-      expect(calib.empiricalSensitivity).toBe(1.0); // 1 defect existed, 1 detected
+      expect(calib.empiricalSensitivity).toBe(1.0);
+      expect(calib.defectSiteCount).toBe(1);
+      expect(calib.empiricalFalseAlarmRate).toBeNull();
+      expect(calib.soundSiteCount).toBe(0);
+    });
+
+    it('answers NOT_ESTIMATED with no numbers at all for an instrument with no completed order', () => {
+      const calib = calibrateInstrumentFromHistory('SENTINEL_SAR_OPTICAL', []);
+      expect(calib.calibrationConfidence).toBe('NOT_ESTIMATED');
+      // Not 0.85 and 0.05. Those were hardcoded numbers returned under field
+      // names beginning with `empirical`, which is the shape of claim this
+      // repository exists to refuse.
+      expect(calib.empiricalSensitivity).toBeNull();
+      expect(calib.empiricalFalseAlarmRate).toBeNull();
+    });
+
+    it('calls an estimate empirical only at the threshold it publishes, not at one observation', () => {
+      const belowThreshold = calibrateInstrumentFromHistory('SENTINEL_SAR_OPTICAL', [...FIXTURE_TASKING_ORDERS, extraOrder()]);
+      expect(belowThreshold.completedObservationsCount).toBeLessThan(MIN_OBSERVATIONS_FOR_EMPIRICAL_CALIBRATION);
+      expect(belowThreshold.calibrationConfidence).toBe('PROVISIONAL');
+
+      const atThreshold = calibrateInstrumentFromHistory('SENTINEL_SAR_OPTICAL', Array.from(
+        { length: MIN_OBSERVATIONS_FOR_EMPIRICAL_CALIBRATION },
+        (_, index) => extraOrder({ orderId: `N11-TASK-CALIB-${index}` }),
+      ));
+      expect(atThreshold.calibrationConfidence).toBe('CALIBRATED_EMPIRICAL');
+    });
+
+    it('labels every instrument in the served table by what its history supports', () => {
+      // Before this, one completed order per instrument was enough to stamp
+      // CALIBRATED_EMPIRICAL on the whole table.
+      const profiles = getCalibratedInstruments(FIXTURE_TASKING_ORDERS);
+      const lidar = profiles.find((p) => p.id === 'TERRESTRIAL_LIDAR_SCAN')!;
+      expect(lidar.calibrationSource).toBe('PROVISIONAL_FROM_HISTORY');
+      expect(lidar.calibrationEvidence?.completedObservationsCount).toBe(1);
+
+      const untouched = profiles.find((p) => p.calibrationEvidence?.calibrationConfidence === 'NOT_ESTIMATED');
+      expect(untouched?.calibrationSource).toBe('VENDOR_SPEC_PRIOR');
+    });
+
+    it('keeps a declared prior when the history cannot speak to that class, instead of substituting a default', () => {
+      const declared = BASELINE_MEASUREMENT_INSTRUMENTS.find((i) => i.id === 'RTK_DRONE_PHOTOGRAMMETRY')!;
+      const served = getCalibratedInstruments(FIXTURE_TASKING_ORDERS).find((p) => p.id === 'RTK_DRONE_PHOTOGRAMMETRY')!;
+      // The fixture holds no defect site for this instrument, so its declared
+      // sensitivity stands. It used to be replaced by a hardcoded 0.90 and then
+      // reported as calibrated.
+      expect(served.calibrationEvidence?.defectSiteCount).toBe(0);
+      expect(served.defectDetectionSensitivity).toBe(declared.defectDetectionSensitivity);
+      expect(served.defectDetectionSensitivity).not.toBe(0.90);
     });
 
     it('emits computation receipts with parameter set echo in Bayesian VOI optimization', () => {

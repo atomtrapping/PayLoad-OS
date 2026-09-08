@@ -291,24 +291,52 @@ export function generateComputationReceipt(
 }
 
 /**
- * Calibrates empirical instrument noise and sensitivity from completed tasking orders.
+ * Below this many completed observations an estimate is PROVISIONAL. The
+ * threshold was already here, buried in an inline comparison whose result the
+ * only caller discarded; it is named so that caller can act on it.
+ */
+export const MIN_OBSERVATIONS_FOR_EMPIRICAL_CALIBRATION = 5;
+
+/** How much a calibration estimate is standing on. Declared once, here, where it is produced. */
+export type CalibrationConfidence = 'NOT_ESTIMATED' | 'PROVISIONAL' | 'CALIBRATED_EMPIRICAL';
+
+/** What a calibration run could and could not estimate, and the denominators it used. */
+export interface InstrumentCalibrationEvidence {
+  empiricalSensitivity: number | null;
+  empiricalFalseAlarmRate: number | null;
+  completedObservationsCount: number;
+  defectSiteCount: number;
+  soundSiteCount: number;
+  calibrationConfidence: CalibrationConfidence;
+}
+
+/**
+ * Calibrates instrument sensitivity and false-alarm rate from completed tasking
+ * orders — and answers null for whichever of the two the history cannot support.
+ *
+ * Sensitivity is estimated over sites where a defect actually existed; the
+ * false-alarm rate over sites where none did. A history can supply one class and
+ * not the other, and it usually does at these sample sizes. This function used
+ * to substitute 0.85/0.05 for an empty history and 0.90/0.03 for an empty class,
+ * and return them under field names beginning with `empirical`. Those were not
+ * measurements of anything: a hardcoded number is not made empirical by the fact
+ * that a division was attempted first. A null says the estimate does not exist,
+ * so a caller must decide what to do instead of being handed a number that looks
+ * like a reading.
  */
 export function calibrateInstrumentFromHistory(
   instrumentId: MeasurementInstrumentId,
   history: readonly TaskingOrderRecord[]
-): {
-  empiricalSensitivity: number;
-  empiricalFalseAlarmRate: number;
-  completedObservationsCount: number;
-  calibrationConfidence: 'PROVISIONAL' | 'CALIBRATED_EMPIRICAL';
-} {
+): InstrumentCalibrationEvidence {
   const completed = history.filter((h) => h.instrumentId === instrumentId && h.observationOutcome);
   if (completed.length === 0) {
     return {
-      empiricalSensitivity: 0.85,
-      empiricalFalseAlarmRate: 0.05,
+      empiricalSensitivity: null,
+      empiricalFalseAlarmRate: null,
       completedObservationsCount: 0,
-      calibrationConfidence: 'PROVISIONAL',
+      defectSiteCount: 0,
+      soundSiteCount: 0,
+      calibrationConfidence: 'NOT_ESTIMATED',
     };
   }
 
@@ -328,14 +356,15 @@ export function calibrateInstrumentFromHistory(
     }
   }
 
-  const sensitivity = actualDefects > 0 ? Number((truePositives / actualDefects).toFixed(3)) : 0.90;
-  const falseAlarmRate = soundSites > 0 ? Number((falseAlarms / soundSites).toFixed(3)) : 0.03;
-
   return {
-    empiricalSensitivity: sensitivity,
-    empiricalFalseAlarmRate: falseAlarmRate,
+    empiricalSensitivity: actualDefects > 0 ? Number((truePositives / actualDefects).toFixed(3)) : null,
+    empiricalFalseAlarmRate: soundSites > 0 ? Number((falseAlarms / soundSites).toFixed(3)) : null,
     completedObservationsCount: completed.length,
-    calibrationConfidence: completed.length >= 5 ? 'CALIBRATED_EMPIRICAL' : 'PROVISIONAL',
+    // The denominators, so a reader can see that a rate of 1.000 came from one
+    // site rather than from a hundred.
+    defectSiteCount: actualDefects,
+    soundSiteCount: soundSites,
+    calibrationConfidence: completed.length >= MIN_OBSERVATIONS_FOR_EMPIRICAL_CALIBRATION ? 'CALIBRATED_EMPIRICAL' : 'PROVISIONAL',
   };
 }
 

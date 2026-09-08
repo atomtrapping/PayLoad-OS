@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { json } from '../../_lib';
 import { FIXTURE_CAPEX_PROGRESS } from '@/fixtures/frontier/anchors';
 
 export async function GET() {
-  return NextResponse.json({
+  return json({
     schema: 'payload.frontier.capex-progress-verification.v1',
     doctrine: {
       role: 'PHYSICAL_PROGRESS_STATE_VERIFIER',

@@ -26,7 +26,6 @@
  * later filter writes into. Nothing acquires an image, a point cloud or a
  * forecast; nothing fuses; nothing is registered as a source.
  */
-import type { Corpus } from './corpus';
 
 /* ── The two convergences ── */
 
@@ -141,7 +140,7 @@ export const CONCEPT_MAPPING: readonly MappingStage[] = [
   { order: 1, stage: 'FEATURE', what: 'Detector outputs per source and per model version, as candidate observations with noise models. A sensor is a model, so a detection is an assertion by a producer.', sameAs: 'The extraction interface: a vision model is an adapter like any other.', state: 'ABSENT' },
   { order: 2, stage: 'CONCEPT_MAPPING', what: 'Source-specific feature vocabularies mapped onto corpus concepts, as versioned mappings with receipts. Facility, stockyard, berth, canopy: named once, reached from every family.', sameAs: 'The normalization adapters, which already turn a source’s vocabulary into the corpus’s and record the method and version that did it.', state: 'ABSENT' },
   { order: 3, stage: 'RECONCILIATION', what: 'Where two families disagree — imagery says one building, LiDAR says two — the disagreement is encoded, not averaged. Cross-family disagreement is unusually informative because the error physics are independent.', sameAs: 'The disagreement layer, and the geometric verdict that already reports two positions that cannot both be right.', state: 'ABSENT' },
-  { order: 4, stage: 'ADMISSION', what: 'Fused, concept-typed, uncertainty-carrying candidates cross the admission boundary, or they do not become facts.', sameAs: 'The admission ruling, which exists as a function and has never been called.', state: 'ABSENT' },
+  { order: 4, stage: 'ADMISSION', what: 'Fused, concept-typed, uncertainty-carrying candidates cross the admission boundary, or they do not become facts.', sameAs: 'The admission ruling, which is called on the statutory harvester path and by the admit CLI, and which no candidate from this corpus has been put through.', state: 'ABSENT' },
 ];
 
 export const CROSS_FAMILY_CORROBORATION = {
@@ -180,18 +179,38 @@ export interface SensorStanding {
   registeredSources: Record<SensorFamily['id'], number>;
   conceptMappings: number;
   elevationsInCorpus: number;
+  /** Why the number above is what it is. It is a property of the contract, not a reading. */
+  elevationsBecause: string;
   verticalDatumField: 'ABSENT';
   statement: string;
 }
 
-/** Pure: the honest inventory, which is empty, and the one contract gap it exposes. */
-export function sensorStanding(corpus: Corpus): SensorStanding {
-  // GeodeticPoint carries longitude, latitude and a horizontal uncertainty. No height, and no vertical datum to put one in.
-  const elevations = corpus.records.filter((r) => r.geometry && 'height' in (r.geometry as unknown as Record<string, unknown>)).length;
+/**
+ * Pure: the honest inventory, which is empty, and the one contract gap it exposes.
+ *
+ * It takes no corpus, and that is the finding rather than an oversight. Every
+ * number here is a property of a contract: no source of any family is
+ * registered, no concept mapping exists, and the geometry union has no height
+ * field on any of its three shapes. The elevation figure used to be written as
+ * a filter over `corpus.records` for a `'height'` key that no member of
+ * RecordGeometry declares — a predicate that could never match, behind an
+ * `as unknown as Record<string, unknown>` cast that let it compile. Reading a
+ * corpus to produce a constant is how a constant comes to look like evidence.
+ */
+export function sensorStanding(): SensorStanding {
+  // Not a count. RecordGeometry is GeodeticPoint | GeodeticPolygon |
+  // GeodeticExtent and none of the three declares a height, so this is a
+  // property of the contract rather than of the records in it. It used to be
+  // written as a filter for `'height' in geometry` behind an
+  // `as unknown as Record<string, unknown>` cast — the cast being what let a
+  // structurally impossible predicate compile. A constant dressed as a count
+  // reads as evidence, and it is not.
+  const elevations = 0;
   return {
     registeredSources: { SATELLITE: 0, LIDAR: 0, METEOROLOGY: 0 },
     conceptMappings: 0,
     elevationsInCorpus: elevations,
+    elevationsBecause: 'The geometry contract has no height field on any of its three shapes, so no record can carry an elevation. This is a property of the contract, not a count over the corpus.',
     verticalDatumField: 'ABSENT',
     statement: 'No source from any of the three families is registered, and no concept mapping exists. The record contract carries a horizontal datum and no vertical datum, and no record carries an elevation — so the frame field that would prevent the characteristic fusion error costs nothing to add today and a migration to add later.',
   };

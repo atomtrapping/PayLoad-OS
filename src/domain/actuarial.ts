@@ -104,7 +104,7 @@ export const CORRESPONDENCES: readonly Correspondence[] = [
     theirs: 'The signing actuary, a defined authority who certifies an opinion under personal liability',
     depth: 'IDENTICAL',
     why: 'The authority architecture is the same architecture. A system whose computations never become facts without a human ruling is describing, in engineering terms, a role their profession defines in statute and in licence.',
-    here: 'The rulings are fixture-backed, and the admission ruling exists as a function that nothing has yet called, so nothing here has ever been certified by anyone.',
+    here: 'The rulings are fixture-backed. The admission ruling is called — on the statutory harvester path and by the admit CLI — but no candidate from the committed corpus has been put through it and no row it produced is served, so nothing here has ever been certified by anyone.',
   },
 ];
 

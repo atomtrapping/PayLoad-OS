@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
 import { FRAME_RISKS } from './invariantScoring';
 import {
   ATTRIBUTED_ABSENCE, CONCEPT_MAPPING, CROSS_FAMILY_CORROBORATION, REANALYSIS_IS_A_WITNESS,
@@ -101,7 +100,9 @@ describe('what the triad unlocks, and the trap that makes fusion quietly wrong',
 
 describe('what exists', () => {
   it('counts no source, no mapping and no elevation, and names the contract gap', () => {
-    const standing = sensorStanding(CARAVAN_CORPUS);
+    // No corpus: every number this returns is a property of a contract. It used
+    // to take one and filter it for a key the geometry union cannot have.
+    const standing = sensorStanding();
     expect(standing.registeredSources).toEqual({ SATELLITE: 0, LIDAR: 0, METEOROLOGY: 0 });
     expect(standing.conceptMappings).toBe(0);
     expect(standing.elevationsInCorpus).toBe(0);

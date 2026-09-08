@@ -108,7 +108,11 @@ describe('what a writer would find in the corpus today', () => {
     expect(readiness.positions.total).toBeGreaterThan(0);
     expect(readiness.positions.withStatedUncertainty).toBe(readiness.positions.total);
     expect(readiness.blockers.length).toBeGreaterThan(3);
-    expect(readiness.blockers.join(' ')).toMatch(/installed at the write boundary, and no candidate has been put through it/);
+    // The gate is called — on the statutory harvester path and by the admit
+    // CLI. What has not happened is a candidate from THIS corpus crossing it,
+    // which is the blocker a USD stage is actually waiting on.
+    expect(readiness.blockers.join(' ')).toMatch(/no candidate from this corpus has crossed it/);
+    expect(readiness.blockers.join(' ')).not.toMatch(/never been called|nothing has yet called/);
     expect(readiness.statement).toMatch(/only admitted opinions may compose/);
   });
 });

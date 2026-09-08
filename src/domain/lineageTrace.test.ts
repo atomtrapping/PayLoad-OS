@@ -106,17 +106,35 @@ describe('The Verification Ladder: Rung 3 - End-to-End Lineage Trace', () => {
     expect(data.data_class).toBe('synthetic');
     expect(data.corpus_release).toBe('osiris-insurability@2026.09.30.1-synthetic');
     expect(data.parameter_set_version).toBe('PARAM-2026-Q3-V1');
-    expect(data.records).toEqual({
-      admitted: 0,
-      candidate: 0,
-      quarantined: 0,
-      synthetic: 4,
-      artifacts_retained: 4,
-      extractions_registered: 4,
-    });
-    expect(data.verification_ladder.current_rung).toBe(3);
-    expect(data.verification_ladder.rungs.find((r: { rung: number }) => r.rung === 3).status).toBe('VERIFIED');
-    expect(data.lineage_anchor.artifact_resolve_url).toContain('df2aaf97f23b66f305b9fbb20ae0fbd0d01cfa51d8fed8f544d9bf2d10a7ce7e');
+    // The three fixture lengths are readings and say so.
+    expect(data.records.synthetic).toBe(4);
+    expect(data.records.artifacts_retained).toBe(4);
+    expect(data.records.extractions_registered).toBe(4);
+    expect(data.records.counted_from).toMatch(/read at request time/);
+
+    // The three store counts are not. They used to be literal zeros sitting in
+    // the same object as the lengths above, so a caller could not tell a
+    // reading from an assumption — and a zero about a store this process
+    // cannot reach is a claim it has no standing to make.
+    expect(data.records.admitted).toBe('NOT_COUNTED');
+    expect(data.records.candidate).toBe('NOT_COUNTED');
+    expect(data.records.quarantined).toBe('NOT_COUNTED');
+    expect(data.records.not_counted_because).toMatch(/not the same as there being none/);
+
+    // The ladder is a declaration about what CI established. No rung re-runs here.
+    expect(data.verification_ladder).toBeUndefined();
+    expect(data.declared_verification_ladder.current_rung).toBe(3);
+    expect(data.declared_verification_ladder.asserted_by).toMatch(/not this response/);
+    expect(data.declared_verification_ladder.rungs.find((r: { rung: number }) => r.rung === 3).status).toBe('VERIFIED');
+
+    // So is the serving posture: nothing in the handler inspects the process.
+    expect(data.runtime_security).toBeUndefined();
+    expect(data.declared_runtime_posture.observed_by).toMatch(/^NOTHING/);
+
+    // The anchor is read off the fixture rather than copied beside it.
+    expect(data.lineage_anchor.sample_artifact_hash).toBe(FIXTURE_BITEMPORAL_OBSERVATIONS[0].sourceArtifactDigest);
+    expect(data.lineage_anchor.artifact_resolve_url).toContain(FIXTURE_BITEMPORAL_OBSERVATIONS[0].sourceArtifactDigest);
+    expect(data.lineage_anchor.artifact_retained).toBe(true);
   });
 
   it('resolves raw retained original bytes via GET /api/v1/evidence/artifacts/[hash]', async () => {
@@ -160,12 +178,15 @@ describe('The Verification Ladder: Rung 3 - End-to-End Lineage Trace', () => {
 
     const data = await res.json();
     expect(data.data_class).toBe('synthetic');
-    expect(data.records).toEqual({
-      admitted: 0,
-      candidate: 0,
-      quarantined: 0,
-      synthetic: 4,
-    });
+    // Four filings, and they are the fixture's. The three store counts are not
+    // reported as zero for the same reason /api/v1/status no longer does: this
+    // process has no admission store to have read a zero from.
+    expect(data.records.synthetic).toBe(4);
+    expect(data.count).toBe(4);
+    expect(data.records.admitted).toBe('NOT_COUNTED');
+    expect(data.records.candidate).toBe('NOT_COUNTED');
+    expect(data.records.quarantined).toBe('NOT_COUNTED');
+    expect(data.records.not_counted_because).toBeTruthy();
 
     for (const filing of data.filings) {
       expect(filing.artifact_resolve_url).toBeDefined();

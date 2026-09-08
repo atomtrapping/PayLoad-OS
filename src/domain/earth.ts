@@ -352,7 +352,15 @@ const REFUSAL_MEANING: Record<string, string> = {
   INVALID_PROJECTION_SPEC: 'The request did not fit the closed projection contract.',
 };
 
-/** What the compiler's answer means for the twin. `READY` for GLOBE would mean geometry exists; today it never does. */
+/**
+ * What the compiler's answer means for the twin.
+ *
+ * `READY` means the release declared a geodetic position for this record's
+ * subject and the compiler resolved it. The comment here used to say geometry
+ * "today never does" exist, which stopped being true when the three corpora
+ * gained POINT, POLYGON and EXTENT records — and the whole placement UI below
+ * is gated on this state, so the sentence was contradicted by its own callers.
+ */
 export function projectionOutcome(status: number, body: { status?: string; error?: string | null; geometry?: ProjectionGeometry | null }): ProjectionOutcome {
   if (status === 200 && body.status === 'READY') {
     const positions = body.geometry?.positions ?? [];

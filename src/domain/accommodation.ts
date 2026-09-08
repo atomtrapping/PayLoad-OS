@@ -132,7 +132,7 @@ export const PRECONDITIONS: readonly Precondition[] = [
     what: 'One record that crossed the admission gate.',
     kind: 'AN_ADJUDICATION',
     met: false,
-    because: 'The gate is built and installed at the write boundary, and no candidate has been put through it. The committed corpus is synthetic and stamped as a demonstration, which is a different type of thing and deliberately cannot read as admitted state.',
+    because: 'The gate is built, installed at the write boundary, and reached: src/db/admitRecords.ts, src/domain/admitCli.ts and src/domain/statutoryAdmission.ts all call it, and the last of those runs on every POST to the statutory harvester. What has not happened is a candidate from this corpus crossing it. The committed corpus is synthetic and stamped as a demonstration, which is a different type of thing and deliberately cannot read as admitted state.',
     provenBy: 'src/domain/admission.ts, src/db/schema.ts',
   },
   {

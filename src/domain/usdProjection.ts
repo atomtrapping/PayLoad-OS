@@ -182,7 +182,7 @@ export function usdReadiness(corpus: Corpus): UsdReadiness {
   const records = releaseRecords(corpus, release);
   const positions = records.filter((r) => r.predicate === LOCATION_POSITION_PREDICATE && r.geometry);
   const blockers = [
-    'Nothing is admitted. The admission ruling exists and is installed at the write boundary, and no candidate has been put through it, and only admitted opinions may compose — so a stage written today would be empty by its own rule.',
+    'Nothing is admitted. The ruling is installed at the write boundary and is called on the statutory harvester path, but no candidate from this corpus has crossed it, and only admitted opinions may compose — so a stage written today would be empty by its own rule.',
     'No resolution decision object: prim paths would be minted per subject, and a later resolution would change a path that downstream references depend on.',
     'No encoding decided for uncertainty, provenance, rights or visibility, which USD has no native concept for.',
     'No writer, and no USD library installed. The routing table records the route as UNAVAILABLE and the compiler answers GEOMETRY_NOT_AVAILABLE.',

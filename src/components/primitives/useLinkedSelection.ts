@@ -43,6 +43,17 @@ export function useLinkedSelection(
 
   useEffect(() => {
     if (!ready) return;
+    // Write only what is not already written. A surface with nothing selected,
+    // mounting on a URL with no fragment, has nothing to say — and saying it
+    // anyway is not free: `replaceState` takes the whole URL, so a write during
+    // a navigation this component knows nothing about rewrites `pathname` and
+    // `search` as they stood when the effect ran. Measured on an 8×-throttled
+    // CPU: clicking the product control on the release register put the page at
+    // /releases?domain=TRADEWIND, and this effect, mounting before the address
+    // bar had caught up, put it back at /releases — five times out of five, and
+    // once on a CI runner, which is how it was found.
+    const current = window.location.hash.replace(/^#/, '');
+    if (current === hash) return;
     const { pathname, search } = window.location;
     window.history.replaceState(null, '', hash === '' ? `${pathname}${search}` : `${pathname}${search}#${hash}`);
   }, [hash, ready]);

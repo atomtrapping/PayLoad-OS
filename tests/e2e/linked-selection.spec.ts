@@ -192,6 +192,37 @@ test('the case queue triages in place, and opening the case is one click from th
   await expect(page.getByTestId('decision-rail')).toBeVisible();
 });
 
+/**
+ * A surface that writes its selection into the URL must not write over a
+ * navigation it knows nothing about.
+ *
+ * `replaceState` takes the whole URL, so a write of "no selection" during a
+ * transition rewrites `pathname` and `search` as they stood when the effect
+ * ran. On a slow machine that is a real ordering: the product control pushed
+ * /releases?domain=TRADEWIND, the register mounted before the address bar had
+ * caught up, and its own no-op write put the page back at /releases. It failed
+ * once on a CI runner and never on this one, which is why the CPU is throttled
+ * here rather than hoped about.
+ */
+test('a register mounting mid-navigation does not write over the URL it arrived at', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 8 });
+  try {
+    // The register arrives on a URL carrying a query it did not put there.
+    await page.goto('/releases');
+    await page.locator('[data-domain="TRADEWIND"]').click();
+    await expect(page, 'the product control from the release register').toHaveURL(/\/releases\?domain=TRADEWIND/, { timeout: 15_000 });
+
+    // And the queue arrives on one that must lose the query it came from.
+    await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Cases', exact: true }).click();
+    await expect(page, 'the rail into the case queue').toHaveURL(/\/cases$/, { timeout: 15_000 });
+    await expect(page.getByTestId('case-workspace')).toBeVisible({ timeout: 15_000 });
+    await expect(page, 'still there once the queue has mounted').toHaveURL(/\/cases$/);
+  } finally {
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  }
+});
+
 /*
  * The waiting boundary is not asserted here, and the reason is worth recording
  * rather than leaving as a gap in the file.

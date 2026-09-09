@@ -71,6 +71,27 @@ describe('a selection is a link', () => {
     expect(window.history.length).toBe(before);
   });
 
+  it('writes nothing when the URL already says what it would say', async () => {
+    // `replaceState` takes the whole URL, so a no-op write is not free: it
+    // rewrites the path and the query as they stood when the effect ran. A
+    // surface mounting mid-navigation would put the page back where it came
+    // from — which is exactly what happened on a slow machine, and is why
+    // there is nothing to write when there is nothing to change.
+    at('#row=a');
+    const before = window.location.href;
+    const seen: string[] = [];
+    const original = window.history.replaceState.bind(window.history);
+    window.history.replaceState = ((...args: Parameters<History['replaceState']>) => { seen.push(String(args[2])); return original(...args); }) as History['replaceState'];
+    try {
+      render(<Surface />);
+      expect(screen.getByTestId('selected')).toHaveTextContent('a');
+      expect(seen, 'nothing was written').toEqual([]);
+      expect(window.location.href).toBe(before);
+    } finally {
+      window.history.replaceState = original;
+    }
+  });
+
   it('writes nothing before the surface is ready, so a link survives its own page loading', () => {
     // The first render of a surface waiting on data has selected nothing. If
     // that were written, the link would be erased before it was read.

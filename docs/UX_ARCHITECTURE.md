@@ -108,7 +108,7 @@ The fragment rather than the query: writing a hash re-runs no server component, 
 | Spatial Inquiry | `#space=` — strictly one key, because a link into that instrument names a space and nothing else | Against the analysed layout |
 | Earth Twin | the camera and the selected record | Against the release's records |
 
-Both directions refuse a name the surface does not hold: an inspector opened on an id the page has never seen is a worse answer than the overview. Nothing is written before the surface's data has arrived, so a link is never erased by the page it opened still loading. Still in memory alone: the production path and the coordination surfaces.
+Both directions refuse a name the surface does not hold: an inspector opened on an id the page has never seen is a worse answer than the overview. Nothing is written before the surface's data has arrived, so a link is never erased by the page it opened still loading — and nothing is written when the URL already says it, because `replaceState` takes the *whole* URL and a no-op write during a navigation the surface knows nothing about rewrites the path and the query as they stood when the effect ran. On an eight-times-throttled CPU that put the release register back at `/releases` five times out of five after the product control had sent it to `/releases?domain=TRADEWIND`; a browser test throttles the CPU and holds it. Still in memory alone: the production path and the coordination surfaces.
 
 ### The export boundary, made mechanical
 

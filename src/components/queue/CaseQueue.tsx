@@ -214,7 +214,7 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
       <div className={`workspace workspace-register-wide${selected ? ' has-inspector' : ''}`} data-testid="case-workspace" data-inspecting={selected ? 'case' : undefined}>
         <div className="workspace-top">
           <div className="surface register" tabIndex={0}>
-            <table className="ledger-table" aria-label="Case queue">
+            <table role="table" className="ledger-table" aria-label="Case queue">
               <thead>
                 <tr>
                   <th scope="col">Case</th>
@@ -222,7 +222,7 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
                   <th scope="col">Required action</th>
                 </tr>
               </thead>
-              <tbody onKeyDown={registerKeys}>
+              <tbody role="rowgroup" onKeyDown={registerKeys}>
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={3} className="py-8 text-center" style={{ color: 'var(--text-muted)' }}>No cases match these filters.</td>
@@ -234,8 +234,8 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
                   const changed = b.lastChangedAt > lastSeenAt;
                   const active = b.caseId === selectedId;
                   return (
-                    <tr key={b.caseId} data-case-id={b.caseId} aria-selected={active}>
-                      <td className="min-w-[170px]">
+                    <tr role="row" key={b.caseId} data-case-id={b.caseId} aria-selected={active}>
+                      <td role="cell" className="min-w-[140px]">
                         <button
                           type="button"
                           className="row-selectable text-left w-full flex flex-col gap-0.5"
@@ -255,14 +255,16 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
                           {changed && <span className="label-sm" title="Changed since you last looked" style={{ color: 'var(--accent-strong)' }}>new<span className="sr-only"> since you last looked</span></span>}
                         </button>
                       </td>
-                      <td>
+                      <td role="cell">
+                        <span className="cell-label">Status</span>
                         <div className="flex flex-col gap-1 items-start">
                           <RulingStatusPill status={b.status} size="sm" />
                           {expiring && <span className="text-[11px]" style={{ color: 'var(--status-conditional)' }}>Reliance ends {fmtDelta(b.asOf, b.currentRuling!.temporalBasis.expiresAt!)}</span>}
                           {b.previousRulings.length > 0 && <span className="text-[11px]" style={{ color: 'var(--status-superseded)' }}>{b.previousRulings.length} superseded</span>}
                         </div>
                       </td>
-                      <td className="text-[12.5px] max-w-[230px]">
+                      <td role="cell" className="text-[12.5px] max-w-[230px]">
+                        <span className="cell-label">Required action</span>
                         {t.requiredAction ?? <span style={{ color: 'var(--text-muted)' }}>None</span>}
                         {t.blockingInvariant && <div className="id mt-0.5" style={{ color: 'var(--status-refused)' }}>{t.blockingInvariant.invariantId} · {t.blockingInvariant.refusalCode}</div>}
                       </td>

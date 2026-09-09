@@ -122,15 +122,15 @@ export function ReleaseRegister({ groups, children }: { groups: CorpusGroup[]; c
             {/* `.register` is `overflow-x` plus the scroll shadow: the register
                 shows which edge has more table past it, at every width. */}
             <div className="surface register" tabIndex={0}>
-              <table className="ledger-table" aria-label={`Releases of ${entry.corpusId}`}>
+              <table role="table" className="ledger-table" aria-label={`Releases of ${entry.corpusId}`}>
                 <thead><tr><th scope="col">Release</th><th scope="col">Status</th><th scope="col" className="th-wrap">Information<br />known by</th><th scope="col">Records</th><th scope="col">Retractions</th><th scope="col">Certification</th></tr></thead>
-                <tbody onKeyDown={(event) => registerKeys(event, entry.releases)}>
+                <tbody role="rowgroup" onKeyDown={(event) => registerKeys(event, entry.releases)}>
                   {entry.releases.map((release) => {
                     const active = release.releaseId === selectedId;
                     const certification = CERTIFICATION[release.certificationStatus];
                     return (
-                      <tr key={release.releaseId} data-release-id={release.releaseId} aria-selected={active}>
-                        <td>
+                      <tr role="row" key={release.releaseId} data-release-id={release.releaseId} aria-selected={active}>
+                        <td role="cell">
                           <button
                             type="button"
                             className="row-selectable text-left w-full"
@@ -141,11 +141,11 @@ export function ReleaseRegister({ groups, children }: { groups: CorpusGroup[]; c
                             <span className="id" style={{ color: active ? 'var(--accent-strong)' : 'var(--info)' }}>{release.releaseId}</span>
                           </button>
                         </td>
-                        <td><span className="pill text-[10.5px] px-1.5" style={{ color: release.status === 'CURRENT' ? 'var(--status-admitted)' : 'var(--status-superseded)', borderColor: 'currentColor' }}>{release.status === 'CURRENT' ? '● Current' : '↷ Superseded'}</span></td>
-                        <td className="ts" data-clock="knownAt">{fmtUtc(release.knownAt)}</td>
-                        <td className="mono">{release.records}</td>
-                        <td className="mono">{release.retractions}</td>
-                        <td><span style={{ color: certification.colour }}>{certification.mark}</span></td>
+                        <td role="cell"><span className="cell-label">Status</span><span className="pill text-[10.5px] px-1.5" style={{ color: release.status === 'CURRENT' ? 'var(--status-admitted)' : 'var(--status-superseded)', borderColor: 'currentColor' }}>{release.status === 'CURRENT' ? '● Current' : '↷ Superseded'}</span></td>
+                        <td role="cell" data-clock="knownAt"><span className="cell-label">Information known by</span><span className="ts">{fmtUtc(release.knownAt)}</span></td>
+                        <td role="cell"><span className="cell-label">Records</span><span className="mono">{release.records}</span></td>
+                        <td role="cell"><span className="cell-label">Retractions</span><span className="mono">{release.retractions}</span></td>
+                        <td role="cell"><span className="cell-label">Certification</span><span style={{ color: certification.colour }}>{certification.mark}</span></td>
                       </tr>
                     );
                   })}

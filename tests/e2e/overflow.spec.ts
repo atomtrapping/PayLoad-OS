@@ -66,14 +66,23 @@ test('every register says which edge has more table past it', async ({ page }) =
     await page.evaluate(() => document.fonts.ready);
     const seen = await page.evaluate(() => {
       const regions = [...document.querySelectorAll('.register, .surface.overflow-x-auto')];
+      // Only a region that can scroll sideways needs to say so. Below the strip
+      // breakpoint a register stops being a table and becomes a list, and a
+      // shadow on something that cannot move would be a mark that means
+      // nothing — so the rule is about scrollable regions, not about every
+      // region.
+      const scrollable = regions.filter((el) => getComputedStyle(el).overflowX !== 'visible');
       return {
-        regions: regions.length,
-        // The mark is four background layers; a region without them is a
-        // silent scroll region, which is the thing being ruled out.
-        bare: regions.filter((el) => getComputedStyle(el).backgroundImage === 'none').length,
+        // Every register on the page, scrollable or not: a page where this
+        // finds nothing is a page the check has stopped looking at.
+        found: regions.length,
+        scrollable: scrollable.length,
+        // The mark is four background layers; a scrollable region without them
+        // is a silent scroll region, which is the thing being ruled out.
+        bare: scrollable.filter((el) => getComputedStyle(el).backgroundImage === 'none').length,
       };
     });
-    if (seen.regions === 0 || seen.bare > 0) unmarked.push(`${path}: ${seen.regions} regions, ${seen.bare} unmarked`);
+    if (seen.found === 0 || seen.bare > 0) unmarked.push(`${path}: ${seen.found} registers, ${seen.scrollable} scrollable, ${seen.bare} unmarked`);
   }
   expect(unmarked, unmarked.join('; ')).toEqual([]);
 });

@@ -261,6 +261,13 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
    scroll region. Two lines of header once is cheaper than a column nobody
    knows is there. */
 .ledger-table th.th-wrap { white-space: normal; }
+/* A status pill does not break in prose, where it sits inline in a sentence
+   and a broken one would read as two. In a register it is a cell of its own
+   with a border around it, and `ADMITTED WITH CONDITIONS` is 215px that cannot
+   shrink — which was the whole of the case queue's remaining overflow. On two
+   lines inside its own border it is still one token, and the column that could
+   not fit does. */
+.register .ledger-table .pill { white-space: normal; }
 
 /* A register that scrolls says so.
    Four background layers and no script. The two `local` layers scroll with the
@@ -1024,6 +1031,71 @@ details[open] > summary::before { transform: rotate(90deg); }
   background: var(--bg-tertiary); color: var(--text-secondary);
 }
 .atlas-loss { margin: 8px 0 0; padding-left: 18px; font-size: var(--text-2xs); color: var(--text-muted); display: flex; flex-direction: column; gap: 3px; }
+
+/* A register is a table where its columns fit, and a list where they do not.
+   The condition is about the register, so it is asked of the register.
+
+   A viewport breakpoint cannot express this and kept getting it wrong. The
+   case queue's three columns want about 850px; the content column is 1015 at
+   1023, where the rail is a strip — and 758 at 1024, where the rail is a
+   column and the viewport is at its smallest. Wider viewport, narrower
+   register. Every threshold picked against the viewport left a band where the
+   table did not fit and a band where a list was drawn for no reason.
+
+   Measured before this, on a Pixel 7 whose register is 386px: the case queue
+   put `Required action` — the column the queue exists for — entirely
+   off-screen; the rulings register showed 38 pixels of a 121-pixel case title
+   and lost the ruling's date and assurance; the release register lost its
+   records, its retractions and its certification. Horizontal scrolling is the
+   right answer for a wide evidence table a reader consults, and the wrong one
+   for the three or four fields a reader triages on, because the field they
+   came for is the one past the edge.
+
+   Stacked, each row is a block and each cell carries its own label. Nothing
+   scrolls sideways and nothing is chopped. The label is real markup rather
+   than generated content, because a screen reader reads the first with
+   certainty and the second with luck; and the table roles are restated in the
+   markup, because changing `display` takes the implicit ones with it.
+
+   Two thresholds because there are two sizes of register, and both are
+   measured: the release and rulings registers fit in 750px and the queue's do
+   not fit under about 850. */
+.cell-label { display: none; }
+.workspace-top { container-type: inline-size; container-name: surface; }
+
+@container surface (max-width: 745px) {
+  .workspace-register .register { overflow-x: visible; background: var(--bg-secondary); }
+  .workspace-register .register .ledger-table,
+  .workspace-register .register .ledger-table tbody,
+  .workspace-register .register .ledger-table tr,
+  .workspace-register .register .ledger-table td { display: block; width: auto; }
+  .workspace-register .register .ledger-table thead { display: none; }
+  .workspace-register .register .ledger-table tr { padding: 10px 10px 12px; border-bottom: 1px solid var(--border-default); }
+  .workspace-register .register .ledger-table tr:last-child { border-bottom: 0; }
+  .workspace-register .register .ledger-table td { padding: 3px 0; border: 0; max-width: none; min-width: 0; }
+  .workspace-register .register .ledger-table td:first-child { padding-top: 0; }
+  .workspace-register .cell-label { display: block; }
+}
+
+@container surface (max-width: 880px) {
+  .workspace-register-wide .register { overflow-x: visible; background: var(--bg-secondary); }
+  .workspace-register-wide .register .ledger-table,
+  .workspace-register-wide .register .ledger-table tbody,
+  .workspace-register-wide .register .ledger-table tr,
+  .workspace-register-wide .register .ledger-table td { display: block; width: auto; }
+  .workspace-register-wide .register .ledger-table thead { display: none; }
+  .workspace-register-wide .register .ledger-table tr { padding: 10px 10px 12px; border-bottom: 1px solid var(--border-default); }
+  .workspace-register-wide .register .ledger-table tr:last-child { border-bottom: 0; }
+  .workspace-register-wide .register .ledger-table td { padding: 3px 0; border: 0; max-width: none; min-width: 0; }
+  .workspace-register-wide .register .ledger-table td:first-child { padding-top: 0; }
+  .workspace-register-wide .cell-label { display: block; }
+}
+
+.cell-label {
+  margin-bottom: 1px;
+  font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+}
 
 /* Fewer columns where there is less room. Bands wrap rather than shrink, so a
    cell stays a readable size and the block stays the count. */

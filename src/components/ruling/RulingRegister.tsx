@@ -104,17 +104,17 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="ruling-workspace" data-inspecting={selected ? 'ruling' : undefined}>
       <div className="workspace-top">
         <div className="surface register" tabIndex={0}>
-          <table className="ledger-table" aria-label="Rulings">
+          <table role="table" className="ledger-table" aria-label="Rulings">
             <thead><tr>
               <th scope="col">Ruling</th><th scope="col">Status</th><th scope="col">Case</th>
               <th scope="col" className="th-wrap">Ruling<br />issued on</th><th scope="col">Assurance</th>
             </tr></thead>
-            <tbody onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys}>
               {rulings.map((ruling) => {
                 const active = ruling.rulingId === selectedId;
                 return (
-                  <tr key={ruling.rulingId} data-ruling-id={ruling.rulingId} aria-selected={active}>
-                    <td>
+                  <tr role="row" key={ruling.rulingId} data-ruling-id={ruling.rulingId} aria-selected={active}>
+                    <td role="cell">
                       <button
                         type="button"
                         className="row-selectable text-left w-full"
@@ -126,13 +126,14 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
                         <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>revision {ruling.revision}</span>
                       </button>
                     </td>
-                    <td><RulingStatusPill status={ruling.status} size="sm" /></td>
-                    <td>
+                    <td role="cell"><span className="cell-label">Status</span><RulingStatusPill status={ruling.status} size="sm" /></td>
+                    <td role="cell">
+                      <span className="cell-label">Case</span>
                       <Link href={`/cases/${encodeURIComponent(ruling.caseId)}`} style={{ color: 'var(--text-primary)' }}>{ruling.caseTitle}</Link>
                       <div className="id" style={{ color: 'var(--text-muted)' }}>{ruling.caseId}</div>
                     </td>
-                    <td className="ts" data-clock="ruledAt">{fmtUtc(ruling.ruledAt)}</td>
-                    <td className="text-[12px]" style={{ color: `var(${assuranceVar(ruling.assuranceClass)})` }}>{ruling.assuranceLabel}</td>
+                    <td role="cell" data-clock="ruledAt"><span className="cell-label">Ruling issued on</span><span className="ts">{fmtUtc(ruling.ruledAt)}</span></td>
+                    <td role="cell" className="text-[12px]"><span className="cell-label">Assurance</span><span style={{ color: `var(${assuranceVar(ruling.assuranceClass)})` }}>{ruling.assuranceLabel}</span></td>
                   </tr>
                 );
               })}

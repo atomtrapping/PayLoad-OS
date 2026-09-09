@@ -141,3 +141,90 @@ for (const { width, height, name, rail } of WIDTHS) {
     });
   });
 }
+
+/**
+ * A register is a table where its columns fit and a list where they do not,
+ * and the condition is asked of the register rather than of the viewport.
+ *
+ * A viewport breakpoint could not express it. The case queue's content column
+ * is 1015px at 1023, where the navigation is a strip — and 758 at 1024, where
+ * it is a column and the viewport is at its smallest. Wider viewport, narrower
+ * register. Every threshold picked against the viewport left a band where the
+ * table did not fit and a band where a list was drawn for no reason.
+ *
+ * Measured before this on a 386px register: the case queue put `Required
+ * action` entirely off-screen, the rulings register showed 38 pixels of a
+ * 121-pixel case title and lost the ruling's date and assurance, and the
+ * release register lost its records, retractions and certification — each of
+ * them reachable only by a sideways scroll the reader had no reason to try.
+ */
+const REGISTERS = ['/cases', '/rulings', '/releases'];
+/** From a small phone to a wide desktop, including both sides of the rail's own threshold. */
+const REGISTER_WIDTHS = [1600, 1440, 1280, 1100, 1024, 1023, 900, 800, 768, 767, 600, 412, 360];
+
+for (const path of REGISTERS) {
+  test(`${path} never hides a column, at any width`, async ({ page }) => {
+    const problems: string[] = [];
+    for (const width of REGISTER_WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(path);
+      await page.waitForLoadState('load');
+      // Next streams the page into a display:none staging div and places it
+      // when it arrives, so at `load` the register is in the document with a
+      // width of zero. Measuring there measures the staging area.
+      await page.locator('.register').first().waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      const seen = await page.evaluate(() => {
+        const register = document.querySelector('.register')!;
+        const frame = register.getBoundingClientRect();
+        const cells = [...register.querySelectorAll('tbody td')];
+        return {
+          hidden: register.scrollWidth - register.clientWidth,
+          column: register.clientWidth,
+          stacked: getComputedStyle(register.querySelector('.ledger-table')!).display === 'block',
+          cells: cells.length,
+          // Every cell, not every column: stacked, a row is a block, so a field
+          // the reader came for is either on the screen or it is nowhere.
+          past: cells.filter((cell) => cell.getBoundingClientRect().right > frame.right + 1).length,
+          document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      if (seen.cells === 0) problems.push(`${width}px: no rows to measure`);
+      if (seen.hidden !== 0) problems.push(`${width}px: ${seen.hidden}px of table past a ${seen.column}px register, ${seen.stacked ? 'stacked' : 'as a table'}`);
+      if (seen.past !== 0) problems.push(`${width}px: ${seen.past} cells past the register's edge`);
+      if (seen.document !== 0) problems.push(`${width}px: the document scrolls sideways by ${seen.document}px`);
+    }
+    expect(problems, problems.join('; ')).toEqual([]);
+  });
+}
+
+test('a stacked register labels its own cells and keeps the roles the display change takes away', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  for (const path of REGISTERS) {
+    await page.goto(path);
+    await page.waitForLoadState('load');
+    await page.locator('.register').first().waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    const seen = await page.evaluate(() => {
+      const register = document.querySelector('.register')!;
+      return {
+        stacked: getComputedStyle(register.querySelector('.ledger-table')!).display === 'block',
+        // The header row is gone, so each cell says what it is.
+        labelled: register.querySelectorAll('.cell-label').length,
+        cells: register.querySelectorAll('tbody td').length,
+        roles: {
+          table: register.querySelectorAll('[role="table"]').length,
+          rowgroup: register.querySelectorAll('[role="rowgroup"]').length,
+          row: register.querySelectorAll('[role="row"]').length,
+          cell: register.querySelectorAll('[role="cell"]').length,
+        },
+      };
+    });
+    expect(seen.stacked, `${path} is a list at 412px`).toBe(true);
+    expect(seen.labelled, `${path} labels its cells`).toBeGreaterThan(0);
+    expect(seen.roles.table, `${path} restates the table role`).toBe(1);
+    expect(seen.roles.rowgroup, `${path} restates the rowgroup role`).toBe(1);
+    expect(seen.roles.row, `${path} restates the row role`).toBeGreaterThan(0);
+    expect(seen.roles.cell, `${path} restates the cell role on every cell`).toBe(seen.cells);
+  }
+});

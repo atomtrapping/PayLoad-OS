@@ -271,6 +271,13 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
    column past the right edge of a silent scroll region is a column nobody
    knows is there. The nav strip already fades its own overflowing edge; this
    is the same statement in the same language, made where the content is. */
+/* Every register gets the mark, not only the ones renamed to `.register`.
+   Twenty-one files hold a ledger table in a `.surface` scroll region, and
+   churning all of them to add a class would be twenty-one diffs saying the
+   same thing; the selector says it once. `.register` stays the name to write
+   in new code, because it also owns the `overflow-x` the older form spells
+   out beside it. */
+.surface[class~='overflow-x-auto']:has(> .ledger-table),
 .register {
   overflow-x: auto;
   background:

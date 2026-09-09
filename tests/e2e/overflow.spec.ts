@@ -46,3 +46,34 @@ for (const tab of FRONTIER_TABS) {
     expect(measured.inner, `${tab}: layout viewport widened to ${measured.inner}`).toBe(measured.client);
   });
 }
+
+/**
+ * The other half of the guard above: a table is allowed to scroll inside its
+ * own region, so the reader has to be able to tell that it does.
+ *
+ * `.register` — and every `.surface` scroll region holding a ledger table,
+ * which is the same thing under its older spelling — carries a shadow at
+ * whichever edge has more table past it. Without it a column beyond the right
+ * edge is a column nobody knows is there, which is how the release register
+ * lost the field naming the release that replaced each one.
+ */
+test('every register says which edge has more table past it', async ({ page }) => {
+  const withRegisters = ['/releases', '/model', '/rulings', '/evidence', '/retractions', '/candidates'];
+  const unmarked: string[] = [];
+  for (const path of withRegisters) {
+    await page.goto(path);
+    await page.waitForLoadState('load');
+    await page.evaluate(() => document.fonts.ready);
+    const seen = await page.evaluate(() => {
+      const regions = [...document.querySelectorAll('.register, .surface.overflow-x-auto')];
+      return {
+        regions: regions.length,
+        // The mark is four background layers; a region without them is a
+        // silent scroll region, which is the thing being ruled out.
+        bare: regions.filter((el) => getComputedStyle(el).backgroundImage === 'none').length,
+      };
+    });
+    if (seen.regions === 0 || seen.bare > 0) unmarked.push(`${path}: ${seen.regions} regions, ${seen.bare} unmarked`);
+  }
+  expect(unmarked, unmarked.join('; ')).toEqual([]);
+});

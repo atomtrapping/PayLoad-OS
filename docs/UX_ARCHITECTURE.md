@@ -103,10 +103,11 @@ The fragment rather than the query: writing a hash re-runs no server component, 
 | Case workspace | `#claim=` / `#evidence=` / `#invariant=` / `#ruling=` — the kind is the key, so one thing is selected by construction | Against the bundle, which is a prop, so the URL is authoritative from the first render |
 | Notation workspace | `#notation=` and `#relation=` together | Against the kernel's state once it has loaded; a link beats the selection this tab's drafts remembered, being the more explicit instruction |
 | Release register | `#release=` | Against the releases on the page, which are a prop; a release it does not hold is not taken up, so the address bar stops naming one |
+| Rulings register | `#ruling=` | Against the rulings on the page, the same way |
 | Spatial Inquiry | `#space=` — strictly one key, because a link into that instrument names a space and nothing else | Against the analysed layout |
 | Earth Twin | the camera and the selected record | Against the release's records |
 
-Both directions refuse a name the surface does not hold: an inspector opened on an id the page has never seen is a worse answer than the overview. Nothing is written before the surface's data has arrived, so a link is never erased by the page it opened still loading. Still in memory alone: the ruling viewer, the production path and the coordination surfaces.
+Both directions refuse a name the surface does not hold: an inspector opened on an id the page has never seen is a worse answer than the overview. Nothing is written before the surface's data has arrived, so a link is never erased by the page it opened still loading. Still in memory alone: the production path and the coordination surfaces.
 
 ### The export boundary, made mechanical
 

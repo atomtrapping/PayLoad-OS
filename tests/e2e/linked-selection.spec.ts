@@ -116,3 +116,52 @@ test('the inspector sits beside the register only where the register still fits'
     expect(seen.hidden, `${width}px: columns hidden inside the register`).toBe(0);
   }
 });
+
+/**
+ * The rulings register: nine columns of which four sat past the right edge of
+ * a 1024px viewport, inside a silent scroll region — 531 pixels of table the
+ * reader had no reason to know was there.
+ */
+test('the rulings register shows every column, and the revision chain is walked from the inspector', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/rulings');
+  await page.waitForLoadState('load');
+  await page.evaluate(() => document.fonts.ready);
+
+  // A superseded revision, so the chain has both ends.
+  await page.locator('[data-ruling-select="RUL-7C104-r1"]').click();
+  await expect(page.getByTestId('ruling-inspector')).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#ruling=RUL-7C104-r1');
+
+  const hidden = await page.evaluate(() =>
+    [...document.querySelectorAll('.register')].map((el) => el.scrollWidth - el.clientWidth));
+  expect(hidden, `columns hidden inside the register's own scroll: ${hidden.join(', ')}`).toEqual(hidden.map(() => 0));
+
+  // Forward to the revision that replaced it, and the row follows the panel.
+  await page.getByTestId('inspector-superseded-by').click();
+  await expect(page.getByTestId('ruling-inspector')).toContainText('RUL-7C104-r2');
+  await expect(page.locator('tr[data-ruling-id="RUL-7C104-r2"]')).toHaveAttribute('aria-selected', 'true');
+
+  const link = page.url();
+  await page.goto('/cases');
+  await page.goto(link);
+  await page.waitForLoadState('load');
+  await expect(page.getByTestId('ruling-inspector')).toContainText('RUL-7C104-r2');
+});
+
+/*
+ * The waiting boundary is not asserted here, and the reason is worth recording
+ * rather than leaving as a gap in the file.
+ *
+ * It is transient by construction, and the router prefetches a static route's
+ * flight response, so by the time a link is clicked there is nothing left to
+ * wait for. Holding that response — on hover and on click alike — did not open
+ * the boundary either: the payload was already in the router's cache from the
+ * rail's own prefetch. A test that passed sometimes would be worse than none.
+ *
+ * It is covered where it can be shown deterministically instead:
+ * `SurfaceLoading.test.tsx` renders the boundary and reads every `loading.tsx`
+ * in the application, holding each to naming the source it actually reads —
+ * which is the defect that was there, a fallback telling every route it was
+ * fetching case data.
+ */

@@ -17,6 +17,11 @@ test('desktop screenshots', async ({ page }) => {
   const atlas = (await page.getByTestId('workspace-atlas').boundingBox())!;
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: `${OUT}/0000b-workspace-atlas.png`, fullPage: true, clip: { ...atlas, x: atlas.x - 8, y: atlas.y - 8, width: atlas.width + 16, height: atlas.height + 16 } });
+  await page.goto('/rulings');
+  await page.getByTestId('ruling-workspace').waitFor();
+  await page.locator('[data-ruling-select="RUL-7C104-r1"]').click();
+  await page.getByTestId('ruling-inspector').waitFor();
+  await page.screenshot({ path: `${OUT}/05a-ruling-register.png`, fullPage: true });
   await page.goto('/model');
   await page.getByRole('heading', { level: 1 }).waitFor();
   await page.screenshot({ path: `${OUT}/000-product-model.png`, fullPage: true });

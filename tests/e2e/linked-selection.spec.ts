@@ -224,18 +224,30 @@ test('a register mounting mid-navigation does not write over the URL it arrived 
 });
 
 /*
- * The waiting boundary is not asserted here, and the reason is worth recording
- * rather than leaving as a gap in the file.
+ * The waiting boundary is not asserted in a browser, and this is the account of
+ * why rather than a gap left silent. Four mechanisms were tried and each was
+ * measured, not assumed:
  *
- * It is transient by construction, and the router prefetches a static route's
- * flight response, so by the time a link is clicked there is nothing left to
- * wait for. Holding that response — on hover and on click alike — did not open
- * the boundary either: the payload was already in the router's cache from the
- * rail's own prefetch. A test that passed sometimes would be worse than none.
+ *   1. Holding the flight response for a rail link, on hover and on click.
+ *      The boundary never opened: the rail prefetches every link it shows, so
+ *      the payload was already in the router's cache before the click.
+ *   2. Holding a search-parameter variant (`/releases?domain=…`) reached from
+ *      the product control. Six requests held, boundary never shown — Next
+ *      keeps the current page rendered across a same-segment navigation and
+ *      does not re-enter the segment's loading state.
+ *   3. Holding a dynamic child segment (`/releases/REL-…`) reached from the
+ *      inspector. Same result.
+ *   4. Reading the streamed HTML directly, on all five surfaces that carry
+ *      their own boundary. `surface-loading` appears zero times in any of
+ *      them: the page resolves before the shell is flushed, so the fallback is
+ *      never emitted.
  *
- * It is covered where it can be shown deterministically instead:
- * `SurfaceLoading.test.tsx` renders the boundary and reads every `loading.tsx`
- * in the application, holding each to naming the source it actually reads —
- * which is the defect that was there, a fallback telling every route it was
- * fetching case data.
+ * The reason is the same each time and it is worth stating plainly: nothing in
+ * this application is slow. The corpus is committed fixtures read from memory,
+ * so the condition a loading boundary exists for does not arise. It will arise
+ * against a real store, which is what the boundary is for and why it is
+ * written and covered — `SurfaceLoading.test.tsx` renders it and reads every
+ * `loading.tsx` in the application, holding each to naming the source it
+ * actually reads. A browser test that passed sometimes would be worse than
+ * none.
  */

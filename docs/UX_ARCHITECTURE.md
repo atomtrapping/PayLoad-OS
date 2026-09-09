@@ -104,6 +104,7 @@ The fragment rather than the query: writing a hash re-runs no server component, 
 | Notation workspace | `#notation=` and `#relation=` together | Against the kernel's state once it has loaded; a link beats the selection this tab's drafts remembered, being the more explicit instruction |
 | Release register | `#release=` | Against the releases on the page, which are a prop; a release it does not hold is not taken up, so the address bar stops naming one |
 | Rulings register | `#ruling=` | Against the rulings on the page, the same way |
+| Case queue | `#case=` | Against every case, not the filtered rows — a filter hides rows, not cases, so a link into a filtered-out case opens on it and the panel says the row is not there |
 | Spatial Inquiry | `#space=` — strictly one key, because a link into that instrument names a space and nothing else | Against the analysed layout |
 | Earth Twin | the camera and the selected record | Against the release's records |
 

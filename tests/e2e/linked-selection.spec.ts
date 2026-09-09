@@ -149,6 +149,49 @@ test('the rulings register shows every column, and the revision chain is walked 
   await expect(page.getByTestId('ruling-inspector')).toContainText('RUL-7C104-r2');
 });
 
+/**
+ * The case queue: nine columns of which 596 pixels sat past the right edge of
+ * a 1440px viewport and 1012 past a 1024px one — more table hidden than shown.
+ */
+test('the case queue triages in place, and opening the case is one click from the panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/cases');
+  await page.waitForLoadState('load');
+  await page.evaluate(() => document.fonts.ready);
+
+  await page.locator('[data-case-select="CASE-CAR-7C104"]').click();
+  await expect(page.getByTestId('case-inspector')).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#case=CASE-CAR-7C104');
+
+  // The three columns the queue keeps fit whole at the widths it is read at:
+  // beside the panel from 1600, and inline beneath it below that, where the
+  // register has the content column to itself. At 1024 it scrolls by 32px and
+  // says so, which is what the register mark is for.
+  for (const { width, beside } of [{ width: 1600, beside: true }, { width: 1440, beside: false }, { width: 1280, beside: false }]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(() => document.fonts.ready);
+    const seen = await page.evaluate(() => {
+      const el = document.querySelector('.register')!;
+      const inspector = document.querySelector('.inspector')!.getBoundingClientRect();
+      return { hidden: el.scrollWidth - el.clientWidth, beside: inspector.left >= el.getBoundingClientRect().right - 1 };
+    });
+    expect(seen.hidden, `${width}px: columns hidden inside the register`).toBe(0);
+    expect(seen.beside, `${width}px`).toBe(beside);
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  // The four columns the register dropped are in the panel.
+  const panel = page.getByTestId('case-inspector');
+  await expect(panel).toContainText('World state valid on');
+  await expect(panel).toContainText('Information known by');
+  await expect(panel).toContainText('Use code');
+
+  // And the queue's own job — opening the case — is the panel's primary action.
+  await page.getByTestId('inspector-open-case').click();
+  await page.waitForURL('**/cases/CASE-CAR-7C104');
+  await expect(page.getByTestId('decision-rail')).toBeVisible();
+});
+
 /*
  * The waiting boundary is not asserted here, and the reason is worth recording
  * rather than leaving as a gap in the file.

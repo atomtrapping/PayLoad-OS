@@ -515,8 +515,20 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
    inspector whole. A list of titles survives the narrower column and keeps the
    earlier breakpoint; a register does not. */
 @media (min-width: 1024px) and (max-width: 1439px) {
-  .workspace-register.has-inspector { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'top' 'inspector' 'bottom'; grid-template-rows: none; }
-  .workspace-register .inspector { position: static; max-height: none; overflow-y: visible; }
+  .workspace-register.has-inspector,
+  .workspace-register-wide.has-inspector { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'top' 'inspector' 'bottom'; grid-template-rows: none; }
+  .workspace-register .inspector,
+  .workspace-register-wide .inspector { position: static; max-height: none; overflow-y: visible; }
+}
+/* A second threshold for a wider register. The case queue's three columns
+   measure 790px — a status pill reading ADMITTED WITH CONDITIONS is 215px of
+   that, and a status is a unit that does not break — where 1440 leaves 758.
+   1600 leaves 918. Below that the queue keeps the inline detail view, which is
+   the better layout there anyway: the whole register readable, with the panel
+   directly beneath it, rather than a squeezed register beside a panel. */
+@media (min-width: 1440px) and (max-width: 1599px) {
+  .workspace-register-wide.has-inspector { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'top' 'inspector' 'bottom'; grid-template-rows: none; }
+  .workspace-register-wide .inspector { position: static; max-height: none; overflow-y: visible; }
 }
 .inspector-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 12px 14px; background: var(--bg-tertiary); border-top: 3px solid var(--chrome-rail); border-bottom: 1px solid var(--border-default); }
 .inspector-title { margin: 0; font-size: var(--text-lg); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; color: var(--text-heading); }

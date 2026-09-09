@@ -2,6 +2,14 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 /** Where the active tab sits inside the rail's own scroll frame. */
+/** The one destination the rail marks as current, as a path, or null if it is not exactly one. */
+async function currentInRail(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const marked = [...document.querySelectorAll('[data-testid="nav-rail"] a.nav-link[aria-current="page"]')];
+    return marked.length === 1 ? new URL((marked[0] as HTMLAnchorElement).href).pathname : null;
+  });
+}
+
 async function activeInRail(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
     const rail = document.querySelector('[data-testid="nav-rail"]') as HTMLElement | null;
@@ -95,12 +103,23 @@ test('Alt with an arrow steps to the next page without opening the rail', async 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('palette')).toHaveCount(0);
 
+  // Forward. The address bar is what is polled: the rail's label reads
+  // `undefined` while nothing is marked current, and `not.toBe('Releases')`
+  // would then pass without a navigation having happened at all.
   await page.keyboard.press('Alt+ArrowRight');
-  await expect.poll(async () => (await activeInRail(page))?.label, { timeout: 10000 }).not.toBe('Releases');
+  await expect.poll(() => new URL(page.url()).pathname, { timeout: 10000 }).not.toBe('/releases');
   const forward = new URL(page.url()).pathname;
+
+  // The rail was never opened and it marks where the reader now is.
+  await expect.poll(() => currentInRail(page), { timeout: 10000 }).toBe(forward);
+
+  // And back is back. This is the step whose origin has to be the page the
+  // reader is on rather than the page the listener was attached for: it used
+  // to land on /stream, one destination past /releases on the far side, when
+  // the second press beat the effect that re-attaches the listener.
   await page.keyboard.press('Alt+ArrowLeft');
   await expect.poll(() => new URL(page.url()).pathname, { timeout: 10000 }).toBe('/releases');
-  expect(forward).not.toBe('/releases');
+  await expect.poll(() => currentInRail(page), { timeout: 10000 }).toBe('/releases');
 });
 
 test('the palette jumps to any destination, by shortcut and by button', async ({ page }) => {

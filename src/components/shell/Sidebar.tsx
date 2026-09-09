@@ -89,21 +89,38 @@ export function Sidebar() {
     reveal(scroller.current?.querySelector<HTMLElement>('a.nav-link[aria-current="page"]') ?? null);
   }, [pathname, reveal]);
 
-  /** Alt+Left / Alt+Right step through the rail in order, from anywhere on the page. */
+  /**
+   * Alt+Left / Alt+Right step through the rail in order, from anywhere on the page.
+   *
+   * The step is taken from the address bar and not from `pathname`, and the
+   * difference is not pedantic. `pathname` is read during render; this listener
+   * is attached by an effect, which runs a commit later. Between the router
+   * writing the new URL and this effect running again, the attached listener
+   * still holds the page the reader has already left, and a second press in
+   * that window steps from the wrong origin. Measured, on a CPU throttled eight
+   * times: /releases, Alt+Right to /retractions, Alt+Left back to /stream —
+   * a destination past where the reader started, and no way to tell why.
+   *
+   * `window.location.pathname` is written synchronously by the push, is what
+   * the reader can actually see, and cannot be staler than the render. It also
+   * makes this one subscription for the life of the rail rather than one per
+   * navigation. No `basePath` is configured; if one is ever added it appears
+   * here and not in `usePathname`, and this must strip it.
+   */
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!event.altKey || event.metaKey || event.ctrlKey) return;
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
-      const next = step(pathname, event.key === 'ArrowRight' ? 1 : -1);
+      const next = step(window.location.pathname, event.key === 'ArrowRight' ? 1 : -1);
       if (!next) return;
       event.preventDefault();
       router.push(next.href);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [pathname, router]);
+  }, [router]);
 
   const onRailKey = (event: React.KeyboardEvent) => {
     // Alt is the page-stepping shortcut above; the rail does not also claim it.

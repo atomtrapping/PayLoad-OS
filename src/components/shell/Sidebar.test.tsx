@@ -9,7 +9,13 @@ let pathname = '/releases';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => pathname }));
 vi.mock('@/components/notations/NotationWorkspace', () => ({ useNotationDraftStatus: () => null }));
 
-beforeEach(() => { push.mockClear(); pathname = '/releases'; });
+beforeEach(() => {
+  push.mockClear();
+  pathname = '/releases';
+  // The page-stepping shortcut reads the address bar, so the address bar is
+  // part of the fixture rather than something jsdom happens to have left set.
+  window.history.replaceState(null, '', '/releases');
+});
 afterEach(() => { vi.unstubAllGlobals(); });
 
 const railLinks = () => [...screen.getByTestId('nav-rail').querySelectorAll<HTMLAnchorElement>('a.nav-link')];
@@ -102,6 +108,27 @@ describe('Alt with an arrow steps to the next page from anywhere', () => {
     push.mockClear();
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
     expect(push).toHaveBeenCalledWith(NAV_DESTINATIONS[at - 1].href);
+  });
+
+  /*
+   * The origin of a step is the address bar, not the render.
+   *
+   * They are the same at rest and they are not during a navigation: the router
+   * writes the URL, and the effect that re-attaches the listener runs a commit
+   * later. Here the address bar moves with no re-render at all, which is that
+   * window held open. Before this was read from `window.location`, the second
+   * press of a reader stepping forward and back was computed from where they
+   * started: /releases, Alt+Right to /retractions, Alt+Left to /stream. It was
+   * measured in a browser at a CPU throttled eight times, and it is arithmetic
+   * here, so it cannot come back as a test that passes on a fast machine.
+   */
+  it('steps from the page the address bar names, not the one it rendered for', async () => {
+    const user = userEvent.setup();
+    render(<Sidebar />);
+    const at = NAV_DESTINATIONS.findIndex((entry) => entry.href === '/releases');
+    window.history.replaceState(null, '', NAV_DESTINATIONS[at + 1].href);
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
+    expect(push).toHaveBeenCalledWith('/releases');
   });
 
   /** Someone arrowing through a text field is editing, not navigating. */

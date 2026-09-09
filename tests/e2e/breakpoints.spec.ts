@@ -215,6 +215,11 @@ for (const width of [1440, 412]) {
     for (const path of REGISTERS) {
       await page.goto(path);
       await page.locator('.register').first().waitFor();
+      // Before the fonts arrive the controls are the wrong size: measured on a
+      // cold run, a filter select on /cases was 13.2px high and axe reported a
+      // target-size violation that does not exist once the page is drawn. Same
+      // class of mistake as measuring the streaming staging area.
+      await page.evaluate(() => document.fonts.ready);
       const row = page.locator('.register tbody tr button[aria-pressed]').first();
       await expect(row, `${path} has a selectable row`).toBeVisible();
       await row.click();
@@ -254,5 +259,27 @@ test('a stacked register labels its own cells and keeps the roles the display ch
     expect(seen.roles.rowgroup, `${path} restates the rowgroup role`).toBe(1);
     expect(seen.roles.row, `${path} restates the row role`).toBeGreaterThan(0);
     expect(seen.roles.cell, `${path} restates the cell role on every cell`).toBe(seen.cells);
+
+    /*
+     * And the short cells share a line.
+     *
+     * Six labelled cells one under another is the card the stacking replaced:
+     * measured at 412px, a row on the stable was 311px and nothing fitted the
+     * first screen. A stacked row is a grid, so a kind, a status, a runtime and
+     * a count sit two to a line and only the cells carrying a sentence take the
+     * full width — 213px on the stable, 199 on releases, 237 on rulings, 231 on
+     * the board. The queue is the exception and should be: of its three columns
+     * one is the identity and one is a sentence, so there is nothing to pair.
+     */
+    const line = await page.evaluate(() => {
+      const row = document.querySelector('.register tbody tr')!;
+      const cells = [...row.querySelectorAll('td')];
+      const short = cells.filter((cell, index) => index > 0 && !cell.classList.contains('cell-wide'));
+      const tops = short.map((cell) => Math.round(cell.getBoundingClientRect().top));
+      return { short: short.length, lines: new Set(tops).size };
+    });
+    if (line.short >= 2) {
+      expect(line.lines, `${path}: ${line.short} short cells on ${line.lines} lines, which is one each`).toBeLessThan(line.short);
+    }
   }
 });

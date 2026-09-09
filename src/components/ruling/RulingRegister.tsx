@@ -127,7 +127,7 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
                       </button>
                     </td>
                     <td role="cell"><span className="cell-label">Status</span><RulingStatusPill status={ruling.status} size="sm" /></td>
-                    <td role="cell">
+                    <td role="cell" className="cell-wide">
                       <span className="cell-label">Case</span>
                       <Link href={`/cases/${encodeURIComponent(ruling.caseId)}`} style={{ color: 'var(--text-primary)' }}>{ruling.caseTitle}</Link>
                       <div className="id" style={{ color: 'var(--text-muted)' }}>{ruling.caseId}</div>

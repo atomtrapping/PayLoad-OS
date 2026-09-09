@@ -138,7 +138,7 @@ export function BoardRegister({
                       <span className="pill" style={{ color: message.kind === 'BLOCKER' || message.kind === 'REQUEST' ? 'var(--accent)' : 'var(--text-muted)' }}>{message.kind}</span>
                     </td>
                     <td role="cell"><span className="cell-label">Topic</span><span className="mono text-[12px]">{message.topic}</span></td>
-                    <td role="cell" className="text-[12px]">
+                    <td role="cell" className="text-[12px] cell-wide">
                       <span className="cell-label">Correspondents</span>
                       {name(message.authorId)}
                       <span className="block row-sub">to {message.recipientId ? name(message.recipientId) : 'all participants in this scope'}</span>

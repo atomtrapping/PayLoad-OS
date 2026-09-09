@@ -1088,12 +1088,22 @@ details[open] > summary::before { transform: rotate(90deg); }
   .workspace-register .register { overflow-x: visible; background: var(--bg-secondary); }
   .workspace-register .register .ledger-table,
   .workspace-register .register .ledger-table tbody,
-  .workspace-register .register .ledger-table tr,
   .workspace-register .register .ledger-table td { display: block; width: auto; }
   .workspace-register .register .ledger-table thead { display: none; }
-  .workspace-register .register .ledger-table tr { padding: 10px 10px 12px; border-bottom: 1px solid var(--border-default); }
+  /* A stacked row is a grid rather than a column of blocks. Six labelled cells
+     one under another made a 311px row on a 386px register, which is the card
+     the stacking replaced: nothing fitted a phone's first screen. The short
+     cells — a kind, a status, a runtime, a count — sit side by side at two per
+     line, and only the ones carrying a sentence take the full width. */
+  .workspace-register .register .ledger-table tr {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); column-gap: 14px;
+    padding: 10px 10px 12px; border-bottom: 1px solid var(--border-default);
+  }
   .workspace-register .register .ledger-table tr:last-child { border-bottom: 0; }
   .workspace-register .register .ledger-table td { padding: 3px 0; border: 0; max-width: none; min-width: 0; }
+  /* The row's own identity, and anything holding a sentence rather than a value. */
+  .workspace-register .register .ledger-table td:first-child,
+  .workspace-register .register .ledger-table td.cell-wide { grid-column: 1 / -1; }
   .workspace-register .register .ledger-table td:first-child { padding-top: 0; }
   .workspace-register .cell-label { display: block; }
 }
@@ -1102,12 +1112,22 @@ details[open] > summary::before { transform: rotate(90deg); }
   .workspace-register-wide .register { overflow-x: visible; background: var(--bg-secondary); }
   .workspace-register-wide .register .ledger-table,
   .workspace-register-wide .register .ledger-table tbody,
-  .workspace-register-wide .register .ledger-table tr,
   .workspace-register-wide .register .ledger-table td { display: block; width: auto; }
   .workspace-register-wide .register .ledger-table thead { display: none; }
-  .workspace-register-wide .register .ledger-table tr { padding: 10px 10px 12px; border-bottom: 1px solid var(--border-default); }
+  /* A stacked row is a grid rather than a column of blocks. Six labelled cells
+     one under another made a 311px row on a 386px register, which is the card
+     the stacking replaced: nothing fitted a phone's first screen. The short
+     cells — a kind, a status, a runtime, a count — sit side by side at two per
+     line, and only the ones carrying a sentence take the full width. */
+  .workspace-register-wide .register .ledger-table tr {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); column-gap: 14px;
+    padding: 10px 10px 12px; border-bottom: 1px solid var(--border-default);
+  }
   .workspace-register-wide .register .ledger-table tr:last-child { border-bottom: 0; }
   .workspace-register-wide .register .ledger-table td { padding: 3px 0; border: 0; max-width: none; min-width: 0; }
+  /* The row's own identity, and anything holding a sentence rather than a value. */
+  .workspace-register-wide .register .ledger-table td:first-child,
+  .workspace-register-wide .register .ledger-table td.cell-wide { grid-column: 1 / -1; }
   .workspace-register-wide .register .ledger-table td:first-child { padding-top: 0; }
   .workspace-register-wide .cell-label { display: block; }
 }

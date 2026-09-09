@@ -263,7 +263,7 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
                           {b.previousRulings.length > 0 && <span className="text-[11px]" style={{ color: 'var(--status-superseded)' }}>{b.previousRulings.length} superseded</span>}
                         </div>
                       </td>
-                      <td role="cell" className="text-[12.5px] max-w-[230px]">
+                      <td role="cell" className="text-[12.5px] max-w-[230px] cell-wide">
                         <span className="cell-label">Required action</span>
                         {t.requiredAction ?? <span style={{ color: 'var(--text-muted)' }}>None</span>}
                         {t.blockingInvariant && <div className="id mt-0.5" style={{ color: 'var(--status-refused)' }}>{t.blockingInvariant.invariantId} · {t.blockingInvariant.refusalCode}</div>}

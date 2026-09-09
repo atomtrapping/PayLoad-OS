@@ -22,6 +22,18 @@ test('desktop screenshots', async ({ page }) => {
   await page.locator('[data-ruling-select="RUL-7C104-r1"]').click();
   await page.getByTestId('ruling-inspector').waitFor();
   await page.screenshot({ path: `${OUT}/05a-ruling-register.png`, fullPage: true });
+
+  await page.goto('/agents');
+  await page.getByTestId('stable-workspace').waitFor();
+  await page.locator('[data-participant-select="agent.normalize"]').click();
+  await page.getByTestId('participant-inspector').waitFor();
+  await page.screenshot({ path: `${OUT}/09a-stable-register.png`, fullPage: true });
+
+  await page.goto('/board');
+  await page.getByTestId('board-workspace').waitFor();
+  await page.locator('[data-message-select="MSG-00002"]').click();
+  await page.getByTestId('message-inspector').waitFor();
+  await page.screenshot({ path: `${OUT}/09b-board-register.png`, fullPage: true });
   await page.goto('/model');
   await page.getByRole('heading', { level: 1 }).waitFor();
   await page.screenshot({ path: `${OUT}/000-product-model.png`, fullPage: true });

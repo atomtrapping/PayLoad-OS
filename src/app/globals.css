@@ -597,6 +597,27 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .spatial-plan text, .spatial-graph text { pointer-events: none; user-select: none; }
 
 /* ═══ Selection in lists and tables ═══ */
+/* A link inside a run of text must be distinguishable without relying on
+   colour (WCAG 1.4.1). Axe found the inspectors' "where to read it" lists —
+   "The case workspace — claims, evidence and the decision rail" — where the
+   link and the sentence it sits in differ only by hue. Underlining the link
+   is the distinction; the accent colour stays as the second signal. */
+.inspector-body a:not(.btn) { text-decoration: underline; text-underline-offset: 2px; }
+
+/* The quiet second line of a register row: the identifier under a name, the
+   revision under a ruling. Muted because it is not what the reader scans for. */
+.row-sub { color: var(--text-muted); }
+
+/* A selected row is the one being read, and everything muted inside it sits on
+   the selection highlight. Measured with axe: --text-muted (#8e8b83) on the
+   composited #323223 is 3.81:1, and a 12.5px line needs 4.5:1. Raising the
+   token inside the row rather than recolouring each element fixes every muted
+   thing in it at once — the sub-line, the "to all participants" line, a status
+   pill, an empty cell's "None" — including the ones written as inline styles,
+   because `var()` resolves against the element it is on. This was true of
+   /rulings and /cases before the coordination registers existed; no
+   accessibility check had ever selected a row. */
+.ledger-table tbody tr[aria-selected='true'] { --text-muted: var(--text-secondary); }
 .row-selectable { transition: background var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease); }
 .row-selectable:hover { background: rgba(255, 255, 255, 0.035); }
 .row-selectable[aria-selected='true'], .row-selectable[aria-pressed='true'], .row-selectable[data-selected='true'] { background: var(--highlight-bg); border-color: var(--highlight-border); }

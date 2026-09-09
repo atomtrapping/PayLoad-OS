@@ -244,7 +244,7 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
                           onClick={() => setSelectedId(active ? null : b.caseId)}
                         >
                           <span className="font-medium" style={{ color: active ? 'var(--accent-strong)' : 'var(--text-heading)' }}>{b.title}</span>
-                          <span className="id" style={{ color: 'var(--text-muted)' }}>{b.caseId}</span>
+                          <span className="id row-sub">{b.caseId}</span>
                           {/* The instant of the last change is in the panel, and
                               the register carries what a reviewer reads it for:
                               the rows are ordered newest-changed first, so

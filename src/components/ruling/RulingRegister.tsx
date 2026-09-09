@@ -123,7 +123,7 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
                         onClick={() => setSelectedId(active ? null : ruling.rulingId)}
                       >
                         <span className="id" style={{ color: active ? 'var(--accent-strong)' : 'var(--info)' }}>{ruling.rulingId}</span>
-                        <span className="block text-[11px]" style={{ color: 'var(--text-muted)' }}>revision {ruling.revision}</span>
+                        <span className="block text-[11px] row-sub">revision {ruling.revision}</span>
                       </button>
                     </td>
                     <td role="cell"><span className="cell-label">Status</span><RulingStatusPill status={ruling.status} size="sm" /></td>

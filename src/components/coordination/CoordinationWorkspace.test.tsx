@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeed, DEMO_SCOPE, RELEASE_CONTEXTS } from '@/coordination/seed';
 import { applyCommand, connectionsFor } from '@/coordination/ledger';
 import type { CoordinationCommand, CoordinationSnapshot, CoordinationState } from '@/coordination/types';
@@ -26,22 +26,54 @@ function localApi(initial: CoordinationState) {
   return { commands, fetch };
 }
 
+/**
+ * A selection is written into the fragment, and jsdom keeps one document for
+ * the whole file. Without this, a test that selected a row would leave the
+ * next one already open on that row.
+ */
+beforeEach(() => window.history.replaceState(null, '', '/agents'));
 afterEach(() => vi.unstubAllGlobals());
 
+/** Rows are selected by their own identity, which is what the register makes a control. */
+const select = (kind: 'participant' | 'message', id: string) =>
+  document.querySelector<HTMLButtonElement>(`[data-${kind}-select="${id}"]`)!;
+const rows = () => document.querySelectorAll('tbody tr').length;
+
 describe('CoordinationWorkspace', () => {
-  it('exposes declared connections and filters stable definitions without implying running workers', async () => {
+  it('walks declared connections from the inspector and filters stable definitions without implying running workers', async () => {
     const user = userEvent.setup();
     render(<CoordinationWorkspace initial={snapshot()} view="stable" />);
     expect(screen.getByText('No agents are launched by this board.')).toBeInTheDocument();
     expect(screen.queryByRole('form', { name: 'Register participant' })).not.toBeInTheDocument();
-    const normalization = screen.getByRole('article', { name: 'Participant Normalization agent' });
-    expect(within(normalization).getByText('PLANNED')).toBeInTheDocument();
-    await user.click(within(normalization).getByText(/Synastry/));
-    expect(within(normalization).getByText(/Missing inputs:/)).toHaveTextContent('IdentityMapping/v1');
+
+    // The register compares definitions; one definition is read in the inspector.
+    expect(rows()).toBe(12);
+    expect(screen.queryByTestId('participant-inspector')).not.toBeInTheDocument();
+    await user.click(select('participant', 'agent.normalize'));
+    const inspector = screen.getByTestId('participant-inspector');
+    expect(within(inspector).getByText('Normalization agent')).toBeInTheDocument();
+    expect(within(inspector).getByText(/Contract compatibility indicates how definitions can work together/)).toBeInTheDocument();
+    expect(within(inspector).getByText(/Missing inputs:/)).toHaveTextContent('IdentityMapping/v1');
+
+    // A connection names another definition in this register, so following it
+    // moves the inspector rather than printing an identifier.
+    await user.click(within(inspector).getByRole('button', { name: 'Identity agent' }));
+    expect(within(screen.getByTestId('participant-inspector')).getByText('Propose evidence-bearing mappings and expose unresolved identity.')).toBeInTheDocument();
+
     await user.selectOptions(screen.getByLabelText('Participant kind'), 'AGENT');
     await user.type(screen.getByLabelText('Search the stable'), 'identity.propose');
-    expect(screen.getAllByRole('article')).toHaveLength(1);
-    expect(screen.getByRole('article', { name: 'Participant Identity agent' })).toBeInTheDocument();
+    expect(rows()).toBe(1);
+    expect(select('participant', 'agent.identity')).toBeInTheDocument();
+  });
+
+  it('keeps a selection the filters have hidden, and says that it is hidden rather than dropping it', async () => {
+    const user = userEvent.setup();
+    render(<CoordinationWorkspace initial={snapshot()} view="stable" />);
+    await user.click(select('participant', 'apparatus.corpus'));
+    expect(screen.queryByTestId('participant-not-listed')).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Participant kind'), 'AGENT');
+    expect(screen.getByTestId('participant-not-listed')).toBeInTheDocument();
+    expect(within(screen.getByTestId('participant-inspector')).getByText('Domain corpus')).toBeInTheDocument();
   });
 
   it('filters board messages and keeps fixture mode read only', async () => {
@@ -51,7 +83,10 @@ describe('CoordinationWorkspace', () => {
     expect(screen.queryByRole('button', { name: 'Acknowledge' })).not.toBeInTheDocument();
     expect(screen.getByText('npm run dev:coordination')).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Message kind filter'), 'BLOCKER');
-    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(rows()).toBe(1);
+
+    // The release a message was written about is a different object, so it is a link.
+    await user.click(select('message', 'MSG-00002'));
     expect(screen.getByRole('link', { name: 'REL-CAR-2026.09.01' })).toHaveAttribute('href', '/releases/REL-CAR-2026.09.01');
     await user.selectOptions(screen.getByLabelText('Topic filter'), 'release-assembly');
     expect(screen.getByText('No messages match these filters.')).toBeInTheDocument();
@@ -70,7 +105,7 @@ describe('CoordinationWorkspace', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Connection interrupted');
     expect(screen.getByLabelText('Body')).toHaveValue('Keep the release context attached to the next handoff.');
     await user.click(screen.getByRole('button', { name: 'Post message' }));
-    expect(await screen.findByRole('article', { name: 'Message Inspect the input contract' })).toBeInTheDocument();
+    expect(await screen.findByText('Inspect the input contract')).toBeInTheDocument();
     const first = JSON.parse(String(api.fetch.mock.calls[0][1]?.body));
     const second = JSON.parse(String(api.fetch.mock.calls[1][1]?.body));
     expect(first.message.requestId).toBeTruthy();
@@ -84,21 +119,41 @@ describe('CoordinationWorkspace', () => {
     const api = localApi(state);
     render(<CoordinationWorkspace initial={snapshot(state, true)} view="board" />);
     const title = state.messages[1].title;
-    const message = screen.getByRole('article', { name: `Message ${title}` });
-    const actor = within(message).getByRole('combobox', { name: `Acknowledge ${title} as` });
+    await user.click(select('message', 'MSG-00002'));
+    const inspector = screen.getByTestId('message-inspector');
+    const actor = within(inspector).getByRole('combobox', { name: `Acknowledge ${title} as` });
     expect(within(actor).getAllByRole('option')).toHaveLength(1);
     expect(actor).toHaveValue('agent.identity');
-    await user.click(within(message).getByRole('button', { name: 'Acknowledge' }));
-    expect(await within(message).findByText('Acknowledgement receipts:')).toBeInTheDocument();
+    await user.click(within(inspector).getByRole('button', { name: 'Acknowledge' }));
+    expect(await within(screen.getByTestId('message-inspector')).findByTestId('message-receipts')).toHaveTextContent('Identity agent');
     expect(api.commands[0]).toEqual({ operation: 'acknowledge', messageId: 'MSG-00002', participantId: 'agent.identity' });
-    await user.click(within(message).getByRole('button', { name: 'Reply' }));
+
+    await user.click(within(screen.getByTestId('message-inspector')).getByRole('button', { name: 'Reply' }));
     expect(screen.getByLabelText('Release context')).toBeDisabled();
     expect(screen.getByLabelText('Release context')).toHaveValue('REL-CAR-2026.09.01');
     expect(screen.getByLabelText('Topic')).toBeDisabled();
     await user.type(screen.getByLabelText('Body'), 'The identity is still unresolved.');
     await user.click(screen.getByRole('button', { name: 'Post message' }));
-    expect(await screen.findByRole('article', { name: `Message Re: ${title}` })).toBeInTheDocument();
+    expect(await screen.findByText(`Re: ${title}`)).toBeInTheDocument();
     expect(api.commands[1]).toMatchObject({ operation: 'post', message: { replyTo: 'MSG-00002', topic: state.messages[1].topic, context: state.messages[1].context } });
+  });
+
+  it('walks a thread from the reply back to the message it answers', async () => {
+    const user = userEvent.setup();
+    const state = createSeed();
+    localApi(state);
+    render(<CoordinationWorkspace initial={snapshot(state, true)} view="board" />);
+    await user.click(select('message', 'MSG-00002'));
+    await user.click(within(screen.getByTestId('message-inspector')).getByRole('button', { name: 'Reply' }));
+    await user.type(screen.getByLabelText('Body'), 'The identity is still unresolved.');
+    await user.click(screen.getByRole('button', { name: 'Post message' }));
+    const reply = await screen.findByText(`Re: ${state.messages[1].title}`);
+    await user.click(reply);
+    const inspector = screen.getByTestId('message-inspector');
+    expect(within(inspector).getByTestId('inspector-reply-to')).toHaveTextContent('MSG-00002');
+    await user.click(within(inspector).getByTestId('inspector-reply-to-open'));
+    expect(within(screen.getByTestId('message-inspector')).getByTestId('message-body'))
+      .toHaveTextContent('The demonstration release has no sample-to-lot link.');
   });
 
   it('registers a local definition with contracts and its bound scope', async () => {
@@ -112,7 +167,8 @@ describe('CoordinationWorkspace', () => {
     await user.type(within(form).getByLabelText('Purpose'), 'Review physical condition changes.');
     await user.type(within(form).getByLabelText('Input contracts · comma separated'), 'CorpusRelease/v1, Retraction/v1');
     await user.click(within(form).getByRole('button', { name: 'Register definition' }));
-    expect(await screen.findByRole('article', { name: 'Participant Condition review agent' })).toHaveTextContent('LOCAL');
+    const registered = await screen.findByText('agent.condition-review');
+    expect(registered.closest('tr')).toHaveTextContent('LOCAL');
     expect(api.commands[0]).toMatchObject({ operation: 'register', participant: { scope: DEMO_SCOPE, version: '0.1.0', status: 'LOCAL', inputs: ['CorpusRelease/v1', 'Retraction/v1'], domains: ['CARAVAN'] } });
   });
 });

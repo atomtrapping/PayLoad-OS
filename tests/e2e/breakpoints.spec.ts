@@ -158,7 +158,7 @@ for (const { width, height, name, rail } of WIDTHS) {
  * release register lost its records, retractions and certification — each of
  * them reachable only by a sideways scroll the reader had no reason to try.
  */
-const REGISTERS = ['/cases', '/rulings', '/releases'];
+const REGISTERS = ['/cases', '/rulings', '/releases', '/agents', '/board'];
 /** From a small phone to a wide desktop, including both sides of the rail's own threshold. */
 const REGISTER_WIDTHS = [1600, 1440, 1280, 1100, 1024, 1023, 900, 800, 768, 767, 600, 412, 360];
 
@@ -195,6 +195,34 @@ for (const path of REGISTERS) {
       if (seen.document !== 0) problems.push(`${width}px: the document scrolls sideways by ${seen.document}px`);
     }
     expect(problems, problems.join('; ')).toEqual([]);
+  });
+}
+
+/*
+ * A selected row is read, so it has to be readable.
+ *
+ * Every register marks its selected row with the accent-tinted highlight, and
+ * everything muted inside it — the identifier under a name, an empty cell's
+ * "None", a status pill — was still the muted token. Measured with axe:
+ * #8e8b83 on the composited #323223 is 3.81:1, where a 12.5px line needs 4.5.
+ * It was true of /cases and /rulings from the day they became registers and
+ * nothing caught it, because no accessibility check had ever pressed a row.
+ * This one presses the first row of every register, at a desk and on a phone.
+ */
+for (const width of [1440, 412]) {
+  test(`a selected row stays readable at ${width}px, in every register`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of REGISTERS) {
+      await page.goto(path);
+      await page.locator('.register').first().waitFor();
+      const row = page.locator('.register tbody tr button[aria-pressed]').first();
+      await expect(row, `${path} has a selectable row`).toBeVisible();
+      await row.click();
+      await expect(page.locator('.register tbody tr[aria-selected="true"]'), `${path} marks the row it selected`).toHaveCount(1);
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+      const serious = results.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical');
+      expect(serious, `${path} at ${width}px: ${JSON.stringify(serious.map((violation) => ({ id: violation.id, nodes: violation.nodes.map((node) => node.target) })), null, 1)}`).toEqual([]);
+    }
   });
 }
 

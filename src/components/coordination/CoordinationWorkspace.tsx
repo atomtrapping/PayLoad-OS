@@ -1,11 +1,25 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState, type FormEvent } from 'react';
 import { AUTHORITIES, DOMAINS, MESSAGE_KINDS } from '@/coordination/types';
 import type { BoardMessage, CoordinationCommand, CoordinationSnapshot, MessageDraft, Participant } from '@/coordination/types';
 import { Section } from '@/components/primitives/Section';
+import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
+import { BoardRegister } from './BoardRegister';
+import { StableRegister } from './StableRegister';
 
+/**
+ * The two coordination surfaces: the stable of definitions, and the board.
+ *
+ * This holds what both share — the snapshot, the one request path to
+ * `/api/coordination`, the filters, the write forms and the sandbox's own
+ * statements about itself — and hands the rows to whichever register the route
+ * asked for. Each register owns its selection, its inspector and its columns,
+ * because those are the parts that differ.
+ *
+ * Nothing here launches anything, and the surface says so before it says
+ * anything else.
+ */
 const fieldClass = 'surface-inset px-2 py-1.5 text-[13px] w-full';
 const muted = { color: 'var(--text-secondary)' };
 const blankDraft = (authorId: string): MessageDraft => ({ requestId: '', authorId, recipientId: null, kind: 'NOTE', topic: '', title: '', body: '', context: null, replyTo: null });
@@ -13,29 +27,6 @@ const commaValues = (value: FormDataEntryValue | null) => String(value ?? '').sp
 
 function Tag({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
   return <span className="pill" style={{ color: accent ? 'var(--accent)' : 'var(--text-muted)' }}>{children}</span>;
-}
-
-function MessageContext({ message }: { message: BoardMessage }) {
-  if (!message.context) return null;
-  const context = message.context;
-  return <div className="surface-inset p-2 text-[12px] flex flex-wrap gap-x-3 gap-y-1" aria-label={`Release context for ${message.id}`}>
-    <span>{context.domain}</span>
-    <Link href={`/releases/${encodeURIComponent(context.releaseId)}`} className="id" style={{ color: 'var(--info)' }}>{context.releaseId}</Link>
-    <span className="id">Build {context.buildId}</span>
-    <span className="ts">Known at {context.knownAt}</span>
-  </div>;
-}
-
-function threadRoot(message: BoardMessage, messages: BoardMessage[]) {
-  let current = message;
-  const visited = new Set([current.id]);
-  while (current.replyTo) {
-    const parent = messages.find((candidate) => candidate.id === current.replyTo);
-    if (!parent || visited.has(parent.id)) break;
-    visited.add(parent.id);
-    current = parent;
-  }
-  return current.id;
 }
 
 export function CoordinationWorkspace({ initial, view }: { initial: CoordinationSnapshot; view: 'stable' | 'board' }) {
@@ -50,7 +41,28 @@ export function CoordinationWorkspace({ initial, view }: { initial: Coordination
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
 
-  const participantName = (id: string) => snapshot.participants.find((participant) => participant.id === id)?.name ?? id;
+  // A link opened on this surface names a row this surface holds, or nothing.
+  // Both directions refuse a name the snapshot does not carry: an inspector
+  // opened on an id that was never here is a worse answer than the register.
+  const holdsParticipant = (id: string | undefined) => id !== undefined && initial.participants.some((participant) => participant.id === id);
+  const holdsMessage = (id: string | undefined) => id !== undefined && initial.messages.some((message) => message.id === id);
+  const [selectedParticipant, setSelectedParticipant] = useState<string | null>(() => {
+    const opened = openedWith().participant;
+    return view === 'stable' && holdsParticipant(opened) ? opened! : null;
+  });
+  const [selectedMessage, setSelectedMessage] = useState<string | null>(() => {
+    const opened = openedWith().message;
+    return view === 'board' && holdsMessage(opened) ? opened! : null;
+  });
+  useLinkedSelection(
+    view === 'stable' ? { participant: selectedParticipant } : { message: selectedMessage },
+    (values) => {
+      if (view === 'stable') { if (snapshot.participants.some((participant) => participant.id === values.participant)) setSelectedParticipant(values.participant!); }
+      else if (snapshot.messages.some((message) => message.id === values.message)) setSelectedMessage(values.message!);
+    },
+    true,
+  );
+
   const participants = useMemo(() => snapshot.participants.filter((participant) =>
     (participantKind === 'ALL' || participant.kind === participantKind) &&
     [participant.id, participant.name, participant.purpose, participant.runtime, ...participant.capabilities, ...participant.inputs, ...participant.outputs].join(' ').toLowerCase().includes(search.toLowerCase())
@@ -121,27 +133,27 @@ export function CoordinationWorkspace({ initial, view }: { initial: Coordination
     if (await request({ operation: 'register', participant })) form.reset();
   }
 
-  return <div className="p-3 sm:p-4 max-w-[1180px] mx-auto w-full flex flex-col gap-4">
-    <div className="surface-inset px-3 py-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px]" style={muted}>
-      <span style={{ color: 'var(--accent)' }}>Demonstration coordination</span>
-      <span>No agents are launched by this board.</span>
-      <span className="mono">Scope: {snapshot.scope}</span>
-    </div>
+  return <div className="p-3 sm:p-4 max-w-[1600px] mx-auto w-full flex flex-col gap-3">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div className="flex flex-col gap-1 max-w-[850px]">
-        <p className="label-sm m-0">NotationsOS · Coordination</p>
-        <h1 className="m-0 text-[22px] font-semibold" style={{ color: 'var(--text-heading)' }}>{view === 'stable' ? 'Agent & apparatus stable' : 'Message board'}</h1>
-        <p className="m-0 text-[13px]" style={muted}>{view === 'stable'
+        <h1 className="m-0 text-[18px] font-semibold" style={{ color: 'var(--text-heading)' }}>{view === 'stable' ? 'Agent & apparatus stable' : 'Message board'}</h1>
+        <p className="m-0 text-[12.5px]" style={muted}>{view === 'stable'
           ? 'A shared register of agents and apparatuses: their purpose, declared contracts and working relationships across the information-production system.'
           : 'A shared record of requests, handoffs, blockers and results, with named participants and release context.'}</p>
       </div>
       <button type="button" className="btn" onClick={() => void request()} disabled={busy}>Refresh</button>
     </header>
+    {/* The surface's standing, said once. It used to be said in two blocks —
+        one calling this a demonstration and naming the scope, another giving
+        the mode and the enable command — which cost a phone 124px of preamble
+        to state one thing twice. The claim that carries weight goes first. */}
     <div className="surface px-3 py-2 text-[12.5px] flex flex-wrap gap-x-3 gap-y-1" style={muted}>
       <Tag accent={snapshot.canWrite}>{snapshot.mode === 'LOCAL_SANDBOX' ? 'LOCAL SANDBOX' : 'READ ONLY'}</Tag>
+      <span style={{ color: 'var(--accent)' }}>No agents are launched by this board.</span>
       <span>{snapshot.canWrite
         ? 'Local definitions, messages and receipts persist in a server file. Participant selection is a demonstration identity, not authentication.'
         : <>Enable local coordination with <code className="mono">npm run dev:coordination</code>.</>}</span>
+      <span className="mono">Scope: {snapshot.scope}</span>
     </div>
     {error && <p role="alert" className="surface p-3 m-0" style={{ color: 'var(--status-refused)' }}>{error} Your unsaved input has been retained.</p>}
     <div role="status" aria-live="polite" className={notice ? 'text-[12px]' : 'sr-only'} style={muted}>{notice}</div>
@@ -152,41 +164,13 @@ export function CoordinationWorkspace({ initial, view }: { initial: Coordination
         <label className="flex flex-col gap-1 min-w-[150px]"><span className="label-sm">Participant kind</span><select className={fieldClass} value={participantKind} onChange={(event) => setParticipantKind(event.target.value)}><option value="ALL">All participants</option><option value="AGENT">Agents</option><option value="APPARATUS">Apparatuses</option></select></label>
         <span className="label-sm pb-2">{participants.length} of {snapshot.participants.length} definitions</span>
       </form>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {participants.map((participant) => {
-          const connections = snapshot.connections.filter((connection) => connection.sourceId === participant.id || connection.targetId === participant.id);
-          return <article key={participant.id} aria-label={`Participant ${participant.name}`} className="surface p-3 flex flex-col gap-3 min-w-0">
-            <header className="flex flex-wrap items-start justify-between gap-2">
-              <div><p className="label-sm m-0 mb-1">{participant.kind}</p><h2 className="text-[16px] font-semibold m-0">{participant.name}</h2><span className="id" style={muted}>{participant.id}</span></div>
-              <Tag accent={participant.status === 'LOCAL'}>{participant.status}</Tag>
-            </header>
-            <p className="m-0 text-[13px]" style={muted}>{participant.purpose}</p>
-            <dl className="kv text-[12.5px] m-0">
-              <dt>Runtime / version</dt><dd>{participant.runtime} <span className="mono">{participant.version}</span></dd>
-              <dt>Declared authority</dt><dd>{participant.authority}</dd>
-              <dt>Domains</dt><dd>{participant.domains.join(' · ') || 'Shared'}</dd>
-              <dt>Inputs</dt><dd className="mono">{participant.inputs.join(', ') || 'None declared'}</dd>
-              <dt>Outputs</dt><dd className="mono">{participant.outputs.join(', ') || 'None declared'}</dd>
-              <dt>Capabilities</dt><dd>{participant.capabilities.join(', ') || 'None declared'}</dd>
-              <dt>Reference</dt><dd className="mono">{participant.reference}</dd>
-            </dl>
-            <details className="surface-inset p-2 mt-auto">
-              <summary className="text-[12.5px]">Synastry · {connections.length} declared connections</summary>
-              <p className="text-[12px] mt-2 mb-0" style={muted}>Contract compatibility indicates how definitions can work together. It does not attest deployment or authorize execution.</p>
-              <ul className="list-none p-0 m-0 mt-2 flex flex-col gap-2">
-                {connections.map((connection) => <li key={`${connection.sourceId}:${connection.targetId}`} className="border-t pt-2 text-[12px]" style={{ borderColor: 'var(--border-subtle)' }}>
-                  <div className="flex flex-wrap items-center gap-2"><span>{participantName(connection.sourceId)} → {participantName(connection.targetId)}</span><Tag accent={connection.status === 'MATCH'}>{connection.status}</Tag></div>
-                  <p className="m-0 mt-1 mono break-words">Contracts: {connection.contracts.join(', ')}</p>
-                  <p className="m-0 mt-1" style={muted}>Domains: {connection.domains.join(' · ') || 'Shared'}</p>
-                  {connection.missingInputs.length > 0 && <p className="m-0 mt-1" style={{ color: 'var(--accent)' }}>Missing inputs: <span className="mono">{connection.missingInputs.join(', ')}</span></p>}
-                </li>)}
-                {connections.length === 0 && <li className="text-[12px]" style={muted}>No compatible declared contracts in this scope.</li>}
-              </ul>
-            </details>
-          </article>;
-        })}
-      </div>
-      {participants.length === 0 && <p className="surface p-3 m-0" style={muted}>No definitions match these filters.</p>}
+      <StableRegister
+        participants={participants}
+        all={snapshot.participants}
+        connections={snapshot.connections}
+        selectedId={selectedParticipant}
+        onSelect={setSelectedParticipant}
+      />
       {snapshot.canWrite && <Section title="Register a local definition" id="local-registration">
         <form aria-label="Register participant" className="surface p-3" onSubmit={register}>
           <p className="m-0 mb-3 text-[12.5px]" style={muted}>Register a version 0.1.0 definition in this sandbox. This records a declared role and contracts; it does not launch a process or grant authority.</p>
@@ -211,32 +195,20 @@ export function CoordinationWorkspace({ initial, view }: { initial: Coordination
         <label className="flex flex-col gap-1 min-w-[180px]"><span className="label-sm">Message kind filter</span><select className={fieldClass} value={messageKind} onChange={(event) => setMessageKind(event.target.value)}><option value="ALL">All kinds</option>{MESSAGE_KINDS.map((kind) => <option key={kind}>{kind}</option>)}</select></label>
         <span className="label-sm self-end pb-2">{messages.length} messages · oldest first</span>
       </form>
-      <div className="flex flex-col gap-3" aria-label="Messages">
-        {messages.map((message) => {
-          const receipts = snapshot.acknowledgements.filter((acknowledgement) => acknowledgement.messageId === message.id);
-          const eligible = snapshot.participants.filter((participant) => participant.id !== message.authorId &&
-            (!message.recipientId || message.recipientId === participant.id) &&
-            (!message.context || participant.domains.includes(message.context.domain)) && !receipts.some((receipt) => receipt.participantId === participant.id));
-          const acknowledgementId = eligible.find((participant) => participant.id === acknowledgers[message.id])?.id ?? eligible[0]?.id ?? '';
-          return <article key={message.id} id={`message-${message.id}`} aria-label={`Message ${message.title}`} className="surface p-3 flex flex-col gap-2 scroll-mt-16">
-            <div className="flex flex-wrap justify-between items-center gap-2"><div className="flex flex-wrap gap-2 items-center"><Tag accent={message.kind === 'BLOCKER' || message.kind === 'REQUEST'}>{message.kind}</Tag><span className="mono text-[12px]" style={muted}>{message.topic}</span></div><span className="ts" style={muted}>#{message.sequence} · {message.createdAt}</span></div>
-            <h2 className="m-0 text-[16px] font-semibold">{message.title}</h2>
-            <p className="m-0 text-[12.5px]" style={muted}>{participantName(message.authorId)} → {message.recipientId ? participantName(message.recipientId) : 'All participants in this scope'}</p>
-            <p className="m-0 text-[13px] whitespace-pre-wrap break-words">{message.body}</p>
-            <MessageContext message={message} />
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11.5px]" style={muted}><span className="mono">{message.id}</span><a href={`#message-${threadRoot(message, snapshot.messages)}`}>Thread {threadRoot(message, snapshot.messages)}</a>{message.replyTo && <a href={`#message-${message.replyTo}`}>Reply to {message.replyTo}</a>}</div>
-            <div className="border-t pt-2 flex flex-col gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
-              <p className="m-0 text-[12px]" style={muted}>{receipts.length === 0 ? 'No acknowledgement receipts.' : 'Acknowledgement receipts:'}</p>
-              {receipts.length > 0 && <ul className="m-0 pl-4 text-[12px]" style={muted}>{receipts.map((receipt) => <li key={receipt.participantId}>{participantName(receipt.participantId)} · <span className="ts">{receipt.createdAt}</span></li>)}</ul>}
-              {snapshot.canWrite && <div className="flex flex-wrap gap-2 items-end">
-                <button className="btn btn-sm" type="button" disabled={busy} onClick={() => reply(message)}>Reply</button>
-                {eligible.length > 0 && <><label className="flex flex-col gap-1"><span className="label-sm">Acknowledge as</span><select className={fieldClass} aria-label={`Acknowledge ${message.title} as`} value={acknowledgementId} onChange={(event) => setAcknowledgers((previous) => ({ ...previous, [message.id]: event.target.value }))} disabled={busy}>{eligible.map((participant) => <option key={participant.id} value={participant.id}>{participant.name}</option>)}</select></label><button className="btn btn-sm" type="button" disabled={busy} onClick={() => void request({ operation: 'acknowledge', messageId: message.id, participantId: acknowledgementId })}>Acknowledge</button></>}
-              </div>}
-            </div>
-          </article>;
-        })}
-        {messages.length === 0 && <p className="surface p-3 m-0" style={muted}>No messages match these filters.</p>}
-      </div>
+      <BoardRegister
+        messages={messages}
+        all={snapshot.messages}
+        participants={snapshot.participants}
+        acknowledgements={snapshot.acknowledgements}
+        canWrite={snapshot.canWrite}
+        busy={busy}
+        selectedId={selectedMessage}
+        onSelect={setSelectedMessage}
+        onReply={reply}
+        onAcknowledge={(messageId, participantId) => void request({ operation: 'acknowledge', messageId, participantId })}
+        acknowledgerFor={(messageId) => acknowledgers[messageId] ?? ''}
+        onAcknowledgerChange={(messageId, participantId) => setAcknowledgers((previous) => ({ ...previous, [messageId]: participantId }))}
+      />
       {snapshot.canWrite && <Section title="Post to the board" id="message-composer">
         <form aria-label="Compose message" onSubmit={postMessage} className="surface p-3">
           <fieldset disabled={busy} className="border-0 p-0 m-0 grid grid-cols-1 md:grid-cols-3 gap-3 min-w-0">

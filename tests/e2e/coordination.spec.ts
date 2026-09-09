@@ -67,23 +67,60 @@ for (const surface of SURFACES) {
   });
 }
 
-test('coordination: stable search, kind filters and synastry disclose declared relationships', async ({ page }, testInfo) => {
+test('coordination: the stable is a register, its filters cut it, and synastry is walked from the inspector', async ({ page }, testInfo) => {
   await page.goto('/agents');
-  const normalization = page.getByRole('article', { name: 'Participant Normalization agent', exact: true });
-  await expect(normalization.getByText('PLANNED', { exact: true })).toBeVisible();
-  await normalization.locator('summary').click();
-  await expect(normalization.getByText(/Contract compatibility indicates how definitions can work together/)).toBeVisible();
-  await expect(normalization.getByText('MATCH', { exact: true }).first()).toBeVisible();
-  await expect(normalization.getByText('PARTIAL', { exact: true })).toBeVisible();
-  await expect(normalization.getByText(/Missing inputs:/)).toContainText('IdentityMapping/v1');
+  const register = page.getByRole('table', { name: 'Agents and apparatuses' });
+  await expect(register.locator('tbody tr')).toHaveCount(12);
+  await expect(page.getByTestId('participant-inspector')).toHaveCount(0);
+
+  await page.locator('[data-participant-select="agent.normalize"]').click();
+  const inspector = page.getByTestId('participant-inspector');
+  await expect(inspector.getByText('Normalization agent')).toBeVisible();
+  await expect(page).toHaveURL(/#participant=agent\.normalize$/);
+  await expect(inspector.getByText(/Contract compatibility indicates how definitions can work together/)).toBeVisible();
+  await expect(inspector.getByText('MATCH', { exact: true }).first()).toBeVisible();
+  await expect(inspector.getByText('PARTIAL', { exact: true })).toBeVisible();
+  await expect(inspector.getByText(/Missing inputs:/)).toContainText('IdentityMapping/v1');
   await page.screenshot({ path: testInfo.outputPath('coordination-synastry.png'), fullPage: true });
+
+  // A connection names another row, so it selects it rather than printing an id.
+  await inspector.getByRole('button', { name: 'Identity agent', exact: true }).click();
+  await expect(page.getByTestId('participant-inspector')).toContainText('Propose evidence-bearing mappings');
+  await expect(page).toHaveURL(/#participant=agent\.identity$/);
 
   await page.getByRole('combobox', { name: 'Participant kind', exact: true }).selectOption('AGENT');
   await page.getByLabel('Search the stable', { exact: true }).fill('identity.propose');
-  await expect(page.getByRole('article')).toHaveCount(1);
-  await expect(page.getByRole('article', { name: 'Participant Identity agent', exact: true })).toBeVisible();
+  await expect(register.locator('tbody tr')).toHaveCount(1);
+  await expect(page.locator('[data-participant-select="agent.identity"]')).toBeVisible();
   await page.getByRole('combobox', { name: 'Participant kind', exact: true }).selectOption('APPARATUS');
   await expect(page.getByText('No definitions match these filters.')).toBeVisible();
+  // The selection survives a filter that hides its row, and says so.
+  await expect(page.getByTestId('participant-not-listed')).toBeVisible();
+});
+
+test('coordination: a selection is in the URL, that URL opens on it, and a name the surface does not hold opens on nothing', async ({ page }) => {
+  await page.goto('/agents#participant=apparatus.delivery');
+  await expect(page.getByTestId('participant-inspector')).toContainText('API and feed projection');
+
+  // Loaded fresh, because a fragment change on a live page is a same-document
+  // navigation: there the register keeps the selection it has rather than
+  // clearing it for a name that means nothing here. This is the other
+  // direction — arriving on such a name, with nothing to keep.
+  await page.goto('/board');
+  await page.goto('/agents#participant=agent.nowhere');
+  await expect(page.getByTestId('participant-inspector')).toHaveCount(0);
+
+  await page.goto('/board#message=MSG-00002');
+  const inspector = page.getByTestId('message-inspector');
+  await expect(inspector.getByTestId('message-body')).toContainText('The demonstration release has no sample-to-lot link.');
+  await expect(inspector.getByRole('link', { name: 'REL-CAR-2026.09.01', exact: true })).toHaveAttribute('href', '/releases/REL-CAR-2026.09.01');
+  // A message that is not a reply says so, in an element that is there to read.
+  await expect(inspector.getByTestId('inspector-reply-to')).toContainText('Nothing');
+  await expect(inspector.getByTestId('inspector-thread')).toContainText('This message starts the thread.');
+
+  await page.goto('/agents');
+  await page.goto('/board#message=MSG-00404');
+  await expect(page.getByTestId('message-inspector')).toHaveCount(0);
 });
 
 test('coordination: the fixture API exposes the shared register with writes explicitly disabled', async ({ request }) => {
@@ -140,9 +177,9 @@ test('coordination: the fixture inbox scopes pending handoffs, opts into broadca
 test('coordination: both surfaces have no serious or critical accessibility violations', async ({ page }) => {
   for (const surface of SURFACES) {
     await page.goto(surface.path);
-    if (surface.path === '/agents') {
-      await page.getByRole('article', { name: 'Participant Normalization agent', exact: true }).locator('summary').click();
-    }
+    // With the inspector open, which is the state that carries the most markup.
+    await page.locator(surface.path === '/agents' ? '[data-participant-select="agent.normalize"]' : '[data-message-select="MSG-00002"]').click();
+    await expect(page.getByTestId(surface.path === '/agents' ? 'participant-inspector' : 'message-inspector')).toBeVisible();
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
     const serious = results.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical');
     expect(serious, `${surface.path}: ${JSON.stringify(serious.map((violation) => ({ id: violation.id, nodes: violation.nodes.length, help: violation.help })), null, 1)}`).toEqual([]);
@@ -154,9 +191,9 @@ test('coordination: mobile surfaces and expanded relationships stay within the v
   for (const surface of SURFACES) {
     await page.goto(surface.path);
     await expect(page.getByRole('heading', { level: 1, name: surface.heading })).toBeVisible();
-    if (surface.path === '/agents') {
-      await page.getByRole('article', { name: 'Participant Normalization agent', exact: true }).locator('summary').click();
-    }
+    await expectNoHorizontalOverflow(page);
+    await page.locator(surface.path === '/agents' ? '[data-participant-select="agent.normalize"]' : '[data-message-select="MSG-00002"]').click();
+    await expect(page.getByTestId(surface.path === '/agents' ? 'participant-inspector' : 'message-inspector')).toBeVisible();
     await expectNoHorizontalOverflow(page);
   }
 });
@@ -184,20 +221,27 @@ test('coordination: isolated local board composes a handoff, records its recipie
   await composer.getByLabel('Body', { exact: true }).fill('Inspect the sample-to-lot mapping against this release and retain unresolved evidence.');
   await composer.getByRole('button', { name: 'Post message', exact: true }).click();
 
-  const handoff = page.getByRole('article', { name: `Message ${title}`, exact: true });
-  await expect(handoff).toBeVisible();
-  await expect(handoff.getByText('HANDOFF', { exact: true })).toBeVisible();
-  await expect(handoff.getByRole('link', { name: context.releaseId, exact: true })).toBeVisible();
+  // Wait for the posted message to reach the register before reading the
+  // ledger's state for its id: the row appearing is what says the round trip
+  // has happened, and reading first raced it.
+  const register = page.getByRole('table', { name: 'Messages' });
+  await expect(register).toContainText(title);
+  const posted = api.state().messages.find((message) => message.title === title)!;
+  const row = page.locator(`[data-message-select="${posted.id}"]`);
+  await expect(row).toContainText(title);
+  await expect(row.locator('xpath=ancestor::tr')).toContainText('HANDOFF');
   expect(api.commands[0]).toMatchObject({
     operation: 'post', message: { authorId: 'apparatus.corpus', recipientId: 'agent.identity', kind: 'HANDOFF', topic: 'identity-review', context },
   });
-  const posted = api.state().messages.find((message) => message.title === title)!;
+
+  await row.click();
+  const handoff = page.getByTestId('message-inspector');
+  await expect(handoff.getByRole('link', { name: context.releaseId, exact: true })).toBeVisible();
   const acknowledger = handoff.getByRole('combobox', { name: `Acknowledge ${title} as`, exact: true });
   await expect(acknowledger.locator('option')).toHaveCount(1);
   await expect(acknowledger).toHaveValue('agent.identity');
   await handoff.getByRole('button', { name: 'Acknowledge', exact: true }).click();
-  await expect(handoff.getByText('Acknowledgement receipts:', { exact: true })).toBeVisible();
-  await expect(handoff.getByRole('list')).toContainText('Identity agent');
+  await expect(handoff.getByTestId('message-receipts')).toContainText('Identity agent');
   expect(api.commands[1]).toEqual({ operation: 'acknowledge', messageId: posted.id, participantId: 'agent.identity' });
 
   await composer.getByRole('combobox', { name: 'Author', exact: true }).selectOption('agent.identity');
@@ -210,9 +254,15 @@ test('coordination: isolated local board composes a handoff, records its recipie
   await composer.getByRole('combobox', { name: 'Message kind', exact: true }).selectOption('RESULT');
   await composer.getByLabel('Body', { exact: true }).fill('The evidence does not yet establish identity. Keep the mapping unresolved.');
   await composer.getByRole('button', { name: 'Post message', exact: true }).click();
-  const reply = page.getByRole('article', { name: `Message Re: ${title}`, exact: true });
-  await expect(reply).toBeVisible();
-  await expect(reply.getByRole('link', { name: `Reply to ${posted.id}`, exact: true })).toHaveAttribute('href', `#message-${posted.id}`);
+  await expect(register).toContainText(`Re: ${title}`);
+  const replied = api.state().messages.find((message) => message.title === `Re: ${title}`)!;
+  await page.locator(`[data-message-select="${replied.id}"]`).click();
+  const reply = page.getByTestId('message-inspector');
+  await expect(reply.getByTestId('inspector-reply-to')).toContainText(posted.id);
+  // Following the thread selects the message it answers rather than scrolling to it.
+  await reply.getByTestId('inspector-reply-to-open').click();
+  await expect(page.getByTestId('message-inspector')).toContainText(title);
+  await expect(page).toHaveURL(new RegExp(`#message=${posted.id}$`));
   expect(api.commands[2]).toMatchObject({
     operation: 'post', message: { authorId: 'agent.identity', recipientId: 'apparatus.corpus', kind: 'RESULT', replyTo: posted.id, topic: 'identity-review', context },
   });

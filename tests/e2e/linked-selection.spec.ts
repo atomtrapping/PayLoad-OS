@@ -56,3 +56,63 @@ test('selecting down a register does not fill the back button', async ({ page })
   await page.waitForLoadState('load');
   expect(new URL(page.url()).pathname).toBe('/cases');
 });
+
+/**
+ * The release register, which is where the inspector pattern was worth the
+ * change: nine columns became six, the paragraph fields moved beside the
+ * table, and the supersession chain became something you walk rather than an
+ * identifier you read and go looking for.
+ */
+test('the release register shows every column it has, and the inspector carries the rest', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/releases');
+  await page.waitForLoadState('load');
+  await page.evaluate(() => document.fonts.ready);
+
+  await page.locator('[data-release-select="REL-CAR-2026.09.01"]').click();
+  await expect(page.getByTestId('release-inspector')).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#release=REL-CAR-2026.09.01');
+
+  // The register fits beside the inspector at the design's desktop width. The
+  // measured failure this replaced: the last column sat past the right edge of
+  // a scroll region a reader has no reason to suspect, so the field naming the
+  // release that replaced this one was the field nobody saw.
+  const hidden = await page.evaluate(() =>
+    [...document.querySelectorAll('.register')].map((el) => el.scrollWidth - el.clientWidth));
+  expect(hidden, `columns hidden inside the register's own scroll: ${hidden.join(', ')}`).toEqual(hidden.map(() => 0));
+
+  // The chain is walked from inside the inspector, without leaving the page.
+  await page.getByTestId('inspector-supersedes').click();
+  await expect(page.getByTestId('release-inspector')).toContainText('REL-CAR-2026.08.25');
+  await expect.poll(() => new URL(page.url()).hash).toBe('#release=REL-CAR-2026.08.25');
+
+  // And the link opens on it again, cold.
+  const link = page.url();
+  await page.goto('/retractions');
+  await page.goto(link);
+  await page.waitForLoadState('load');
+  await expect(page.getByTestId('release-inspector')).toContainText('REL-CAR-2026.08.25');
+  await expect(page.locator('tr[data-release-id="REL-CAR-2026.08.25"]')).toHaveAttribute('aria-selected', 'true');
+});
+
+test('the inspector sits beside the register only where the register still fits', async ({ page }) => {
+  // A list of titles survives a 370px column; a six-column register does not,
+  // so this surface keeps the inline detail view until the two fit side by side.
+  for (const { width, beside } of [{ width: 1440, beside: true }, { width: 1439, beside: false }, { width: 1024, beside: false }]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/releases#release=REL-CAR-2026.09.01');
+    await page.waitForLoadState('load');
+    // The selection is read from the hash on mount, so the panel exists once
+    // the page is interactive rather than once it has loaded.
+    await page.getByTestId('release-inspector').waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    const seen = await page.evaluate(() => {
+      const register = document.querySelector('.register')!.getBoundingClientRect();
+      const inspector = document.querySelector('.inspector')!.getBoundingClientRect();
+      const el = document.querySelector('.register')!;
+      return { beside: inspector.left >= register.right - 1, hidden: el.scrollWidth - el.clientWidth };
+    });
+    expect(seen.beside, `${width}px`).toBe(beside);
+    expect(seen.hidden, `${width}px: columns hidden inside the register`).toBe(0);
+  }
+});

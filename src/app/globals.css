@@ -230,18 +230,56 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 
 /* ── Tables ── */
 .ledger-table { width: 100%; border-collapse: collapse; }
+/* 8px of side padding rather than 10. Six columns spend twelve gutters, and
+   the register measured twenty pixels past its own scroll region at the width
+   the inspector leaves it — which put the last column out of sight in a
+   scroll nobody has reason to suspect. Two pixels a side buys twenty-four. */
 .ledger-table th {
   text-align: left; font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--text-muted);
-  padding: 8px 10px; border-bottom: 1px solid var(--border-default);
+  padding: 8px; border-bottom: 1px solid var(--border-default);
   white-space: nowrap;
 }
 .ledger-table td {
-  padding: 8px 10px; border-bottom: 1px solid var(--border-subtle);
+  padding: 8px; border-bottom: 1px solid var(--border-subtle);
   vertical-align: top;
 }
 .ledger-table tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 .ledger-table tbody tr[aria-selected='true'] { background: var(--highlight-bg); }
+/* An identifier is a unit, and a register is where identifiers are compared
+   down a column. `build-caravan-sc-2026.09.01` broke at each of its hyphens
+   into four stacked pieces, which is unreadable on its own row and impossible
+   to compare against the row below it; a release id and a timestamp broke the
+   same way. They do not break here — the table owns a horizontal scroll region
+   and scrolling is the cheaper cost. A digest keeps `word-break: break-all`,
+   because a digest is not read as a word and is shown truncated anyway. */
+.ledger-table .id, .ledger-table .ts, .ledger-table .ver { white-space: nowrap; }
+/* A header may wrap where its words are wider than its column's values. The
+   register's clock is named in full — "Information known by" is not the same
+   claim as "known by" — and the phrase measured wider than the timestamp under
+   it, which pushed the last column of the table off the right edge of its own
+   scroll region. Two lines of header once is cheaper than a column nobody
+   knows is there. */
+.ledger-table th.th-wrap { white-space: normal; }
+
+/* A register that scrolls says so.
+   Four background layers and no script. The two `local` layers scroll with the
+   content and are the surface's own colour, so they sit over the shadow at
+   whichever end has nothing beyond it; the two `scroll` layers stay put. The
+   result is a shadow at an edge exactly when there is more table past it —
+   which is the fact a reader needs and could not otherwise have, because a
+   column past the right edge of a silent scroll region is a column nobody
+   knows is there. The nav strip already fades its own overflowing edge; this
+   is the same statement in the same language, made where the content is. */
+.register {
+  overflow-x: auto;
+  background:
+    linear-gradient(to right, var(--bg-secondary) 30%, rgba(8, 13, 19, 0)) left center / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--bg-secondary) 30%, rgba(8, 13, 19, 0)) right center / 28px 100% no-repeat local,
+    linear-gradient(to right, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0)) left center / 16px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0)) right center / 16px 100% no-repeat scroll,
+    var(--bg-secondary);
+}
 
 /* ── Key/value rows ── */
 .kv { display: grid; grid-template-columns: minmax(96px, 128px) 1fr; column-gap: 12px; row-gap: 6px; align-items: baseline; }
@@ -459,6 +497,19 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 @media (min-width: 1024px) {
   .workspace.has-inspector { grid-template-columns: minmax(0, 1fr) var(--inspector-w); grid-template-areas: 'top inspector' 'bottom inspector'; grid-template-rows: auto 1fr; }
   .inspector { position: sticky; top: calc(var(--topbar-h) + 12px); max-height: calc(100vh - var(--topbar-h) - 32px); overflow-y: auto; }
+}
+/* A surface whose centre is a register needs more room before the inspector
+   can sit beside it, and the number is measured rather than chosen. The
+   release register is 760px of table. Beside the inspector it gets the
+   viewport less the 232px rail, the 400px inspector and the page's padding —
+   which is 760px at 1440 and 600px at 1280, where a sixth of the table sits
+   past its own right edge. So these surfaces keep the inline detail view, the
+   same one every surface uses below 1024, until the register fits beside the
+   inspector whole. A list of titles survives the narrower column and keeps the
+   earlier breakpoint; a register does not. */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .workspace-register.has-inspector { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'top' 'inspector' 'bottom'; grid-template-rows: none; }
+  .workspace-register .inspector { position: static; max-height: none; overflow-y: visible; }
 }
 .inspector-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 12px 14px; background: var(--bg-tertiary); border-top: 3px solid var(--chrome-rail); border-bottom: 1px solid var(--border-default); }
 .inspector-title { margin: 0; font-size: var(--text-lg); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; color: var(--text-heading); }

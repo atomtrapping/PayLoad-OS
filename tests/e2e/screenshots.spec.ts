@@ -23,6 +23,9 @@ test('desktop screenshots', async ({ page }) => {
   await page.goto('/releases');
   await page.getByRole('table', { name: 'Releases of caravan.specialty-cargo' }).waitFor();
   await page.screenshot({ path: `${OUT}/00a-releases.png`, fullPage: true });
+  await page.locator('[data-release-select="REL-CAR-2026.08.25"]').click();
+  await page.getByTestId('release-inspector').waitFor();
+  await page.screenshot({ path: `${OUT}/00a1-release-inspector.png`, fullPage: true });
   await page.goto('/releases/REL-CAR-2026.09.01');
   await page.getByTestId('certification').waitFor();
   await page.screenshot({ path: `${OUT}/00a2-release-certified.png`, fullPage: true });

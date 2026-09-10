@@ -15,8 +15,10 @@ export const NAV_AREAS: readonly NavArea[] = [
   // here and nothing that answered that question anywhere.
   { id: 'system', label: 'System', activity: 'What this terminal can see about itself: stores, the admission gate, and what is refused right now', items: [
     { href: '/', label: 'Console', match: /^\/$/ },
+    { href: '/control', label: 'Control Plane', match: /^\/control/ },
   ] },
   { id: 'products', label: 'Products', activity: 'The three APIs, what they deliver, and how a customer reads them', items: [
+    { href: '/commercial', label: 'Commercial Plane', match: /^\/commercial/ },
     { href: '/products', label: 'Products', match: /^\/products/ },
     { href: '/landshark', label: 'Landshark', match: /^\/landshark$/ },
     { href: '/tradewind', label: 'Tradewind', match: /^\/tradewind$/ },

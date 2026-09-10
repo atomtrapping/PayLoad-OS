@@ -46,7 +46,9 @@ describe('the navigation names every page', () => {
     // system, and `/` answered it with a redirect into the catalogue until the
     // console existed.
     expect(NAV_AREAS[0].id).toBe('system');
-    expect(NAV_AREAS[0].items.map((i) => i.href)).toEqual(['/']);
+    // The terminal still leads; the control plane sits behind it, because a
+    // page about the architecture is not the thing an operator opens first.
+    expect(NAV_AREAS[0].items.map((i) => i.href)).toEqual(['/', '/control']);
     expect(NAV_AREAS[1].id).toBe('products');
     expect(NAV_AREAS[1].items.map((i) => i.label)).toContain('Products');
   });

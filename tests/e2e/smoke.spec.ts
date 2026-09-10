@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { LOCAL_RAILS } from '../../src/domain/console';
+import { DOMAINS } from '../../src/domain/domains';
+import { CUSTOMER_CATEGORIES, ECONOMIC_ARCHITECTURE, PRODUCTION_SYSTEM, THESIS } from '../../src/domain/product';
 
 const ROUTES = ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
 
@@ -80,13 +82,25 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
 
 test('the product page states the firm, the twelve stages, the three customer categories and the four-step economic architecture', async ({ page }) => {
   await page.goto('/model');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('transform, organize, and license real-world data and analytics');
-  await expect(page.locator('[data-stage]')).toHaveCount(12);
-  await expect(page.locator('[data-customer]')).toHaveCount(3);
-  await expect(page.locator('[data-step]')).toHaveCount(4);
+  // Read from the thesis rather than from a copy of it. The firm's positioning
+  // was rewritten and the unit test moved with it while this one kept asserting
+  // the old sentence, which is the failure mode a duplicated string has.
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(THESIS.firm);
+  // Counted from the model rather than written down beside it. A fourth
+  // customer category was added and this test still expected three, which is
+  // the same staleness the heading had: the page and the test were reading two
+  // different copies of one fact.
+  await expect(page.locator('[data-stage]')).toHaveCount(PRODUCTION_SYSTEM.length);
+  await expect(page.locator('[data-customer]')).toHaveCount(CUSTOMER_CATEGORIES.length);
+  await expect(page.locator('[data-step]')).toHaveCount(ECONOMIC_ARCHITECTURE.length);
   // The three data-product lines use API/MCP delivery; NotationsOS stays internal.
   const tree = page.getByLabel('Product architecture tree');
-  await expect(tree).toContainText('Landshark — API and MCP — parcels, zoning, entitlements, development state');
+  // The scope line comes from the registry too. It was rewritten with the
+  // firm's positioning and this assertion held the old wording.
+  const landshark = DOMAINS.find((domain) => domain.id === 'LANDSHARK')!;
+  // The tree lowercases the scope, so the comparison does the same rather than
+  // asserting a third spelling of it.
+  await expect(tree).toContainText(`${landshark.label} — ${landshark.delivery} — ${landshark.scope.toLowerCase()}`);
   await expect(tree).toContainText('NotationsOS — internal terminal');
   await expect(page.locator('#pm-architecture')).toContainText('data-product lines');
   await expect(page.locator('[data-fabric]')).toHaveCount(5);

@@ -11,7 +11,6 @@ import { PGlite } from '@electric-sql/pglite';
 import { NEWSROOM_CLASSES, PUBLICATION_CLASSES } from '@/domain/editorialPlane';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from './discoveryLedger';
 import { EDITORIAL_LEDGER_DDL, REFUSED_PUBLICATION_CLASSES } from './editorialLedger';
-import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -253,11 +252,5 @@ describe('nothing has been published', () => {
       'channel_publication', 'external_observation', 'corroboration']) {
       expect(await rows(`SELECT 1 FROM ${table}`), table).toEqual([]);
     }
-  });
-
-  it('creates the columns the drift check names', () => {
-    expect(ddlColumns(EDITORIAL_LEDGER_DDL)['external_observation']).toContain('descends_from_artifact_id');
-    expect(ddlColumns(EDITORIAL_LEDGER_DDL)['channel_publication']).toContain('archived_publication_id');
-    expect(ddlColumns(EDITORIAL_LEDGER_DDL)['editorial_release']).toContain('still_unknown');
   });
 });

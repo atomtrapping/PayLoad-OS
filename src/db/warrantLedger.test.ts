@@ -239,9 +239,30 @@ describe('nothing has transitioned', () => {
     }
   });
 
-  it('creates the columns the drift check names', () => {
-    expect(ddlColumns(WARRANT_LEDGER_DDL)['budget_reservation']).toContain('balance_after_minor');
-    expect(ddlColumns(WARRANT_LEDGER_DDL)['desk_exception']).toContain('resolution_path');
-    expect(ddlColumns(WARRANT_LEDGER_DDL)['transition_warrant']).toContain('on_what_evidence');
+  /*
+   * The last of these, and the only one that was ever doing work.
+   *
+   * Ten other ledgers carried a test of this shape, and all of them asserted
+   * columns written literally in their own DDL — remove such a column and
+   * between three and fifty-four behavioural tests in the same file fail
+   * first, which is how it was established that those ten guarded nothing.
+   *
+   * These seven are different: they are not written anywhere. warrantLedger.ts
+   * generates them by slugifying WARRANT_QUESTIONS, and generates the DDL from
+   * the same array, so the inserts and the schema rename together and no
+   * behavioural test can notice. Reword a question in the domain — "On what
+   * evidence" to "On what basis" — and a schema column silently becomes
+   * `on_what_basis` while every migration, query and dashboard naming the old
+   * one breaks somewhere this suite cannot see.
+   *
+   * So this pins the derivation to the names the schema actually has.
+   */
+  it('derives the seven column names from the seven questions, and creates exactly those', () => {
+    expect(WARRANT_COLUMNS).toEqual([
+      'what_changed', 'from_which_state', 'on_what_evidence', 'under_which_rule',
+      'by_whose_authority', 'through_which_execution_attempt', 'with_what_verification',
+    ]);
+    const created = ddlColumns(WARRANT_LEDGER_DDL)['transition_warrant'];
+    for (const column of WARRANT_COLUMNS) expect(created, column).toContain(column);
   });
 });

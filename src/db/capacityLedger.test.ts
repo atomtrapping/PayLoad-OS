@@ -12,7 +12,6 @@ import {
   ASSERTING_BASES, RELATIONSHIP_ROLES, TRANSPORT_STAGES, utilization,
 } from '@/domain/capacityCoupling';
 import { CAPACITY_LEDGER_DDL, STANDING_BASES } from './capacityLedger';
-import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -238,11 +237,5 @@ describe('nothing is mapped', () => {
       'cluster_definition', 'cluster_census', 'cluster_change']) {
       expect(await rows(`SELECT 1 FROM ${table}`), table).toEqual([]);
     }
-  });
-
-  it('creates the columns the drift check names', () => {
-    expect(ddlColumns(CAPACITY_LEDGER_DDL)['site_relationship']).toContain('basis');
-    expect(ddlColumns(CAPACITY_LEDGER_DDL)['commissioned_capacity']).toContain('process_line');
-    expect(ddlColumns(CAPACITY_LEDGER_DDL)['cluster_census']).toContain('definition_version');
   });
 });

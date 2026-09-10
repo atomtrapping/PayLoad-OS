@@ -12,7 +12,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { INDEPENDENT_KINDS, OBSERVATION_BASES, STATE_KINDS } from '@/domain/stateKinds';
 import { STATE_LEDGER_DDL } from './stateLedger';
-import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -265,11 +264,5 @@ describe('nothing is declared', () => {
       'accepted_revision', 'recorded_contradiction']) {
       expect(await rows(`SELECT 1 FROM ${table}`), table).toEqual([]);
     }
-  });
-
-  it('creates the columns the drift check names', () => {
-    expect(ddlColumns(STATE_LEDGER_DDL)['state_estimate']).toContain('applicability_limit');
-    expect(ddlColumns(STATE_LEDGER_DDL)['state_estimate']).toContain('evidence_known_by');
-    expect(ddlColumns(STATE_LEDGER_DDL)['variable_reading']).toContain('basis');
   });
 });

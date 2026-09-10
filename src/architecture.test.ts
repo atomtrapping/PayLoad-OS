@@ -333,6 +333,53 @@ describe('one vocabulary, and it is the registry’s', () => {
 });
 
 /**
+ * A TABLE DESCRIBED TWICE IS DRIFT-CHECKED, OR IT IS NOT DESCRIBED TWICE.
+ *
+ * Eleven ledger tests carried a case called "creates the columns the drift
+ * check names". Each parsed its own DDL string and asserted it contained three
+ * column names written a few lines above in the same file. There was no drift
+ * check. Removing any of those columns fails between three and fifty-four
+ * behavioural tests in the same file long before it fails the spot-check, so
+ * the ten that named literal columns guarded nothing and are gone; the
+ * eleventh named columns that warrantLedger.ts generates from the domain's
+ * seven questions, which nothing else can notice, and it stayed.
+ *
+ * Drift needs two descriptions of one table. Exactly two tables have them:
+ * site_node and site_link, declared as hand-written DDL in src/db/siteAtlas.ts
+ * and again as Drizzle definitions in src/db/schema.ts, and compared against
+ * each other in siteAtlas.test.ts — the one real drift check in the
+ * repository, whose own comment says why the other ledgers are better off with
+ * one description apiece.
+ *
+ * This fixes that set. Give an existing DDL table a Drizzle definition, or
+ * write DDL for a table Drizzle already has, and this fails — because the
+ * second description is the moment a drift check starts being owed.
+ */
+describe('one description per table, or a check that the two agree', () => {
+  const tablesIn = (text: string) => new Set([...text.matchAll(/CREATE TABLE (\w+)/g)].map((m) => m[1]));
+
+  it('finds exactly the two tables that siteAtlas.test.ts drift-checks', () => {
+    const declaredInDdl = new Set<string>();
+    for (const file of walk(join(ROOT, 'src/db'))) {
+      for (const table of tablesIn(readFileSync(join(ROOT, file), 'utf8'))) declaredInDdl.add(table);
+    }
+    const drizzle = new Set([...readFileSync(join(ROOT, 'src/db/schema.ts'), 'utf8')
+      .matchAll(/pgTable\('([a-z_]+)'/g)].map((m) => m[1]));
+
+    const describedTwice = [...declaredInDdl].filter((table) => drizzle.has(table)).sort();
+    expect(describedTwice, 'a table with two descriptions needs a drift check in siteAtlas.test.ts')
+      .toEqual(['site_link', 'site_node']);
+  });
+
+  /* And the check that owes its existence to them actually compares the two. */
+  it('compares the DDL against the Drizzle columns rather than against itself', () => {
+    const text = readFileSync(join(ROOT, 'src/db/siteAtlas.test.ts'), 'utf8');
+    expect(text).toContain('getTableColumns(schema.siteNodes)');
+    expect(text).toContain('getTableColumns(schema.siteLinks)');
+  });
+});
+
+/**
  * ONE CANONICALIZATION, BECAUSE A CONTENT ADDRESS IS NOT A HASH OF A TRAVERSAL.
  *
  * `canonicalJson` sorts keys recursively and drops undefined, so two objects

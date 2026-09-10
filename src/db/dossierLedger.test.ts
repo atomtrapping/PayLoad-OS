@@ -11,7 +11,6 @@ import { PGlite } from '@electric-sql/pglite';
 import { CANDIDATE_STANDINGS, REUSABLE_STANDINGS } from '@/domain/dossierService';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from './discoveryLedger';
 import { DOSSIER_LEDGER_DDL } from './dossierLedger';
-import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -261,11 +260,5 @@ describe('nothing has been asked', () => {
       'dossier_conclusion', 'corpus_candidate', 'customer_approval', 'dossier_delivery']) {
       expect(await rows(`SELECT 1 FROM ${table}`), table).toEqual([]);
     }
-  });
-
-  it('creates the columns the drift check names', () => {
-    expect(ddlColumns(DOSSIER_LEDGER_DDL)['dossier_release']).toContain('built_snapshot');
-    expect(ddlColumns(DOSSIER_LEDGER_DDL)['dossier_delivery']).toContain('recipient_id');
-    expect(ddlColumns(DOSSIER_LEDGER_DDL)['dossier_conclusion']).toContain('not_covered');
   });
 });

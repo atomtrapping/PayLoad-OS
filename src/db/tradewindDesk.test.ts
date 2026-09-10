@@ -11,7 +11,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { RUN_CONTRACTS } from '@/domain/tradewindDesk';
 import { TRADEWIND_DESK_DDL } from './tradewindDesk';
-import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -227,7 +226,5 @@ describe('the desk starts disarmed and empty', () => {
     }
     // And no other pairing is permitted anywhere in the statement.
     expect(TRADEWIND_DESK_DDL).not.toContain("('BACKTEST', 'EXECUTED')");
-    expect(ddlColumns(TRADEWIND_DESK_DDL)['desk_order']).toContain('arming_id');
-    expect(ddlColumns(TRADEWIND_DESK_DDL)['market_observation']).toContain('ingested_at');
   });
 });

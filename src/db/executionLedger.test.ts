@@ -10,7 +10,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { AGENT_MAY_NEVER } from '@/domain/executionEnvelope';
-import { ddlColumns } from './ddl';
 import {
   AUTHORIZING_PRINCIPALS, EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS,
 } from './executionLedger';
@@ -215,11 +214,5 @@ describe('the ledger starts empty', () => {
     for (const table of ['operation_proposal', 'execution_authorization', 'execution_operation', 'execution_attempt']) {
       expect(await rows(`SELECT 1 FROM ${table}`), table).toEqual([]);
     }
-  });
-
-  it('creates the columns the drift check names', () => {
-    expect(ddlColumns(EXECUTION_LEDGER_DDL)['execution_attempt']).toContain('ran_at_state_revision');
-    expect(ddlColumns(EXECUTION_LEDGER_DDL)['execution_authorization']).toContain('corpus_release_id');
-    expect(ddlColumns(EXECUTION_LEDGER_DDL)['execution_operation']).toContain('idempotency_key');
   });
 });

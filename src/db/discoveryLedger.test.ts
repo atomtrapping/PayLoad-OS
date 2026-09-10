@@ -10,7 +10,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { DERIVABLE_CLASSES, MINING_CONTRACTS } from '@/domain/discoveryLayer';
-import { ddlColumns } from './ddl';
 import {
   DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS, SERVING_PAIRS,
 } from './discoveryLedger';
@@ -557,12 +556,5 @@ describe('the ledger starts empty', () => {
     await spec();
     await expect(run()).rejects.toThrow(/corpus_release_id|foreign key/i);
     expect(await rows(`SELECT release_id FROM releases`)).toEqual([]);
-  });
-
-  it('creates the columns the drift check names', () => {
-    expect(ddlColumns(DISCOVERY_LEDGER_DDL)['derived_artifact']).toContain('claim_class');
-    expect(ddlColumns(DISCOVERY_LEDGER_DDL)['workload_run']).toContain('failure_identity');
-    expect(ddlColumns(DISCOVERY_LEDGER_DDL)['artifact_input']).toContain('input_rights');
-    expect(ddlColumns(DISCOVERY_LEDGER_DDL)['artifact_validation']).toContain('threshold_declared_at');
   });
 });

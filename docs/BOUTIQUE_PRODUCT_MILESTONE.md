@@ -1,6 +1,6 @@
 # Boutique observation-product milestone
 
-Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
+Notation Systems builds evidence-backed intelligence and operational controls for complex cross-border trade and industrial supply chains, specializing in transactions where verification is difficult and the consequences of error are substantial.
 
 NotationsOS is the internal preparation system. This increment consolidates the reviewed frontend baseline `6dd691a` into `codex/payload-os-foundation`, preserving the foundation history and existing local artifacts. It repairs persistence and catalog boundaries and adds an operator-only observation-package workflow. It does **not** claim a licensed customer delivery or a completed pilot.
 

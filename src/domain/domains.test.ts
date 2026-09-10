@@ -25,7 +25,7 @@ describe('three data-product lines with API delivery; NotationsOS is the interna
   });
 
   it('states the three as flagship products, with the honest state of each', () => {
-    expect(FLAGSHIP_PRODUCTS.statement).toMatch(/boutique data and analytics packages the firm licenses/);
+    expect(FLAGSHIP_PRODUCTS.statement).toMatch(/trade and industrial intelligence packages the firm licenses/);
     expect(FLAGSHIP_PRODUCTS.delivery).toEqual(['HTTP feed', 'MCP tools']);
     // All three lines carry a demonstration corpus and are served by the same
     // corpus-generic feed. `enabled` means servable here, never live.
@@ -39,7 +39,7 @@ describe('three data-product lines with API delivery; NotationsOS is the interna
 
   it('keeps the authoritative document in step with the data', () => {
     const doc = readFileSync(new URL('../../docs/ECONOMIC_ARCHITECTURE.md', import.meta.url), 'utf8');
-    expect(doc).toMatch(/boutique data and analytics packages/);
+    expect(doc).toMatch(/trade and industrial intelligence packages/);
     expect(doc).toMatch(/NotationsOS is the terminal, not a product/);
     expect(doc).not.toMatch(/NotationsOS is the shared production layer/);
   });

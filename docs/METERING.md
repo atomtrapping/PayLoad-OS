@@ -1,6 +1,6 @@
 # Delivery records and internal usage
 
-Notation Systems licenses boutique data and analytics packages. Internal usage
+Notation Systems licenses trade and industrial intelligence packages. Internal usage
 telemetry helps account for the work of preparing them. A compute run, agent
 invocation or inspection is an internal operation; it does not establish a
 customer charge or an additional hosted-compute offering.

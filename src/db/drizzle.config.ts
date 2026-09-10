@@ -14,5 +14,5 @@ export default defineConfig({
   out: "./src/db/drizzle",
   dialect: "postgresql",
   schemaFilter: ["public"],
-  dbCredentials: 'connectionString' in config ? { url: config.connectionString } : { host: config.host, user: config.user, password: config.password, database: config.database, port: config.port },
+  dbCredentials: 'connectionString' in config ? { url: config.connectionString } : { host: config.host, user: config.user, password: config.password, database: config.database, port: config.port, ssl: false },
 });

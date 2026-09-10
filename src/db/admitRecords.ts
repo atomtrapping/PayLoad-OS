@@ -99,14 +99,14 @@ export async function admitRecords(
     if (storageJson(normalized(actual)) !== storageJson(normalized(expected))) throw new Error('ADMISSION_WRITE_CONFLICT');
   };
 
-  await db.transaction(async (tx) => {
+  await db.transaction(async (tx: any) => {
     // Serialize a corpus's admission and seal checks. Locking the corpus also
     // orders new release inserts through their existing foreign key; locking
     // existing releases prevents their state changing during this admission.
     const [owner] = await tx.select().from(corpora).where(eq(corpora.corpusId, input.corpusId)).for('update');
     if (!owner) throw new Error('ADMISSION_RELEASE_TARGET_MISMATCH');
     const corpusReleases = await tx.select().from(releases).where(eq(releases.corpusId, input.corpusId)).orderBy(releases.releaseId).for('update');
-    const target = corpusReleases.find((release) => release.releaseId === input.releaseId);
+    const target = corpusReleases.find((release: any) => release.releaseId === input.releaseId);
     if (!target) throw new Error('ADMISSION_RELEASE_TARGET_MISMATCH');
     const open = (release: typeof target): boolean => {
       const data = release.data as { certification?: { status?: unknown } } | null;
@@ -127,7 +127,7 @@ export async function admitRecords(
         // The legacy release reader uses knowledge cutoffs rather than exact
         // membership sets. A backdated insert would otherwise change every
         // earlier sealed release whose cutoff includes it.
-        if (corpusReleases.some((release) => !open(release) && timestamp(row!.knownAt) <= timestamp(release.knownAt))) {
+        if (corpusReleases.some((release: any) => !open(release) && timestamp(row!.knownAt) <= timestamp(release.knownAt))) {
           throw new Error('ADMISSION_WOULD_CHANGE_SEALED_RELEASE');
         }
       }

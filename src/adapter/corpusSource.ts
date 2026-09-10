@@ -185,10 +185,10 @@ export class LiveCorpusSource implements CorpusSource {
     const { db, corpora, releases, records, retractions } = await this.database();
     const allCorpora = await db.select().from(corpora);
     if (!allCorpora.length) return [];
-    const rels = groupCorpusRows(await db.select().from(releases));
-    const recs = groupCorpusRows(await db.select().from(records));
-    const rets = groupCorpusRows(await db.select().from(retractions));
-    return allCorpora.map((entry) => storedCorpus(entry.data, rels.get(entry.corpusId) ?? [], recs.get(entry.corpusId) ?? [], rets.get(entry.corpusId) ?? []));
+    const rels = groupCorpusRows<any>(await db.select().from(releases));
+    const recs = groupCorpusRows<any>(await db.select().from(records));
+    const rets = groupCorpusRows<any>(await db.select().from(retractions));
+    return allCorpora.map((entry: any) => storedCorpus(entry.data, rels.get(entry.corpusId) ?? [], recs.get(entry.corpusId) ?? [], rets.get(entry.corpusId) ?? []));
   }
 
   async getCorpus(corpusId: string): Promise<Corpus | undefined> {
@@ -200,7 +200,7 @@ export class LiveCorpusSource implements CorpusSource {
     const rels = corpusId
       ? await db.select().from(releases).where(eq(releases.corpusId, corpusId))
       : await db.select().from(releases);
-    return rels.map((r) => r.data as unknown as CorpusRelease).sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1));
+    return (rels.map((r: any) => r.data as unknown as CorpusRelease) as CorpusRelease[]).sort((a: CorpusRelease, b: CorpusRelease) => (a.knownAt < b.knownAt ? 1 : -1));
   }
 
   async getRelease(releaseId: string): Promise<{ corpus: Corpus; release: CorpusRelease } | undefined> {
@@ -258,7 +258,7 @@ export class LiveCorpusSource implements CorpusSource {
       const tallies = await db.select({ provenance: records.provenance, rows: count() }).from(records).groupBy(records.provenance);
       let admitted = 0;
       let total = 0;
-      for (const tally of tallies) {
+      for (const tally of (tallies as any[])) {
         total += Number(tally.rows);
         if ((ADMITTED_PROVENANCE as readonly string[]).includes(tally.provenance)) admitted += Number(tally.rows);
       }
@@ -296,15 +296,15 @@ export class LiveCorpusSource implements CorpusSource {
         db.select({ rows: count() }).from(recordAncestry),
       ]);
       const byOutcome = tallies
-        .map((tally) => ({ outcome: tally.outcome, rulings: Number(tally.rows) }))
-        .sort((a, b) => (b.rulings - a.rulings) || (a.outcome < b.outcome ? -1 : 1));
-      const rulings = byOutcome.reduce((total, entry) => total + entry.rulings, 0);
+        .map((tally: any) => ({ outcome: tally.outcome, rulings: Number(tally.rows) }))
+        .sort((a: any, b: any) => (b.rulings - a.rulings) || (a.outcome < b.outcome ? -1 : 1));
+      const rulings = byOutcome.reduce((total: number, entry: any) => total + entry.rulings, 0);
       const ancestry = Number(ancestryRows[0]?.rows ?? 0);
       return {
         rulings, byOutcome, ancestry,
         because: rulings === 0
           ? 'The admission ruling table is empty. This is a read of the store: the gate exists, it has never been asked to rule, and nothing has been refused either.'
-          : `${rulings} ${rulings === 1 ? 'ruling' : 'rulings'} recorded, ${byOutcome.map((entry) => `${entry.rulings} ${entry.outcome}`).join(', ')}. Every ruling is written in the same transaction as the record it decided, refusals included, so this count is the gate's whole history and not only its successes.`,
+          : `${rulings} ${rulings === 1 ? 'ruling' : 'rulings'} recorded, ${byOutcome.map((entry: any) => `${entry.rulings} ${entry.outcome}`).join(', ')}. Every ruling is written in the same transaction as the record it decided, refusals included, so this count is the gate's whole history and not only its successes.`,
       };
     } catch {
       return {

@@ -25,7 +25,7 @@ export interface InformationProduct {
   domain: 'CARAVAN';
   title: string;
   customerQuestion: string;
-  customerCategories: readonly ('brokers' | 'asset_managers' | 'insurance_financing')[];
+  customerCategories: readonly ('brokers' | 'insurance_financing' | 'manufacturers_importers' | 'logistics_distributors')[];
   subjects: readonly { subjectType: string; identity: string; meaning: string; linkedBy?: string }[];
   fields: readonly ProductField[];
   freshness: { cutoff: string; cadence: string; staleness: string };
@@ -43,7 +43,7 @@ export const CARAVAN_LOT_STATE: InformationProduct = {
   domain: 'CARAVAN',
   title: 'Caravan lot state',
   customerQuestion: 'For a cargo lot under a brokerage claim: what quantity and condition were recorded for it, by whom and with what interest, as knowable at a stated time, and under which rights may the answer be used?',
-  customerCategories: ['brokers', 'insurance_financing'],
+  customerCategories: ['brokers', 'insurance_financing', 'manufacturers_importers', 'logistics_distributors'],
   subjects: [
     { subjectType: 'Lot', identity: 'notation://lot/<authority>/<lot-id>', meaning: 'A cargo lot as the parties name it. Its canonical identity is stable across records, releases and projections.' },
     { subjectType: 'Sample', identity: 'notation://sample/<authority>/<sample-id>', meaning: 'A sample drawn for measurement. It belongs to a lot only through an identity-link record; without one, a sample answers nothing about a lot.', linkedBy: 'identity.sample_of_lot' },

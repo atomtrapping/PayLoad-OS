@@ -73,7 +73,7 @@ export class LiveCaseSource implements CaseSource {
     const caseRes = await db.select().from(cases).where(eq(cases.caseId, caseId));
     if (caseRes.length === 0) return undefined;
     const rows = await db.select().from(rulings).where(eq(rulings.caseId, caseId));
-    return withRulings(caseRes[0].data, rows.map((row) => row.data as Ruling));
+    return withRulings(caseRes[0].data, rows.map((row: any) => row.data as Ruling));
   }
 
   async listCases(): Promise<ClaimCaseBundle[]> {
@@ -82,12 +82,12 @@ export class LiveCaseSource implements CaseSource {
     if (!allCases.length) return [];
     const rows = await db.select().from(rulings);
     const histories = new Map<string, Ruling[]>();
-    for (const row of rows) {
+    for (const row of (rows as any[])) {
       const history = histories.get(row.caseId) ?? [];
       history.push(row.data as Ruling);
       histories.set(row.caseId, history);
     }
-    return allCases.map((entry) => withRulings(entry.data, histories.get(entry.caseId) ?? []));
+    return allCases.map((entry: any) => withRulings(entry.data, histories.get(entry.caseId) ?? []));
   }
 
   async getCase(caseId: string): Promise<ClaimCaseBundle | undefined> {

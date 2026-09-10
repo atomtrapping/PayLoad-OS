@@ -9,13 +9,13 @@ import { DOMAINS, PRODUCT_ROOT } from './domains';
 import { MATERIAL_CLASSES, MATERIAL_LABEL, PRODUCTION_STAGES, STAGE_LABEL, type MaterialClass, type ProductionStage } from './corpus';
 
 export const THESIS = {
-  firm: 'Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.',
-  production: 'Its internal production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.',
-  inventory: 'The corpora are the information inventory from which the firm prepares boutique data and analytics packages for licensing. Each package defines its fields, coverage, methods, quality, permitted use and version. Customers can apply their own inference, models, agents, and workflows to delivered data.',
+  firm: 'Notation Systems builds evidence-backed intelligence and operational controls for complex cross-border trade and industrial supply chains, specializing in transactions where verification is difficult and the consequences of error are substantial.',
+  production: 'Its internal production system turns local records and physical observations into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.',
+  inventory: 'The corpora are the information inventory from which the firm prepares boutique trade and industrial risk intelligence packages for licensing. Each package defines its fields, coverage, methods, quality, permitted use and version. Customers can apply their own inference, models, agents, and workflows to delivered data.',
   separation: 'Source-use and customer-data restrictions remain attached to the information throughout internal preparation and licensed delivery. The change in company positioning grants no new permission to use or redistribute existing evidence.',
   platform: 'Caravan, Tradewind and Landshark are the data-product lines, with HTTP feeds and MCP tools as existing delivery interfaces. NotationsOS is the internal terminal the firm operates, monitors and navigates that backend from. It is not sold, and it is not a fourth API.',
   layers: [
-    { layer: 'Caravan, Tradewind, Landshark', role: 'Boutique data and analytics product lines; packages are licensed to customers' },
+    { layer: 'Caravan, Tradewind, Landshark', role: 'Boutique trade and risk analytics product lines; packages are licensed to customers' },
     { layer: 'NotationsOS terminal', role: 'Internal: operates, monitors and navigates the backend that produces them' },
     { layer: 'Inference, model, agent', role: 'Internal tools prepare analytics; customers may compute over the data they license' },
     { layer: 'Ruling, admission profile, case workbench', role: 'Internal preparation, quality review and inquiry over a corpus' },
@@ -24,7 +24,7 @@ export const THESIS = {
 
 /** The three flagship products, and how each is delivered. */
 export const FLAGSHIP_PRODUCTS = {
-  statement: 'Caravan, Tradewind and Landshark organize the boutique data and analytics packages the firm licenses. HTTP feeds and MCP tools are delivery interfaces over their corpora.',
+  statement: 'Caravan, Tradewind and Landshark organize the trade and industrial intelligence packages the firm licenses. HTTP feeds and MCP tools are delivery interfaces over their corpora.',
   delivery: ['HTTP feed', 'MCP tools'] as const,
   here: 'All three lines carry a demonstration corpus here, served by one corpus-generic fixture feed under /api/v1 and the MCP tools; every response says fixture_only. Caravan is the deepest — cases, rulings and captured artifact bytes; Tradewind and Landshark carry records, releases, rights and one retraction each, and no captured bytes. Nothing here is a live customer API.',
 } as const;
@@ -39,15 +39,16 @@ export const REFERENCE_IMPLEMENTATION = {
 } as const;
 
 export const CUSTOMER_CATEGORIES = [
+  { id: 'manufacturers_importers', title: 'Manufacturers and Importers', need: 'Evaluate counterparties, materials, and facilities to decide where and how to transact across borders.' },
+  { id: 'logistics_distributors', title: 'Logistics and Distributors', need: 'Monitor shared infrastructure, routes, and regulatory compliance for complex supply chains.' },
   { id: 'brokers', title: 'Brokers', need: 'Rely on facts produced by other parties to move a transaction: quantities, conditions, custody, identity.' },
-  { id: 'asset_managers', title: 'Asset and portfolio managers', need: 'Hold and re-evaluate positions against point-in-time state, with corrections and recalls pushed rather than discovered.' },
   { id: 'insurance_financing', title: 'Insurance and financing firms', need: 'Underwrite and lend against evidence whose provenance, bounds and rights survive downstream use and audit.' },
 ] as const;
 
 /** The economic architecture, in order. */
 export const ECONOMIC_ARCHITECTURE = [
   { step: 1, statement: 'Acquire and organize permitted real-world data', inThisRepository: 'Evidence capture, source-specific normalization and candidate history are implemented; FMCSA qualification remains restricted to its declared purpose.' },
-  { step: 2, statement: 'Prepare versioned boutique data and analytics packages', inThisRepository: 'Product specifications, admission rules, structured storage and internal analytics instruments exist; a completed real-source customer package is not established.' },
+  { step: 2, statement: 'Prepare versioned trade and industrial intelligence packages', inThisRepository: 'Product specifications, admission rules, structured storage and internal analytics instruments exist; a completed real-source customer package is not established.' },
   { step: 3, statement: 'License the prepared information to customers', inThisRepository: 'HTTP and MCP demonstration interfaces exist. Deployed licensed customer delivery and a completed pilot remain unverified.' },
   { step: 4, statement: 'Maintain quality, provenance and correction history', inThisRepository: 'Correction, as-of queries and delivery-ledger contracts exist; no completed customer delivery or correction notification is recorded here.' },
 ] as const;
@@ -71,7 +72,7 @@ export interface Engine {
 export const ENGINES: readonly Engine[] = [
   {
     id: 'data_systems',
-    title: 'Licensed data and analytics products',
+    title: 'Trade and industrial intelligence products',
     description: 'Boutique packages prepared from the information inventory, with defined scope, provenance, quality, versions and licensed use. HTTP feeds and MCP tools provide the current demonstration interfaces.',
     inThisRepository: [
       { item: 'Corpus releases with production records, release digests and certified release manifests', presence: 'FIXTURE', where: '/releases' },

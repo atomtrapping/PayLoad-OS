@@ -158,7 +158,7 @@ for (const { width, height, name, rail } of WIDTHS) {
  * release register lost its records, retractions and certification — each of
  * them reachable only by a sideways scroll the reader had no reason to try.
  */
-const REGISTERS = ['/cases', '/rulings', '/releases', '/agents', '/board', '/corpora', '/coverage'];
+const REGISTERS = ['/cases', '/rulings', '/releases', '/agents', '/board'];
 /** From a small phone to a wide desktop, including both sides of the rail's own threshold. */
 const REGISTER_WIDTHS = [1600, 1440, 1280, 1100, 1024, 1023, 900, 800, 768, 767, 600, 412, 360];
 
@@ -211,27 +211,14 @@ for (const path of REGISTERS) {
  */
 for (const width of [1440, 412]) {
   test(`a selected row stays readable at ${width}px, in every register`, async ({ page }) => {
-    /*
-     * Two things are removed before anything is measured, and both were found
-     * by measuring without them.
-     *
-     * The fonts, because before they arrive the controls are the wrong size: on
-     * a cold run a filter select on /cases was 13.2px high and axe reported a
-     * target-size violation that does not exist once the page is drawn.
-     *
-     * The motion, because a selected row transitions its background. Axe
-     * sampled /cases mid-transition and read the status pill at 4.46:1 against
-     * a partially composited #26222d. Settled, the same node is 4.73:1 against
-     * #211d28 and axe puts it in `passes`. The reader never lands in the
-     * intermediate state, so measuring it is measuring nothing — and the app
-     * already honours prefers-reduced-motion by disabling transitions, so this
-     * is a real setting rather than a test-only escape hatch.
-     */
-    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.setViewportSize({ width, height: 900 });
     for (const path of REGISTERS) {
       await page.goto(path);
       await page.locator('.register').first().waitFor();
+      // Before the fonts arrive the controls are the wrong size: measured on a
+      // cold run, a filter select on /cases was 13.2px high and axe reported a
+      // target-size violation that does not exist once the page is drawn. Same
+      // class of mistake as measuring the streaming staging area.
       await page.evaluate(() => document.fonts.ready);
       const row = page.locator('.register tbody tr button[aria-pressed]').first();
       await expect(row, `${path} has a selectable row`).toBeVisible();

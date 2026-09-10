@@ -2,7 +2,7 @@
 
 Current founder statement, 2026-09-08:
 
-Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
+Notation Systems builds evidence-backed intelligence and operational controls for complex cross-border trade and industrial supply chains, specializing in transactions where verification is difficult and the consequences of error are substantial.
 
 Its internal production system turns authorized heterogeneous source material
 into provenance-bearing computational corpora through acquisition, extraction,
@@ -45,7 +45,7 @@ and redistribution remain in force; positioning grants no new permission.
 ## Product structure
 
 ```text
-Notation Systems Inc. — licensed boutique data and analytics
+Notation Systems Inc. — evidence-backed intelligence
 ├─ Caravan: logistics, freight, cargo, supply-chain movement
 ├─ Tradewind: markets, instruments, pricing, and risk
 └─ Landshark: parcels, zoning, entitlements, and development state

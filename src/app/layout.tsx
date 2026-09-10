@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: '%s · NotationsOS',
   },
   description:
-    'NotationsOS — Notation Systems\u2019 internal terminal: it operates, monitors and navigates the backend behind the Caravan, Tradewind and Landshark APIs. Corpus data here is a committed demonstration; the terminal executes no customer inference and constructs no production canonical state.',
+    'NotationsOS — Notation Systems\u2019 internal terminal: it operates, monitors and navigates the backend behind the Caravan, Tradewind and Landshark APIs, building evidence-backed intelligence for complex cross-border trade and industrial supply chains.',
   robots: { index: false, follow: false },
   authors: [{ name: 'Notation Systems' }],
 };

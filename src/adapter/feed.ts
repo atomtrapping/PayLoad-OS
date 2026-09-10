@@ -32,11 +32,12 @@ export function isVisibilityClass(v: string): v is VisibilityClass {
 export async function releasesPayload(corpusId?: string) {
   const src = getCorpusSource();
   const releases = await src.listReleases(corpusId);
-  return envelope({ releases: releases.map(releaseSummary), count: releases.length });
+  return envelope({ releases: releases.map(releaseSummary), count: releases.length }, undefined, { live: src.origin.kind === 'LIVE' });
 }
 
 export async function releasePayload(releaseId: string) {
-  const hit = await getCorpusSource().getRelease(releaseId);
+  const src = getCorpusSource();
+  const hit = await src.getRelease(releaseId);
   if (!hit) return undefined;
   const { corpus, release } = hit;
   return envelope(
@@ -51,13 +52,15 @@ export async function releasePayload(releaseId: string) {
       links: { manifest: `/api/v1/releases/${release.releaseId}/manifest`, records: `/api/v1/releases/${release.releaseId}/records`, retractions: `/api/v1/retractions?since=${encodeURIComponent(release.supersedesReleaseId ? (corpus.releases.find((r) => r.releaseId === release.supersedesReleaseId)?.knownAt ?? '') : '')}` },
     },
     release,
+    { live: src.origin.kind === 'LIVE' }
   );
 }
 
 export async function recordsPayload(releaseId: string, viewer: VisibilityClass, filter: { subjectId?: string; predicate?: string } = {}) {
-  const hit = await getCorpusSource().getRelease(releaseId);
+  const src = getCorpusSource();
+  const hit = await src.getRelease(releaseId);
   if (!hit) return undefined;
-  const all = await getCorpusSource().records(releaseId, viewer);
+  const all = await src.records(releaseId, viewer);
   if (!all) return undefined;
   const records = all.records.filter((r) => (!filter.subjectId || r.subjectId === filter.subjectId) && (!filter.predicate || r.predicate === filter.predicate));
   return envelope(
@@ -69,45 +72,51 @@ export async function recordsPayload(releaseId: string, viewer: VisibilityClass,
       records: records.map((r) => recordPayload(r, hit.release.sources.find((s) => s.sourceId === r.provenance.sourceId), deliveryDecision(hit.release, r, viewer === 'PUBLIC_RULING' ? 'PUBLIC_RULING' : 'COUNTERPARTY_SHARED'))),
     },
     hit.release,
+    { live: src.origin.kind === 'LIVE' }
   );
 }
 
 /** The certified release manifest and its commitment. */
 export async function releaseManifestPayload(releaseId: string) {
-  const hit = await getCorpusSource().getRelease(releaseId);
+  const src = getCorpusSource();
+  const hit = await src.getRelease(releaseId);
   if (!hit) return undefined;
-  return envelope({ manifestCommitment: hit.release.certification.manifestCommitment, manifest: buildReleaseManifest(hit.corpus, hit.release) }, hit.release);
+  return envelope({ manifestCommitment: hit.release.certification.manifestCommitment, manifest: buildReleaseManifest(hit.corpus, hit.release) }, hit.release, { live: src.origin.kind === 'LIVE' });
 }
 
 export async function asOfPayload(releaseId: string, q: AsOfQuery) {
-  const hit = await getCorpusSource().getRelease(releaseId);
+  const src = getCorpusSource();
+  const hit = await src.getRelease(releaseId);
   if (!hit) return undefined;
-  const a = await getCorpusSource().asOf(releaseId, q);
+  const a = await src.asOf(releaseId, q);
   if (!a) return undefined;
-  return envelope(asOfBody(a, (sourceId) => hit.release.sources.find((s) => s.sourceId === sourceId), (r) => deliveryDecision(hit.release, r, 'COUNTERPARTY_SHARED')), hit.release);
+  return envelope(asOfBody(a, (sourceId) => hit.release.sources.find((s) => s.sourceId === sourceId), (r) => deliveryDecision(hit.release, r, 'COUNTERPARTY_SHARED')), hit.release, { live: src.origin.kind === 'LIVE' });
 }
 
 export async function retractionsPayload(since: string | undefined, viewer: VisibilityClass) {
-  const list = await getCorpusSource().retractions(since, viewer);
-  return envelope({ projection: viewer, since: since ?? null, count: list.length, retractions: list.map(retractionPayload) });
+  const src = getCorpusSource();
+  const list = await src.retractions(since, viewer);
+  return envelope({ projection: viewer, since: since ?? null, count: list.length, retractions: list.map(retractionPayload) }, undefined, { live: src.origin.kind === 'LIVE' });
 }
 
 /** The application layer, served beside the corpus: a ruling as the workbench would return it. */
 export async function rulingPayload(rulingId: string, viewer: VisibilityClass) {
+  const src = getCorpusSource();
   const hit = await getCaseSource().getRuling(rulingId);
   if (!hit) return undefined;
   const projected = projectForViewer(hit.bundle, viewer);
   const ruling = [...projected.bundle.previousRulings, ...(projected.bundle.currentRuling ? [projected.bundle.currentRuling] : [])].find((r) => r.rulingId === rulingId);
-  if (!ruling) return { fixture_only: true as const, feed: FEED_VERSION, error: 'not_visible', detail: `Ruling ${rulingId} is not visible at ${viewer}.`, remedy: 'Request the counterparty projection with the case sponsor\'s authorization.' };
-  return envelope({ projection: viewer, layer: 'application', ruling, links: { manifest: `/api/v1/rulings/${rulingId}/manifest`, case: `/cases/${hit.bundle.caseId}`, release: `/api/v1/releases/${ruling.corpus.releaseId}` } });
+  if (!ruling) return { ...(src.origin.kind === 'LIVE' ? {} : { fixture_only: true as const }), feed: FEED_VERSION, error: 'not_visible', detail: `Ruling ${rulingId} is not visible at ${viewer}.`, remedy: 'Request the counterparty projection with the case sponsor\'s authorization.' };
+  return envelope({ projection: viewer, layer: 'application', ruling, links: { manifest: `/api/v1/rulings/${rulingId}/manifest`, case: `/cases/${hit.bundle.caseId}`, release: `/api/v1/releases/${ruling.corpus.releaseId}` } }, undefined, { live: src.origin.kind === 'LIVE' });
 }
 
 export async function rulingManifestPayload(rulingId: string, viewer: VisibilityClass) {
+  const src = getCorpusSource();
   const hit = await getCaseSource().getRuling(rulingId);
   if (!hit) return undefined;
   const projected = projectForViewer(hit.bundle, viewer);
   const ruling = [...projected.bundle.previousRulings, ...(projected.bundle.currentRuling ? [projected.bundle.currentRuling] : [])].find((r) => r.rulingId === rulingId);
-  if (!ruling) return { fixture_only: true as const, feed: FEED_VERSION, error: 'not_visible', detail: `Ruling ${rulingId} is not visible at ${viewer}.`, remedy: 'Request the counterparty projection with the case sponsor\'s authorization.' };
+  if (!ruling) return { ...(src.origin.kind === 'LIVE' ? {} : { fixture_only: true as const }), feed: FEED_VERSION, error: 'not_visible', detail: `Ruling ${rulingId} is not visible at ${viewer}.`, remedy: 'Request the counterparty projection with the case sponsor\'s authorization.' };
   const withheld = hit.ruling.consideredEvidenceIds.length - ruling.consideredEvidenceIds.length;
   return envelope({
     projection: viewer,
@@ -115,5 +124,5 @@ export async function rulingManifestPayload(rulingId: string, viewer: Visibility
     manifestCommitment: ruling.release?.manifestCommitment ?? null,
     manifest: buildResultManifest(projected.bundle, ruling),
     withheld: { evidenceIdentities: withheld, note: withheld > 0 ? 'The committed manifest was computed over the full evidence set; this projection omits withheld identities and its hash will not match the commitment.' : 'Complete at this projection.' },
-  });
+  }, undefined, { live: src.origin.kind === 'LIVE' });
 }

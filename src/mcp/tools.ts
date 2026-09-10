@@ -7,6 +7,7 @@
  */
 import { z } from 'zod';
 import { asOfPayload, recordsPayload, releaseManifestPayload, releasePayload, releasesPayload, retractionsPayload, rulingManifestPayload, rulingPayload, viewerFromParam } from '@/adapter/feed';
+import { getCorpusSource } from '@/adapter/corpusSource';
 import { FIXTURE_FACTORING_RECEIPTS } from '@/fixtures/caravan/factoring';
 import { verifyFactoringReceiptIntegrity } from '@/domain/factoring';
 import { FIXTURE_DISPATCH_STREAM, DEFENSE_RECONSTRUCTION_CASE_0803 } from '@/fixtures/caravan/dispatchLiability';
@@ -22,7 +23,10 @@ export interface McpToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
   run: (args: z.infer<z.ZodObject<S>>) => Promise<unknown>;
 }
 
-const notFound = (what: string, id: string, remedy: string) => ({ fixture_only: true, error: `${what}_not_found`, detail: `No ${what} ${id} in the current source.`, remedy });
+const notFound = (what: string, id: string, remedy: string) => {
+  const isLive = getCorpusSource().origin.kind === 'LIVE';
+  return { ...(isLive ? {} : { fixture_only: true }), error: `${what}_not_found`, detail: `No ${what} ${id} in the current source.`, remedy };
+};
 
 function def<S extends z.ZodRawShape>(d: McpToolDef<S>): McpToolDef<S> {
   return d;

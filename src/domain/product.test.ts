@@ -19,7 +19,7 @@ describe('honest live source presence', () => {
     expect(entries.find((entry) => entry.item.startsWith('Admission, issued-identifier'))?.presence).toBe('PRESENT');
   });
   it('keeps the licensed package mandate and internal compute boundary together', () => {
-    expect(THESIS.firm).toBe('Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.');
+    expect(THESIS.firm).toBe('Notation Systems builds evidence-backed intelligence and operational controls for complex cross-border trade and industrial supply chains, specializing in transactions where verification is difficult and the consequences of error are substantial.');
     expect(THESIS.platform).toContain('internal terminal');
     expect(ENGINES.find((entry) => entry.id === 'compute')?.title).toBe('Internal analytics and preparation');
     expect(ECONOMIC_ARCHITECTURE.map((entry) => entry.statement).join(' ')).not.toMatch(/host compute|trading|speculation/i);

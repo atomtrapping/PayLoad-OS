@@ -1,26 +1,33 @@
 # Economic architecture
 
-Current positioning, as set by the founder on 2026-09-08. The mandate is licensed boutique data and analytics prepared using the firm's internal systems. Earlier economic formulations and implementation receipts are retained below as history; they are not active product commitments or a current capability inventory.
+Current positioning, as set by the founder on 2026-09-09. The mandate is evidence-backed intelligence and operational controls for complex cross-border trade and industrial supply chains. Earlier economic formulations and implementation receipts are retained below as history; they are not active product commitments or a current capability inventory.
 
 ## The firm
 
-Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
+Notation Systems builds evidence-backed intelligence and operational controls for complex cross-border trade and industrial supply chains, specializing in transactions where verification is difficult and the consequences of error are substantial.
 
-Its internal production system turns that material into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.
+Its internal production system turns local records and physical observations into provenance-bearing computational corpora through acquisition, extraction, normalization, identity, ontology, computation, storage, indexing, verification, release, correction, and recall.
 
-The corpora are the information inventory from which the firm prepares boutique data and analytics packages. A package defines its fields, coverage, methods, quality, provenance, version and permitted use. APIs, feeds, reports and MCP tools can distribute the prepared information. Customers apply their own inference, models, agents and workflows to delivered data; the firm's workbenches are internal preparation and inspection tools.
+The corpora are the information inventory from which the firm prepares boutique trade and industrial risk intelligence packages. A package defines its fields, coverage, methods, quality, provenance, version and permitted use. APIs, feeds, reports and MCP tools can distribute the prepared information. Customers apply their own inference, models, agents and workflows to delivered data; the firm's workbenches are internal preparation and inspection tools.
+
+## Geographic mandate
+
+Notation Systems develops evidence-backed industrial, trade, and infrastructure intelligence across selected markets in Asia, Africa, Latin America, the Pacific, and Eastern Europe—connecting local records and physical observations to cross-border commercial decisions.
+
+This is a geographic specialization beneath the broader firm mandate. We build broad reference coverage across those regions, develop deep evidence around customer-dependent industrial corridors, and sell the maintained decisions those connections support.
 
 ## Customer categories
 
+- Manufacturers and Importers
+- Logistics and Distributors
 - Brokers
-- Asset and portfolio managers
 - Insurance and financing firms
 
 ## Economic architecture
 
 ```
 Acquire and organize permitted real-world data
-→ prepare versioned boutique data and analytics packages
+→ prepare versioned trade and industrial intelligence packages
 → license the prepared information to customers
 → maintain quality, provenance and correction history
 ```
@@ -42,7 +49,7 @@ Notation Systems Inc. — licensed data and analytics packages
                 backend those three are produced from. Not sold.
 ```
 
-**The three lines organize boutique data and analytics packages.** HTTP feeds
+**The three lines organize trade and industrial risk intelligence packages.** HTTP feeds
 and MCP tools are existing delivery interfaces over their corpora. The licensed
 package's information and scope are the customer value. Customers can apply
 their own inference to what they receive.

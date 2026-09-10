@@ -106,11 +106,13 @@ export function asOfUrl(releaseId: string, q: AsOfAnswer['query']): string {
   return `/api/v1/releases/${encodeURIComponent(releaseId)}/as-of?${p.toString()}`;
 }
 
-export function envelope<T extends object>(body: T, release?: CorpusRelease) {
+export function envelope<T extends object>(body: T, release?: CorpusRelease, opts: { live?: boolean } = {}) {
   return {
-    fixture_only: true as const,
+    ...(opts.live ? {} : {
+      fixture_only: true as const,
+      notice: 'Demonstration corpus. Synthetic, deterministic, committed. This is the shape of the product feed; it is not a live service.',
+    }),
     feed: FEED_VERSION,
-    notice: 'Demonstration corpus. Synthetic, deterministic, committed. This is the shape of the product feed; it is not a live service.',
     ...(release ? { release: releaseSummary(release) } : {}),
     ...body,
   };

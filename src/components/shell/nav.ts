@@ -27,8 +27,6 @@ export const NAV_AREAS: readonly NavArea[] = [
     { href: '/model', label: 'Operating model', match: /^\/(model|product)$/ },
   ] },
   { id: 'acquisition', label: 'Acquisition', activity: 'Coverage, sources, collection attempts and failures', items: [
-    { href: '/corpora', label: 'Evidence Corpora', match: /^\/corpora/ },
-    { href: '/coverage', label: 'Coverage Universe', match: /^\/coverage/ },
     { href: '/candidates#cp-acquisitions', label: 'Acquisitions', match: /^\/candidates/ },
     { href: '/harvester', label: 'Statutory Harvester', match: /^\/harvester/ },
     { href: '/evidence', label: 'Evidence', match: /^\/evidence/ },

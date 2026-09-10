@@ -29,18 +29,6 @@ test('desktop screenshots', async ({ page }) => {
   await page.getByTestId('participant-inspector').waitFor();
   await page.screenshot({ path: `${OUT}/09a-stable-register.png`, fullPage: true });
 
-  await page.goto('/corpora');
-  await page.getByTestId('corpus-workspace').waitFor();
-  await page.locator('[data-corpus-select="facilities"]').click();
-  await page.getByTestId('corpus-inspector').waitFor();
-  await page.screenshot({ path: `${OUT}/09c-evidence-corpora.png`, fullPage: true });
-
-  await page.goto('/coverage');
-  await page.getByTestId('coverage-workspace').waitFor();
-  await page.locator('[data-region-select="pacific"]').click();
-  await page.getByTestId('region-inspector').waitFor();
-  await page.screenshot({ path: `${OUT}/09d-coverage-universe.png`, fullPage: true });
-
   await page.goto('/board');
   await page.getByTestId('board-workspace').waitFor();
   await page.locator('[data-message-select="MSG-00002"]').click();

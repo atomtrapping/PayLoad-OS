@@ -4,11 +4,11 @@ This document records the supplied synthesis of the earlier architecture: one ma
 
 ## Firm and product structure
 
-Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
+Notation Systems builds evidence-backed intelligence and operational controls for complex cross-border trade and industrial supply chains, specializing in transactions where verification is difficult and the consequences of error are substantial.
 
-Acquisition, scraping, extraction, normalization, identity, ontology, computation, storage, indexing, verification, correction and recall are internal means of production. The corpora supply the inventory for boutique data and analytics packages. The firm's workbenches inspect and prepare that information; HTTP feeds and MCP tools are existing distribution interfaces. Customers may apply their own inference to the data they license.
+Acquisition, scraping, extraction, normalization, identity, ontology, computation, storage, indexing, verification, correction and recall are internal means of production. The corpora supply the inventory for trade and industrial intelligence packages. The firm's workbenches inspect and prepare that information; HTTP feeds and MCP tools are existing distribution interfaces. Customers may apply their own inference to the data they license.
 
-The customer categories remain physical-economy brokers, asset and portfolio managers, and insurance and financing firms. The active business is preparation and licensing of boutique data and analytics. Internal computation supports it; hosted customer workloads and principal trading are outside the active offering. Existing source-use and customer-data restrictions remain attached to information through preparation and delivery.
+The customer categories remain physical-economy brokers, asset and portfolio managers, and insurance and financing firms. The active business is preparation and licensing of trade and industrial intelligence. Internal computation supports it; hosted customer workloads and principal trading are outside the active offering. Existing source-use and customer-data restrictions remain attached to information through preparation and delivery.
 
 ```text
 Notation Systems Inc. — licensed data and analytics packages

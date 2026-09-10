@@ -158,7 +158,7 @@ for (const { width, height, name, rail } of WIDTHS) {
  * release register lost its records, retractions and certification — each of
  * them reachable only by a sideways scroll the reader had no reason to try.
  */
-const REGISTERS = ['/cases', '/rulings', '/releases', '/agents', '/board', '/corpora', '/coverage'];
+const REGISTERS = ['/cases', '/rulings', '/releases', '/agents', '/board', '/corpora', '/coverage', '/discovery'];
 /** From a small phone to a wide desktop, including both sides of the rail's own threshold. */
 const REGISTER_WIDTHS = [1600, 1440, 1280, 1100, 1024, 1023, 900, 800, 768, 767, 600, 412, 360];
 

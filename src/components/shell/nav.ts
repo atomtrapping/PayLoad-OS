@@ -43,7 +43,7 @@ export const NAV_AREAS: readonly NavArea[] = [
     { href: '/notations', label: 'Notations', match: /^\/notations/ },
   ] },
   { id: 'inquiry', label: 'Inquiry', activity: 'Explore evidence, compare observations, investigate questions', items: [
-    { href: '/discovery', label: 'Computational Discovery', match: /^\/discovery/ },
+    { href: '/discovery', label: 'Discovery Layer', match: /^\/discovery/ },
     { href: '/frontier', label: 'Frontier Wedges', match: /^\/frontier/ },
     { href: '/cases', label: 'Cases', match: /^\/cases/ },
     { href: '/rulings', label: 'Rulings', match: /^\/rulings/ },

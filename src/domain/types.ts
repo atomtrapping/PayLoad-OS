@@ -36,7 +36,8 @@ export type Hash = string;
 /** notation://<kind>/<authority>/<local-id> */
 export type CanonicalURI = string;
 
-export type Domain = 'CARAVAN' | 'TRADEWIND' | 'LANDSHARK';
+export const DOMAIN_IDS = ['CARAVAN', 'TRADEWIND', 'LANDSHARK'] as const;
+export type Domain = typeof DOMAIN_IDS[number];
 
 export type RulingStatus =
   | 'DRAFT'

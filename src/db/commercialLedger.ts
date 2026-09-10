@@ -49,8 +49,9 @@ import {
 
 const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 
-/** As in the execution ledger, and for the same reason. */
-export const AUTHORIZING_PRINCIPALS = ['HUMAN', 'POLICY'] as const;
+/** The execution ledger's list, not a second one, and for the same reason. */
+import { AUTHORIZING_PRINCIPALS } from './executionLedger';
+export { AUTHORIZING_PRINCIPALS };
 
 /** Every class a claim could be presented as, so the mismatch is expressible. */
 const PRESENTABLE = CLASS_CONTRACTS.map((entry) => entry.class);

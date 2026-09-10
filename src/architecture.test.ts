@@ -233,11 +233,23 @@ describe('one vocabulary, and it is the registry’s', () => {
     for (const file of walk(join(ROOT, 'src'))) {
       if (!/\.tsx?$/.test(file) || /\.test\./.test(file)) continue;
       const text = readFileSync(join(ROOT, file), 'utf8');
-      for (const match of text.matchAll(/export type (\w+)\s*=\s*((?:\s*\|?\s*'[A-Z][A-Z0-9_]*'\s*(?:\n\s*\/\*\*[\s\S]*?\*\/\s*)?)+);/g)) {
-        const members = [...match[2].matchAll(/'([A-Z][A-Z0-9_]*)'/g)].map((m) => m[1]).sort();
-        if (members.length < 2) continue;
+      const record = (name: string, body: string) => {
+        const members = [...new Set([...body.matchAll(/'([A-Z][A-Z0-9_]*)'/g)].map((m) => m[1]))].sort();
+        if (members.length < 2) return;
         const key = members.join('|');
-        found.set(key, [...(found.get(key) ?? []), `${file}:${match[1]}`]);
+        found.set(key, [...(found.get(key) ?? []), `${file}:${name}`]);
+      };
+      for (const match of text.matchAll(/export type (\w+)\s*=\s*((?:\s*\|?\s*'[A-Z][A-Z0-9_]*'\s*(?:\n\s*\/\*\*[\s\S]*?\*\/\s*)?)+);/g)) {
+        record(match[1], match[2]);
+      }
+      // The array form escaped this scan for a long time, and three duplicates
+      // accumulated behind it — one closed set declared in three ledgers. A
+      // vocabulary is a vocabulary whichever syntax carries it.
+      for (const match of text.matchAll(/export const (\w+)(?::[^=]*)?\s*=\s*\[([^\]]*)\]\s*as const;/g)) {
+        record(match[1], match[2]);
+      }
+      for (const match of text.matchAll(/export const (\w+)\s*:\s*readonly [\w<>[\]]+\s*=\s*\[([^\]]*)\];/g)) {
+        record(match[1], match[2]);
       }
     }
     return found;
@@ -251,11 +263,17 @@ describe('one vocabulary, and it is the registry’s', () => {
     // for one closed set is how a fourth member reaches one of them and not
     // the other, and the compiler accepts it right up until the boundary.
     const duplicated = [...vocabularies().entries()]
-      .filter(([, homes]) => homes.length > 1)
+      // A union and its own runtime carrier in ONE file are a type and the
+      // array the SQL interpolates, not two homes — VisibilityClass beside
+      // VISIBILITY_CLASSES is the house pattern. Only a set declared in two
+      // FILES can drift, because only then can a member reach one and not the
+      // other.
+      .map(([members, homes]) => [members, [...new Set(homes.map((home) => home.split(':')[0]))]] as const)
+      .filter(([, files]) => files.length > 1)
       // {ABSENT, PARTIAL} is a coincidence of size between two unrelated
       // scales, not one vocabulary declared twice. Named, so it is a decision.
       .filter(([members]) => members !== 'ABSENT|PARTIAL');
-    expect(duplicated.map(([members, homes]) => `{${members}} in ${homes.join(' and ')}`)).toEqual([]);
+    expect(duplicated.map(([members, files]) => `{${members}} in ${files.join(' and ')}`)).toEqual([]);
   });
 });
 

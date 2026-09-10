@@ -8,6 +8,7 @@
  * polygons and is never used to make a passage. Browser-safe; nothing here
  * renders.
  */
+import { ACCESS_VALUES } from '@/spatial/contracts';
 import { formatHash, readHash } from '@/lib/hashSelection';
 import type { Access, AnalysisRequest, EvidenceReference, SpatialLayout } from '@/spatial/contracts';
 import type { AnalysisResult } from '@/spatial/analysis';
@@ -25,7 +26,7 @@ export type Reachability = 'CONFIRMED' | 'POSSIBLE_ONLY' | 'DISCONNECTED';
 export type { Access } from '@/spatial/contracts';
 /** The closed vocabularies the surfaces accept. Values are validated at this boundary, never cast: a status outside them is a refusal, not a colour. */
 export const REACHABILITY_VALUES: readonly Reachability[] = ['CONFIRMED', 'POSSIBLE_ONLY', 'DISCONNECTED'];
-export const ACCESS_VALUES: readonly Access[] = ['OPEN', 'CLOSED', 'UNKNOWN'];
+export { ACCESS_VALUES };
 const DIRECTION_VALUES = ['BOTH', 'FROM_TO'] as const;
 export type Comparison = ReturnType<typeof import('@/spatial/analysis').compare>;
 export type SpatialChange = Comparison['changes'][number];

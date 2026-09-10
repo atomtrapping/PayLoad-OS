@@ -22,9 +22,15 @@
  * acquisition door wearing a helpful costume.
  */
 
+import type { RecordProvenance } from './admission';
 export const GROUND_METHOD = 'notationsos.reference-ground.v1';
 
-export type Provenance = 'LIVE_CAPTURE' | 'BACKFILLED';
+/**
+ * The two provenances the admission gate stamps. Declared once, in the module
+ * that owns the gate — this alias exists so the reference layer can name the
+ * type without a second copy of the set drifting away from it.
+ */
+export type Provenance = RecordProvenance;
 
 /** The two as-of questions, which are never one blended question. */
 export type AsOfQuestion = 'WHAT_THE_SOURCE_KNEW' | 'WHAT_WE_HELD';

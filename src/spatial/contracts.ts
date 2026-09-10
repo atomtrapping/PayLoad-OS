@@ -5,7 +5,8 @@ export const MAX_SPATIAL_BYTES = 512 * 1024;
 export const METHOD = { id: 'directed-room-access', version: '1.0.0', scope: 'SINGLE_FLOOR_PEDESTRIAN', unknownPolicy: 'CONFIRMED_AND_POSSIBLE', meanDepth: 'REACHABLE_NON_ROOT_SPACES' } as const;
 export type EvidenceReference = { acquisition: { id: string; digest: string }; evidence: { id: string; contentDigest: string } };
 export type Provenance = { kind: 'MANUAL_ANNOTATION' | 'SCENARIO_ASSUMPTION'; author: string; note: string; sourceIds: string[] };
-export type Access = 'OPEN' | 'CLOSED' | 'UNKNOWN';
+export const ACCESS_VALUES = ['OPEN', 'CLOSED', 'UNKNOWN'] as const;
+export type Access = typeof ACCESS_VALUES[number];
 export interface SpatialLayout {
   schema: 'payload.spatial-layout.v1'; id: string; label: string; floorId: string;
   sourceArtifacts: { id: string; reference: EvidenceReference }[];

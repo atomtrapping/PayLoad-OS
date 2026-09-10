@@ -1,6 +1,9 @@
 /** Shared NotationsOS coordination contracts. These are operational records, not Kernel entities. */
+import { DOMAIN_IDS, type Domain } from '@/domain/types';
 export const MESSAGE_KINDS = ['NOTE', 'REQUEST', 'HANDOFF', 'BLOCKER', 'RESULT'] as const;
-export const DOMAINS = ['CARAVAN', 'TRADEWIND', 'LANDSHARK'] as const;
+// The three lines, from the registry that owns them. Coordination names the
+// same domains the corpus does, and a fourth must reach both or neither.
+export const DOMAINS: readonly Domain[] = DOMAIN_IDS;
 export const AUTHORITIES = ['canonical', 'evidence', 'coordination', 'derived', 'projection', 'verification'] as const;
 export type CoordinationDomain = typeof DOMAINS[number];
 export type Authority = typeof AUTHORITIES[number];

@@ -62,6 +62,7 @@
  * downstream on the clocks. That is the correct outcome and not a defect to be
  * patched with a regular expression over English.
  */
+import type { FieldPresence as SelfObservedFieldPresence } from './selfObservation';
 import { createHash } from 'node:crypto';
 import type { ISODateTime } from './types';
 
@@ -248,7 +249,8 @@ export function captureSuppliedDocument(
 }
 
 /** PRESENT, or one of three absences that mean different things. */
-export type FieldPresence = 'PRESENT' | 'ABSENT' | 'MALFORMED' | 'AMBIGUOUS';
+/** One reading of a field, from the module that owns the four states. */
+export type FieldPresence = SelfObservedFieldPresence;
 
 export interface ExtractedField {
   field: string;

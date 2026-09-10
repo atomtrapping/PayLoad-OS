@@ -102,8 +102,9 @@ const WORKLOAD_PRODUCES = MINING_CONTRACTS
 /** How a metric is read. A pass is checked against this, not asserted beside it. */
 export const METRIC_DIRECTIONS = ['HIGHER_IS_BETTER', 'LOWER_IS_BETTER'] as const;
 
-/** Who may authorize an acquisition. As in the execution ledger, `AGENT` is absent. */
-export const AUTHORIZING_PRINCIPALS = ['HUMAN', 'POLICY'] as const;
+/** Who may authorize an acquisition. The execution ledger's list, not a second one. */
+import { AUTHORIZING_PRINCIPALS } from './executionLedger';
+export { AUTHORIZING_PRINCIPALS };
 
 export const DISCOVERY_LEDGER_DDL = `
 -- What would be computed. A definition, not an execution.

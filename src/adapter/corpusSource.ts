@@ -30,7 +30,8 @@ export interface AdmittedReading {
  * are mechanically excluded from every admitted count by the column itself
  * rather than by a caller remembering to filter.
  */
-export const ADMITTED_PROVENANCE = ['LIVE_CAPTURE', 'BACKFILLED'] as const;
+import { ADMITTED_PROVENANCE } from '@/domain/admission';
+export { ADMITTED_PROVENANCE };
 
 /**
  * What the admission gate has ruled, read back.

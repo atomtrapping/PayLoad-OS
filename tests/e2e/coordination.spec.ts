@@ -175,6 +175,17 @@ test('coordination: the fixture inbox scopes pending handoffs, opts into broadca
 });
 
 test('coordination: both surfaces have no serious or critical accessibility violations', async ({ page }) => {
+  /*
+   * Motion removed for the reason the specification sweep removes it, and one
+   * more. Below 1024px the inspector brings itself into view with a smooth
+   * scroll, so for about half a second the page is between two positions and a
+   * row can sit half under the sticky top bar. Axe measures geometry, and
+   * measuring during the flight measures the flight: it reported a row as
+   * "partially obscured (366px by 12.5px)" at one scroll offset and clean at
+   * the next. Reduced motion is a real reader setting, and under it the
+   * inspector arrives at once, so what is measured is where the reader ends up.
+   */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const surface of SURFACES) {
     await page.goto(surface.path);
     // With the inspector open, which is the state that carries the most markup.

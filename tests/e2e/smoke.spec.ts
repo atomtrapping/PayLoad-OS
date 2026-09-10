@@ -478,6 +478,15 @@ test('the product control scopes the corpus surfaces to one line, and says what 
   await page.goto('/releases');
   // Three lines are served, and with no scope applied nothing in the control is pressed.
   await expect(page.locator('table[aria-label^="Releases of"]')).toHaveCount(3);
+  /*
+   * The page streams, and while it does the top bar's product control exists
+   * twice: once in the header the reader sees and once in React's hidden
+   * staging container, waiting to be swapped in. A locator resolved inside
+   * that window matches both and the click is ambiguous. Under a loaded
+   * machine the window is wide enough to land in. Wait for the swap, then
+   * measure the control the reader ends up with.
+   */
+  await expect(page.getByTestId('product-control')).toHaveCount(1);
   const control = page.getByTestId('product-control');
   await expect(control.locator('[data-scoped="true"]')).toHaveCount(0);
   await expect(page.getByTestId('line-scope-hidden')).toHaveCount(0);

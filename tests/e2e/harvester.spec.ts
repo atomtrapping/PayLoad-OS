@@ -2,6 +2,14 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 test('statutory harvester: the funnel, the two clocks as separate questions, and the inspector distinguishing an omitted field from an unreadable one', async ({ page, baseURL }) => {
+  /*
+   * Motion removed, as on the specification sweep. Below 1024px the inspector
+   * brings itself into view with a smooth scroll, and axe measures geometry:
+   * run mid-flight it reports rows as partially obscured by the sticky top bar
+   * at one scroll offset and clean at the next. Reduced motion is a real
+   * reader setting, and under it the inspector arrives at once.
+   */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const origin = new URL(baseURL!).origin;
   const external: string[] = [];
   const writes: string[] = [];

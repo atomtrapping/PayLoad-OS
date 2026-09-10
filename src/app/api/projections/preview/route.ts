@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { compileProjection } from '@/projection/compile';
 import { ProjectionError } from '@/projection/spec';
 import { getCorpusSource } from '@/adapter/corpusSource';
+import { readBoundedBody } from '@/http/boundedBody';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,28 +13,20 @@ function json(value: unknown, status = 200) {
 }
 function refusal(error: string, status: number) { return json({ fixture_only: true, error }, status); }
 
+class BodyTooLarge extends Error {}
+
 /** Read-only POST because the exact selection is structured; nothing is saved or dispatched. */
 export async function POST(request: Request) {
   if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') return refusal('INVALID_CONTENT_TYPE', 415);
   if (!request.body) return refusal('INVALID_JSON', 400);
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      length += chunk.value.byteLength;
-      if (length > MAX_BYTES) {
-        try { await reader.cancel(); } catch { /* Cancellation is best effort; the measured limit remains decisive. */ }
-        return refusal('BODY_TOO_LARGE', 413);
-      }
-      chunks.push(chunk.value);
-    }
-  } catch { return refusal('INVALID_JSON', 400); }
-  finally { reader.releaseLock(); }
+  /* This route answers with a refusal rather than throwing one, so the shared
+     reader's `refuse` throws a sentinel that is caught two lines down. A
+     stream that fails for any other reason keeps its INVALID_JSON answer. */
+  let bytes: Uint8Array;
+  try { bytes = await readBoundedBody(request.body, MAX_BYTES, () => { throw new BodyTooLarge(); }); }
+  catch (error) { return refusal(error instanceof BodyTooLarge ? 'BODY_TOO_LARGE' : 'INVALID_JSON', error instanceof BodyTooLarge ? 413 : 400); }
   let input: unknown;
-  try { input = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); }
+  try { input = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
   catch { return refusal('INVALID_JSON', 400); }
   try { return json(compileProjection(input, await getCorpusSource().listCorpora())); }
   catch (error) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { CoordinationError } from './ledger';
+import { readBoundedBody } from '@/http/boundedBody';
 
 export function coordinationJson(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Payload-Fixture-Only': 'true', 'X-Payload-Coordination': 'sandbox-v1' } });
@@ -126,18 +127,9 @@ export function requireLocalRequest(request: Request) {
 export async function readCoordinationCommand(request: Request) {
   if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw new CoordinationError('INVALID_CONTENT_TYPE', 'Send application/json.', 415);
   if (!request.body) throw new CoordinationError('INVALID_JSON', 'A command body is required.');
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      length += chunk.value.byteLength;
-      if (length > 16 * 1024) { await reader.cancel(); throw new CoordinationError('BODY_TOO_LARGE', 'Commands are limited to 16 KiB.', 413); }
-      chunks.push(chunk.value);
-    }
-  } finally { reader.releaseLock(); }
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown; }
+  const bytes = await readBoundedBody(request.body, 16 * 1024, () => {
+    throw new CoordinationError('BODY_TOO_LARGE', 'Commands are limited to 16 KiB.', 413);
+  });
+  try { return JSON.parse(new TextDecoder().decode(bytes)) as unknown; }
   catch { throw new CoordinationError('INVALID_JSON', 'The command body must be valid JSON.'); }
 }

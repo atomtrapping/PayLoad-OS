@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { readBoundedBody } from '@/http/boundedBody';
 
 export const SYSTEM_DATA_CLASS = 'synthetic' as const;
 export const SYSTEM_CORPUS_RELEASE = 'osiris-insurability@2026.09.30.1-synthetic' as const;
@@ -79,26 +80,14 @@ export async function readBoundedJson(request: Request, maxBytes = MAX_FEED_BODY
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new FeedBodyError('BODY_TOO_LARGE', `The request body declares ${declared} bytes and this feed reads at most ${maxBytes}.`, `Send at most ${maxBytes} bytes of JSON.`, 413);
   }
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      length += chunk.value.byteLength;
-      if (length > maxBytes) {
-        void reader.cancel().catch(() => { /* A broken caller stream must not replace the size refusal. */ });
-        throw new FeedBodyError('BODY_TOO_LARGE', `The request body exceeds the ${maxBytes} bytes this feed reads.`, `Send at most ${maxBytes} bytes of JSON.`, 413);
-      }
-      chunks.push(chunk.value);
-    }
-  } finally { reader.releaseLock(); }
+  const bytes = await readBoundedBody(request.body, maxBytes, () => {
+    throw new FeedBodyError('BODY_TOO_LARGE', `The request body exceeds the ${maxBytes} bytes this feed reads.`, `Send at most ${maxBytes} bytes of JSON.`, 413);
+  });
   // The decode is inside the refusal, not beside it: a fatal TextDecoder throws
   // a raw TypeError, and a route that catches only FeedBodyError would have
   // reported malformed bytes as an internal failure.
   try {
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks));
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     if (text.trim().length === 0) return undefined;
     return JSON.parse(text);
   } catch { throw new FeedBodyError('INVALID_JSON', 'The request body must be valid UTF-8 JSON.', 'Send a JSON object.'); }

@@ -4,6 +4,7 @@ import { CoordinationError } from '../coordination/ledger';
 import { StateKernelError } from './errors';
 import { MAX_KERNEL_INPUT_BYTES } from './runtime';
 import { stateKernelEnabled } from './store';
+import { readBoundedBody } from '@/http/boundedBody';
 
 export function stateJson(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { 'Cache-Control': 'no-store', 'X-Notation-State': 'local-development-v1' } });
@@ -32,21 +33,9 @@ export async function readStateRequest(request: Request): Promise<unknown> {
     throw new StateKernelError('INVALID_CONTENT_TYPE', 'Send application/json.', 415);
   }
   if (!request.body) throw new StateKernelError('INVALID_REQUEST', 'A command batch is required.');
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      length += chunk.value.byteLength;
-      if (length > MAX_KERNEL_INPUT_BYTES) {
-        try { await reader.cancel(); } catch { /* Cancellation failure must not change the size refusal. */ }
-        throw new StateKernelError('BODY_TOO_LARGE', 'Command batches are limited to 2 MiB.', 413);
-      }
-      chunks.push(chunk.value);
-    }
-  } finally { reader.releaseLock(); }
-  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); }
+  const bytes = await readBoundedBody(request.body, MAX_KERNEL_INPUT_BYTES, () => {
+    throw new StateKernelError('BODY_TOO_LARGE', 'Command batches are limited to 2 MiB.', 413);
+  });
+  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
   catch { throw new StateKernelError('INVALID_REQUEST', 'The command batch must be valid UTF-8 JSON.'); }
 }

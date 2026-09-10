@@ -830,7 +830,14 @@ describe('located events on the globe', () => {
   it('draws only the items with a radius, draws the conflict loud, and counts the drawn ones in the strip', async () => {
     api(() => unavailable);
     render(<EarthTwin release={release} source={source} records={records} instrument={instrument} located={located} assetsReady loadEngine={loadEngine} />);
-    await ready();
+    /*
+     * `drawn()` and not `ready()`, for the reason stated under it: READY is the
+     * status pill and the markers are an effect behind it. This read the map
+     * the instant the pill turned and found it empty on a loaded machine —
+     * twice, then passed five times, which is what a race looks like from the
+     * outside. The precondition this file already states is the fix.
+     */
+    await drawn();
     const events = drawnEvents();
     expect([...events.keys()].sort()).toEqual(['event:RET-X', 'event:SPEC-T-1']);
     expect(events.get('event:SPEC-T-1')?.point.pixelSize).toBe(12);

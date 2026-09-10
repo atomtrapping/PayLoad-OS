@@ -624,6 +624,28 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 tr.row-selectable[data-selected='true'] td { box-shadow: inset 2px 0 0 var(--accent); }
 tr.row-selectable[data-selected='true'] td + td { box-shadow: none; }
 
+/* ═══ The chain figure: a run of objects that are not one another ═══ */
+/* Position is sequence and nothing else is encoded. Every node is the same
+   size because a chain says nothing about the size of what it names, the same
+   discipline the atlas follows: one cell per destination, every cell equal. */
+.chain { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.chain-node {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 9px; border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+  background: var(--bg-inset); font-size: var(--text-sm); color: var(--text-secondary);
+}
+.chain-node[data-here='true'] { border-color: var(--highlight-border); background: var(--highlight-bg); color: var(--text-primary); }
+.chain-step { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-muted); }
+.chain-node[data-here='true'] .chain-step { color: var(--accent); }
+.chain-name { min-width: 0; }
+/* The arrow sits outside the node's frame so the frames stay a row of equals. */
+.chain-arrow { margin: 0 -4px 0 3px; color: var(--text-muted); }
+.chain-node:last-child .chain-arrow { display: none; }
+
+/* A statement about what a chain does not mean, kept beside it rather than in a footnote. */
+.chain-forbids { margin: 6px 0 0; padding: 0 0 0 16px; font-size: var(--text-xs); color: var(--text-muted); }
+.chain-forbids li + li { margin-top: 2px; }
+
 /* ═══ Keyboard hints and empty states ═══ */
 @media (max-width: 767px) { .btn .kbd { display: none; } }
 .kbd { display: inline-block; font-family: var(--font-mono); font-size: var(--text-2xs); line-height: 1; padding: 3px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); border-bottom-width: 2px; color: var(--text-muted); background: var(--bg-inset); }

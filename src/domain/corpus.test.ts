@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CARAVAN_CORPUS } from '@/fixtures/caravan/release';
-import { currentRelease, deliverableRecords, queryAsOf, recordStatusAt, releaseById, releaseRecords, retractionsSince } from './corpus';
+import { currentRelease, deliverableRecords, queryAsOf, recordStatusAt, releaseById, releaseRecords, retractionsSince, standingRecords, takenBackBy } from './corpus';
 
 const corpus = CARAVAN_CORPUS;
 const rel1 = releaseById(corpus, 'REL-CAR-2026.08.11')!;
@@ -132,5 +132,54 @@ describe('retraction feed', () => {
     const restricted = queryAsOf(corpus, rel3, { subjectId: 'LOT-7C-104', predicate: 'contract.moisture_max', validAt: '2026-08-28T14:00:00Z', knownAt: rel3.knownAt, question: 'WHAT_THE_SOURCE_KNEW' }, { enforceRights: true });
     expect(restricted.refusal?.code).toBe('QUESTION_NOT_ANSWERABLE');
     expect(restricted.candidates).toEqual([]);
+  });
+});
+
+describe('what still stands, which is not what was knowable', () => {
+  /*
+   * `releaseRecords` answers what the corpus could see. This answers what the
+   * corpus still asserts, and anything computing over "the corpus" has to ask
+   * the second question. The demonstration corpus carries both kinds of
+   * retraction, so both are exercised on real rows.
+   */
+  const now = '2026-09-01T10:21:00Z';
+
+  it('drops a withdrawn record and a corrected record\'s original, and keeps the replacement', () => {
+    const standing = standingRecords(corpus, now).map((record) => record.recordId);
+    // RET-0002 withdrew two records outright.
+    expect(standing).not.toContain('REC-0111');
+    expect(standing).not.toContain('REC-0112');
+    // RET-0001 corrected REC-0203 with REC-0204. The original goes; the
+    // replacement stays, because a correction replaces a claim rather than
+    // adding a second one beside it.
+    expect(standing).not.toContain('REC-0203');
+    expect(standing).toContain('REC-0204');
+  });
+
+  it('counts what was knowable and what still stands as different numbers', () => {
+    const knowable = releaseRecords(corpus, { ...rel3, knownAt: now }).length;
+    const standing = standingRecords(corpus, now).length;
+    expect(standing).toBe(knowable - 3);
+    expect(takenBackBy(corpus, now).map((entry) => entry.recordId)).toEqual(['REC-0111', 'REC-0112', 'REC-0203']);
+    expect(takenBackBy(corpus, now).find((entry) => entry.recordId === 'REC-0203')?.kind).toBe('CORRECTION');
+  });
+
+  /*
+   * The bitemporal property, applied to the question of what a derivation was
+   * allowed to read. A retraction issued after the knowledge time has not
+   * happened yet, so replaying that time still sees the record standing — and
+   * a computation replayed at it computes the same thing it computed then.
+   */
+  it('still sees a record that had not been taken back yet at the time asked about', () => {
+    const before = '2026-08-30T14:59:59Z';
+    expect(standingRecords(corpus, before).map((record) => record.recordId)).toContain('REC-0111');
+    expect(takenBackBy(corpus, before).map((entry) => entry.recordId)).not.toContain('REC-0111');
+    // And a moment after the withdrawal was issued, it is gone.
+    expect(standingRecords(corpus, '2026-08-30T15:00:01Z').map((record) => record.recordId)).not.toContain('REC-0111');
+  });
+
+  it('never returns a record the corpus could not yet see', () => {
+    const early = '2026-08-11T00:00:00Z';
+    for (const record of standingRecords(corpus, early)) expect(record.knownAt <= early, record.recordId).toBe(true);
   });
 });

@@ -483,6 +483,42 @@ export function releaseRetractions(corpus: Corpus, release: CorpusRelease): Retr
   return corpus.retractions.filter((r) => le(r.issuedAt, release.knownAt));
 }
 
+/**
+ * Records that still stand at a knowledge time.
+ *
+ * `releaseRecords` answers what was knowable. This answers what is still
+ * asserted, which is a different question and the one a computation has to
+ * ask. A withdrawn record is not evidence of anything, and a corrected
+ * record's original has been replaced by the record that names it — so
+ * anything computing over "the corpus" that reads either is computing over
+ * claims the corpus has taken back, and counting a correction twice while it
+ * is at it.
+ *
+ * The two clocks stay separate, which is the whole reason this takes a time
+ * rather than reading a flag. A retraction issued after `at` has not happened
+ * yet, so replaying an earlier knowledge time still sees the record standing —
+ * the same bitemporal property the rest of the corpus has, applied to the
+ * question of what a derivation was allowed to read.
+ */
+export function standingRecords(corpus: Corpus, at: ISODateTime): CorpusRecord[] {
+  const takenBack = new Set<string>();
+  for (const retraction of corpus.retractions) {
+    if (!le(retraction.issuedAt, at)) continue;
+    for (const recordId of retraction.affectedRecordIds) takenBack.add(recordId);
+  }
+  return corpus.records.filter((record) => le(record.knownAt, at) && !takenBack.has(record.recordId));
+}
+
+/** The record identities `standingRecords` dropped, and why, for a run to carry. */
+export function takenBackBy(corpus: Corpus, at: ISODateTime): { recordId: string; retractionId: string; kind: RetractionKind }[] {
+  return corpus.retractions
+    .filter((retraction) => le(retraction.issuedAt, at))
+    .flatMap((retraction) => retraction.affectedRecordIds.map((recordId) => ({
+      recordId, retractionId: retraction.retractionId, kind: retraction.kind,
+    })))
+    .sort((a, b) => (a.recordId < b.recordId ? -1 : a.recordId > b.recordId ? 1 : 0));
+}
+
 /** A record's status as it stood at a knowledge time: later corrections and withdrawals are not yet known. */
 export function recordStatusAt(corpus: Corpus, record: CorpusRecord, knownAt: ISODateTime): RecordStatus {
   if (record.retractedByRetractionId) {

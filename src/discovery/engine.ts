@@ -37,7 +37,7 @@ import { createHash } from 'crypto';
 import { canonicalJson } from '@/fixtures/digest';
 import type { CorpusRecord } from '@/domain/corpus';
 import type { ArithmeticClass } from '@/domain/computationCard';
-import type { ClaimClass, MiningKind } from '@/domain/discoveryLayer';
+import type { ClaimClass, MiningKind, ValidationState } from '@/domain/discoveryLayer';
 import { inheritedRights } from '@/domain/discoveryLayer';
 
 /** What a workload asserts about one subject. */
@@ -113,6 +113,13 @@ export interface ProducedArtifact {
   subject: string;
   claim: string;
   computedAt: string;
+  /*
+   * Always NOT_VALIDATED here, and a field rather than an omission. The engine
+   * finished a computation; it did not check a claim, and it has nothing to
+   * check one against. Anything that later validates writes a validation
+   * record and moves this — the run never gets to.
+   */
+  validation: ValidationState;
   confidence: number | null;
   modelId: string | null;
   horizonEndsAt: string | null;
@@ -208,6 +215,7 @@ export function runWorkload(
       subject: claim.subject,
       claim: claim.claim,
       computedAt: context.completedAt,
+      validation: 'NOT_VALIDATED',
       confidence: claim.confidence ?? null,
       modelId: claim.modelId ?? null,
       horizonEndsAt: claim.horizonEndsAt ?? null,

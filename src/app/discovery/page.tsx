@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { ChainFigure } from '@/components/primitives/ChainFigure';
 import { Section } from '@/components/primitives/Section';
 import { ClassRegister } from '@/components/discovery/ClassRegister';
+import { MiningRun } from '@/components/discovery/MiningRun';
+import { demonstrationMining } from '@/discovery/demonstrationRun';
 import {
   ACQUISITION_LOOP, CLASS_CONTRACTS, DERIVATION_RULE, DISCOVERY_BLOCKED_ON,
   EXECUTION_IS_NOT_VALIDITY, FLYWHEEL, GAP_LOOP, GAP_LOOP_RULE, INFERENCE_CONTRACT,
@@ -23,6 +25,7 @@ export const metadata: Metadata = { title: 'Computational discovery' };
  */
 export default function DiscoveryPage() {
   const standing = discoveryStanding();
+  const mining = demonstrationMining();
   return (
     <div className="p-3 sm:p-4 max-w-[1600px] mx-auto w-full flex flex-col gap-3">
       <header className="flex flex-col gap-1 max-w-[900px]">
@@ -36,9 +39,14 @@ export default function DiscoveryPage() {
       <div className="surface px-3 py-2 text-[12.5px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: 'var(--text-secondary)' }}>
         <span className="pill" style={{ color: 'var(--text-muted)' }}>CONTRACT</span>
         <span style={{ color: 'var(--accent)' }} data-testid="derivation-count">
-          {standing.derivations} derivations. Nothing has been mined.
+          {standing.derivations} derivations over admitted evidence.
         </span>
         <span>{DISCOVERY_BLOCKED_ON[1]}</span>
+        <span data-testid="demonstration-count">
+          The engine below has run {mining.counts.runs} times over the demonstration corpus and produced{' '}
+          {mining.counts.artifacts} artifacts. Those are not derivations over admitted evidence, and the count
+          beside them stays where it is.
+        </span>
       </div>
 
       <div className="surface p-3 flex flex-col gap-2">
@@ -147,6 +155,74 @@ export default function DiscoveryPage() {
           </table>
         </div>
         <p className="m-0 mt-2 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{SUBSTRATE_RULE}</p>
+      </Section>
+
+      <Section title="The engine, run" id="run">
+        <div className="surface p-3 flex flex-col gap-3">
+          {/* The basis first, because everything under it is a statement about
+              a demonstration corpus and a reader who scrolls past this line
+              would read it as a statement about the world. */}
+          <p className="m-0 text-[12.5px]" data-testid="mining-basis" style={{ color: 'var(--status-conditional)' }}>{mining.basis}</p>
+
+          <div className="flex flex-col gap-1">
+            <p className="label-sm m-0">One computation</p>
+            <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-primary)' }}>
+              <span className="id">{mining.spec.workloadId}</span> — {mining.spec.miningKind.toLowerCase()}, produces{' '}
+              {mining.spec.producesClass}, {mining.spec.arithmetic.replace(/_/g, ' ').toLowerCase()} arithmetic,
+              minimum {String((mining.spec.parameters as { minRecords?: unknown }).minRecords)} claims per subject.
+            </p>
+            <p className="m-0 text-[11.5px] mono break-all" data-testid="spec-fingerprint" style={{ color: 'var(--text-muted)' }}>
+              {mining.spec.specFingerprint}
+            </p>
+            <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
+              The identity of the computation, not of any execution: method, parameters, implementation, output
+              schema and produced class. Every run below carries it, and changing the parameter would change it.
+            </p>
+          </div>
+
+          <div className="surface p-0 overflow-x-auto" tabIndex={0}>
+            <table className="ledger-table w-full" aria-label="Runs of the workload">
+              <thead><tr>
+                <th scope="col">Line</th><th scope="col">Release</th><th scope="col">Read</th>
+                <th scope="col">Taken back</th><th scope="col">Artifacts</th><th scope="col">Read as</th>
+              </tr></thead>
+              <tbody>
+                {mining.runs.map((run) => (
+                  <tr key={run.result.runId} data-run={run.result.runId} data-status={run.result.status}>
+                    <td><span className="pill">{run.domain}</span></td>
+                    <td className="text-[12px] mono">{run.releaseId}</td>
+                    <td className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{run.read}</td>
+                    <td className="text-[12px]" data-taken-back={run.takenBack.length} style={{ color: 'var(--status-conditional)' }}>
+                      {run.takenBack.length === 0 ? '—' : run.takenBack.map((entry) => `${entry.recordId} (${entry.kind.toLowerCase()})`).join(', ')}
+                    </td>
+                    <td className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{run.result.artifacts.length}</td>
+                    <td className="text-[11.5px] mono break-all" style={{ color: 'var(--text-muted)' }}>{run.result.inputFingerprint.slice(0, 23)}…</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="m-0 text-[11.5px]" data-testid="taken-back-rule" style={{ color: 'var(--text-muted)' }}>
+            One spec fingerprint across three runs, three different input fingerprints: a re-run is not a second
+            result, and a different input is not a different computation. {mining.counts.recordsTakenBack} records
+            were withdrawn or corrected and none of them was read — a computation does not read what the corpus
+            took back, and a correction read alongside its replacement would count the same claim twice.
+          </p>
+        </div>
+
+        <MiningRun mining={mining} />
+
+        <div className="surface p-3 flex flex-col gap-2">
+          <p className="m-0 text-[12.5px]" data-testid="not-served" style={{ color: 'var(--text-secondary)' }}>{mining.notServedBecause}</p>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+            What may be done with all of it together: {mining.rightsFloor.join(', ')} — the intersection across
+            every artifact, which is narrower than any one of them and is the only honest floor for the set.
+          </p>
+          <p className="m-0 text-[12px]" data-testid="proposals-count" style={{ color: 'var(--text-muted)' }}>
+            {mining.counts.gaps} gaps detected, {mining.counts.proposals} acquisition proposals written, none
+            authorized. {mining.proposalRule}
+          </p>
+        </div>
       </Section>
 
       <Section title="The corpus directing its own acquisition" id="loop">

@@ -275,6 +275,61 @@ describe('one vocabulary, and it is the registry’s', () => {
       .filter(([members]) => members !== 'ABSENT|PARTIAL');
     expect(duplicated.map(([members, files]) => `{${members}} in ${files.join(' and ')}`)).toEqual([]);
   });
+
+  /**
+   * AND NO CLOSED VOCABULARY SILENTLY EXTENDS ANOTHER.
+   *
+   * The check above compares member sets for equality, so it sees a vocabulary
+   * declared twice and not a vocabulary declared twice with two extra members
+   * bolted onto one of them. That is the shape the drift actually took:
+   * `StateDoiJurisdiction` carried the three regulators `JurisdictionId`
+   * carries plus LA_LDI and CO_DORA, which existed in no grammar, no fixture
+   * and no document — a filing from a regulator nothing could read, and the
+   * compiler had no objection. `JurisdictionId` has a twelve-line comment
+   * saying this exact duplication is forbidden, and the guard beside it could
+   * not see it.
+   *
+   * A strict subset is not automatically wrong. Four in this repository are
+   * deliberate narrowings: a subset naming a role inside the wider set — the
+   * outcomes a gate may rule, the operations needing separate rights, the
+   * outcomes that are runtime errors. Each is listed with its reason, because
+   * a narrowing whose name says what it narrows is a decision and a second
+   * spelling of the same idea is not.
+   *
+   * Three members is the floor. Below that, two sets overlapping is a
+   * coincidence of size rather than evidence of anything.
+   */
+  it('declares no closed vocabulary that silently extends another', () => {
+    const NARROWINGS_WITH_A_REASON = new Set([
+      // The three terminal outcomes a gate may rule, inside the full lifecycle
+      // a ruling moves through. A gate cannot leave something DRAFT.
+      'AdmissionOutcome<RulingStatus',
+      'AdmissionOutcome<RULING_STATUSES',
+      // The operations a source must be separately licensed for, inside every
+      // operation a source registration can speak about.
+      'SEPARATE_RIGHTS<SourceOperation',
+      // The outcomes that are the engine failing, inside every outcome an audit
+      // can reach. A refusal is an outcome and not a runtime error.
+      'GatRuntimeErrorCode<GatOutcome',
+    ]);
+
+    const declared = [...vocabularies().entries()].flatMap(([members, homes]) =>
+      homes.map((home) => ({ members: members.split('|'), file: home.split(':')[0], name: home.split(':')[1] })));
+
+    const extended: string[] = [];
+    for (const narrow of declared) {
+      if (narrow.members.length < 3) continue;
+      for (const wide of declared) {
+        if (wide.file === narrow.file) continue;
+        if (wide.members.length <= narrow.members.length) continue;
+        if (!narrow.members.every((member) => wide.members.includes(member))) continue;
+        if (NARROWINGS_WITH_A_REASON.has(`${narrow.name}<${wide.name}`)) continue;
+        const extra = wide.members.filter((member) => !narrow.members.includes(member));
+        extended.push(`${wide.file}:${wide.name} extends ${narrow.file}:${narrow.name} with {${extra.join('|')}}`);
+      }
+    }
+    expect([...new Set(extended)]).toEqual([]);
+  });
 });
 
 /**

@@ -1,4 +1,5 @@
 import type { Hash, ISODateTime } from './types';
+import type { JurisdictionId } from './statutoryHarvest';
 import type { ParameterSet } from './parameterRegistry';
 import { getActiveParameterSet, getParameter } from './parameterRegistry';
 import type { ComputationReceipt } from './productionPipeline';
@@ -23,7 +24,20 @@ import { FIXTURE_BITEMPORAL_OBSERVATIONS } from '@/fixtures/frontier/productionC
  * 3. Bitemporal knowledge-time filtering to avoid lookahead bias in historical evaluations.
  */
 
-export type StateDoiJurisdiction = 'CA_CDI' | 'FL_OIR' | 'TX_TDI' | 'LA_LDI' | 'CO_DORA';
+/**
+ * The regulators, from the one module that names them.
+ *
+ * This was declared here as `StateDoiJurisdiction` with five members: the
+ * three `JurisdictionId` already carries, plus LA_LDI and CO_DORA, which
+ * appeared nowhere else in the repository — not in a grammar, not in a
+ * fixture, not in a doc. So this module could describe a filing from a
+ * regulator the harvester has no grammar to read and the compiler would agree.
+ *
+ * The duplication is the one `JurisdictionId`'s own comment was written to
+ * close, and it got past the guard for that because a superset is not an equal
+ * set. The guard reads supersets now.
+ */
+export type StateDoiJurisdiction = JurisdictionId;
 
 export type LineOfBusiness =
   | 'COMMERCIAL_PROPERTY_MULTI_PERIL'

@@ -106,9 +106,45 @@ export function asOfUrl(releaseId: string, q: AsOfAnswer['query']): string {
   return `/api/v1/releases/${encodeURIComponent(releaseId)}/as-of?${p.toString()}`;
 }
 
-export function envelope<T extends object>(body: T, release?: CorpusRelease, opts: { live?: boolean } = {}) {
+/**
+ * A row that says what it is. Both `Corpus` and `CorpusRelease` carry
+ * `fixture_only`, and it is a field on the row rather than a property of the
+ * connection that served it.
+ */
+export type MaterialMarker = { readonly fixture_only?: unknown };
+
+/**
+ * Whether a payload carries demonstration material.
+ *
+ * This is deliberately not a question about the connection. A committed
+ * demonstration corpus seeded into a live PostgreSQL and served over a live
+ * connection is still a demonstration corpus, and a reader told otherwise has
+ * been told something false — the same failure this system exists to prevent,
+ * committed by the system itself. Serving from a database is a fact about
+ * where the bytes were, not about where they came from.
+ *
+ * So the rows are asked. `fixture_only` is a field on the corpus and on the
+ * release; it is written to the database with the row and read back with it.
+ *
+ * When no row can answer — a payload carrying neither corpus nor release, an
+ * empty list — the source's declaration of itself is the fallback, and it is a
+ * fallback in the safe direction. A payload that cannot establish its material
+ * was captured does not get to claim it was. Silence is not a live capture,
+ * for the same reason silence is not a zero.
+ */
+export function carriesDemonstrationMaterial(
+  rows: ReadonlyArray<MaterialMarker | null | undefined>,
+  originDeclaresDemonstration: boolean,
+): boolean {
+  const answering = rows.filter((row): row is MaterialMarker => row !== null && row !== undefined);
+  if (answering.length === 0) return originDeclaresDemonstration;
+  // One marked row is enough: the payload carries demonstration material.
+  return answering.some((row) => row.fixture_only === true);
+}
+
+export function envelope<T extends object>(body: T, release?: CorpusRelease, opts: { demonstration?: boolean } = {}) {
   return {
-    ...(opts.live ? {} : {
+    ...(opts.demonstration === false ? {} : {
       fixture_only: true as const,
       notice: 'Demonstration corpus. Synthetic, deterministic, committed. This is the shape of the product feed; it is not a live service.',
     }),

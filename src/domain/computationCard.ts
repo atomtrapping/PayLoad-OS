@@ -32,7 +32,8 @@ export const CARD_METHOD = 'notationsos.computation-card.v1';
  * How the computation's numbers were produced, because it decides whether
  * the bytes reproduce anywhere but here.
  */
-export type ArithmeticClass = 'FIXED_POINT' | 'FLOATING_POINT' | 'UNDECLARED';
+export const ARITHMETIC_CLASSES = ['FIXED_POINT', 'FLOATING_POINT', 'UNDECLARED'] as const;
+export type ArithmeticClass = typeof ARITHMETIC_CLASSES[number];
 
 /**
  * `CARD_GRADE`: re-runnable from the artifact alone, anywhere, to the same

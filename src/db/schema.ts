@@ -225,3 +225,41 @@ export const computationReceipts = pgTable('computation_receipt', {
   data: jsonb('data').notNull(),
 });
 
+
+// ---------------------------------------------------------------------------
+// The identity-and-place chain (corpus 1 of the industrial programme).
+//
+// The authority for these two tables is `SITE_ATLAS_DDL` in `siteAtlas.ts`,
+// which carries the constraints that make the chain unbypassable: a link joins
+// two adjacent kinds, an assertion carries evidence, a refusal carries a
+// reason. These definitions are for querying, and `siteAtlas.test.ts` fails if
+// they name a column the DDL does not create.
+// ---------------------------------------------------------------------------
+
+export const siteNodes = pgTable('site_node', {
+  nodeId: text('node_id').primaryKey(),
+  kind: text('kind').notNull(),
+  label: text('label').notNull(),
+  /** Null where the object has none of its own, rather than an invented one. */
+  jurisdiction: text('jurisdiction'),
+  coverageLevel: text('coverage_level').notNull(),
+  /** When this system knew of the object, not when the object came to exist. */
+  knownAt: timestamp('known_at', { withTimezone: true, mode: 'string' }).notNull(),
+  data: jsonb('data').notNull().default({}),
+});
+
+export const siteLinks = pgTable('site_link', {
+  linkId: text('link_id').primaryKey(),
+  fromNode: text('from_node').notNull(),
+  fromKind: text('from_kind').notNull(),
+  toNode: text('to_node').notNull(),
+  toKind: text('to_kind').notNull(),
+  /** CANDIDATE, ASSERTED or REFUSED. A candidate is retained, not a weak assertion. */
+  standing: text('standing').notNull(),
+  evidence: jsonb('evidence').notNull().default([]),
+  refusalReason: text('refusal_reason'),
+  validFrom: timestamp('valid_from', { withTimezone: true, mode: 'string' }).notNull(),
+  validTo: timestamp('valid_to', { withTimezone: true, mode: 'string' }),
+  knownAt: timestamp('known_at', { withTimezone: true, mode: 'string' }).notNull(),
+  decidedAt: timestamp('decided_at', { withTimezone: true, mode: 'string' }),
+});

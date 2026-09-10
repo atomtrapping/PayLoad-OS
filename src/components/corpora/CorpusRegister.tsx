@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useState } from 'react';
 import { ChainFigure } from '@/components/primitives/ChainFigure';
-import { Inspector } from '@/components/primitives/Inspector';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
+import { registerKeys } from '@/components/primitives/registerKeys';
 import {
   ACQUISITION_CANDIDATES, CORPORA, GATES, acquisitionStanding, candidatesFor,
   type CorpusId, type GateId,
@@ -43,20 +44,6 @@ export function CorpusRegister() {
   const selected = CORPORA.find((corpus) => corpus.id === selectedId) ?? null;
   const standing = acquisitionStanding();
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = CORPORA.map((corpus) => corpus.id);
-    const at = ids.indexOf(selectedId ?? ('' as CorpusId));
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    setSelectedId(ids[next]);
-    (event.currentTarget.querySelector(`[data-corpus-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="corpus-workspace" data-inspecting={selected ? 'corpus' : undefined}>
       <div className="workspace-top">
@@ -67,7 +54,7 @@ export function CorpusRegister() {
               <th scope="col">Chains</th><th scope="col">Candidates</th>
               <th scope="col" className="th-wrap">Gates<br />untested</th>
             </tr></thead>
-            <tbody role="rowgroup" onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys({ ids: CORPORA.map((corpus) => corpus.id), selected: selectedId, select: setSelectedId, attribute: 'data-corpus-select' })}>
               {CORPORA.map((corpus) => {
                 const active = corpus.id === selectedId;
                 const candidates = candidatesFor(corpus.id);
@@ -115,11 +102,11 @@ export function CorpusRegister() {
           onClose={() => setSelectedId(null)}
           focusOnNarrow
         >
-          <Part title="What would be assembled">
+          <InspectorSection title="What would be assembled">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{selected.assemble}</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title={selected.chains.length === 1 ? 'The chain it keeps distinct' : `The ${selected.chains.length} chains it keeps distinct`}>
+          <InspectorSection title={selected.chains.length === 1 ? 'The chain it keeps distinct' : `The ${selected.chains.length} chains it keeps distinct`}>
             {/* Drawn rather than described: the objects are the thing that must
                 not collapse, and a figure makes their separateness the first
                 thing a reader sees. Each chain carries what collapsing it
@@ -135,20 +122,20 @@ export function CorpusRegister() {
                 </div>
               ))}
             </div>
-          </Part>
+          </InspectorSection>
 
-          <Part title="What it does not establish">
+          <InspectorSection title="What it does not establish">
             <ul className="m-0 pl-4 text-[12px] flex flex-col gap-1" style={{ color: 'var(--text-secondary)' }} data-testid="corpus-loss">
               {selected.loss.map((statement) => <li key={statement}>{statement}</li>)}
             </ul>
-          </Part>
+          </InspectorSection>
 
-          <Part title="The product it would enable">
+          <InspectorSection title="The product it would enable">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{selected.product}</p>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>Enabled once the corpus is assembled. It is not a product that exists.</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title={`Acquisition shortlist · ${candidatesFor(selected.id).length} candidates`}>
+          <InspectorSection title={`Acquisition shortlist · ${candidatesFor(selected.id).length} candidates`}>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
               Each is a proposed integration, and each still has to pass four tests. None has been tested.
             </p>
@@ -174,7 +161,7 @@ export function CorpusRegister() {
                 </li>
               ))}
             </ul>
-          </Part>
+          </InspectorSection>
         </Inspector>
       )}
     </div>
@@ -184,6 +171,3 @@ export function CorpusRegister() {
 /** Every candidate, for the surfaces that count rather than list them. */
 export const CANDIDATE_COUNT = ACQUISITION_CANDIDATES.length;
 
-function Part({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

@@ -129,8 +129,15 @@ describe('CoordinationWorkspace', () => {
     expect(api.commands[0]).toEqual({ operation: 'acknowledge', messageId: 'MSG-00002', participantId: 'agent.identity' });
 
     await user.click(within(screen.getByTestId('message-inspector')).getByRole('button', { name: 'Reply' }));
-    expect(screen.getByLabelText('Release context')).toBeDisabled();
-    expect(screen.getByLabelText('Release context')).toHaveValue('REL-CAR-2026.09.01');
+    /*
+     * By role, because the inspector's own "Release context" panel is a named
+     * region now and a bare label query matches both it and this control. The
+     * query was unambiguous only while the panel had no accessible name, which
+     * is the thing that was worth fixing.
+     */
+    const context = screen.getByRole('combobox', { name: 'Release context' });
+    expect(context).toBeDisabled();
+    expect(context).toHaveValue('REL-CAR-2026.09.01');
     expect(screen.getByLabelText('Topic')).toBeDisabled();
     await user.type(screen.getByLabelText('Body'), 'The identity is still unresolved.');
     await user.click(screen.getByRole('button', { name: 'Post message' }));

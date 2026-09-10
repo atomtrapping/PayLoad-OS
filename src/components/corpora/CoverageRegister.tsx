@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { useState } from 'react';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import { COVERAGE_REGIONS, coverageStanding, type RegionId } from '@/domain/coverageUniverse';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 /**
  * The six coverage regions, as a register with an inspector.
@@ -36,20 +37,6 @@ export function CoverageRegister() {
   const selected = COVERAGE_REGIONS.find((region) => region.id === selectedId) ?? null;
   const standing = coverageStanding();
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = COVERAGE_REGIONS.map((region) => region.id);
-    const at = ids.indexOf(selectedId ?? ('' as RegionId));
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    setSelectedId(ids[next]);
-    (event.currentTarget.querySelector(`[data-region-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="coverage-workspace" data-inspecting={selected ? 'region' : undefined}>
       <div className="workspace-top">
@@ -60,7 +47,7 @@ export function CoverageRegister() {
               <th scope="col">Product emphasis</th><th scope="col">Corridors</th>
               <th scope="col">Standing</th>
             </tr></thead>
-            <tbody role="rowgroup" onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys({ ids: COVERAGE_REGIONS.map((region) => region.id), selected: selectedId, select: setSelectedId, attribute: 'data-region-select' })}>
               {COVERAGE_REGIONS.map((region) => {
                 const active = region.id === selectedId;
                 const corridors = standing.corridorsMaintained === 0 ? 0 : null;
@@ -114,46 +101,43 @@ export function CoverageRegister() {
           onClose={() => setSelectedId(null)}
           focusOnNarrow
         >
-          <Part title="What would be investigated first">
+          <InspectorSection title="What would be investigated first">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{selected.initialScope}</p>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
               A bounded scope rather than the region. The regions do not run the same product.
             </p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Product emphasis">
+          <InspectorSection title="Product emphasis">
             <ul className="m-0 p-0 list-none flex flex-wrap gap-1.5" data-testid="region-emphasis">
               {selected.productEmphasis.map((emphasis) => (
                 <li key={emphasis} className="pill" style={{ color: 'var(--text-secondary)' }}>{emphasis}</li>
               ))}
             </ul>
-          </Part>
+          </InspectorSection>
 
           {/* The pair, together. The gap between them is the opportunity, and
               either half alone misdescribes it. */}
-          <Part title="Evidence that already exists, and what it does not establish">
+          <InspectorSection title="Evidence that already exists, and what it does not establish">
             <p className="m-0 text-[12.5px]" data-testid="region-foundation" style={{ color: 'var(--text-secondary)' }}>{selected.foundation}</p>
             <p className="m-0 mt-1.5 text-[12.5px]" data-testid="region-limit" style={{ color: 'var(--status-conditional)' }}>{selected.foundationLimit}</p>
-          </Part>
+          </InspectorSection>
 
           {selected.distinction && (
-            <Part title="A distinction the label would erase">
+            <InspectorSection title="A distinction the label would erase">
               <p className="m-0 text-[12.5px]" data-testid="region-distinction" style={{ color: 'var(--text-secondary)' }}>{selected.distinction}</p>
-            </Part>
+            </InspectorSection>
           )}
 
-          <Part title="What is covered here">
+          <InspectorSection title="What is covered here">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }}>
               Nothing yet. No corridor is maintained in this region and no subject sits at any coverage level.
               A region is an intention; a corridor is the maintained object.
             </p>
-          </Part>
+          </InspectorSection>
         </Inspector>
       )}
     </div>
   );
 }
 
-function Part({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

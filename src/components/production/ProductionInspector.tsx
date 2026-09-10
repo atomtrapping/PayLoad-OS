@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { Digest } from '@/components/primitives/ManifestCommitment';
 import { REMEDIATION, acquisitionById, acquisitionSequence, buildSequence, buildsWithMember, candidateOf, fieldMapping, mentionedObjects, nonClaims, normalizationById, normalizationSequence, refusalCode, refusalMeaning, refusalsNaming, type CommittedSource, type LocalAcquisition, type LocalCandidateBuild, type LocalNormalizationRun, type ProductionDemo, type ProductionRefusal, type SelectionKind, type SequenceStep } from '@/domain/production';
 import { fmtUtc } from '@/lib/format';
@@ -11,11 +11,6 @@ export interface Selection { kind: SelectionKind; id: string }
 const muted = { color: 'var(--text-secondary)' };
 const faint = { color: 'var(--text-muted)' };
 const OUTCOME = { DONE: { glyph: '✓', color: 'var(--check-passed)', word: 'done' }, REFUSED: { glyph: '✕', color: 'var(--status-refused)', word: 'refused' }, NONE: { glyph: '○', color: 'var(--text-muted)', word: 'none' } } as const;
-
-function Part({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
-  const id = `inspector-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-  return <section className="inspector-section" aria-labelledby={id} data-testid={testId}><h3 id={id}>{title}</h3>{children}</section>;
-}
 
 /** Provenance as a sequence: what happened, in order, each step with its identity, its exact digest, and the clock its time belongs to. */
 function Sequence({ steps, follow }: { steps: SequenceStep[]; follow?: (step: SequenceStep) => ReactNode }) {
@@ -47,7 +42,7 @@ function NotClaimed({ records }: { records: object[] }) {
   const items = records.flatMap((r) => nonClaims(r));
   const unique = [...new Map(items.map((i) => [i.key, i])).values()];
   if (!unique.length) return null;
-  return <Part title="Not claimed"><ul className="m-0 p-0 list-none flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px]" style={faint}>{unique.map((n) => <li key={n.key}><span aria-hidden="true">✕</span> {n.label}</li>)}</ul></Part>;
+  return <InspectorSection title="Not claimed"><ul className="m-0 p-0 list-none flex flex-wrap gap-x-3 gap-y-0.5 text-[11.5px]" style={faint}>{unique.map((n) => <li key={n.key}><span aria-hidden="true">✕</span> {n.label}</li>)}</ul></InspectorSection>;
 }
 
 function Times({ rows }: { rows: Array<{ label: string; at: string | null; clock: string; note?: string }> }) {
@@ -84,15 +79,15 @@ function AcquisitionView({ demo, a, sources, onSelect }: { demo: ProductionDemo;
   const canDerive = r.allowedOperations.includes('DERIVE');
   return (
     <>
-      <Part title="Provenance as a sequence"><Sequence steps={acquisitionSequence(a)} /></Part>
-      <Part title="Time"><Times rows={[{ label: 'captured', at: a.capture.evidence.capturedAt, clock: 'capture time, as declared' }, { label: 'decided', at: a.decision.evaluatedAt, clock: 'decision time' }, { label: 'stored', at: a.capture.receipt.storedAt, clock: 'record time' }, { label: 'policy from', at: r.effectiveFrom, clock: 'policy effective from' }]} /></Part>
-      <Part title="Source bytes" testId="inspector-source"><SourceBytes evidenceId={a.capture.evidence.evidenceId} storageKey={a.capture.evidence.storageKey} contentDigest={a.capture.evidence.contentDigest} sources={sources} /></Part>
-      <Part title="What followed" testId="inspector-followed">
+      <InspectorSection title="Provenance as a sequence"><Sequence steps={acquisitionSequence(a)} /></InspectorSection>
+      <InspectorSection title="Time"><Times rows={[{ label: 'captured', at: a.capture.evidence.capturedAt, clock: 'capture time, as declared' }, { label: 'decided', at: a.decision.evaluatedAt, clock: 'decision time' }, { label: 'stored', at: a.capture.receipt.storedAt, clock: 'record time' }, { label: 'policy from', at: r.effectiveFrom, clock: 'policy effective from' }]} /></InspectorSection>
+      <InspectorSection title="Source bytes" testId="inspector-source"><SourceBytes evidenceId={a.capture.evidence.evidenceId} storageKey={a.capture.evidence.storageKey} contentDigest={a.capture.evidence.contentDigest} sources={sources} /></InspectorSection>
+      <InspectorSection title="What followed" testId="inspector-followed">
         {runs.length ? <ul className="m-0 p-0 list-none flex flex-col gap-1">{runs.map((n) => <li key={n.request.manifest.normalizationId} className="flex flex-wrap items-center gap-2 text-[12px]"><span style={{ color: n.state === 'NORMALIZED' ? 'var(--status-pending)' : 'var(--status-refused)' }}>{n.state}</span><Follow kind="normalization" id={n.request.manifest.normalizationId} label="Inspect run" onSelect={onSelect} /></li>)}</ul>
           : canDerive ? <p className="m-0 text-[12px]" style={faint}>No normalization run in this demonstration.</p>
             : <div className="surface-inset p-2 text-[12px]" data-testid="inspector-gap" data-gap-code="INGEST_ONLY"><span className="label-sm" style={{ color: 'var(--status-conditional)' }}>Coverage stops here · INGEST_ONLY</span><p className="m-0 mt-1" style={muted}>Registration <span className="id">{r.registrationId}</span> permits {r.allowedOperations.join(', ')} only, so no run can derive a candidate from these bytes.</p><p className="m-0 mt-1" style={muted}><span className="label-sm">Remediation</span> {REMEDIATION.INGEST_ONLY}</p></div>}
         {refusalsNaming(demo, m.acquisitionId).map((ref) => <div key={ref.requestId} className="mt-1"><Follow kind="refusal" id={ref.requestId} label="Inspect refusal" onSelect={onSelect} /></div>)}
-      </Part>
+      </InspectorSection>
       <NotClaimed records={[a, a.capture.evidence]} />
     </>
   );
@@ -107,7 +102,7 @@ function NormalizationView({ demo, run, sources, onSelect }: { demo: ProductionD
   const builds = buildsWithMember(demo, m.normalizationId);
   return (
     <>
-      <Part title="Evidence to record" testId="inspector-evidence-record">
+      <InspectorSection title="Evidence to record" testId="inspector-evidence-record">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
           <div className="surface-inset p-2 text-[12px] flex flex-col gap-0.5" data-testid="evidence-side">
             <span className="label-sm">Evidence · captured bytes</span>
@@ -133,9 +128,9 @@ function NormalizationView({ demo, run, sources, onSelect }: { demo: ProductionD
           </ul>
         )}
         <p className="m-0 text-[11.5px]" style={faint}>Nothing on this rail is authored: every record value is the adapter&apos;s parse of the captured bytes under contract <span className="mono">{m.profile.adapterId}</span>. Source truth and field accuracy are not claimed.</p>
-      </Part>
-      <Part title="Source bytes" testId="inspector-source">{a ? <SourceBytes evidenceId={a.capture.evidence.evidenceId} storageKey={a.capture.evidence.storageKey} contentDigest={a.capture.evidence.contentDigest} sources={sources} /> : <span className="text-[12px]" style={faint}>No acquisition to read.</span>}</Part>
-      <Part title="Time">
+      </InspectorSection>
+      <InspectorSection title="Source bytes" testId="inspector-source">{a ? <SourceBytes evidenceId={a.capture.evidence.evidenceId} storageKey={a.capture.evidence.storageKey} contentDigest={a.capture.evidence.contentDigest} sources={sources} /> : <span className="text-[12px]" style={faint}>No acquisition to read.</span>}</InspectorSection>
+      <InspectorSection title="Time">
         <Times rows={[
           { label: 'captured', at: a?.capture.evidence.capturedAt ?? null, clock: 'capture time, as declared' },
           { label: 'stored', at: a?.capture.receipt.storedAt ?? null, clock: 'record time' },
@@ -143,14 +138,14 @@ function NormalizationView({ demo, run, sources, onSelect }: { demo: ProductionD
           { label: 'known at', at: c?.knownAt ?? null, clock: 'knowledge time', note: 'no candidate, so no knowledge time' },
           { label: 'valid time', at: c?.validTime.state === 'OBSERVED' ? c.validTime.from : null, clock: 'valid time', note: c ? 'UNOBSERVED: the source asserted no validity' : 'no candidate' },
         ]} />
-      </Part>
-      <Part title="Provenance as a sequence"><Sequence steps={normalizationSequence(demo, run)} follow={(step) => step.key.startsWith('build:') && step.id ? <div className="mt-1"><Follow kind="build" id={step.id} label="Inspect build" onSelect={onSelect} /></div> : step.key.startsWith('refusal:') && step.id ? <div className="mt-1"><Follow kind="refusal" id={step.id} label="Inspect refusal" onSelect={onSelect} /></div> : step.key === 'capture' && a ? <div className="mt-1"><Follow kind="acquisition" id={a.request.manifest.acquisitionId} label="Inspect acquisition" onSelect={onSelect} /></div> : null} /></Part>
+      </InspectorSection>
+      <InspectorSection title="Provenance as a sequence"><Sequence steps={normalizationSequence(demo, run)} follow={(step) => step.key.startsWith('build:') && step.id ? <div className="mt-1"><Follow kind="build" id={step.id} label="Inspect build" onSelect={onSelect} /></div> : step.key.startsWith('refusal:') && step.id ? <div className="mt-1"><Follow kind="refusal" id={step.id} label="Inspect refusal" onSelect={onSelect} /></div> : step.key === 'capture' && a ? <div className="mt-1"><Follow kind="acquisition" id={a.request.manifest.acquisitionId} label="Inspect acquisition" onSelect={onSelect} /></div> : null} /></InspectorSection>
       {!c && (
-        <Part title="Coverage stops here" testId="inspector-gap">
+        <InspectorSection title="Coverage stops here" testId="inspector-gap">
           <div className="surface-inset p-2 text-[12px]" data-gap-code={run.reasons[0] ?? 'QUARANTINED'}><p className="m-0" style={muted}>The bytes were captured and receipted; they remain in the store at their digest for reinspection. No candidate exists, so no build can name this run.</p><p className="m-0 mt-1" style={muted}><span className="label-sm">Remediation</span> {REMEDIATION[run.reasons[0] ?? ''] ?? 'A new normalization run once the cause is removed.'}</p></div>
-        </Part>
+        </InspectorSection>
       )}
-      {builds.length > 0 && <Part title="Member of"><div className="flex flex-col gap-1">{builds.map((b) => <Follow key={b.buildId} kind="build" id={b.buildId} label="Inspect build" onSelect={onSelect} />)}</div></Part>}
+      {builds.length > 0 && <InspectorSection title="Member of"><div className="flex flex-col gap-1">{builds.map((b) => <Follow key={b.buildId} kind="build" id={b.buildId} label="Inspect build" onSelect={onSelect} />)}</div></InspectorSection>}
       <NotClaimed records={c ? [run, c] : [run]} />
     </>
   );
@@ -160,10 +155,10 @@ function BuildView({ demo, build, onSelect }: { demo: ProductionDemo; build: Loc
   const others = demo.refusals.filter((r) => r.step === 'BUILD' && r.requestId !== build.buildId);
   return (
     <>
-      <Part title="Provenance as a sequence"><Sequence steps={buildSequence(build)} follow={(step) => step.key.startsWith('member:') && step.id ? <div className="mt-1"><Follow kind="normalization" id={step.id} label="Inspect member" onSelect={onSelect} /></div> : null} /></Part>
-      <Part title="Time"><Times rows={[{ label: 'cutoff', at: build.knownThrough, clock: 'knowledge cutoff' }, { label: 'built', at: build.builtAt, clock: 'build time' }, ...build.members.map((mem) => ({ label: `member known`, at: mem.knownAt, clock: 'knowledge time' }))]} /></Part>
-      <Part title="Digests"><dl className="kv m-0 text-[12px]"><dt>definition</dt><dd><Digest value={build.definitionDigest} copy={false} /></dd><dt>request</dt><dd><Digest value={build.requestDigest} copy={false} /></dd><dt>contract</dt><dd><Digest value={build.request.contractDigest} copy={false} /></dd><dt>records root</dt><dd><Digest value={build.recordsRoot} copy={false} /></dd><dt>build</dt><dd><Digest value={build.digest} copy={false} /></dd></dl></Part>
-      {others.length > 0 && <Part title="Build requests refused" testId="inspector-refused-builds"><div className="flex flex-col gap-1">{others.map((r) => <Follow key={r.requestId} kind="refusal" id={r.requestId} label={refusalCode(r.error)} onSelect={onSelect} />)}</div></Part>}
+      <InspectorSection title="Provenance as a sequence"><Sequence steps={buildSequence(build)} follow={(step) => step.key.startsWith('member:') && step.id ? <div className="mt-1"><Follow kind="normalization" id={step.id} label="Inspect member" onSelect={onSelect} /></div> : null} /></InspectorSection>
+      <InspectorSection title="Time"><Times rows={[{ label: 'cutoff', at: build.knownThrough, clock: 'knowledge cutoff' }, { label: 'built', at: build.builtAt, clock: 'build time' }, ...build.members.map((mem) => ({ label: `member known`, at: mem.knownAt, clock: 'knowledge time' }))]} /></InspectorSection>
+      <InspectorSection title="Digests"><dl className="kv m-0 text-[12px]"><dt>definition</dt><dd><Digest value={build.definitionDigest} copy={false} /></dd><dt>request</dt><dd><Digest value={build.requestDigest} copy={false} /></dd><dt>contract</dt><dd><Digest value={build.request.contractDigest} copy={false} /></dd><dt>records root</dt><dd><Digest value={build.recordsRoot} copy={false} /></dd><dt>build</dt><dd><Digest value={build.digest} copy={false} /></dd></dl></InspectorSection>
+      {others.length > 0 && <InspectorSection title="Build requests refused" testId="inspector-refused-builds"><div className="flex flex-col gap-1">{others.map((r) => <Follow key={r.requestId} kind="refusal" id={r.requestId} label={refusalCode(r.error)} onSelect={onSelect} />)}</div></InspectorSection>}
       <NotClaimed records={[build]} />
     </>
   );
@@ -174,10 +169,10 @@ function RefusalView({ demo, refusal, onSelect }: { demo: ProductionDemo; refusa
   const mentioned = mentionedObjects(demo, refusal.error);
   return (
     <>
-      <Part title="The rail said"><p className="m-0 mono text-[12px] break-words" style={{ color: 'var(--text-secondary)' }}>{refusal.error}</p></Part>
-      <Part title="Meaning"><p className="m-0 text-[12.5px]" style={muted}>{refusalMeaning(refusal.error)}</p><p className="m-0 mt-1 text-[12px]" style={faint}>A refusal writes nothing: no run, no candidate, no build. The request id is the only trace.</p></Part>
-      <Part title="Remediation" testId="inspector-remediation"><p className="m-0 text-[12.5px]" style={muted}>{REMEDIATION[code] ?? 'See the rail’s message.'}</p></Part>
-      <Part title="Named in the refusal" testId="inspector-mentions">{mentioned.length ? <div className="flex flex-col gap-1">{mentioned.map((o) => <Follow key={`${o.kind}:${o.id}`} kind={o.kind} id={o.id} onSelect={onSelect} />)}</div> : <p className="m-0 text-[12px]" style={faint}>The refusal text names no stored object.</p>}</Part>
+      <InspectorSection title="The rail said"><p className="m-0 mono text-[12px] break-words" style={{ color: 'var(--text-secondary)' }}>{refusal.error}</p></InspectorSection>
+      <InspectorSection title="Meaning"><p className="m-0 text-[12.5px]" style={muted}>{refusalMeaning(refusal.error)}</p><p className="m-0 mt-1 text-[12px]" style={faint}>A refusal writes nothing: no run, no candidate, no build. The request id is the only trace.</p></InspectorSection>
+      <InspectorSection title="Remediation" testId="inspector-remediation"><p className="m-0 text-[12.5px]" style={muted}>{REMEDIATION[code] ?? 'See the rail’s message.'}</p></InspectorSection>
+      <InspectorSection title="Named in the refusal" testId="inspector-mentions">{mentioned.length ? <div className="flex flex-col gap-1">{mentioned.map((o) => <Follow key={`${o.kind}:${o.id}`} kind={o.kind} id={o.id} onSelect={onSelect} />)}</div> : <p className="m-0 text-[12px]" style={faint}>The refusal text names no stored object.</p>}</InspectorSection>
     </>
   );
 }

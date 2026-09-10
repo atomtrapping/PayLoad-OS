@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { useState } from 'react';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import type { DemonstrationMining } from '@/discovery/demonstrationRun';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 /**
  * The run, rather than the contract.
@@ -40,20 +41,6 @@ export function MiningRun({ mining }: { mining: DemonstrationMining }) {
   const proposal = gap ? mining.proposals.find((entry) => entry.gapId === gap.gapId) ?? null : null;
   const runOf = (artifactId: string) => mining.runs.find((run) => run.result.artifacts.some((a) => a.artifactId === artifactId));
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = artifacts.map((entry) => entry.artifactId);
-    const at = ids.indexOf(selectedId ?? '');
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    setSelectedId(ids[next]);
-    (event.currentTarget.querySelector(`[data-artifact-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="mining-workspace" data-inspecting={selected ? 'artifact' : undefined}>
       <div className="workspace-top">
@@ -66,7 +53,7 @@ export function MiningRun({ mining }: { mining: DemonstrationMining }) {
               <th scope="col">Concentration</th>
               <th scope="col">Validation</th>
             </tr></thead>
-            <tbody role="rowgroup" onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys({ ids: artifacts.map((entry) => entry.artifactId), selected: selectedId, select: setSelectedId, attribute: 'data-artifact-select' })}>
               {artifacts.map((artifact) => {
                 const active = artifact.artifactId === selectedId;
                 const detail = artifact.detail as { records: number; sources: number; herfindahl: number; singleSourced: boolean };
@@ -126,15 +113,15 @@ export function MiningRun({ mining }: { mining: DemonstrationMining }) {
           onClose={() => setSelectedId(null)}
           focusOnNarrow
         >
-          <Part title="What it computed">
+          <InspectorSection title="What it computed">
             <p className="m-0 text-[12.5px]" data-testid="artifact-claim" style={{ color: 'var(--text-primary)' }}>{selected.claim}</p>
             <p className="m-0 mt-1.5 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
               {String((selected.detail as { limit: string }).limit)}
             </p>
-          </Part>
+          </InspectorSection>
 
           {/* The lineage is the claim. Without it this is an assertion. */}
-          <Part title={`What it read — ${selected.inputs.length} record${selected.inputs.length === 1 ? '' : 's'}`}>
+          <InspectorSection title={`What it read — ${selected.inputs.length} record${selected.inputs.length === 1 ? '' : 's'}`}>
             <ul className="m-0 pl-0 list-none flex flex-col gap-1" data-testid="artifact-lineage">
               {selected.inputs.map((input) => (
                 <li key={input.recordId} className="text-[12px] flex flex-wrap gap-x-2" data-input-record={input.recordId}>
@@ -147,9 +134,9 @@ export function MiningRun({ mining }: { mining: DemonstrationMining }) {
               Records the corpus still asserts at the time the run computed. A withdrawn record, or the
               original of a corrected one, is not here — a computation does not read what the corpus took back.
             </p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="What may be done with it">
+          <InspectorSection title="What may be done with it">
             <p className="m-0 text-[12.5px]" data-testid="artifact-rights" style={{ color: 'var(--text-secondary)' }}>
               {selected.rights.length > 0 ? selected.rights.join(', ') : 'Nothing. No input carried a right the others also carried.'}
             </p>
@@ -157,31 +144,31 @@ export function MiningRun({ mining }: { mining: DemonstrationMining }) {
               The intersection of what every record above permits, computed rather than declared, and never
               wider than the narrowest of them.
             </p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Validation">
+          <InspectorSection title="Validation">
             <p className="m-0 text-[12.5px]" data-testid="artifact-validation" style={{ color: 'var(--status-conditional)' }}>
               {selected.validation}
             </p>
             <p className="m-0 mt-1.5 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{mining.notValidatedBecause}</p>
-          </Part>
+          </InspectorSection>
 
           {gap && (
-            <Part title="The gap it found">
+            <InspectorSection title="The gap it found">
               <p className="m-0 text-[12.5px]" data-testid="artifact-gap" style={{ color: 'var(--text-secondary)' }}>{gap.missing}</p>
               <p className="m-0 mt-1.5 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
                 An independent source would drop the index by {gap.expectedUncertaintyReduction}. Arithmetic, not an estimate.
               </p>
-            </Part>
+            </InspectorSection>
           )}
 
           {proposal && (
-            <Part title="And what it proposes">
+            <InspectorSection title="And what it proposes">
               <p className="m-0 text-[12.5px]" data-testid="artifact-proposal" style={{ color: 'var(--text-secondary)' }}>{proposal.targetSource}</p>
               <p className="m-0 mt-1.5 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
                 Standing <span className="pill">{proposal.standing}</span>, authorized by nobody. {mining.proposalRule}
               </p>
-            </Part>
+            </InspectorSection>
           )}
         </Inspector>
       )}
@@ -189,6 +176,3 @@ export function MiningRun({ mining }: { mining: DemonstrationMining }) {
   );
 }
 
-function Part({ title, children }: { title: string; children: ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

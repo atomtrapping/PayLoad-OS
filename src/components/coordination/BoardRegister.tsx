@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { fmtUtc } from '@/lib/format';
 import type { Acknowledgement, BoardMessage, Participant } from '@/coordination/types';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 /**
  * The message board, as a register with an inspector.
@@ -84,21 +84,6 @@ export function BoardRegister({
       !receipts.some((receipt) => receipt.participantId === participant.id));
   };
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = messages.map((message) => message.id);
-    if (ids.length === 0) return;
-    const at = ids.indexOf(selectedId ?? '');
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    onSelect(ids[next]);
-    (event.currentTarget.querySelector(`[data-message-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   const selectedEligible = selected ? eligibleFor(selected) : [];
   const selectedAcknowledger = selected
     ? selectedEligible.find((participant) => participant.id === acknowledgerFor(selected.id))?.id ?? selectedEligible[0]?.id ?? ''
@@ -115,7 +100,7 @@ export function BoardRegister({
               <th scope="col">Correspondents</th><th scope="col">Acknowledged</th>
               <th scope="col" className="th-wrap">Posted</th>
             </tr></thead>
-            <tbody role="rowgroup" onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys({ ids: messages.map((message) => message.id), selected: selectedId, select: onSelect, attribute: 'data-message-select' })}>
               {messages.map((message) => {
                 const active = message.id === selectedId;
                 const receipts = receiptsFor(message.id);
@@ -175,31 +160,31 @@ export function BoardRegister({
             </p>
           )}
 
-          <Part title="Who wrote it, and to whom">
+          <InspectorSection title="Who wrote it, and to whom">
             <dl className="kv m-0 text-[12.5px]">
               <dt>From</dt><dd>{name(selected.authorId)}</dd>
               <dt>To</dt><dd>{selected.recipientId ? name(selected.recipientId) : 'All participants in this scope'}</dd>
               <dt>Topic</dt><dd className="mono">{selected.topic}</dd>
               <dt>Posted</dt><dd className="ts">{fmtUtc(selected.createdAt, { seconds: true })}</dd>
             </dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title="What it says">
+          <InspectorSection title="What it says">
             <p className="m-0 text-[13px] whitespace-pre-wrap break-words" data-testid="message-body">{selected.body}</p>
-          </Part>
+          </InspectorSection>
 
           {selected.context && (
-            <Part title="Release context">
+            <InspectorSection title="Release context">
               <dl className="kv m-0 text-[12.5px]">
                 <dt>Domain</dt><dd>{selected.context.domain}</dd>
                 <dt>Release</dt><dd><Link href={`/releases/${encodeURIComponent(selected.context.releaseId)}`} className="id" style={{ color: 'var(--info)' }}>{selected.context.releaseId}</Link></dd>
                 <dt>Build</dt><dd className="id">{selected.context.buildId}</dd>
                 <dt>Known at</dt><dd className="ts">{fmtUtc(selected.context.knownAt)}</dd>
               </dl>
-            </Part>
+            </InspectorSection>
           )}
 
-          <Part title="Thread">
+          <InspectorSection title="Thread">
             {/* Both ends name a message in this same register, so both select
                 it. The anchors these replace scrolled the page to a card and
                 left the reader to find their way back. */}
@@ -213,9 +198,9 @@ export function BoardRegister({
                 ? <button type="button" className="btn btn-sm btn-quiet" data-testid="inspector-reply-to-open" onClick={() => onSelect(selected.replyTo)}><span className="id">{selected.replyTo}</span></button>
                 : <span style={{ color: 'var(--text-muted)' }}>Nothing — it is not a reply.</span>}</dd>
             </dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Acknowledgement receipts">
+          <InspectorSection title="Acknowledgement receipts">
             {receiptsFor(selected.id).length === 0
               ? <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>No acknowledgement receipts.</p>
               : <ul className="m-0 pl-4 text-[12px]" style={{ color: 'var(--text-secondary)' }} data-testid="message-receipts">
@@ -237,13 +222,10 @@ export function BoardRegister({
                 <button className="btn btn-sm" type="button" disabled={busy} onClick={() => onAcknowledge(selected.id, selectedAcknowledger)}>Acknowledge</button>
               </>}
             </div>}
-          </Part>
+          </InspectorSection>
         </Inspector>
       )}
     </div>
   );
 }
 
-function Part({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

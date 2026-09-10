@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { useState } from 'react';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { Digest } from '@/components/primitives/ManifestCommitment';
 import { RulingStatusPill } from '@/components/primitives/RulingStatus';
 import { VisibilityBadge } from '@/components/primitives/VisibilityClass';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import { fmtUtc } from '@/lib/format';
 import type { AssuranceClass, CheckStatus, RulingStatus, VisibilityClass } from '@/domain/types';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 /**
  * Every ruling ever issued, as a register with an inspector.
@@ -86,20 +87,6 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
 
   const selected = rulings.find((ruling) => ruling.rulingId === selectedId) ?? null;
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = rulings.map((ruling) => ruling.rulingId);
-    const at = ids.indexOf(selectedId ?? '');
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    setSelectedId(ids[next]);
-    (event.currentTarget.querySelector(`[data-ruling-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="ruling-workspace" data-inspecting={selected ? 'ruling' : undefined}>
       <div className="workspace-top">
@@ -109,7 +96,7 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
               <th scope="col">Ruling</th><th scope="col">Status</th><th scope="col">Case</th>
               <th scope="col" className="th-wrap">Ruling<br />issued on</th><th scope="col">Assurance</th>
             </tr></thead>
-            <tbody role="rowgroup" onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys({ ids: rulings.map((ruling) => ruling.rulingId), selected: selectedId, select: setSelectedId, attribute: 'data-ruling-select' })}>
               {rulings.map((ruling) => {
                 const active = ruling.rulingId === selectedId;
                 return (
@@ -152,17 +139,17 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
           onClose={() => setSelectedId(null)}
           focusOnNarrow
         >
-          <Part title="Standing">
+          <InspectorSection title="Standing">
             <div className="flex items-center gap-2 flex-wrap"><RulingStatusPill status={selected.status} size="sm" /><VisibilityBadge visibility={selected.visibility} /></div>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{selected.visibilityMeaning}</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="What it covers">
+          <InspectorSection title="What it covers">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{selected.scopeStatement}</p>
             <dl className="kv m-0 text-[12.5px]"><dt>Declared use</dt><dd>{selected.purpose}</dd></dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Revision">
+          <InspectorSection title="Revision">
             {/* A ruling is never edited: a later revision supersedes it and the
                 earlier one still says what it said. Each end of that chain is a
                 button, and the recorded reason for the transition is shown with
@@ -181,18 +168,18 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
             {selected.transitionReason
               ? <p className="m-0 text-[12px]" data-testid="inspector-transition" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Recorded reason</span> {selected.transitionReason}</p>
               : <p className="m-0 text-[11.5px]" data-testid="inspector-transition" style={{ color: 'var(--text-muted)' }}>No transition reason is recorded on this ruling.</p>}
-          </Part>
+          </InspectorSection>
 
-          <Part title="Clocks">
+          <InspectorSection title="Clocks">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Ruled at</dt><dd className="ts">{fmtUtc(selected.ruledAt)}</dd>
               <dt>Information known by</dt><dd className="ts">{fmtUtc(selected.knownAt)}</dd>
               {selected.validAt && <><dt>World state at</dt><dd className="ts">{fmtUtc(selected.validAt)}</dd></>}
             </dl>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>When it was decided, and the knowledge cutoff it was decided on. They are different questions and are never merged.</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="What it ruled on">
+          <InspectorSection title="What it ruled on">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Claims ruled</dt><dd className="mono" data-testid="inspector-claims">{selected.ruledClaims}</dd>
               <dt>Evidence considered</dt><dd className="mono" data-testid="inspector-evidence">{selected.consideredEvidence}</dd>
@@ -202,28 +189,28 @@ export function RulingRegister({ rulings }: { rulings: RulingRow[] }) {
                 <li key={status} style={{ color: CHECK_COLOUR[status] }}>{status.replace(/_/g, ' ').toLowerCase()} {selected.checks[status]}</li>
               ))}
             </ul>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Assurance">
+          <InspectorSection title="Assurance">
             <p className="m-0 text-[12.5px]" style={{ color: `var(${assuranceVar(selected.assuranceClass)})` }}>{selected.assuranceLabel}</p>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{selected.assuranceMeaning}</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Identity">
+          <InspectorSection title="Identity">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Profile</dt><dd><span className="id">{selected.profileId}</span> <span className="ver">{selected.profileVersion}</span></dd>
               <dt>Register digest</dt><dd><Digest value={selected.registerDigest} /></dd>
               <dt>Manifest commitment</dt><dd><Digest value={selected.manifestCommitment} /></dd>
             </dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Where to read it">
+          <InspectorSection title="Where to read it">
             <ul className="m-0 p-0 list-none flex flex-col gap-1 text-[12.5px]">
               <li><Link href={`/rulings/${encodeURIComponent(selected.rulingId)}`} style={{ color: 'var(--info)' }}>The ruling itself</Link> — every invariant, condition and limitation</li>
               <li><Link href={`/cases/${encodeURIComponent(selected.caseId)}`} style={{ color: 'var(--info)' }}>The case it decided</Link></li>
               <li><Link href={`/replay/${encodeURIComponent(selected.caseId)}`} style={{ color: 'var(--info)' }}>The case as it stood at this cutoff</Link></li>
             </ul>
-          </Part>
+          </InspectorSection>
         </Inspector>
       )}
     </div>
@@ -235,6 +222,3 @@ const assuranceVar = (assurance: AssuranceClass) =>
     : assurance === 'VERIFIED_ATTESTATION' ? '--assurance-verified'
       : assurance === 'HUMAN_REVIEWED' ? '--assurance-reviewed' : '--assurance-unverified';
 
-function Part({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

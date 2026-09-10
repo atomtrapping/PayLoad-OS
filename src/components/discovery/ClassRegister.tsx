@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { useState } from 'react';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import { CLASS_CONTRACTS, discoveryStanding, type ClaimClass } from '@/domain/discoveryLayer';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 /**
  * The seven claim classes, as a register with an inspector.
@@ -30,20 +31,6 @@ export function ClassRegister() {
   const selected = CLASS_CONTRACTS.find((entry) => entry.class === selectedId) ?? null;
   const standing = discoveryStanding();
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = CLASS_CONTRACTS.map((entry) => entry.class);
-    const at = ids.indexOf(selectedId ?? ('' as ClaimClass));
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    setSelectedId(ids[next]);
-    (event.currentTarget.querySelector(`[data-claim-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="class-workspace" data-inspecting={selected ? 'claim' : undefined}>
       <div className="workspace-top">
@@ -56,7 +43,7 @@ export function ClassRegister() {
               <th scope="col">Confidence</th>
               <th scope="col">Reaches forward</th>
             </tr></thead>
-            <tbody role="rowgroup" onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys({ ids: CLASS_CONTRACTS.map((entry) => entry.class), selected: selectedId, select: setSelectedId, attribute: 'data-claim-select' })}>
               {CLASS_CONTRACTS.map((entry) => {
                 const active = entry.class === selectedId;
                 return (
@@ -107,35 +94,32 @@ export function ClassRegister() {
           onClose={() => setSelectedId(null)}
           focusOnNarrow
         >
-          <Part title="What a row of this class is">
+          <InspectorSection title="What a row of this class is">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{selected.is}</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Produced by">
+          <InspectorSection title="Produced by">
             <p className="m-0 text-[12.5px]" data-testid="claim-produced-by" style={{ color: 'var(--text-secondary)' }}>{selected.producedBy}</p>
             <p className="m-0 mt-1.5 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>
               The origin decides who may produce it. A class is not a label a producer chooses.
             </p>
-          </Part>
+          </InspectorSection>
 
           {/* The sentence the class exists for. Too long for a cell, too
               important to leave out. */}
-          <Part title="What collapsing it would produce">
+          <InspectorSection title="What collapsing it would produce">
             <p className="m-0 text-[12.5px]" data-testid="claim-forbids" style={{ color: 'var(--status-conditional)' }}>{selected.forbids}</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="How many exist">
+          <InspectorSection title="How many exist">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-muted)' }}>
               {standing.byClass[selected.class]}. Nothing has been mined, because nothing has been admitted —
               so this is a contract rather than a count of anything held.
             </p>
-          </Part>
+          </InspectorSection>
         </Inspector>
       )}
     </div>
   );
 }
 
-function Part({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

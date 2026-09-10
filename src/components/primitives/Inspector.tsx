@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 /**
  * The contextual inspector: what the selected object is, in context, with
@@ -42,6 +42,37 @@ export function Inspector({ id, title, subtitle, kicker, onClose, children, acti
         </div>
       </div>
       <div className="inspector-body">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * One panel inside an inspector.
+ *
+ * Ten surfaces had each declared a local `Part` for this — the release, ruling,
+ * corpus, coverage, class, stable, board and mining registers, the spatial
+ * inquiry and the production inspector — and the ten were not the same
+ * component. Eight rendered a bare `<section>` with an `<h3>` inside it; two
+ * gave the section an accessible name and a test id. Nothing recorded a reason
+ * for the split, which is what a split with no reason looks like: whichever
+ * file was copied last decided.
+ *
+ * The named form is the one that survives. A `<section>` with no accessible
+ * name is a generic box to a screen reader; with one it is a region the reader
+ * can jump to and hear the name of, which is the whole point of dividing an
+ * inspector into panels at all.
+ *
+ * The id comes from `useId` rather than a slug of the title, because two
+ * inspectors can be open on one page — `/discovery` carries a class register
+ * and a mining register — and two panels sharing a title would otherwise share
+ * an id and point `aria-labelledby` at whichever heading rendered first.
+ */
+export function InspectorSection({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+  const id = useId();
+  return (
+    <section className="inspector-section" aria-labelledby={id} data-testid={testId}>
+      <h3 id={id}>{title}</h3>
+      {children}
     </section>
   );
 }

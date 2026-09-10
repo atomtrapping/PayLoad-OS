@@ -1,8 +1,8 @@
 'use client';
 
-import { type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import type { Connection, Participant } from '@/coordination/types';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 /**
  * The stable of agents and apparatuses, as a register with an inspector.
@@ -51,21 +51,6 @@ export function StableRegister({ participants, all, connections, selectedId, onS
   const listed = selected !== null && participants.some((participant) => participant.id === selected.id);
   const connectionsFor = (id: string) => connections.filter((connection) => connection.sourceId === id || connection.targetId === id);
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = participants.map((participant) => participant.id);
-    if (ids.length === 0) return;
-    const at = ids.indexOf(selectedId ?? '');
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    onSelect(ids[next]);
-    (event.currentTarget.querySelector(`[data-participant-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="stable-workspace" data-inspecting={selected ? 'participant' : undefined}>
       <div className="workspace-top">
@@ -76,7 +61,7 @@ export function StableRegister({ participants, all, connections, selectedId, onS
               <th scope="col" className="th-wrap">Declared<br />authority</th><th scope="col">Runtime</th>
               <th scope="col">Connections</th>
             </tr></thead>
-            <tbody role="rowgroup" onKeyDown={registerKeys}>
+            <tbody role="rowgroup" onKeyDown={registerKeys({ ids: participants.map((participant) => participant.id), selected: selectedId, select: onSelect, attribute: 'data-participant-select' })}>
               {participants.map((participant) => {
                 const active = participant.id === selectedId;
                 const related = connectionsFor(participant.id);
@@ -133,19 +118,19 @@ export function StableRegister({ participants, all, connections, selectedId, onS
             </p>
           )}
 
-          <Part title="What it is for">
+          <InspectorSection title="What it is for">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{selected.purpose}</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Declared contracts">
+          <InspectorSection title="Declared contracts">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Inputs</dt><dd className="mono break-words">{selected.inputs.join(', ') || 'None declared'}</dd>
               <dt>Outputs</dt><dd className="mono break-words">{selected.outputs.join(', ') || 'None declared'}</dd>
               <dt>Capabilities</dt><dd className="break-words">{selected.capabilities.join(', ') || 'None declared'}</dd>
             </dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Where it stands">
+          <InspectorSection title="Where it stands">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Declared authority</dt><dd>{selected.authority}</dd>
               <dt>Runtime / version</dt><dd>{selected.runtime} <span className="mono">{selected.version}</span></dd>
@@ -153,9 +138,9 @@ export function StableRegister({ participants, all, connections, selectedId, onS
               <dt>Scope</dt><dd className="mono break-words">{selected.scope}</dd>
               <dt>Reference</dt><dd className="mono break-words">{selected.reference}</dd>
             </dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title={`Synastry · ${connectionsFor(selected.id).length} declared connections`}>
+          <InspectorSection title={`Synastry · ${connectionsFor(selected.id).length} declared connections`}>
             {/* Each connection names another definition in this same register,
                 so it is a button that selects it rather than a line of text
                 about it: following a contract through the system is the reason
@@ -182,13 +167,10 @@ export function StableRegister({ participants, all, connections, selectedId, onS
               })}
               {connectionsFor(selected.id).length === 0 && <li className="text-[12px]" style={{ color: 'var(--text-muted)' }}>No compatible declared contracts in this scope.</li>}
             </ul>
-          </Part>
+          </InspectorSection>
         </Inspector>
       )}
     </div>
   );
 }
 
-function Part({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

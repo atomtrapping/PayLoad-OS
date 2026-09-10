@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { ACCESS_MEANING, FAILURE_MEANING, REACHABILITY_MEANING, REACHABILITY_TONE, GRAPH_RENDERING_LOSS, SPATIAL_NONCLAIMS, SPATIAL_REMEDY, NODE, changeText, depthText, formatSelection, graphLayout, isSpatialId, meanDepthText, parseSelection, passagesOf, planGeometry, readComparison, readInspection, spaceReadings, type Access, type Comparison, type InspectedAnalysis, type Reachability } from '@/domain/spatial';
 import { fmtUtc, shortHash } from '@/lib/format';
 
@@ -44,11 +44,6 @@ async function inspect(requestId: string, signal: AbortSignal): Promise<Loaded> 
     if (signal.aborted) return { state: 'LOADING' };
     return { state: 'FAILED', code: error instanceof Error && error.message.includes('v1 contract') ? 'INVALID_SPATIAL_PROJECTION' : 'SPATIAL_ANALYSIS_NOT_AVAILABLE', message: error instanceof Error ? error.message : 'The service could not be reached.' };
   }
-}
-
-function Part({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
-  const id = `spatial-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-  return <section className="inspector-section" aria-labelledby={id} data-testid={testId}><h3 id={id}>{title}</h3>{children}</section>;
 }
 
 function StatusPill({ status }: { status: Reachability }) {
@@ -302,7 +297,7 @@ export function SpatialInquiry({ enabled, baselineId = 'spatial-demo-baseline', 
         {!analysis && <p className="m-0 text-[12.5px]" style={muted}>{enabled ? 'Nothing is loaded. The inspector shows the selected space, its passages and where every number came from once a saved analysis is inspected.' : 'The inspector shows the selected space, its passages and where every number came from once the local analysis service is enabled.'}</p>}
         {analysis && selectedReading && (
           <>
-            <Part title="Access" testId="spatial-space-access">
+            <InspectorSection title="Access" testId="spatial-space-access">
               <dl className="kv m-0 text-[12px]">
                 <dt>Status</dt><dd><StatusPill status={selectedReading.status} /><div style={faint}>{REACHABILITY_MEANING[selectedReading.status]}</div></dd>
                 <dt>Confirmed depth</dt><dd className="mono" data-testid="spatial-selected-confirmed">{depthText(selectedReading.confirmedDepth, selectedReading.possibleDepth).confirmed}</dd>
@@ -311,8 +306,8 @@ export function SpatialInquiry({ enabled, baselineId = 'spatial-demo-baseline', 
                 <dt>Polygon</dt><dd>{selectedReading.polygonVertices !== null ? `${selectedReading.polygonVertices} vertices in frame ${analysis.projection.layout.frame.id} (${analysis.projection.layout.frame.units}); drawn, never traversed` : 'none declared; listed but not drawn'}</dd>
                 {changes.get(selectedReading.id) && <><dt>Scenario change</dt><dd data-testid="spatial-selected-change">{changeText(changes.get(selectedReading.id)!)}</dd></>}
               </dl>
-            </Part>
-            <Part title="Passages" testId="spatial-space-passages">
+            </InspectorSection>
+            <InspectorSection title="Passages" testId="spatial-space-passages">
               {passagesOf(analysis.projection.result, selectedReading.id).length === 0 ? <p className="m-0 text-[12px]" style={faint}>No passage names this space.</p> : (
                 <ul className="m-0 p-0 list-none flex flex-col gap-1.5" aria-label="Passages naming the selected space">
                   {passagesOf(analysis.projection.result, selectedReading.id).map((passage) => {
@@ -330,12 +325,12 @@ export function SpatialInquiry({ enabled, baselineId = 'spatial-demo-baseline', 
                   })}
                 </ul>
               )}
-            </Part>
+            </InspectorSection>
           </>
         )}
         {analysis && (
           <>
-            <Part title={view === 'scenario' ? 'Scenario analysis' : 'Baseline analysis'} testId="spatial-analysis">
+            <InspectorSection title={view === 'scenario' ? 'Scenario analysis' : 'Baseline analysis'} testId="spatial-analysis">
               <dl className="kv m-0 text-[12px]">
                 <dt>Request</dt><dd className="mono">{analysis.receipt.request.requestId}</dd>
                 <dt>Root</dt><dd><span className="mono">{analysis.projection.result.parameters.rootSpaceId}</span> · {labelOf(analysis.projection.result.parameters.rootSpaceId)} <span style={faint}>(a different root needs a new request id)</span></dd>
@@ -347,8 +342,8 @@ export function SpatialInquiry({ enabled, baselineId = 'spatial-demo-baseline', 
                 {analysis.projection.result.scenario && <><dt>Scenario</dt><dd data-testid="spatial-scenario-provenance"><span className="mono">{analysis.projection.result.scenario.passageId}</span> assumed <span className="mono" style={{ color: ACCESS_TONE[analysis.projection.result.scenario.assumedState] }}>{analysis.projection.result.scenario.assumedState}</span><div style={faint}>{analysis.projection.result.scenario.provenance.kind.replace('_', ' ').toLowerCase()} · {analysis.projection.result.scenario.provenance.author} · sources <span className="mono">{analysis.projection.result.scenario.provenance.sourceIds.join(', ')}</span></div><div style={faint}>{analysis.projection.result.scenario.provenance.note}</div><div style={faint}>Baseline facts are never overwritten: the declared state stays on the passage card beside the assumption.</div></dd></>}
               </dl>
               <p className="m-0 text-[11.5px]" style={faint}>A smaller mean after a closure is not improved access: the reachable set shrank, and the denominator says by how much. These are conditional summaries, not uncertainty bounds.</p>
-            </Part>
-            <Part title="Source and identity" testId="spatial-source">
+            </InspectorSection>
+            <InspectorSection title="Source and identity" testId="spatial-source">
               <dl className="kv m-0 text-[12px]">
                 <dt>Layout</dt><dd>acquisition <span className="mono">{analysis.projection.source.acquisition.id}</span> <Digest value={analysis.projection.source.acquisition.digest} /><div>evidence <span className="mono">{analysis.projection.source.evidence.id}</span> <Digest value={analysis.projection.source.evidence.contentDigest} /></div></dd>
                 <dt>Annotation</dt><dd>{analysis.projection.layout.provenance.kind.replace('_', ' ').toLowerCase()} · {analysis.projection.layout.provenance.author}<div style={faint}>{analysis.projection.layout.provenance.note}</div></dd>
@@ -358,12 +353,12 @@ export function SpatialInquiry({ enabled, baselineId = 'spatial-demo-baseline', 
                 <dt>Receipt</dt><dd><Digest value={analysis.projection.receiptDigest} /> · executed <span className="ts">{fmtUtc(analysis.receipt.startedAt, { seconds: true })}</span></dd>
                 <dt>Standing</dt><dd className="mono text-[11.5px]">inspection {analysis.projection.inspection} · rights grant {String(analysis.projection.currentRightsGrant)} · canonical admission {String(analysis.projection.canonicalAdmission)} · independently verified {String(analysis.projection.independentlyVerified)} · source truth claimed {String(analysis.projection.sourceTruthClaimed)}</dd>
               </dl>
-            </Part>
+            </InspectorSection>
           </>
         )}
-        <Part title="What this is not" testId="spatial-nonclaims">
+        <InspectorSection title="What this is not" testId="spatial-nonclaims">
           <ul className="m-0 p-0 list-none flex flex-col gap-0.5 text-[11.5px]" style={faint}>{SPATIAL_NONCLAIMS.map((claim) => <li key={claim}><span aria-hidden="true">✕</span> {claim}</li>)}</ul>
-        </Part>
+        </InspectorSection>
       </Inspector>
 
       <div className="workspace-bottom flex flex-col gap-4">

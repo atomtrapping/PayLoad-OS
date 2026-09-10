@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Inspector } from '@/components/primitives/Inspector';
+import { useState } from 'react';
+import { Inspector, InspectorSection } from '@/components/primitives/Inspector';
 import { Digest } from '@/components/primitives/ManifestCommitment';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import { fmtUtc } from '@/lib/format';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 /**
  * The release history as a register with an inspector, rather than as nine
@@ -91,21 +92,6 @@ export function ReleaseRegister({ groups, children }: { groups: CorpusGroup[]; c
   const selected = all.find((release) => release.releaseId === selectedId) ?? null;
   const group = selected ? groups.find((entry) => entry.corpusId === selected.corpusId) ?? null : null;
 
-  /** Up and down move through the register a row at a time, as they do on every other one. */
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>, rows: ReleaseRow[]) {
-    const ids = rows.map((row) => row.releaseId);
-    const at = ids.indexOf(selectedId ?? '');
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    setSelectedId(ids[next]);
-    (event.currentTarget.querySelector(`[data-release-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className={`workspace workspace-register${selected ? ' has-inspector' : ''}`} data-testid="release-workspace" data-inspecting={selected ? 'release' : undefined}>
       <div className="workspace-top flex flex-col gap-5">
@@ -124,7 +110,7 @@ export function ReleaseRegister({ groups, children }: { groups: CorpusGroup[]; c
             <div className="surface register" tabIndex={0}>
               <table role="table" className="ledger-table" aria-label={`Releases of ${entry.corpusId}`}>
                 <thead><tr><th scope="col">Release</th><th scope="col">Status</th><th scope="col" className="th-wrap">Information<br />known by</th><th scope="col">Records</th><th scope="col">Retractions</th><th scope="col">Certification</th></tr></thead>
-                <tbody role="rowgroup" onKeyDown={(event) => registerKeys(event, entry.releases)}>
+                <tbody role="rowgroup" onKeyDown={registerKeys({ ids: entry.releases.map((release) => release.releaseId), selected: selectedId, select: setSelectedId, attribute: 'data-release-select' })}>
                   {entry.releases.map((release) => {
                     const active = release.releaseId === selectedId;
                     const certification = CERTIFICATION[release.certificationStatus];
@@ -166,20 +152,20 @@ export function ReleaseRegister({ groups, children }: { groups: CorpusGroup[]; c
           onClose={() => setSelectedId(null)}
           focusOnNarrow
         >
-          <Part title="What it covers">
+          <InspectorSection title="What it covers">
             <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{selected.coverage}</p>
             {selected.note && <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>{selected.note}</p>}
-          </Part>
+          </InspectorSection>
 
-          <Part title="What it holds">
+          <InspectorSection title="What it holds">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Records</dt><dd className="mono" data-testid="inspector-records">{selected.records}</dd>
               <dt>Retractions</dt><dd className="mono" data-testid="inspector-retractions">{selected.retractions}</dd>
             </dl>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>Both counted at this release&rsquo;s knowledge cutoff, which is what a release is: everything knowable by then, and nothing learned since.</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Supersession">
+          <InspectorSection title="Supersession">
             {/* A corrections history is a chain, and a table cell can print one
                 link of it. Here each end is a button that selects that release,
                 so the chain is walked rather than read and looked up. */}
@@ -194,30 +180,30 @@ export function ReleaseRegister({ groups, children }: { groups: CorpusGroup[]; c
                 : <span style={{ color: 'var(--text-muted)' }}>Nothing — no later release has replaced it.</span>}</dd>
             </dl>
             <p className="m-0 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>A later release never edits an earlier one. This release still says what it said.</p>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Build">
+          <InspectorSection title="Build">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Build</dt><dd className="id">{selected.buildId}</dd>
               <dt>Methodology</dt><dd><span className="id">{selected.methodologyId}</span> <span className="ver">{selected.methodologyVersion}</span> · {selected.methodologyStatus}</dd>
             </dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Certification and identity">
+          <InspectorSection title="Certification and identity">
             <dl className="kv m-0 text-[12.5px]">
               <dt>Certification</dt><dd style={{ color: CERTIFICATION[selected.certificationStatus].colour }}>{CERTIFICATION[selected.certificationStatus].mark}</dd>
               <dt>Verification</dt><dd>{selected.verification.replace(/_/g, ' ')}</dd>
               <dt>Release digest</dt><dd><Digest value={selected.releaseDigest} /></dd>
             </dl>
-          </Part>
+          </InspectorSection>
 
-          <Part title="Where to read it">
+          <InspectorSection title="Where to read it">
             <ul className="m-0 p-0 list-none flex flex-col gap-1 text-[12.5px]">
               <li><Link href={`/releases/${encodeURIComponent(selected.releaseId)}`} style={{ color: 'var(--info)' }}>The release page</Link> — its records, one by one</li>
               <li><Link href={`/api/v1/releases?corpus=${encodeURIComponent(selected.corpusId)}`} className="id" style={{ color: 'var(--info)' }}>/api/v1/releases</Link> — the feed a customer reads</li>
               <li><Link href={`/stream?corpus=${encodeURIComponent(selected.corpusId)}&question=WHAT_WE_HELD&knownAt=${encodeURIComponent(selected.knownAt)}`} style={{ color: 'var(--info)' }}>What the corpus held at this cutoff</Link></li>
             </ul>
-          </Part>
+          </InspectorSection>
         </Inspector>
       )}
 
@@ -226,6 +212,3 @@ export function ReleaseRegister({ groups, children }: { groups: CorpusGroup[]; c
   );
 }
 
-function Part({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="inspector-section"><h3>{title}</h3>{children}</section>;
-}

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useDeferredValue, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import type { ClaimCaseBundle, RulingStatus, VisibilityClass } from '@/domain/types';
 import { RULING_STATUSES, VISIBILITY_CLASSES } from '@/domain/types';
 import { STATUS_SEMANTICS, ASSURANCE_SEMANTICS, VISIBILITY_SEMANTICS, isNearingExpiry, summarizeQueue, tenSecondSummary, partyName } from '@/domain/selectors';
@@ -10,6 +10,7 @@ import { VisibilityBadge } from '@/components/primitives/VisibilityClass';
 import { Inspector } from '@/components/primitives/Inspector';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import { fmtUtc, fmtDelta } from '@/lib/format';
+import { registerKeys } from '@/components/primitives/registerKeys';
 
 type Filters = {
   status: RulingStatus | 'ALL' | 'ACTION';
@@ -110,21 +111,6 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
   const selected = cases.find((b) => b.caseId === selectedId) ?? null;
   const selectedInFilter = selected !== null && rows.some((b) => b.caseId === selected.caseId);
 
-  function registerKeys(event: ReactKeyboardEvent<HTMLTableSectionElement>) {
-    const ids = rows.map((b) => b.caseId);
-    if (ids.length === 0) return;
-    const at = ids.indexOf(selectedId ?? '');
-    let next: number;
-    if (event.key === 'ArrowDown') next = Math.min(ids.length - 1, at + 1);
-    else if (event.key === 'ArrowUp') next = Math.max(0, at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ids.length - 1;
-    else return;
-    event.preventDefault();
-    setSelectedId(ids[next]);
-    (event.currentTarget.querySelector(`[data-case-select="${ids[next]}"]`) as HTMLElement | null)?.focus();
-  }
-
   return (
     <div className="flex flex-col gap-4 p-3 sm:p-4 max-w-[1600px] mx-auto w-full">
       {/* Operational summary: small, textual, not decorative cards */}
@@ -222,7 +208,7 @@ export function CaseQueue({ cases, lastSeenAt }: { cases: ClaimCaseBundle[]; las
                   <th scope="col">Required action</th>
                 </tr>
               </thead>
-              <tbody role="rowgroup" onKeyDown={registerKeys}>
+              <tbody role="rowgroup" onKeyDown={registerKeys({ ids: rows.map((b) => b.caseId), selected: selectedId, select: setSelectedId, attribute: 'data-case-select' })}>
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={3} className="py-8 text-center" style={{ color: 'var(--text-muted)' }}>No cases match these filters.</td>

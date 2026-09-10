@@ -17,6 +17,7 @@ import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from '@/db/discoveryLed
 import { demonstrationMining, DEMONSTRATION_PARAMETERS } from './demonstrationRun';
 import { evidenceConcentrationWorkload } from './evidenceConcentration';
 import { specFingerprint } from './engine';
+import { sqlArray, sqlText } from '@/db/ddl';
 
 const mining = demonstrationMining();
 
@@ -226,8 +227,6 @@ describe('the whole run survives the ledger it would be written to', () => {
     await client.query(`SET search_path TO demo_${scenario}`);
     return (await client.query(query)).rows as Record<string, unknown>[];
   };
-  const lit = (value: string) => `'${value.replace(/'/g, "''")}'`;
-  const arr = (values: readonly string[]) => `'{${values.map((v) => `"${v}"`).join(',')}}'`;
 
   const exec = async (statements: readonly string[]) => {
     try {
@@ -244,44 +243,44 @@ describe('the whole run survives the ledger it would be written to', () => {
     const statements: string[] = [
       `INSERT INTO workload_spec (workload_id, mining_kind, produces_class, input_selector, method, parameters,
          implementation_id, implementation_version, output_schema, arithmetic, spec_fingerprint)
-       VALUES (${lit(over.spec.workloadId)}, ${lit(over.spec.miningKind)}, ${lit(over.spec.producesClass)},
-         '{"records":"standing"}'::jsonb, ${lit(over.spec.method)}, ${lit(JSON.stringify(over.spec.parameters))}::jsonb,
-         ${lit(over.spec.implementation.id)}, ${lit(over.spec.implementation.version)}, ${lit(over.spec.outputSchema)},
-         ${lit(over.spec.arithmetic)}, ${lit(over.spec.specFingerprint)})`,
+       VALUES (${sqlText(over.spec.workloadId)}, ${sqlText(over.spec.miningKind)}, ${sqlText(over.spec.producesClass)},
+         '{"records":"standing"}'::jsonb, ${sqlText(over.spec.method)}, ${sqlText(JSON.stringify(over.spec.parameters))}::jsonb,
+         ${sqlText(over.spec.implementation.id)}, ${sqlText(over.spec.implementation.version)}, ${sqlText(over.spec.outputSchema)},
+         ${sqlText(over.spec.arithmetic)}, ${sqlText(over.spec.specFingerprint)})`,
     ];
     for (const run of over.runs) {
       const corpus = FIXTURE_CORPORA.find((entry) => entry.domain === run.domain)!;
       const release = currentRelease(corpus);
       statements.push(
-        `INSERT INTO corpora VALUES (${lit(corpus.corpusId)}, ${lit(corpus.domain)}, '{}'::jsonb)`,
-        `INSERT INTO releases VALUES (${lit(release.releaseId)}, ${lit(corpus.corpusId)}, 'CURRENT', ${lit(release.knownAt)}, '{}'::jsonb)`,
+        `INSERT INTO corpora VALUES (${sqlText(corpus.corpusId)}, ${sqlText(corpus.domain)}, '{}'::jsonb)`,
+        `INSERT INTO releases VALUES (${sqlText(release.releaseId)}, ${sqlText(corpus.corpusId)}, 'CURRENT', ${sqlText(release.knownAt)}, '{}'::jsonb)`,
         ...standingRecords(corpus, run.knownAt).map((record) =>
-          `INSERT INTO corpus_record VALUES (${lit(record.recordId)}, ${lit(release.releaseId)}, ${lit(record.subjectId)}, ${lit(record.predicate)}, ${lit(record.knownAt)})`),
+          `INSERT INTO corpus_record VALUES (${sqlText(record.recordId)}, ${sqlText(release.releaseId)}, ${sqlText(record.subjectId)}, ${sqlText(record.predicate)}, ${sqlText(record.knownAt)})`),
         `INSERT INTO workload_run (run_id, workload_id, produces_class, corpus_release_id, started_at, completed_at,
            status, input_fingerprint, output_fingerprint)
-         VALUES (${lit(run.result.runId)}, ${lit(over.spec.workloadId)}, ${lit(over.spec.producesClass)}, ${lit(release.releaseId)},
-           ${lit(run.result.startedAt)}, ${lit(run.result.completedAt)}, 'SUCCEEDED',
-           ${lit(run.result.inputFingerprint)}, ${lit(run.result.outputFingerprint!)})`,
+         VALUES (${sqlText(run.result.runId)}, ${sqlText(over.spec.workloadId)}, ${sqlText(over.spec.producesClass)}, ${sqlText(release.releaseId)},
+           ${sqlText(run.result.startedAt)}, ${sqlText(run.result.completedAt)}, 'SUCCEEDED',
+           ${sqlText(run.result.inputFingerprint)}, ${sqlText(run.result.outputFingerprint!)})`,
       );
       for (const artifact of run.result.artifacts) {
         statements.push(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights, validation)
-          VALUES (${lit(artifact.artifactId)}, ${lit(run.result.runId)}, 'SUCCEEDED', ${lit(artifact.claimClass)},
-            ${lit(artifact.subject)}, ${lit(artifact.claim)}, ${lit(artifact.computedAt)}, ${arr(artifact.rights)}, ${lit(artifact.validation)})`);
+          VALUES (${sqlText(artifact.artifactId)}, ${sqlText(run.result.runId)}, 'SUCCEEDED', ${sqlText(artifact.claimClass)},
+            ${sqlText(artifact.subject)}, ${sqlText(artifact.claim)}, ${sqlText(artifact.computedAt)}, ${sqlArray(artifact.rights)}, ${sqlText(artifact.validation)})`);
         for (const [index, input] of artifact.inputs.entries()) {
           statements.push(`INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind,
             source_record_id, source_known_at, input_rights)
-            VALUES (${lit(`${artifact.artifactId}-I${index}`)}, ${lit(artifact.artifactId)}, ${lit(artifact.computedAt)},
-              'SOURCE_RECORD', ${lit(input.recordId)}, ${lit(input.knownAt)}, ${arr(input.rights)})`);
+            VALUES (${sqlText(`${artifact.artifactId}-I${index}`)}, ${sqlText(artifact.artifactId)}, ${sqlText(artifact.computedAt)},
+              'SOURCE_RECORD', ${sqlText(input.recordId)}, ${sqlText(input.knownAt)}, ${sqlArray(input.rights)})`);
         }
       }
     }
     for (const gap of over.gaps) {
       statements.push(`INSERT INTO gap_detection (gap_id, artifact_id, missing, expected_uncertainty_reduction, detected_at)
-        VALUES (${lit(gap.gapId)}, ${lit(gap.artifactId)}, ${lit(gap.missing)}, ${gap.expectedUncertaintyReduction}, ${lit(gap.detectedAt)})`);
+        VALUES (${sqlText(gap.gapId)}, ${sqlText(gap.artifactId)}, ${sqlText(gap.missing)}, ${gap.expectedUncertaintyReduction}, ${sqlText(gap.detectedAt)})`);
     }
     for (const proposal of over.proposals) {
       statements.push(`INSERT INTO acquisition_proposal (proposal_id, gap_id, target_source, proposed_at, standing)
-        VALUES (${lit(proposal.proposalId)}, ${lit(proposal.gapId)}, ${lit(proposal.targetSource)}, ${lit(proposal.proposedAt)}, ${lit(proposal.standing)})`);
+        VALUES (${sqlText(proposal.proposalId)}, ${sqlText(proposal.gapId)}, ${sqlText(proposal.targetSource)}, ${sqlText(proposal.proposedAt)}, ${sqlText(proposal.standing)})`);
     }
     return statements;
   }
@@ -315,8 +314,8 @@ describe('the whole run survives the ledger it would be written to', () => {
   it('refuses an artifact claiming a right one of its inputs does not carry', async () => {
     const artifact = mining.artifacts.find((entry) => !entry.rights.includes('trading'))!;
     const statements = statementsFor().map((statement) =>
-      statement.includes(`INSERT INTO derived_artifact`) && statement.includes(lit(artifact.artifactId))
-        ? statement.replace(arr(artifact.rights), arr([...artifact.rights, 'trading']))
+      statement.includes(`INSERT INTO derived_artifact`) && statement.includes(sqlText(artifact.artifactId))
+        ? statement.replace(sqlArray(artifact.rights), sqlArray([...artifact.rights, 'trading']))
         : statement);
     await expect(exec(statements)).rejects.toThrow(/artifact_rights_wider_than_inputs/);
   });
@@ -327,7 +326,7 @@ describe('the whole run survives the ledger it would be written to', () => {
     const artifact = mining.artifacts[0];
     await expect(client.exec(`SET search_path TO demo_${scenario};
       INSERT INTO served_claim (claim_id, served_at, origin_kind, served_as, artifact_id, artifact_class)
-      VALUES ('S1', ${lit(artifact.computedAt)}, 'COMPUTATION', 'SOURCE_OBSERVATION', ${lit(artifact.artifactId)}, 'COMPUTED_RESULT')`))
+      VALUES ('S1', ${sqlText(artifact.computedAt)}, 'COMPUTATION', 'SOURCE_OBSERVATION', ${sqlText(artifact.artifactId)}, 'COMPUTED_RESULT')`))
       .rejects.toThrow(/served_class_is_the_artifacts_own/);
   });
 });

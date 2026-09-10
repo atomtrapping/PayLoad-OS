@@ -15,6 +15,7 @@ import type { Corpus, CorpusRecord } from '@/domain/corpus';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from '@/db/discoveryLedger';
 import { inputFingerprint, outputFingerprint, runWorkload, specFingerprint } from './engine';
 import { evidenceConcentrationWorkload, concentrationOf, gapsFrom, type ConcentrationDetail } from './evidenceConcentration';
+import { sqlArray, sqlText } from '@/db/ddl';
 
 const CARAVAN = FIXTURE_CORPORA.find((corpus) => corpus.domain === 'CARAVAN') as Corpus;
 const RECORDS = CARAVAN.records;
@@ -228,35 +229,33 @@ describe('the result survives being written down and read back', () => {
     await client.query(`SET search_path TO mine_${scenario}`);
     return (await client.query(query)).rows as Record<string, unknown>[];
   };
-  const lit = (value: string) => `'${value.replace(/'/g, "''")}'`;
-  const arr = (values: readonly string[]) => `'{${values.join(',')}}'`;
 
   /** Seed the corpus the computation read, then persist what it produced. */
   async function persist() {
     const result = run();
     const statements: string[] = [
-      `INSERT INTO corpora VALUES (${lit(CARAVAN.corpusId)}, 'CARAVAN', '{}'::jsonb)`,
-      `INSERT INTO releases VALUES (${lit(RELEASE.releaseId)}, ${lit(CARAVAN.corpusId)}, 'CURRENT', ${lit(RELEASE.knownAt)}, '{}'::jsonb)`,
-      ...RECORDS.map((r) => `INSERT INTO corpus_record VALUES (${lit(r.recordId)}, ${lit(RELEASE.releaseId)}, ${lit(r.subjectId)}, ${lit(r.predicate)}, ${lit(r.knownAt)})`),
+      `INSERT INTO corpora VALUES (${sqlText(CARAVAN.corpusId)}, 'CARAVAN', '{}'::jsonb)`,
+      `INSERT INTO releases VALUES (${sqlText(RELEASE.releaseId)}, ${sqlText(CARAVAN.corpusId)}, 'CURRENT', ${sqlText(RELEASE.knownAt)}, '{}'::jsonb)`,
+      ...RECORDS.map((r) => `INSERT INTO corpus_record VALUES (${sqlText(r.recordId)}, ${sqlText(RELEASE.releaseId)}, ${sqlText(r.subjectId)}, ${sqlText(r.predicate)}, ${sqlText(r.knownAt)})`),
       `INSERT INTO workload_spec (workload_id, mining_kind, produces_class, input_selector, method, parameters,
          implementation_id, implementation_version, output_schema, arithmetic, spec_fingerprint)
        VALUES ('evidence-concentration', 'DESCRIPTIVE', 'COMPUTED_RESULT', '{"all":true}'::jsonb,
          'notationsos.mining.evidence-concentration.v1', '{"minRecords":1}'::jsonb,
-         'notationsos.discovery', '0.1.0', 'payload.derived.evidence-concentration.v1', 'FIXED_POINT', ${lit(result.specFingerprint)})`,
+         'notationsos.discovery', '0.1.0', 'payload.derived.evidence-concentration.v1', 'FIXED_POINT', ${sqlText(result.specFingerprint)})`,
       `INSERT INTO workload_run (run_id, workload_id, produces_class, corpus_release_id, started_at, completed_at,
          status, input_fingerprint, output_fingerprint)
-       VALUES (${lit(result.runId)}, 'evidence-concentration', 'COMPUTED_RESULT', ${lit(RELEASE.releaseId)},
-         ${lit(result.startedAt)}, ${lit(result.completedAt)}, 'SUCCEEDED', ${lit(result.inputFingerprint)}, ${lit(result.outputFingerprint!)})`,
+       VALUES (${sqlText(result.runId)}, 'evidence-concentration', 'COMPUTED_RESULT', ${sqlText(RELEASE.releaseId)},
+         ${sqlText(result.startedAt)}, ${sqlText(result.completedAt)}, 'SUCCEEDED', ${sqlText(result.inputFingerprint)}, ${sqlText(result.outputFingerprint!)})`,
     ];
     for (const artifact of result.artifacts) {
       statements.push(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights)
-        VALUES (${lit(artifact.artifactId)}, ${lit(result.runId)}, 'SUCCEEDED', 'COMPUTED_RESULT', ${lit(artifact.subject)},
-          ${lit(artifact.claim)}, ${lit(artifact.computedAt)}, ${arr(artifact.rights)})`);
+        VALUES (${sqlText(artifact.artifactId)}, ${sqlText(result.runId)}, 'SUCCEEDED', 'COMPUTED_RESULT', ${sqlText(artifact.subject)},
+          ${sqlText(artifact.claim)}, ${sqlText(artifact.computedAt)}, ${sqlArray(artifact.rights)})`);
       for (const [index, input] of artifact.inputs.entries()) {
         statements.push(`INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind,
           source_record_id, source_known_at, input_rights)
-          VALUES (${lit(`${artifact.artifactId}-I${index}`)}, ${lit(artifact.artifactId)}, ${lit(artifact.computedAt)},
-            'SOURCE_RECORD', ${lit(input.recordId)}, ${lit(input.knownAt)}, ${arr(input.rights)})`);
+          VALUES (${sqlText(`${artifact.artifactId}-I${index}`)}, ${sqlText(artifact.artifactId)}, ${sqlText(artifact.computedAt)},
+            'SOURCE_RECORD', ${sqlText(input.recordId)}, ${sqlText(input.knownAt)}, ${sqlArray(input.rights)})`);
       }
     }
     try {
@@ -310,13 +309,13 @@ describe('the result survives being written down and read back', () => {
     const artifact = result.artifacts[0];
     await expect(client.exec(`SET search_path TO mine_${scenario};
       INSERT INTO served_claim (claim_id, served_at, origin_kind, served_as, artifact_id, artifact_class)
-      VALUES ('S1', ${lit(T_DONE)}, 'COMPUTATION', 'SOURCE_OBSERVATION', ${lit(artifact.artifactId)}, 'COMPUTED_RESULT')`))
+      VALUES ('S1', ${sqlText(T_DONE)}, 'COMPUTATION', 'SOURCE_OBSERVATION', ${sqlText(artifact.artifactId)}, 'COMPUTED_RESULT')`))
       .rejects.toThrow(/served_class_is_the_artifacts_own/);
 
     /* Served as what it is, it goes in. */
     await client.exec(`SET search_path TO mine_${scenario};
       INSERT INTO served_claim (claim_id, served_at, origin_kind, served_as, artifact_id, artifact_class)
-      VALUES ('S2', ${lit(T_DONE)}, 'COMPUTATION', 'COMPUTED_RESULT', ${lit(artifact.artifactId)}, 'COMPUTED_RESULT')`);
+      VALUES ('S2', ${sqlText(T_DONE)}, 'COMPUTATION', 'COMPUTED_RESULT', ${sqlText(artifact.artifactId)}, 'COMPUTED_RESULT')`);
     expect(await q(`SELECT served_as FROM served_claim`)).toEqual([{ served_as: 'COMPUTED_RESULT' }]);
   });
 
@@ -334,9 +333,9 @@ describe('the result survives being written down and read back', () => {
     const artifact = result.artifacts.find((a) => a.subject === top.subject)!;
     await client.exec(`SET search_path TO mine_${scenario};
       INSERT INTO gap_detection (gap_id, artifact_id, missing, expected_uncertainty_reduction, detected_at)
-        VALUES ('G1', ${lit(artifact.artifactId)}, ${lit(top.missing)}, ${top.expectedUncertaintyReduction}, ${lit(T_DONE)});
+        VALUES ('G1', ${sqlText(artifact.artifactId)}, ${sqlText(top.missing)}, ${top.expectedUncertaintyReduction}, ${sqlText(T_DONE)});
       INSERT INTO acquisition_proposal (proposal_id, gap_id, target_source, proposed_at, standing)
-        VALUES ('P1', 'G1', 'an independent source for this subject', ${lit(T_DONE)}, 'PROPOSED')`);
+        VALUES ('P1', 'G1', 'an independent source for this subject', ${sqlText(T_DONE)}, 'PROPOSED')`);
     expect(await q(`SELECT standing FROM acquisition_proposal`)).toEqual([{ standing: 'PROPOSED' }]);
     expect(await q(`SELECT authorized_by FROM acquisition_proposal`)).toEqual([{ authorized_by: null }]);
   });

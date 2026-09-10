@@ -48,3 +48,25 @@ export function ddlColumns(ddl: string): Record<string, string[]> {
   }
   return tables;
 }
+
+/**
+ * One value as a SQL string literal, with embedded quotes doubled.
+ *
+ * For tests and seed scripts that write statements by hand. Application code
+ * goes through the driver's parameter binding and never needs this.
+ */
+export const sqlText = (value: string) => `'${value.replace(/'/g, "''")}'`;
+
+/**
+ * A list of values as a SQL array literal, with every element quoted.
+ *
+ * The quoting is the whole point and it was the difference between two copies
+ * of this helper that carried the same name one directory apart. Unquoted,
+ * PostgreSQL splits an element on the comma inside it: `{deliver, then bill,
+ * model_training}` is read back as three elements, not two, so a rights array
+ * silently gains a member and loses the one it split. Quoted, it is two.
+ *
+ * Nothing in the corpus carries a comma in a right today, which is why both
+ * encodings appeared to work and why only one of them is correct.
+ */
+export const sqlArray = (values: readonly string[]) => `'{${values.map((value) => `"${value}"`).join(',')}}'`;

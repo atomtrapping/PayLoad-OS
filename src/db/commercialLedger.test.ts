@@ -9,7 +9,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { SALES_AGENT_MAY, SALES_AGENT_MAY_NEVER } from '@/domain/commercialPlane';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from './discoveryLedger';
-import { AUTHORIZING_PRINCIPALS, COMMERCIAL_LEDGER_DDL, COMMERCIAL_LEDGER_GUARDS, commercialDdlColumns } from './commercialLedger';
+import { AUTHORIZING_PRINCIPALS, COMMERCIAL_LEDGER_DDL, COMMERCIAL_LEDGER_GUARDS } from './commercialLedger';
+import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -272,8 +273,8 @@ describe('nothing can be sold, and the block is structural', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(commercialDdlColumns()['engagement_claim']).toContain('presented_as');
-    expect(commercialDdlColumns()['engagement_proposal']).toContain('contact_basis');
-    expect(commercialDdlColumns()['engagement_outcome']).toContain('admitted_via');
+    expect(ddlColumns(COMMERCIAL_LEDGER_DDL)['engagement_claim']).toContain('presented_as');
+    expect(ddlColumns(COMMERCIAL_LEDGER_DDL)['engagement_proposal']).toContain('contact_basis');
+    expect(ddlColumns(COMMERCIAL_LEDGER_DDL)['engagement_outcome']).toContain('admitted_via');
   });
 });

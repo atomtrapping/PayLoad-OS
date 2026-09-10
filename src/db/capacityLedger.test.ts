@@ -11,7 +11,8 @@ import { PGlite } from '@electric-sql/pglite';
 import {
   ASSERTING_BASES, RELATIONSHIP_ROLES, TRANSPORT_STAGES, utilization,
 } from '@/domain/capacityCoupling';
-import { CAPACITY_LEDGER_DDL, STANDING_BASES, capacityDdlColumns } from './capacityLedger';
+import { CAPACITY_LEDGER_DDL, STANDING_BASES } from './capacityLedger';
+import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -240,8 +241,8 @@ describe('nothing is mapped', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(capacityDdlColumns()['site_relationship']).toContain('basis');
-    expect(capacityDdlColumns()['commissioned_capacity']).toContain('process_line');
-    expect(capacityDdlColumns()['cluster_census']).toContain('definition_version');
+    expect(ddlColumns(CAPACITY_LEDGER_DDL)['site_relationship']).toContain('basis');
+    expect(ddlColumns(CAPACITY_LEDGER_DDL)['commissioned_capacity']).toContain('process_line');
+    expect(ddlColumns(CAPACITY_LEDGER_DDL)['cluster_census']).toContain('definition_version');
   });
 });

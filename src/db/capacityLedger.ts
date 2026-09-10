@@ -36,12 +36,11 @@
  * better mapping, and a boundary redrawn between two counts produces apparent
  * growth with no new industrial activity at all.
  */
+import { quoted } from './ddl';
 import {
   ASSERTING_BASES, RELATIONSHIP_BASES, RELATIONSHIP_ROLES, RELATIONSHIP_STANDINGS,
   TRANSPORT_STAGES,
 } from '@/domain/capacityCoupling';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 
 /** The (standing, basis) pairs permitted. Co-location supports a candidate, never an assertion. */
 export const STANDING_BASES: ReadonlyArray<readonly [string, string]> = [
@@ -193,17 +192,3 @@ CREATE INDEX production_by_capacity ON observed_production (capacity_id, observe
 CREATE INDEX census_by_cluster ON cluster_census (cluster_id, definition_version, taken_at);
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function capacityDdlColumns(ddl = CAPACITY_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

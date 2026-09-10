@@ -9,7 +9,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { ELIGIBILITY_PERMITS, ELIGIBILITY_STATES, TREASURY_AUTHORIZING_PRINCIPALS } from '@/domain/treasury';
-import { TREASURY_LEDGER_DDL, TREASURY_LEDGER_GUARDS, treasuryDdlColumns } from './treasuryLedger';
+import { TREASURY_LEDGER_DDL, TREASURY_LEDGER_GUARDS } from './treasuryLedger';
+import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -323,8 +324,8 @@ describe('the firm holds nothing', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(treasuryDdlColumns()['asset_eligibility']).toContain('asset_contract');
-    expect(treasuryDdlColumns()['treasury_proposal']).toContain('doing_nothing');
-    expect(treasuryDdlColumns()['treasury_authorization']).toContain('eligibility_state');
+    expect(ddlColumns(TREASURY_LEDGER_DDL)['asset_eligibility']).toContain('asset_contract');
+    expect(ddlColumns(TREASURY_LEDGER_DDL)['treasury_proposal']).toContain('doing_nothing');
+    expect(ddlColumns(TREASURY_LEDGER_DDL)['treasury_authorization']).toContain('eligibility_state');
   });
 });

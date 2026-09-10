@@ -42,11 +42,10 @@
  *
  * No subject exists, because nothing has been admitted about one.
  */
+import { quoted } from './ddl';
 import {
   OBSERVATION_BASES, PHYSICAL_BLOCKS, STATE_KINDS,
 } from '@/domain/stateKinds';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 
 export const STATE_LEDGER_DDL = `
 -- The one parent whose kind column holds all three, so the keys below
@@ -171,17 +170,3 @@ CREATE INDEX estimate_by_subject ON state_estimate (subject_id, describes_at, ev
 CREATE INDEX revision_by_scope ON accepted_revision (scope_subject_id, revision);
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function stateDdlColumns(ddl = STATE_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

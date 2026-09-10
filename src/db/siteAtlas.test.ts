@@ -17,7 +17,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { getTableColumns } from 'drizzle-orm';
 import * as schema from './schema';
-import { SITE_ATLAS_DDL, SITE_LINK_STEPS, SITE_NODE_KINDS, ddlColumns } from './siteAtlas';
+import { SITE_ATLAS_DDL, SITE_LINK_STEPS, SITE_NODE_KINDS } from './siteAtlas';
+import { ddlColumns } from './ddl';
 import {
   assertLink, atlasCoverage, proposeLink, putNode, readChain, refuseLink, unresolvedMatches,
   type AtlasDatabase,
@@ -280,7 +281,7 @@ describe('one schema, not two', () => {
    * not create.
    */
   it('creates every column the query definitions name', () => {
-    const created = ddlColumns();
+    const created = ddlColumns(SITE_ATLAS_DDL);
     for (const [table, columns] of [
       ['site_node', getTableColumns(schema.siteNodes)],
       ['site_link', getTableColumns(schema.siteLinks)],

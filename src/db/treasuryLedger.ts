@@ -61,8 +61,7 @@ import {
   REVIEW_RESPONSES, TREASURY_AUTHORIZING_PRINCIPALS,
 } from '@/domain/treasury';
 import { OUTCOMES } from '@/domain/executionEnvelope';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
+import { quoted } from './ddl';
 
 /** The responses that end a proposal, from the module that owns the set. */
 export { RESPONSES_THAT_CLOSE } from '@/domain/treasury';
@@ -291,17 +290,3 @@ CREATE TRIGGER treasury_authorization_denial_line
   FOR EACH ROW EXECUTE FUNCTION refuse_authorization_descending_from_a_denial();
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function treasuryDdlColumns(ddl = TREASURY_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

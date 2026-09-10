@@ -37,11 +37,10 @@
  * authorization can be written — the execution ledger's release key has
  * nothing to point at.
  */
+import { quoted } from './ddl';
 import {
   EXCEPTION_KINDS, RESERVATION_STATES, WARRANT_QUESTIONS,
 } from '@/domain/warrantLog';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 
 /** The seven questions as column names, derived so the two cannot drift. */
 export const WARRANT_COLUMNS: readonly string[] = WARRANT_QUESTIONS.map((question) =>
@@ -131,17 +130,3 @@ CREATE INDEX reservation_by_budget ON budget_reservation (budget_id, sequence);
 CREATE INDEX exception_open ON desk_exception (kind, raised_at) WHERE resolved_at IS NULL;
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function warrantDdlColumns(ddl = WARRANT_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

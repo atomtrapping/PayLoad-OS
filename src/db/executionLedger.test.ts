@@ -10,8 +10,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { AGENT_MAY_NEVER } from '@/domain/executionEnvelope';
+import { ddlColumns } from './ddl';
 import {
-  AUTHORIZING_PRINCIPALS, EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS, ledgerDdlColumns,
+  AUTHORIZING_PRINCIPALS, EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS,
 } from './executionLedger';
 
 let client: PGlite;
@@ -217,8 +218,8 @@ describe('the ledger starts empty', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(ledgerDdlColumns()['execution_attempt']).toContain('ran_at_state_revision');
-    expect(ledgerDdlColumns()['execution_authorization']).toContain('corpus_release_id');
-    expect(ledgerDdlColumns()['execution_operation']).toContain('idempotency_key');
+    expect(ddlColumns(EXECUTION_LEDGER_DDL)['execution_attempt']).toContain('ran_at_state_revision');
+    expect(ddlColumns(EXECUTION_LEDGER_DDL)['execution_authorization']).toContain('corpus_release_id');
+    expect(ddlColumns(EXECUTION_LEDGER_DDL)['execution_operation']).toContain('idempotency_key');
   });
 });

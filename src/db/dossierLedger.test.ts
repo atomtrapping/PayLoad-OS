@@ -10,7 +10,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { CANDIDATE_STANDINGS, REUSABLE_STANDINGS } from '@/domain/dossierService';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from './discoveryLedger';
-import { DOSSIER_LEDGER_DDL, dossierDdlColumns } from './dossierLedger';
+import { DOSSIER_LEDGER_DDL } from './dossierLedger';
+import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -263,8 +264,8 @@ describe('nothing has been asked', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(dossierDdlColumns()['dossier_release']).toContain('built_snapshot');
-    expect(dossierDdlColumns()['dossier_delivery']).toContain('recipient_id');
-    expect(dossierDdlColumns()['dossier_conclusion']).toContain('not_covered');
+    expect(ddlColumns(DOSSIER_LEDGER_DDL)['dossier_release']).toContain('built_snapshot');
+    expect(ddlColumns(DOSSIER_LEDGER_DDL)['dossier_delivery']).toContain('recipient_id');
+    expect(ddlColumns(DOSSIER_LEDGER_DDL)['dossier_conclusion']).toContain('not_covered');
   });
 });

@@ -11,7 +11,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { EXCEPTION_CONTRACTS, EXCEPTION_KINDS, WARRANT_QUESTIONS } from '@/domain/warrantLog';
 import { EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS } from './executionLedger';
-import { WARRANT_COLUMNS, WARRANT_LEDGER_DDL, warrantDdlColumns } from './warrantLedger';
+import { WARRANT_COLUMNS, WARRANT_LEDGER_DDL } from './warrantLedger';
+import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -239,8 +240,8 @@ describe('nothing has transitioned', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(warrantDdlColumns()['budget_reservation']).toContain('balance_after_minor');
-    expect(warrantDdlColumns()['desk_exception']).toContain('resolution_path');
-    expect(warrantDdlColumns()['transition_warrant']).toContain('on_what_evidence');
+    expect(ddlColumns(WARRANT_LEDGER_DDL)['budget_reservation']).toContain('balance_after_minor');
+    expect(ddlColumns(WARRANT_LEDGER_DDL)['desk_exception']).toContain('resolution_path');
+    expect(ddlColumns(WARRANT_LEDGER_DDL)['transition_warrant']).toContain('on_what_evidence');
   });
 });

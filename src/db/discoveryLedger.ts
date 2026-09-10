@@ -75,8 +75,6 @@ import {
   VALIDATION_STATES,
 } from '@/domain/discoveryLayer';
 
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
-
 /** The classes for which a confidence and a fitted model are meaningful. */
 export const FITTED_CLASSES: readonly string[] =
   CLASS_CONTRACTS.filter((entry) => entry.carriesConfidence).map((entry) => entry.class);
@@ -104,6 +102,7 @@ export const METRIC_DIRECTIONS = ['HIGHER_IS_BETTER', 'LOWER_IS_BETTER'] as cons
 
 /** Who may authorize an acquisition. The execution ledger's list, not a second one. */
 import { AUTHORIZING_PRINCIPALS } from './executionLedger';
+import { quoted } from './ddl';
 export { AUTHORIZING_PRINCIPALS };
 
 export const DISCOVERY_LEDGER_DDL = `
@@ -427,17 +426,3 @@ CREATE CONSTRAINT TRIGGER input_rights_bound_artifact
   FOR EACH ROW EXECUTE FUNCTION refuse_rights_wider_than_inputs();
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function discoveryDdlColumns(ddl = DISCOVERY_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

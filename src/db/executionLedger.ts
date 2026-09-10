@@ -42,8 +42,7 @@
  * than a flag someone remembered to check.
  */
 import { AGENT_MAY, ENVELOPE_CLASSES, OUTCOMES } from '@/domain/executionEnvelope';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
+import { quoted } from './ddl';
 
 /** Who may author a step. An agent proposes; it does not authorize. */
 export const PRINCIPAL_KINDS = ['HUMAN', 'AGENT', 'POLICY'] as const;
@@ -170,17 +169,3 @@ CREATE TRIGGER execution_attempt_after_unknown
   FOR EACH ROW EXECUTE FUNCTION refuse_attempt_after_unknown();
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function ledgerDdlColumns(ddl = EXECUTION_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

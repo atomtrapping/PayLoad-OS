@@ -43,6 +43,7 @@
  * definitions name only columns the DDL creates.
  */
 import { COVERAGE_LEVELS } from '@/domain/coverageUniverse';
+import { quoted } from './ddl';
 
 /** The six objects of the chain, in order. Position is the chain; nothing else is encoded. */
 export const SITE_NODE_KINDS = [
@@ -68,7 +69,6 @@ export const SITE_COVERAGE_LEVELS = COVERAGE_LEVELS.map((level) => level.id);
 export const SITE_LINK_STANDINGS = ['CANDIDATE', 'ASSERTED', 'REFUSED'] as const;
 export type SiteLinkStanding = typeof SITE_LINK_STANDINGS[number];
 
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 const pairs = (steps: ReadonlyArray<readonly [string, string]>) =>
   steps.map(([from, to]) => `('${from}', '${to}')`).join(', ');
 
@@ -143,17 +143,3 @@ CREATE INDEX site_link_to ON site_link (to_node);
 CREATE INDEX site_node_kind ON site_node (kind);
 `;
 
-/** Every column the DDL creates, by table, for the drift test that keeps the Drizzle definitions honest. */
-export function ddlColumns(ddl = SITE_ATLAS_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

@@ -40,12 +40,11 @@
  * No customer is onboarded, so no customer-private scope exists. The tables
  * are empty and `scopeStanding()` derives that rather than printing it.
  */
+import { quoted } from './ddl';
 import {
   BOUNDARY_SURFACES, HOLDER_PARTITIONED, PERMITTED_FLOWS, SCOPE_CLASSES, SCOPE_CONTRACTS,
   TRAINABLE_SCOPES,
 } from '@/domain/governedScopes';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 
 /** The permitted (from, to) class pairs, derived from the flow table. */
 const FLOWS = PERMITTED_FLOWS.map((flow) => `('${flow.from}', '${flow.to}')`).join(', ');
@@ -153,17 +152,3 @@ CREATE INDEX crossing_by_from ON scope_crossing (from_scope_id, crossed_at);
 CREATE INDEX training_by_model ON training_input (model_id);
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function scopeDdlColumns(ddl = SCOPE_ISOLATION_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

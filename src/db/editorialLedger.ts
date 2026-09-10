@@ -37,12 +37,11 @@
  * A release requires a reviewed finding, and no finding exists because nothing
  * has been mined. The tables are empty.
  */
+import { quoted } from './ddl';
 import {
   CHANNEL_KINDS, EDITORIAL_STAGES, NEWSROOM_CLASSES, POST_KINDS, PUBLICATION_CLASSES,
   REVIEW_DIMENSIONS,
 } from '@/domain/editorialPlane';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 
 export const EDITORIAL_LEDGER_DDL = `
 -- A finding worth telling somebody about, resting on something the corpus computed.
@@ -191,17 +190,3 @@ CREATE INDEX corroboration_by_artifact ON corroboration (corroborates_artifact_i
 export const REFUSED_PUBLICATION_CLASSES: readonly string[] =
   PUBLICATION_CLASSES.filter((cls) => !NEWSROOM_CLASSES.includes(cls));
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function editorialDdlColumns(ddl = EDITORIAL_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

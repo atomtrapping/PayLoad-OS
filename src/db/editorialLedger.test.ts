@@ -10,7 +10,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { NEWSROOM_CLASSES, PUBLICATION_CLASSES } from '@/domain/editorialPlane';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from './discoveryLedger';
-import { EDITORIAL_LEDGER_DDL, REFUSED_PUBLICATION_CLASSES, editorialDdlColumns } from './editorialLedger';
+import { EDITORIAL_LEDGER_DDL, REFUSED_PUBLICATION_CLASSES } from './editorialLedger';
+import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -255,8 +256,8 @@ describe('nothing has been published', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(editorialDdlColumns()['external_observation']).toContain('descends_from_artifact_id');
-    expect(editorialDdlColumns()['channel_publication']).toContain('archived_publication_id');
-    expect(editorialDdlColumns()['editorial_release']).toContain('still_unknown');
+    expect(ddlColumns(EDITORIAL_LEDGER_DDL)['external_observation']).toContain('descends_from_artifact_id');
+    expect(ddlColumns(EDITORIAL_LEDGER_DDL)['channel_publication']).toContain('archived_publication_id');
+    expect(ddlColumns(EDITORIAL_LEDGER_DDL)['editorial_release']).toContain('still_unknown');
   });
 });

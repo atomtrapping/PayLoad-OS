@@ -38,8 +38,7 @@
  * to be looked at rather than refused.
  */
 import { FILL_STANDINGS, RUN_CONTRACTS, RUN_KINDS } from '@/domain/tradewindDesk';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
+import { quoted } from './ddl';
 
 /**
  * The permitted (run kind, fill standing) pairs, derived from the run contracts
@@ -157,17 +156,3 @@ CREATE INDEX run_read_by_run ON run_read (run_id, decision_at);
 CREATE INDEX desk_order_by_run ON desk_order (run_id);
 `;
 
-/** Every column the DDL creates, by table, for the drift test against the query definitions. */
-export function deskDdlColumns(ddl = TRADEWIND_DESK_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

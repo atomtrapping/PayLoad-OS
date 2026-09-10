@@ -47,8 +47,7 @@ import {
   CANDIDATE_STANDINGS, DOSSIER_FACETS, DOSSIER_STAGES, REUSABLE_STANDINGS,
 } from '@/domain/dossierService';
 import { DERIVABLE_CLASSES } from '@/domain/discoveryLayer';
-
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
+import { quoted } from './ddl';
 
 export const DOSSIER_LEDGER_DDL = `
 -- What was asked, and by whom.
@@ -208,17 +207,3 @@ CREATE INDEX approval_by_recipient ON customer_approval (recipient_id);
 /** The classes a conclusion may carry, for the drift check against the domain. */
 export const CONCLUSION_CLASSES = DERIVABLE_CLASSES;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function dossierDdlColumns(ddl = DOSSIER_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

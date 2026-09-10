@@ -47,10 +47,9 @@ import {
   ENGAGEMENT_CHANNELS, ENGAGEMENT_OUTCOMES, ENGAGEMENT_STANDINGS, OPPORTUNITY_CLASSES,
 } from '@/domain/commercialPlane';
 
-const quoted = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
-
 /** The execution ledger's list, not a second one, and for the same reason. */
 import { AUTHORIZING_PRINCIPALS } from './executionLedger';
+import { quoted } from './ddl';
 export { AUTHORIZING_PRINCIPALS };
 
 /** Every class a claim could be presented as, so the mismatch is expressible. */
@@ -187,17 +186,3 @@ CREATE CONSTRAINT TRIGGER engagement_must_record_its_claims
   FOR EACH ROW EXECUTE FUNCTION refuse_send_without_recorded_claims();
 `;
 
-/** Every column the DDL creates, by table, for the drift check. */
-export function commercialDdlColumns(ddl = COMMERCIAL_LEDGER_DDL): Record<string, string[]> {
-  const tables: Record<string, string[]> = {};
-  for (const match of ddl.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\);/g)) {
-    const [, table, body] = match;
-    tables[table] = body
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('--') && !/^(CONSTRAINT|UNIQUE|CHECK|FOREIGN KEY|PRIMARY KEY)\b/.test(line))
-      .map((line) => line.split(/\s+/)[0])
-      .filter((name) => /^[a-z_]+$/.test(name));
-  }
-  return tables;
-}

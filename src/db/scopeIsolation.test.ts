@@ -11,7 +11,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { PERMITTED_FLOWS, SCOPE_CONTRACTS, TRAINABLE_SCOPES, flowPermitted } from '@/domain/governedScopes';
-import { FIRM_HELD_CLASSES, SCOPE_ISOLATION_DDL, scopeDdlColumns } from './scopeIsolation';
+import { FIRM_HELD_CLASSES, SCOPE_ISOLATION_DDL } from './scopeIsolation';
+import { ddlColumns } from './ddl';
 
 let client: PGlite;
 let scenario = 0;
@@ -225,8 +226,8 @@ describe('nothing is isolated yet', () => {
   });
 
   it('creates the columns the drift check names', () => {
-    expect(scopeDdlColumns()['governed_scope']).toContain('admission_authority');
-    expect(scopeDdlColumns()['scoped_record']).toContain('entity_id');
-    expect(scopeDdlColumns()['scope_crossing']).toContain('surface');
+    expect(ddlColumns(SCOPE_ISOLATION_DDL)['governed_scope']).toContain('admission_authority');
+    expect(ddlColumns(SCOPE_ISOLATION_DDL)['scoped_record']).toContain('entity_id');
+    expect(ddlColumns(SCOPE_ISOLATION_DDL)['scope_crossing']).toContain('surface');
   });
 });

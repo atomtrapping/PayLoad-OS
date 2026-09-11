@@ -207,6 +207,15 @@ and what was not:
   the edge; the page title is lighter and larger than before so the hierarchy
   is type weight and not box weight.
 
+- **The wait panel is withheld for 220 ms.** Every route answers from a
+  local fixture or a local store in well under that, so on a navigation the
+  "Reading" panel used to appear for one or two frames and be replaced,
+  which is the flash that reads as slow. The panel now becomes visible only
+  when a route has actually waited 220 ms. This is a step, not a fade, so
+  nothing is drawn at partial colour; the panel is in the accessibility tree
+  from the moment it mounts, so the live region announces as before; and it
+  takes no arrival wipe of its own, since the page that replaces it does.
+
 - **The light palette, rendered on the ground.** The three frontier
   workbenches (`/frontier`, `/factoring`, `/dispatch-liability`) were written
   against Tailwind's light palette and stood as white islands on the black

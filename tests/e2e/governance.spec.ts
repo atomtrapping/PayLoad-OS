@@ -62,7 +62,7 @@ test('the treasury page shows ten simulated proposals, the reserve as a chain, a
 
 test('the control plane counts every governed act, names every guard, and is accessible with the inspector open', async ({ page }) => {
   await page.goto('/control');
-  await expect(page.getByTestId('governed-counts')).toContainText('15 proposals through one kernel in two databases: 10 authorized, 1 revoked, 4 dispatched, 4 reconciled, 1 unresolved; 30 rows refused by 28 named guards');
+  await expect(page.getByTestId('governed-counts')).toContainText('15 proposals through one kernel in two databases, and one refused before it was a row: 10 authorized, 1 revoked, 4 dispatched, 4 reconciled, 1 unresolved; 30 rows refused by 28 named guards');
   await expect(page.getByTestId('guards')).toContainText('review_closes_once');
   await expect(page.getByTestId('not-claimed').locator('li')).toHaveCount(6);
   await expect(page.getByTestId('all-refusals').locator('tbody tr')).toHaveCount(30);

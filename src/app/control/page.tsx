@@ -58,9 +58,12 @@ export default function ControlPage() {
           <ul className="m-0 pl-4 flex flex-col gap-0.5 text-[12px]" data-testid="not-claimed" style={{ color: 'var(--status-conditional)' }}>
             {demo.notClaimed.map((line) => <li key={line}>{line}</li>)}
           </ul>
-          <p className="m-0 text-[11.5px]" data-testid="guards" style={{ color: 'var(--text-muted)' }}>
-            Guards that refused something: {demo.refusedBy.map((guard) => <span key={guard} className="mono mr-1.5">{guard}</span>)}
-          </p>
+          <div className="text-[11.5px]" data-testid="guards" style={{ color: 'var(--text-muted)' }}>
+            <p className="m-0 mb-1">Guards that refused something:</p>
+            <ul className="m-0 pl-0 list-none flex flex-wrap gap-1.5">
+              {demo.refusedBy.map((guard) => <li key={guard} className="mono pill">{guard}</li>)}
+            </ul>
+          </div>
         </div>
         <div className="mt-2">
           <GovernedActs acts={allActs(demo)} label="Every governed act in the demonstration" selectionKey="act" />

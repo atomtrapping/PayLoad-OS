@@ -185,10 +185,112 @@ export const COVERAGE_LEVEL_UNITS: Readonly<Record<CoverageLevel, number>> = { N
 
 export const ESTIMATE_METHOD = 'notationsos.dossier.estimate.v1';
 
-export function coverageLevel(artifactsAvailable: number, runsRepresented: number): CoverageLevel {
-  if (artifactsAvailable === 0) return 'NONE';
-  return artifactsAvailable >= 2 && runsRepresented >= 2 ? 'SUPPORTED' : 'THIN';
+/**
+ * The quantity level, over the artifacts the dossier may actually use. An
+ * artifact that is disallowed, stale or contradicted is in the coverage and
+ * not in this count: a facet with two artifacts the firm may not deliver is
+ * a hole with two things in it.
+ */
+export function coverageLevel(usableArtifacts: number, runsAmongUsable: number): CoverageLevel {
+  if (usableArtifacts === 0) return 'NONE';
+  return usableArtifacts >= 2 && runsAmongUsable >= 2 ? 'SUPPORTED' : 'THIN';
 }
+
+/* ── Assessment: what the evidence is, as distinct from how much of it there is ── */
+
+/**
+ * The mandate's five: present, stale, conflicting, missing, disallowed. A
+ * level says how much bears on a facet; an assessment says whether what
+ * bears on it may be delivered, and if not, why. They are two columns
+ * because a buyer needs both sentences — "two artifacts, neither of which we
+ * may hand you" is different from "nothing", and a dossier that folded the
+ * first into the second would be hiding the more useful fact.
+ */
+export const COVERAGE_ASSESSMENTS = ['PRESENT', 'STALE', 'CONFLICTING', 'MISSING', 'DISALLOWED'] as const;
+export type CoverageAssessment = typeof COVERAGE_ASSESSMENTS[number];
+
+export const COVERAGE_ASSESSMENT_MEANING: Readonly<Record<CoverageAssessment, string>> = {
+  PRESENT: 'Evidence the dossier may deliver: not contradicted, within its horizon, computed over records the corpus still stands behind, and carrying the right this release exercises.',
+  STALE: 'Evidence that was present and is not now: its horizon has passed, or a record it read has since been taken back by the corpus.',
+  CONFLICTING: 'Evidence the corpus disagrees with itself about: a recorded contradiction about its subject, or a claim that was checked and falsified.',
+  MISSING: 'No artifact bears on this facet at all.',
+  DISALLOWED: 'Evidence exists and the firm may not deliver it to this audience: its rights — the intersection of everything it read — do not include the right this release exercises.',
+};
+
+/**
+ * Which assessments count as usable. One. A stale, conflicting or disallowed
+ * artifact is named in the coverage so the buyer can see it, and it holds
+ * nothing up.
+ */
+export const USABLE_ASSESSMENTS: readonly CoverageAssessment[] = ['PRESENT'];
+
+/** The right a dossier delivery exercises: an export to the customer audience. */
+export const DELIVERY_RIGHT = 'customer_delivery';
+
+export interface EvidenceUnderAssessment {
+  artifactId: string;
+  subject: string;
+  validation: string;
+  horizonEndsAt: string | null;
+  rights: readonly string[];
+  inputRecordIds: readonly string[];
+}
+
+export interface AssessmentContext {
+  /** The instant the coverage was assessed at. Staleness and contradictions are read as of it. */
+  assessedAt: string;
+  /** The right this dossier's delivery exercises. */
+  requiredRight: string;
+  /** Subjects the state ledger holds a recorded contradiction about, noticed at or before `assessedAt`. */
+  contradictedSubjects: ReadonlySet<string>;
+  /** Records the corpus has taken back — withdrawn, or the original of a correction — by `assessedAt`. */
+  takenBackRecordIds: ReadonlySet<string>;
+}
+
+/**
+ * One artifact, one assessment, in an order that is the argument.
+ *
+ * Conflict first: a contradiction is a fact about the evidence that the
+ * buyer must see whatever the firm's rights in it. Disallowed second: the
+ * firm's rights decide whether the buyer sees the artifact at all, before
+ * its freshness matters. Stale third. Present is what is left, and it is
+ * earned by passing the three, not assumed.
+ */
+export function assessEvidence(evidence: EvidenceUnderAssessment, context: AssessmentContext): { assessment: CoverageAssessment; because: string } {
+  if (context.contradictedSubjects.has(evidence.subject)) {
+    return { assessment: 'CONFLICTING', because: `The state ledger records a contradiction about ${evidence.subject}, noticed at or before ${context.assessedAt}.` };
+  }
+  if (evidence.validation === 'FALSIFIED') {
+    return { assessment: 'CONFLICTING', because: 'The claim was checked against held-out or observed evidence and failed.' };
+  }
+  if (!evidence.rights.includes(context.requiredRight)) {
+    return { assessment: 'DISALLOWED', because: `Its rights are ${evidence.rights.length ? evidence.rights.join(', ') : 'none'}; ${context.requiredRight} is not among them, and a dossier delivery exercises it.` };
+  }
+  if (evidence.horizonEndsAt !== null && evidence.horizonEndsAt < context.assessedAt) {
+    return { assessment: 'STALE', because: `Its horizon ended at ${evidence.horizonEndsAt}, before ${context.assessedAt}.` };
+  }
+  const takenBack = evidence.inputRecordIds.filter((id) => context.takenBackRecordIds.has(id));
+  if (takenBack.length > 0) {
+    return { assessment: 'STALE', because: `It read ${takenBack.join(', ')}, which the corpus has since taken back.` };
+  }
+  return { assessment: 'PRESENT', because: `Not contradicted, within its horizon, computed over records the corpus still stands behind, and carrying ${context.requiredRight}.` };
+}
+
+/**
+ * The facet's assessment from its artifacts'. A conflict is never hidden by
+ * a present artifact beside it; a present artifact is what makes the facet
+ * deliverable; below that, the most useful of the reasons nothing is.
+ */
+export function rollupAssessment(assessments: readonly CoverageAssessment[]): CoverageAssessment {
+  if (assessments.length === 0) return 'MISSING';
+  for (const candidate of ['CONFLICTING', 'PRESENT', 'STALE', 'DISALLOWED'] as const) {
+    if (assessments.includes(candidate)) return candidate;
+  }
+  return 'MISSING';
+}
+
+export const ASSESSMENT_RULE =
+  'Coverage distinguishes present, stale, conflicting, missing and disallowed evidence, per artifact and rolled up per facet. Only present evidence holds a conclusion up; the rest is named on the page so the buyer can see what exists that they are not being given, and why.';
 
 export function estimateUnits(coverage: ReadonlyArray<{ facet: DossierFacet; level: CoverageLevel }>): number {
   return coverage.reduce((total, entry) => total + COVERAGE_LEVEL_UNITS[entry.level], 0);

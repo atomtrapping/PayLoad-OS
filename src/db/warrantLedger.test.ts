@@ -145,11 +145,17 @@ describe('and once there is something to account for', () => {
     await sql(`
       INSERT INTO corpora VALUES ('c', 'CARAVAN', '{}'::jsonb);
       INSERT INTO releases VALUES ('REL-1', 'c', 'CURRENT', '${T_GRANT}', '{}'::jsonb);
+      INSERT INTO principal VALUES ('operator:jo', 'HUMAN', 'Jo, operator', '${T_GRANT}');
+      INSERT INTO principal VALUES ('agent:planner', 'AGENT', 'Planning agent', '${T_GRANT}');
       INSERT INTO operation_proposal (proposal_id, operation_kind, counterparty, authored_by_kind, authored_by, proposed_at)
         VALUES ('P1', 'book_freight', 'carrier:acme', 'AGENT', 'agent:planner', '${T_GRANT}');
+      INSERT INTO decision_packet (packet_id, proposal_id, action_kind, action, action_digest, doing_nothing, against, prepared_by_kind, prepared_by, prepared_at)
+        VALUES ('K1', 'P1', 'FREIGHT_BOOKING', '{}'::jsonb, 'sha256:${'a'.repeat(64)}', 'The lot stays in the yard.', 'The rate is above the lane median.', 'AGENT', 'agent:planner', '${T_GRANT}');
+      INSERT INTO proposal_review (review_id, proposal_id, reviewed_action_digest, response, reviewer_kind, reviewer, reasoning, reviewed_at)
+        VALUES ('RV1', 'P1', 'sha256:${'a'.repeat(64)}', 'APPROVE', 'HUMAN', 'operator:jo', 'Within budget.', '${T_GRANT}');
       INSERT INTO execution_authorization (authorization_id, proposal_id, envelope_class, granted_by_kind, granted_by,
-        corpus_release_id, state_revision, policy_version, granted_at, expires_at)
-        VALUES ('A1', 'P1', 'NARROW_ACTION', 'HUMAN', 'operator:jo', 'REL-1', 41, 'policy@3', '${T_GRANT}', '${T_EXPIRE}');
+        corpus_release_id, state_revision, policy_version, granted_at, expires_at, action_digest, review_response)
+        VALUES ('A1', 'P1', 'NARROW_ACTION', 'HUMAN', 'operator:jo', 'REL-1', 41, 'policy@3', '${T_GRANT}', '${T_EXPIRE}', 'sha256:${'a'.repeat(64)}', 'APPROVE');
       INSERT INTO execution_operation VALUES ('O1', 'A1', 'idem-1', '${T_GRANT}');
       INSERT INTO execution_attempt (attempt_id, operation_id, authorization_id, authorization_state_revision,
         authorization_granted_at, authorization_expires_at, ran_at_state_revision, attempted_at, outcome)

@@ -67,6 +67,7 @@
  * financial product does not emerge from adding a feature to a checkout.
  */
 import { AUTHORIZING_PRINCIPALS } from '@/db/executionLedger';
+import type { ReviewResponse } from './executionEnvelope';
 
 /* ── Where money sits ── */
 
@@ -292,30 +293,15 @@ export const BALANCED_PRESENTATION_RULE =
 
 /* ── The response ── */
 
-export const REVIEW_RESPONSES = ['APPROVE', 'DENY', 'REQUEST_REVISION', 'DEFER'] as const;
-export type ReviewResponse = typeof REVIEW_RESPONSES[number];
-
-/** The two that end the proposal, and the two that do not. */
-export const RESPONSES_THAT_CLOSE: readonly ReviewResponse[] = ['APPROVE', 'DENY'];
-
-export const NO_DEFAULT_RULE =
-  'There is no default assumption that a proposal eventually becomes a transaction. Silence leaves it pending and expiry ends it unapproved; neither is consent.';
-
 /**
- * Denial is an outcome, not a delay.
- *
- * The three routes around a refusal are named because all three are things a
- * motivated proposer will try, and all three produce the same wrong result: a
- * decision that was made once being unmade without anyone reversing it.
+ * The review vocabulary is the action layer's, stated once in
+ * `executionEnvelope` and re-exported here because the treasury was where a
+ * person was first asked to decide and its readers still look here.
  */
-export const DENIAL_IS_PERSISTENT =
-  'A denied proposal cannot be retried, split into smaller transactions, or routed to another approver to obtain a different answer. A revised proposal carries a new identity, a visible explanation of what changed, and a fresh authorization.';
-
-export const DENIAL_ROUTES_REFUSED: readonly string[] = [
-  'retrying the same proposal',
-  'splitting it into smaller transactions',
-  'routing it to a different approver',
-];
+export {
+  DENIAL_IS_PERSISTENT, DENIAL_ROUTES_REFUSED, NO_DEFAULT_RULE, RESPONSES_THAT_CLOSE, REVIEW_RESPONSES,
+} from './executionEnvelope';
+export type { ReviewResponse } from './executionEnvelope';
 
 /* ── What an approval binds to ── */
 

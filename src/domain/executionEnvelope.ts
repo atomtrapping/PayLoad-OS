@@ -156,6 +156,54 @@ export type Outcome = typeof OUTCOMES[number];
 export const UNKNOWN_OUTCOME_RULE =
   'An ambiguous timeout resolves to OUTCOME_UNKNOWN, which is a terminal state requiring reconciliation against the counterparty. It is never treated as "nothing happened", and it never triggers an automatic retry.';
 
+/* ── The review ── */
+
+/**
+ * What a reviewer may say about a proposal. Four responses and no default.
+ *
+ * These lived in the treasury module first, because the treasury was the first
+ * place a person was asked to decide. They are the action layer's: a dossier
+ * release, an editorial publication and a movement of money are each a
+ * proposal put to a reviewer, and one vocabulary is what lets one ledger hold
+ * all three decisions.
+ */
+export const REVIEW_RESPONSES = ['APPROVE', 'DENY', 'REQUEST_REVISION', 'DEFER'] as const;
+export type ReviewResponse = typeof REVIEW_RESPONSES[number];
+
+/** The two that end the proposal, and the two that do not. */
+export const RESPONSES_THAT_CLOSE: readonly ReviewResponse[] = ['APPROVE', 'DENY'];
+
+export const NO_DEFAULT_RULE =
+  'There is no default assumption that a proposal eventually becomes a transaction. Silence leaves it pending and expiry ends it unapproved; neither is consent.';
+
+/**
+ * Denial is an outcome, not a delay.
+ *
+ * The three routes around a refusal are named because all three are things a
+ * motivated proposer will try, and all three produce the same wrong result: a
+ * decision that was made once being unmade without anyone reversing it.
+ */
+export const DENIAL_IS_PERSISTENT =
+  'A denied proposal cannot be retried, split into smaller transactions, or routed to another approver to obtain a different answer. A revised proposal carries a new identity, a visible explanation of what changed, and a fresh authorization.';
+
+export const DENIAL_ROUTES_REFUSED: readonly string[] = [
+  'retrying the same proposal',
+  'splitting it into smaller transactions',
+  'routing it to a different approver',
+];
+
+/**
+ * What an approval is of. Not a topic, not an intention, not an earlier draft:
+ * the digest of the exact artifact or operation the reviewer was shown. A
+ * changed byte is a different digest, so it is a different action, so it needs
+ * its own review — and the authorization row cannot be written any other way.
+ */
+export const APPROVAL_IS_OF_A_DIGEST =
+  'Human approval authorizes the exact artifact or operation, by content digest. Approval of an earlier draft, a general intention or an agent’s judgement authorizes nothing, and a request body claiming to carry an approval carries a claim.';
+
+export const REVOCATION_RULE =
+  'Authority granted may be taken back before it expires, by a person or a policy, with a reason. A dispatch after the revocation instant is refused whatever the authorization row still says, because the revocation is a row too.';
+
 /** The standing prohibitions, unchanged from the vehicle and restated for transactions. */
 export const PROHIBITIONS = [
   { rule: 'Never hold', means: 'No custody of funds or goods. Facilitation is not possession.' },

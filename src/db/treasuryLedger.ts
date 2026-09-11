@@ -51,10 +51,28 @@
  * A dispatch records an outcome including an unknown one, and reconciliation is
  * a separate row. Approving a transfer does not verify its completion.
  *
- * NOTHING CAN BE PROPOSED AT ALL
+ * A REVIEWER IS A ROW, AND AUTHORITY CAN BE TAKEN BACK
+ *
+ * The review and the authorization name their principal by (id, kind) into
+ * the kernel's principal table, so this ledger stacks on the execution ledger
+ * and shares its registry rather than keeping a second one. A revocation is a
+ * row naming the authorization, a HUMAN or POLICY principal and a reason,
+ * inside the granted window, and a trigger refuses a dispatch at or after it.
+ *
+ * THE RESERVE IS A CHAIN, NOT A NUMBER
+ *
+ * A dispatch ties to a HELD reservation on a shared budget — the warrant
+ * ledger's chain of tied balances — whose debit equals the authorized amount,
+ * both denormalised and tied by composite key. Two dispatches that each pass
+ * a limit check cannot together exceed it, because the second hold has to
+ * name a predecessor the first already claimed; and a hold larger than what
+ * remains is refused by the balance never going below zero.
+ *
+ * NOTHING CAN BE PROPOSED AGAINST THE REAL CORPUS
  *
  * A proposal names the account it would move from. No account is approved, so
- * the key has nothing to point at.
+ * the key has nothing to point at. The simulation seeds accounts marked as
+ * simulated, and every row it writes says so.
  */
 import {
   ELIGIBILITY_PERMITS, ELIGIBILITY_STATES, FUND_BUCKETS, MOVEMENT_KINDS, REVERSIBILITY,
@@ -144,8 +162,9 @@ CREATE TABLE treasury_proposal (
   UNIQUE (proposal_id, amount_minor, asset_network, asset_contract, destination_account_id)
 );
 
--- What the reviewer said. Four responses, and no default.
-CREATE TABLE proposal_review (
+-- What the reviewer said. Four responses, no default, and the reviewer is a
+-- registered person or policy.
+CREATE TABLE treasury_review (
   review_id text PRIMARY KEY,
   proposal_id text NOT NULL UNIQUE REFERENCES treasury_proposal (proposal_id),
   response text NOT NULL CHECK (response IN (${quoted(REVIEW_RESPONSES)})),
@@ -153,6 +172,7 @@ CREATE TABLE proposal_review (
   reviewer text NOT NULL CHECK (length(btrim(reviewer)) > 0),
   reasoning text NOT NULL CHECK (length(btrim(reasoning)) > 0),
   reviewed_at timestamptz NOT NULL,
+  CONSTRAINT treasury_reviewer FOREIGN KEY (reviewer, reviewer_kind) REFERENCES principal (principal_id, kind),
   UNIQUE (proposal_id, response)
 );
 
@@ -189,6 +209,8 @@ CREATE TABLE treasury_authorization (
   granted_at timestamptz NOT NULL,
   expires_at timestamptz NOT NULL,
 
+  CONSTRAINT treasury_grantor FOREIGN KEY (granted_by, granted_by_kind) REFERENCES principal (principal_id, kind),
+
   CONSTRAINT authorization_eligibility FOREIGN KEY (eligibility_id, eligibility_state)
     REFERENCES asset_eligibility (eligibility_id, state),
   -- The most important line here. An unresolved eligibility is a refusal, not
@@ -202,15 +224,34 @@ CREATE TABLE treasury_authorization (
     REFERENCES treasury_proposal (proposal_id, amount_minor, asset_network, asset_contract, destination_account_id),
 
   CONSTRAINT authorization_review FOREIGN KEY (proposal_id, review_response)
-    REFERENCES proposal_review (proposal_id, response),
+    REFERENCES treasury_review (proposal_id, response),
   -- A denial is persistent. Only an approval authorizes anything.
   CONSTRAINT authorization_rests_on_an_approval CHECK (review_response = 'APPROVE'),
 
   CONSTRAINT authorization_expires_after_grant CHECK (expires_at > granted_at),
-  UNIQUE (authorization_id, granted_at, expires_at)
+  UNIQUE (authorization_id, granted_at, expires_at),
+  UNIQUE (authorization_id, amount_minor)
 );
 
--- One attempt to move the money.
+-- Authority taken back before it expired. One per authorization.
+CREATE TABLE treasury_revocation (
+  revocation_id text PRIMARY KEY,
+  authorization_id text NOT NULL UNIQUE,
+  authorization_granted_at timestamptz NOT NULL,
+  authorization_expires_at timestamptz NOT NULL,
+  revoked_by_kind text NOT NULL CHECK (revoked_by_kind IN (${quoted(TREASURY_AUTHORIZING_PRINCIPALS)})),
+  revoked_by text NOT NULL,
+  reason text NOT NULL CHECK (length(btrim(reason)) > 0),
+  revoked_at timestamptz NOT NULL,
+  CONSTRAINT treasury_revocation_authorization FOREIGN KEY (authorization_id, authorization_granted_at, authorization_expires_at)
+    REFERENCES treasury_authorization (authorization_id, granted_at, expires_at),
+  CONSTRAINT treasury_revoker FOREIGN KEY (revoked_by, revoked_by_kind) REFERENCES principal (principal_id, kind),
+  CONSTRAINT treasury_revocation_within_the_window CHECK (
+    revoked_at >= authorization_granted_at AND revoked_at < authorization_expires_at
+  )
+);
+
+-- One attempt to move the money, against a hold on the budget it moves from.
 CREATE TABLE treasury_dispatch (
   dispatch_id text PRIMARY KEY,
   authorization_id text NOT NULL,
@@ -218,6 +259,11 @@ CREATE TABLE treasury_dispatch (
   -- about the authority actually granted.
   authorization_granted_at timestamptz NOT NULL,
   authorization_expires_at timestamptz NOT NULL,
+  amount_minor bigint NOT NULL,
+  -- The hold this dispatch spends: HELD, and for exactly this amount, both tied.
+  reservation_id text NOT NULL,
+  reservation_state text NOT NULL,
+  reservation_delta_minor bigint NOT NULL,
   dispatched_at timestamptz NOT NULL,
   movement_kind text NOT NULL CHECK (movement_kind IN (${quoted(MOVEMENT_KINDS)})),
   reversibility text NOT NULL CHECK (reversibility IN (${quoted(REVERSIBILITY)})),
@@ -228,6 +274,16 @@ CREATE TABLE treasury_dispatch (
 
   CONSTRAINT dispatch_authorization FOREIGN KEY (authorization_id, authorization_granted_at, authorization_expires_at)
     REFERENCES treasury_authorization (authorization_id, granted_at, expires_at),
+  CONSTRAINT dispatch_amount FOREIGN KEY (authorization_id, amount_minor)
+    REFERENCES treasury_authorization (authorization_id, amount_minor),
+  CONSTRAINT dispatch_reservation_state FOREIGN KEY (reservation_id, reservation_state)
+    REFERENCES budget_reservation (reservation_id, state),
+  CONSTRAINT dispatch_reservation_size FOREIGN KEY (reservation_id, reservation_delta_minor)
+    REFERENCES budget_reservation (reservation_id, delta_minor),
+  -- The money is held, not merely checked, and held in this amount.
+  CONSTRAINT dispatch_spends_a_hold CHECK (reservation_state = 'HELD'),
+  CONSTRAINT dispatch_spends_its_own_amount CHECK (reservation_delta_minor = -amount_minor),
+  CONSTRAINT dispatch_hold_once UNIQUE (reservation_id),
   -- Rechecked at dispatch rather than trusting that an approval was recorded
   -- earlier. An approval valid when granted is not valid when stale.
   CONSTRAINT dispatch_within_the_authorization CHECK (
@@ -249,7 +305,7 @@ CREATE TABLE dispatch_reconciliation (
 );
 
 CREATE INDEX proposal_by_source ON treasury_proposal (source_account_id, proposed_at);
-CREATE INDEX authorization_by_proposal ON treasury_authorization (proposal_id);
+CREATE INDEX treasury_authorization_by_proposal ON treasury_authorization (proposal_id);
 CREATE INDEX dispatch_by_authorization ON treasury_dispatch (authorization_id);
 `;
 
@@ -263,7 +319,7 @@ CREATE INDEX dispatch_by_authorization ON treasury_dispatch (authorization_id);
  * takes when the answer was no, and it spans rows, so it is a trigger.
  */
 export const TREASURY_LEDGER_GUARDS = `
-CREATE FUNCTION refuse_authorization_descending_from_a_denial() RETURNS trigger AS $$
+CREATE FUNCTION refuse_treasury_authorization_descending_from_a_denial() RETURNS trigger AS $$
 DECLARE
   denied text;
 BEGIN
@@ -274,12 +330,12 @@ BEGIN
     FROM treasury_proposal parent JOIN line ON line.revises_proposal_id = parent.proposal_id
   )
   SELECT line.proposal_id INTO denied
-  FROM line JOIN proposal_review ON proposal_review.proposal_id = line.proposal_id
-  WHERE proposal_review.response = 'DENY'
+  FROM line JOIN treasury_review ON treasury_review.proposal_id = line.proposal_id
+  WHERE treasury_review.response = 'DENY'
   LIMIT 1;
 
   IF denied IS NOT NULL THEN
-    RAISE EXCEPTION 'authorization_descends_from_a_denial:%', denied;
+    RAISE EXCEPTION 'treasury_authorization_descends_from_a_denial:%', denied;
   END IF;
   RETURN NEW;
 END;
@@ -287,6 +343,24 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER treasury_authorization_denial_line
   BEFORE INSERT ON treasury_authorization
-  FOR EACH ROW EXECUTE FUNCTION refuse_authorization_descending_from_a_denial();
+  FOR EACH ROW EXECUTE FUNCTION refuse_treasury_authorization_descending_from_a_denial();
+
+-- A dispatch at or after the revocation instant is refused.
+CREATE FUNCTION refuse_treasury_dispatch_after_revocation() RETURNS trigger AS $$
+DECLARE
+  taken_back timestamptz;
+BEGIN
+  SELECT revoked_at INTO taken_back FROM treasury_revocation
+  WHERE authorization_id = NEW.authorization_id AND revoked_at <= NEW.dispatched_at;
+  IF taken_back IS NOT NULL THEN
+    RAISE EXCEPTION 'treasury_dispatch_after_revocation:%', taken_back;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER treasury_dispatch_after_revocation
+  BEFORE INSERT ON treasury_dispatch
+  FOR EACH ROW EXECUTE FUNCTION refuse_treasury_dispatch_after_revocation();
 `;
 

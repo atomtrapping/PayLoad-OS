@@ -1,8 +1,8 @@
 /**
  * The newsroom, in the database.
  *
- * `src/domain/editorialPlane.ts` states the rules. Two of them cost money or
- * credibility when broken quietly, and those two are constraints.
+ * `src/domain/editorialPlane.ts` states the rules. The ones that cost money or
+ * credibility when broken quietly are constraints.
  *
  * THE CIRCLE THAT WOULD CLOSE
  *
@@ -25,23 +25,39 @@
  * not the archive" means once it stops being a slogan: a claim published where
  * the firm does not control the record has no address to correct.
  *
- * THE APPROVAL IS OF A MESSAGE
+ * THE APPROVAL IS OF A MESSAGE, FOR A CHANNEL
  *
- * A release carries the digest of the text that was reviewed. Distribution
- * carries the digest of what actually went out, tied to it. A rewritten
- * headline is a different digest, so it is a different message, so it needs its
- * own approval — rather than inheriting one granted for something else.
+ * A release carries the message itself — headline, claims, chart, qualifiers
+ * and the channel's own text, each a required key — and the digest of it, and
+ * the channel it is for. The approval is an authorization in the execution
+ * ledger of that digest, tied by composite key, and one approval releases one
+ * message. Distribution carries the digest and the channel of what actually
+ * went out, tied to the release by both. A rewritten headline is a different
+ * digest, so it is a different message, so it needs its own approval; the
+ * post is a different message from the article, for a different channel, so
+ * it is reviewed as itself rather than inheriting the article's review.
+ *
+ * FOUR QUESTIONS BEFORE ANY RELEASE
+ *
+ * Editorial, rights, privacy, conflict: each a row by a named reviewer with a
+ * pass or a fail, and a trigger refuses a release for a candidate that does
+ * not have all four passed. A review packet with a question unanswered is a
+ * packet with a hole where the answer would go.
  *
  * AND NOTHING HAS BEEN PUBLISHED
  *
- * A release requires a reviewed finding, and no finding exists because nothing
- * has been mined. The tables are empty.
+ * Against the real corpus a release requires a reviewed finding, and no
+ * finding exists because nothing has been mined. The demonstration rests on
+ * the demonstration run, and every row it writes says so.
  */
 import { quoted } from './ddl';
 import {
   CHANNEL_KINDS, EDITORIAL_STAGES, NEWSROOM_CLASSES, POST_KINDS, PUBLICATION_CLASSES,
   REVIEW_DIMENSIONS,
 } from '@/domain/editorialPlane';
+
+/** What a reviewed message carries, and every key is required. */
+export const MESSAGE_PARTS = ['headline', 'claims', 'chart', 'qualifiers', 'channelText'] as const;
 
 export const EDITORIAL_LEDGER_DDL = `
 -- A finding worth telling somebody about, resting on something the corpus computed.
@@ -76,7 +92,7 @@ CREATE TABLE editorial_review (
   CONSTRAINT review_once_per_dimension UNIQUE (candidate_id, dimension)
 );
 
--- What was published, at the version that was reviewed.
+-- What was released: one message, for one channel, at the version that was reviewed.
 CREATE TABLE editorial_release (
   editorial_release_id text PRIMARY KEY,
   candidate_id text NOT NULL,
@@ -84,18 +100,33 @@ CREATE TABLE editorial_release (
   -- A newsroom produces one class. The other three are not values it holds.
   publication_class text NOT NULL CHECK (publication_class IN (${quoted(NEWSROOM_CLASSES)})),
   version integer NOT NULL CHECK (version >= 1),
-  -- The digest of the exact text that was reviewed.
+  -- The digest of the exact message that was reviewed.
   message_digest text NOT NULL CHECK (message_digest ~ '^sha256:[a-f0-9]{64}$'),
   -- What remains unknown. Never blank: an article listing only what is settled
   -- describes a settled question, and those are rarely worth publishing.
   still_unknown text NOT NULL CHECK (length(btrim(still_unknown)) > 0),
   released_at timestamptz NOT NULL,
+  -- The channel this message is for. The article and the post are two messages.
+  channel text NOT NULL CHECK (channel IN (${quoted(CHANNEL_KINDS)})),
+  -- The message itself: headline, claims, chart, qualifiers and the channel's
+  -- own text. The digest above is over this, and the review was of this.
+  message jsonb NOT NULL,
+  -- The approval, in the execution ledger, of that digest.
+  authorization_id text NOT NULL,
 
   CONSTRAINT release_candidate FOREIGN KEY (candidate_id, artifact_id)
     REFERENCES story_candidate (candidate_id, artifact_id),
-  CONSTRAINT editorial_release_version_once UNIQUE (candidate_id, version),
+  CONSTRAINT release_message_has_its_parts CHECK (
+    jsonb_typeof(message) = 'object' AND message ?& array[${quoted(MESSAGE_PARTS)}]
+  ),
+  CONSTRAINT release_approved_as_this_message FOREIGN KEY (authorization_id, message_digest)
+    REFERENCES execution_authorization (authorization_id, action_digest),
+  -- One approval releases one message.
+  CONSTRAINT editorial_release_authorization_once UNIQUE (authorization_id),
+  CONSTRAINT editorial_release_version_once UNIQUE (candidate_id, channel, version),
   UNIQUE (editorial_release_id, message_digest),
-  UNIQUE (editorial_release_id, artifact_id)
+  UNIQUE (editorial_release_id, artifact_id),
+  UNIQUE (editorial_release_id, message_digest, channel)
 );
 
 -- Where it went. The archive originates; everything else distributes.
@@ -104,7 +135,7 @@ CREATE TABLE channel_publication (
   channel text NOT NULL CHECK (channel IN (${quoted(CHANNEL_KINDS)})),
   post_kind text NOT NULL CHECK (post_kind IN (${quoted(POST_KINDS)})),
   editorial_release_id text NOT NULL,
-  -- The digest of what actually went out, tied to the reviewed text below.
+  -- The digest of what actually went out, tied to the reviewed message below.
   message_digest text NOT NULL,
   -- Present only on a syndicated post: the archived article it distributes.
   archived_publication_id text REFERENCES channel_publication (channel_publication_id),
@@ -112,9 +143,11 @@ CREATE TABLE channel_publication (
   platform_approval text,
   published_at timestamptz NOT NULL,
 
-  -- The approval was of a message. A different digest is a different message.
-  CONSTRAINT channel_carries_the_reviewed_message FOREIGN KEY (editorial_release_id, message_digest)
-    REFERENCES editorial_release (editorial_release_id, message_digest),
+  -- The approval was of a message, for a channel. A different digest is a
+  -- different message; the article's digest on the post's channel is a
+  -- message nobody reviewed for that channel.
+  CONSTRAINT channel_carries_the_reviewed_message FOREIGN KEY (editorial_release_id, message_digest, channel)
+    REFERENCES editorial_release (editorial_release_id, message_digest, channel),
   -- A post with no article behind it is a claim with no address.
   CONSTRAINT only_the_archive_originates CHECK (
     (channel = 'ARCHIVE') = (archived_publication_id IS NULL)
@@ -181,12 +214,34 @@ CREATE TABLE corroboration (
   )
 );
 
-CREATE INDEX release_by_candidate ON editorial_release (candidate_id, version);
+CREATE INDEX release_by_candidate ON editorial_release (candidate_id, channel, version);
 CREATE INDEX channel_by_release ON channel_publication (editorial_release_id);
 CREATE INDEX corroboration_by_artifact ON corroboration (corroborates_artifact_id);
+`;
+
+/**
+ * The guard that cannot be a CHECK: all four questions answered, and answered
+ * yes, before a release of that candidate goes in. Spans rows, so a trigger.
+ */
+export const EDITORIAL_LEDGER_GUARDS = `
+CREATE FUNCTION refuse_release_without_every_review_passed() RETURNS trigger AS $$
+DECLARE
+  passed_dimensions integer;
+BEGIN
+  SELECT count(DISTINCT dimension) INTO passed_dimensions
+  FROM editorial_review WHERE candidate_id = NEW.candidate_id AND passed;
+  IF passed_dimensions < ${REVIEW_DIMENSIONS.length} THEN
+    RAISE EXCEPTION 'release_before_every_review_passed:%_of_${REVIEW_DIMENSIONS.length}', passed_dimensions;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER editorial_release_reviewed
+  BEFORE INSERT ON editorial_release
+  FOR EACH ROW EXECUTE FUNCTION refuse_release_without_every_review_passed();
 `;
 
 /** The classes the newsroom column will not hold, for the drift check. */
 export const REFUSED_PUBLICATION_CLASSES: readonly string[] =
   PUBLICATION_CLASSES.filter((cls) => !NEWSROOM_CLASSES.includes(cls));
-

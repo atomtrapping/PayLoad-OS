@@ -80,6 +80,39 @@ export const DOCTRINE: readonly DoctrineRule[] = [
  */
 export const NEGATIVE_STATES_LIVE_IN = 'src/domain/negativeStates.ts' as const;
 
+/**
+ * TWO RULES ABOUT A PRODUCER'S OWN WORDS, HARVESTED FROM A MODULE THAT WENT.
+ *
+ * src/domain/vocabulary.ts existed to reconcile two dialects of one decision:
+ * a GAT report grammar saying RECOMMEND_MEASUREMENT / FIT / REJECT, and this
+ * system's clearance producer saying MEASUREMENT_RECOMMENDED / ACCEPT_FIT /
+ * REJECT_FIT. It ruled verb-first canonical and recorded the other as aliases,
+ * "rather than argued about again".
+ *
+ * The GAT producer never arrived. `gat.finite-decision-plan.v1` appeared in
+ * exactly two places in the repository — that module and its own test — and
+ * `canonicalFor` and `displayTerm` had no callers anywhere, so half the alias
+ * table was an unverified transcription of an external engine's grammar
+ * checked only against itself. The module is deleted.
+ *
+ * Its stated justification did not survive reading either: verb-first was
+ * argued "in the same event vocabulary as the ruling state machine", and that
+ * machine is `AdmissionOutcome` — ADMITTED, ADMITTED_WITH_CONDITIONS, REFUSED,
+ * three past participles. The authority cited ruled the other way.
+ *
+ * These two rules are what was worth keeping, and neither depends on the
+ * dialect that prompted them. They are about any producer whose words reach a
+ * surface.
+ */
+export const PRODUCER_VOCABULARY_RULES = {
+  normalizeWhere:
+    'At the adapter boundary, never in a surface. A surface that normalized would be deciding what a producer meant, which is an adapter job and not a renderer one.',
+  printWhat:
+    "The producer's own word, verbatim. A canonical word is what an accent or a palette keys on; where the two differ the surface shows both, so the mapping is visible rather than hidden in an adapter.",
+  whyBoth:
+    'The two do not contradict each other because they govern different fields: one decides what the system stores, the other what the reader sees.',
+} as const;
+
 export const OPERATIONAL_RULE = 'Build shared information before multiplying reasoning processes.';
 
 export interface VerificationTier { tier: 'V0' | 'V1' | 'V2' | 'V3' | 'V4' | 'V5'; name: string; reachedHere: boolean; how: string }

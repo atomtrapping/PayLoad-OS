@@ -2,11 +2,25 @@
  * Reading and writing the identity-and-place chain.
  *
  * The constraints live in the schema (`siteAtlas.ts`), which is what makes them
- * true of every writer. This is the writer the application uses, and its job is
- * to refuse the same things by name, early, so a caller gets
+ * true of every writer. This is a writer over them, and its job is to refuse
+ * the same things by name, early, so a caller gets
  * `ATLAS_ASSERTION_WITHOUT_EVIDENCE` rather than a Postgres constraint string —
  * and so the two agree. `siteAtlas.test.ts` proves both halves: that this
  * refuses, and that the database refuses the same write when this is bypassed.
+ *
+ * DORMANT, AND THE HEADER USED TO SAY OTHERWISE.
+ *
+ * It said "the writer the application uses". No application uses it: the only
+ * importer anywhere is `siteAtlas.test.ts`, no database is configured, and the
+ * atlas holds zero nodes and zero links. That is the expected state for a
+ * module written the day before this note — but a header that claims a caller
+ * it does not have is the kind of statement this repository exists to refuse,
+ * and it was found by an audit reading the header rather than the imports.
+ *
+ * Wiring it means a reader for the chain: the six positions around a facility
+ * with `readChain`'s five states per step, which is the one thing here the DDL
+ * cannot express — a CHECK constrains a write, and a reported gap is a
+ * property of a read.
  *
  * THE READER'S ONE RULE
  *

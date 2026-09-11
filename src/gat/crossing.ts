@@ -8,8 +8,13 @@
  *   Is the run recoverable?  `computationCard.cardGrade` answers it, and the
  *   answer is a grade, not a permission.
  *
- *   May its output become a corpus record?  `admission.admit` answers it, and
- *   the answer is a ruling made by an authority, never by a process.
+ *   May its output become a corpus record?  `admission.admit` is the authority
+ *   that answers it, and the answer is a ruling made by an authority, never by
+ *   a process. This module does not call it — it imports `CHECK_MEANING`,
+ *   `RECORD_PROVENANCE` and the `AdmissionCheck` type, and reasons about what
+ *   that gate would rule. The header used to read as though the call happened.
+ *   One of the two questions goes through its real instrument (`cardGrade`);
+ *   this one is answered against the gate's vocabulary rather than by it.
  *
  * A boundary that answers only the first has a computation nobody may cite. A
  * boundary that answers only the second has a citation nobody can re-run.

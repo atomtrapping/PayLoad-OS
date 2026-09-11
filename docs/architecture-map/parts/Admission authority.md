@@ -1,6 +1,6 @@
 ---
 title: "Admission authority"
-status: "ABSENT · MILESTONE PRIORITY"
+status: "PRESENT — superseded 2026-09-07, card not resynced"
 group: "State Fabric — validation, admission and canonical versions"
 tags:
   - architecture-map
@@ -9,11 +9,19 @@ tags:
 
 # Admission authority
 
-**State:** `ABSENT · MILESTONE PRIORITY`  
+**State:** `PRESENT` — this card said `ABSENT` and has been wrong since 2026-09-07  
 **Group:** State Fabric — validation, admission and canonical versions  
 **Map:** [[NotationsOS Architecture]]
 
-> The explicit validation boundary that turns a candidate into an admitted canonical version. It does not exist yet, and every surface says so; the rails refuse what they cannot vouch for.
+> The explicit validation boundary that turns a candidate into an admitted canonical version.
+
+> **Superseded.** This card said the authority did not exist. It has existed
+> since `bc5435e` (2026-09-07) as `src/domain/admission.ts`, 405 lines, with
+> five production callers — `src/db/admitRecords.ts`, `src/db/recordStorage.ts`,
+> `scripts/admitCli.ts`, `src/domain/selfAdmission.ts` and
+> `src/domain/statutoryAdmission.ts`. What remains true is that admitted
+> records are 0: the gate exists and nothing has been put through it in the
+> served corpus.
 
 ## What it is
 

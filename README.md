@@ -206,7 +206,10 @@ does not have.
 
 An editable [architecture map](docs/architecture-map/NotationsOS%20Architecture.md)
 — an Obsidian canvas with one note per part, 63 of them — draws the fabrics,
-layers and flows as they exist on the branch.
+layers and flows **as of `a728d3d` (2026-09-08)**, not as they stand now: 64
+commits have landed since it was last revised. Its 115 open questions are the
+only written record in this repository of which architectural decisions are
+still undecided, which is why it is kept rather than archived.
 
 ## The surfaces
 

@@ -79,10 +79,22 @@ describe('the treasury, simulated, in its own database', () => {
     const p = receipt.proposals.find((x) => x.proposalId === 'TP-8')!;
     expect(p.authorizationId).toBe('TA-8');
     expect(p.refusedBy).toMatch(/balance_after_minor/);
-    expect(receipt.budget.chain.map((m) => m.balanceAfterMinor)).toEqual([200000, 150000, 90000]);
-    expect(receipt.budget.remainingMinor).toBe(90000);
+    expect(receipt.budget.chain.map((m) => m.balanceAfterMinor)).toEqual([200000, 150000, 90000, 70000]);
+    expect(receipt.budget.remainingMinor).toBe(70000);
     expect(receipt.budget.limitMinor).toBe(SIMULATION.operatingBalanceMinor - SIMULATION.reserveFloorMinor);
-    expect(receipt.budget.chain.map((m) => m.follows)).toEqual([null, 'HOLD-TP-1', 'HOLD-TP-4']);
+    expect(receipt.budget.chain.map((m) => m.follows)).toEqual([null, 'HOLD-TP-1', 'HOLD-TP-4', 'HOLD-TP-10']);
+  });
+
+  it('refuses the race: a second hold naming a predecessor another hold already follows', () => {
+    expect(receipt.refusals.find((r) => r.label.includes('the race'))!.refusedBy).toBe('reservation_one_successor');
+  });
+
+  it('lets an authorization expire, and refuses the dispatch after its window', () => {
+    const p = receipt.proposals.find((x) => x.proposalId === 'TP-11')!;
+    expect(p.authorizationId).toBe('TA-11');
+    expect(p.standing).toBe('EXPIRED_BEFORE_DISPATCH');
+    expect(p.refusedBy).toBe('dispatch_within_the_authorization');
+    expect(p.dispatch).toBeNull();
   });
 
   it('refuses money leaving the entity before it is a proposal', () => {
@@ -105,17 +117,19 @@ describe('the treasury, simulated, in its own database', () => {
       ['dispatch the same authorization again against the same hold', 'dispatch_hold_once'],
       ['authorize a denied proposal', 'treasury_authorization_descends_from_a_denial:TP-2'],
       ['authorize the split of a denied proposal, approved by a second reviewer', 'treasury_authorization_descends_from_a_denial:TP-2'],
+      ['hold against a balance another hold has already moved past (the race)', 'reservation_one_successor'],
       ['dispatch after the authorization was revoked', 'treasury_dispatch_after_revocation:2026-09-10 12:30:00+00'],
       ['authorize an approved movement into an asset whose eligibility is BLOCKED', 'authorization_needs_confirmed_eligibility'],
       ['authorize an approved movement into an asset whose eligibility is UNRESOLVED', 'authorization_needs_confirmed_eligibility'],
       ['have the agent grant the authorization for its own proposal', 'treasury_authorization_granted_by_kind_check'],
       ['hold more than remains above the reserve floor', 'budget_reservation_balance_after_minor_check'],
       ['propose paying out to another legal entity', 'proposal_stays_within_the_entity'],
+      ['dispatch after the authorization expired', 'dispatch_within_the_authorization'],
     ]);
   });
 
   it('counts what it wrote', () => {
-    expect(receipt.counts).toEqual({ proposals: 9, reviews: 9, approved: 8, denied: 1, authorizations: 4, revocations: 1, holds: 3, dispatches: 2, reconciliations: 2, unresolved: 1, refusals: 9 });
+    expect(receipt.counts).toEqual({ proposals: 10, reviews: 10, approved: 9, denied: 1, authorizations: 5, revocations: 1, holds: 4, dispatches: 2, reconciliations: 2, unresolved: 1, refusals: 11 });
   });
 
   it('gives the same receipt again', async () => {

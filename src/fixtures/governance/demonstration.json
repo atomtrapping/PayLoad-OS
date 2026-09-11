@@ -1,0 +1,1302 @@
+{
+  "schema": "notationsos.governance-demonstration.v1",
+  "fixture_only": true,
+  "simulated": true,
+  "stampedWith": "npm run stamp:governance",
+  "principals": [
+    {
+      "principalId": "customer:demonstration-buyer",
+      "kind": "HUMAN",
+      "displayName": "Demonstration buyer — a simulated customer, not a real one"
+    },
+    {
+      "principalId": "customer:demonstration-other",
+      "kind": "HUMAN",
+      "displayName": "A second simulated customer, who asked for nothing"
+    },
+    {
+      "principalId": "operator:corpus-steward",
+      "kind": "HUMAN",
+      "displayName": "Corpus steward"
+    },
+    {
+      "principalId": "operator:second-reviewer",
+      "kind": "HUMAN",
+      "displayName": "A second operator, to whom a refused proposal must not be routed"
+    },
+    {
+      "principalId": "editor:desk",
+      "kind": "HUMAN",
+      "displayName": "Desk editor"
+    },
+    {
+      "principalId": "reviewer:rights",
+      "kind": "HUMAN",
+      "displayName": "Rights reviewer"
+    },
+    {
+      "principalId": "reviewer:privacy",
+      "kind": "HUMAN",
+      "displayName": "Privacy reviewer"
+    },
+    {
+      "principalId": "reviewer:conflict",
+      "kind": "HUMAN",
+      "displayName": "Conflicts reviewer"
+    },
+    {
+      "principalId": "operator:treasurer",
+      "kind": "HUMAN",
+      "displayName": "Treasurer"
+    },
+    {
+      "principalId": "agent:governance-demonstration",
+      "kind": "AGENT",
+      "displayName": "The agent: proposes, prepares, reconciles; never reviews, grants or revokes"
+    },
+    {
+      "principalId": "policy:pricing-2026",
+      "kind": "POLICY",
+      "displayName": "Pricing policy, 2026 — approved by the steward"
+    }
+  ],
+  "seeded": {
+    "caravan": {
+      "corpusId": "caravan.specialty-cargo",
+      "releaseId": "REL-CAR-2026.09.01",
+      "recordsSeeded": 18,
+      "runId": "DEMO-CARAVAN",
+      "artifactIds": [
+        "DEMO-CARAVAN-A001",
+        "DEMO-CARAVAN-A002",
+        "DEMO-CARAVAN-A003",
+        "DEMO-CARAVAN-A004",
+        "DEMO-CARAVAN-A005",
+        "DEMO-CARAVAN-A006"
+      ],
+      "takenBack": [
+        {
+          "recordId": "REC-0111",
+          "retractionId": "RET-0002",
+          "kind": "WITHDRAWAL"
+        },
+        {
+          "recordId": "REC-0112",
+          "retractionId": "RET-0002",
+          "kind": "WITHDRAWAL"
+        },
+        {
+          "recordId": "REC-0203",
+          "retractionId": "RET-0001",
+          "kind": "CORRECTION"
+        }
+      ]
+    },
+    "spatial": {
+      "releaseId": "REL-SPATIAL-DEMO",
+      "artifactId": "SPATIAL-demo-floor-P-07-CLOSED",
+      "specFingerprint": "sha256:7a5aee3d5aee368b290ac272d4e9889d03bae3886641efcc3278bf28c0a19a77",
+      "baselineUnchanged": true,
+      "baselineDigest": "sha256:05502ffb642cfd0be954a943465191835204121b3d2afd7d6aed6d5be3185929",
+      "changes": 3
+    }
+  },
+  "dossier": {
+    "fixture_only": true,
+    "simulated": true,
+    "dossierId": "DOSSIER-DEMO-1",
+    "recipient": "customer:demonstration-buyer",
+    "question": "Which specialty-cargo lots in the current Caravan release rest on a single source, what do the samples drawn from them depend on, and what would interrupt access to the sampling floor?",
+    "boundToRelease": "REL-CAR-2026.09.01",
+    "stages": [
+      {
+        "stage": "SPEC",
+        "at": "2026-09-06T09:00:00.000Z",
+        "wrote": "dossier_spec DOSSIER-DEMO-1, 3 facets"
+      },
+      {
+        "stage": "COVERAGE",
+        "at": "2026-09-06T09:10:00.000Z",
+        "wrote": "dossier_coverage × 3: SUPPLIER_IDENTITY=NONE, DEPENDENCY=THIN, RISK=THIN"
+      },
+      {
+        "stage": "ESTIMATE",
+        "at": "2026-09-06T09:20:00.000Z",
+        "wrote": "dossier_estimate EST-1: 5 units by notationsos.dossier.estimate.v1"
+      },
+      {
+        "stage": "QUOTATION",
+        "at": "2026-09-06T10:00:00.000Z",
+        "wrote": "pricing_policy PRICING-2026-DEMONSTRATION (demonstration rate), dossier_quotation QUO-1: 5 × 120000 = 600000 CAD minor"
+      },
+      {
+        "stage": "SCOPE",
+        "at": "2026-09-06T11:00:00.000Z",
+        "wrote": "P-DOSSIER-SCOPE → K-DOSSIER-SCOPE (sha256:778982296515…) → RV-DOSSIER-SCOPE APPROVE by customer:demonstration-buyer → AU-DOSSIER-SCOPE"
+      },
+      {
+        "stage": "BUILD",
+        "at": "2026-09-07T10:00:00.000Z",
+        "wrote": "compiled release v1 over 2 conclusions and 1 stated hole, digest sha256:0b443939b8b3…; built snapshot equals the quoted snapshot because the corpus did not move between them"
+      },
+      {
+        "stage": "RELEASE",
+        "at": "2026-09-07T11:00:00.000Z",
+        "wrote": "dossier_release DREL-1 v1 under AU-DOSSIER-SCOPE (scope) and AU-DOSSIER-RELEASE-1 (review); 2 conclusions"
+      },
+      {
+        "stage": "DELIVERED",
+        "at": "2026-09-07T12:00:00.000Z",
+        "wrote": "O-DELIVER-1 → T-DELIVER-1 CONFIRMED (SIMULATED_LOCAL:sha256:d…) → RC-T-DELIVER-1 DID_HAPPEN → DLV-DELIVER-1"
+      },
+      {
+        "stage": "MONITORING",
+        "at": "2026-09-08T11:00:00.000Z",
+        "wrote": "DREL-2 v2 succeeds DREL-1 (P-DOSSIER-RELEASE-2 corrects O-DELIVER-1); T-DELIVER-2 CONFIRMED; DREL-1 and its delivery stand"
+      }
+    ],
+    "coverage": [
+      {
+        "facet": "SUPPLIER_IDENTITY",
+        "artifactIds": [],
+        "runsRepresented": 0,
+        "basis": "No derived artifact in either demonstration run bears on supplier identity. The corpus surfaces lots and samples, not the parties behind them.",
+        "level": "NONE",
+        "artifactsAvailable": 0,
+        "units": 1
+      },
+      {
+        "facet": "DEPENDENCY",
+        "artifactIds": [
+          "DEMO-CARAVAN-A001",
+          "DEMO-CARAVAN-A002"
+        ],
+        "runsRepresented": 1,
+        "basis": "Evidence-concentration artifacts over the two lots in REL-CAR-2026.09.01, from one run (DEMO-CARAVAN).",
+        "level": "THIN",
+        "artifactsAvailable": 2,
+        "units": 2
+      },
+      {
+        "facet": "RISK",
+        "artifactIds": [
+          "SPATIAL-demo-floor-P-07-CLOSED"
+        ],
+        "runsRepresented": 1,
+        "basis": "The spatial baseline-versus-scenario comparison over the synthetic sampling floor, from one run (SPATIAL-RUN-P-07-CLOSED).",
+        "level": "THIN",
+        "artifactsAvailable": 1,
+        "units": 2
+      }
+    ],
+    "estimate": {
+      "estimateId": "EST-1",
+      "method": "notationsos.dossier.estimate.v1",
+      "units": 5,
+      "digest": "sha256:34376fc9f598059862b7ee12e9ade3e8579dfcdd21c1fe1691e6b8bc7489b9bb"
+    },
+    "quotation": {
+      "quotationId": "QUO-1",
+      "policyId": "PRICING-2026-DEMONSTRATION",
+      "unitPriceMinor": 120000,
+      "currency": "CAD",
+      "units": 5,
+      "amountMinor": 600000,
+      "snapshot": "sha256:209dd42fd06b7e54b84184a8f10fb3926eb130d071bc2594f3a7bcc97c139e4c",
+      "digest": "sha256:778982296515544b2d53319efbfd7b984d99c244ceb3841210d56f12860ba382"
+    },
+    "scope": {
+      "proposalId": "P-DOSSIER-SCOPE",
+      "operationKind": "DOSSIER_SCOPE",
+      "packetId": "K-DOSSIER-SCOPE",
+      "actionDigest": "sha256:778982296515544b2d53319efbfd7b984d99c244ceb3841210d56f12860ba382",
+      "reviewId": "RV-DOSSIER-SCOPE",
+      "reviewer": "customer:demonstration-buyer",
+      "response": "APPROVE",
+      "authorizationId": "AU-DOSSIER-SCOPE",
+      "grantedBy": "customer:demonstration-buyer",
+      "grantedAt": "2026-09-06T11:00:00.000Z",
+      "expiresAt": "2026-09-30T00:00:00.000Z",
+      "revisesProposalId": null,
+      "correctsOperationId": null
+    },
+    "releases": [
+      {
+        "releaseId": "DREL-1",
+        "version": 1,
+        "releaseDigest": "sha256:0b443939b8b38a816b82b505e883f780ab90552ae365273f84033b19f48f3a1e",
+        "builtSnapshot": "sha256:209dd42fd06b7e54b84184a8f10fb3926eb130d071bc2594f3a7bcc97c139e4c",
+        "review": {
+          "proposalId": "P-DOSSIER-RELEASE-1",
+          "operationKind": "DOSSIER_RELEASE",
+          "packetId": "K-DOSSIER-RELEASE-1",
+          "actionDigest": "sha256:0b443939b8b38a816b82b505e883f780ab90552ae365273f84033b19f48f3a1e",
+          "reviewId": "RV-DOSSIER-RELEASE-1",
+          "reviewer": "operator:corpus-steward",
+          "response": "APPROVE",
+          "authorizationId": "AU-DOSSIER-RELEASE-1",
+          "grantedBy": "operator:corpus-steward",
+          "grantedAt": "2026-09-07T10:30:00.000Z",
+          "expiresAt": "2026-09-30T00:00:00.000Z",
+          "revisesProposalId": null,
+          "correctsOperationId": null
+        },
+        "conclusions": [
+          {
+            "facet": "DEPENDENCY",
+            "statement": "4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%.",
+            "notCovered": "The second lot, DEMO-CARAVAN-A002, is in the coverage and not in this statement. Samples are not lots and are not counted here.",
+            "artifactId": "DEMO-CARAVAN-A001",
+            "artifactClass": "COMPUTED_RESULT",
+            "presentedAs": "COMPUTED_RESULT"
+          },
+          {
+            "facet": "RISK",
+            "statement": "Assuming P-07 CLOSED changes reachability from S-1 for 3 of 5 spaces: S-3 CONFIRMED→DISCONNECTED, S-4 CONFIRMED→DISCONNECTED, S-5 POSSIBLE_ONLY→DISCONNECTED. A statement about the synthetic demonstration floor and about no building.",
+            "notCovered": "A synthetic single-floor fixture, manually annotated; no measured building, no polygon inference, and the Store passage was declared unknown in the baseline.",
+            "artifactId": "SPATIAL-demo-floor-P-07-CLOSED",
+            "artifactClass": "COMPUTED_RESULT",
+            "presentedAs": "COMPUTED_RESULT"
+          }
+        ],
+        "holes": [
+          {
+            "facet": "SUPPLIER_IDENTITY",
+            "level": "NONE",
+            "basis": "No derived artifact in either demonstration run bears on supplier identity. The corpus surfaces lots and samples, not the parties behind them."
+          }
+        ],
+        "delivery": {
+          "operationId": "O-DELIVER-1",
+          "attemptId": "T-DELIVER-1",
+          "outcome": "CONFIRMED",
+          "venueReceipt": "SIMULATED_LOCAL:sha256:d11f2a544fd60db0f62ab61668a17fc0d1362f09ad7e12c4572c719f408e8fb6",
+          "reconciliation": {
+            "reconciliationId": "RC-T-DELIVER-1",
+            "found": "DID_HAPPEN",
+            "basis": "Local simulated receipt: the attempt row is the receipt. No customer exists and nothing left this process."
+          },
+          "deliveryId": "DLV-DELIVER-1",
+          "recipient": "customer:demonstration-buyer",
+          "receiptBasis": "SIMULATED_LOCAL: no customer exists; the receipt is the attempt row and says so."
+        }
+      },
+      {
+        "releaseId": "DREL-2",
+        "version": 2,
+        "releaseDigest": "sha256:778c3993dc551a51719ee035fd2b6c1db5e12ce706c518c6fdc922261fe71f80",
+        "builtSnapshot": "sha256:209dd42fd06b7e54b84184a8f10fb3926eb130d071bc2594f3a7bcc97c139e4c",
+        "review": {
+          "proposalId": "P-DOSSIER-RELEASE-2",
+          "operationKind": "DOSSIER_RELEASE",
+          "packetId": "K-DOSSIER-RELEASE-2",
+          "actionDigest": "sha256:778c3993dc551a51719ee035fd2b6c1db5e12ce706c518c6fdc922261fe71f80",
+          "reviewId": "RV-DOSSIER-RELEASE-2",
+          "reviewer": "operator:corpus-steward",
+          "response": "APPROVE",
+          "authorizationId": "AU-DOSSIER-RELEASE-2",
+          "grantedBy": "operator:corpus-steward",
+          "grantedAt": "2026-09-08T09:30:00.000Z",
+          "expiresAt": "2026-09-30T00:00:00.000Z",
+          "revisesProposalId": null,
+          "correctsOperationId": "O-DELIVER-1"
+        },
+        "conclusions": [
+          {
+            "facet": "DEPENDENCY",
+            "statement": "4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%.",
+            "notCovered": "The second lot, DEMO-CARAVAN-A002, is in the coverage and not in this statement. Samples are not lots and are not counted here. Before the run, the corpus had taken back 3 records (REC-0111 under RET-0002; REC-0112 under RET-0002; REC-0203 under RET-0001); the artifact read none of them, and version 1 did not say so.",
+            "artifactId": "DEMO-CARAVAN-A001",
+            "artifactClass": "COMPUTED_RESULT",
+            "presentedAs": "COMPUTED_RESULT"
+          },
+          {
+            "facet": "RISK",
+            "statement": "Assuming P-07 CLOSED changes reachability from S-1 for 3 of 5 spaces: S-3 CONFIRMED→DISCONNECTED, S-4 CONFIRMED→DISCONNECTED, S-5 POSSIBLE_ONLY→DISCONNECTED. A statement about the synthetic demonstration floor and about no building.",
+            "notCovered": "A synthetic single-floor fixture, manually annotated; no measured building, no polygon inference, and the Store passage was declared unknown in the baseline.",
+            "artifactId": "SPATIAL-demo-floor-P-07-CLOSED",
+            "artifactClass": "COMPUTED_RESULT",
+            "presentedAs": "COMPUTED_RESULT"
+          }
+        ],
+        "holes": [
+          {
+            "facet": "SUPPLIER_IDENTITY",
+            "level": "NONE",
+            "basis": "No derived artifact in either demonstration run bears on supplier identity. The corpus surfaces lots and samples, not the parties behind them."
+          }
+        ],
+        "delivery": {
+          "operationId": "O-DELIVER-2",
+          "attemptId": "T-DELIVER-2",
+          "outcome": "CONFIRMED",
+          "venueReceipt": "SIMULATED_LOCAL:sha256:0ca1dd923009b5289ef3c6a7b49b1c2f4e6bd9c1c4b1b3be2e349de99a5d928e",
+          "reconciliation": {
+            "reconciliationId": "RC-T-DELIVER-2",
+            "found": "DID_HAPPEN",
+            "basis": "Local simulated receipt: the attempt row is the receipt. No customer exists and nothing left this process."
+          },
+          "deliveryId": "DLV-DELIVER-2",
+          "recipient": "customer:demonstration-buyer",
+          "receiptBasis": "SIMULATED_LOCAL: no customer exists; the receipt is the attempt row and says so."
+        }
+      }
+    ],
+    "correction": {
+      "successorVersion": 2,
+      "predecessorVersion": 1,
+      "because": "Version 1’s DEPENDENCY conclusion stated what it did not cover and omitted that 3 records had been taken back before the run (RET-0002, RET-0001). Version 2 restates that sentence; nothing else changed.",
+      "correctsOperationId": "O-DELIVER-1",
+      "proposalId": "P-DOSSIER-RELEASE-2"
+    },
+    "refusals": [
+      {
+        "label": "count coverage for a facet as NONE while naming an artifact",
+        "refusedBy": "coverage_none_is_zero"
+      },
+      {
+        "label": "quote the work before any pricing policy is approved",
+        "refusedBy": "quotation_policy"
+      },
+      {
+        "label": "quote an amount that is not units times the rate",
+        "refusedBy": "quotation_is_units_at_the_rate"
+      },
+      {
+        "label": "release before the customer accepted, and before anyone reviewed",
+        "refusedBy": "release_scope_accepted"
+      },
+      {
+        "label": "have the agent grant the release authorization",
+        "refusedBy": "execution_authorization_granted_by_kind_check"
+      },
+      {
+        "label": "have a second reviewer close the same release again, differently",
+        "refusedBy": "review_closes_once"
+      },
+      {
+        "label": "release the draft the reviewer did not see",
+        "refusedBy": "release_reviewed"
+      },
+      {
+        "label": "present the spatial computation as something a source observed",
+        "refusedBy": "conclusion_presented_at_its_class"
+      },
+      {
+        "label": "record a delivery no dispatch carried",
+        "refusedBy": "dossier_delivery_attempt_id_fkey"
+      },
+      {
+        "label": "deliver the dossier to the other customer",
+        "refusedBy": "delivery_goes_to_the_dossiers_recipient"
+      },
+      {
+        "label": "release version 2 under version 1’s approval",
+        "refusedBy": "release_authorization_once"
+      }
+    ],
+    "counts": {
+      "specs": 1,
+      "coverage": 3,
+      "estimates": 1,
+      "quotations": 1,
+      "releases": 2,
+      "conclusions": 4,
+      "deliveries": 2,
+      "proposals": 3,
+      "authorizations": 3,
+      "attempts": 2,
+      "refusals": 11
+    }
+  },
+  "editorial": {
+    "fixture_only": true,
+    "simulated": true,
+    "candidateId": "STORY-DEMO-1",
+    "artifactId": "DEMO-CARAVAN-A001",
+    "beat": "demonstration-corpus",
+    "boundToRelease": "REL-CAR-2026.09.01",
+    "stages": [
+      {
+        "stage": "FINDING",
+        "at": "2026-09-09T09:00:00.000Z",
+        "wrote": "story_candidate STORY-DEMO-1 on DEMO-CARAVAN-A001 (COMPUTED_RESULT, NOT_VALIDATED)"
+      },
+      {
+        "stage": "STORY_CANDIDATE",
+        "at": "2026-09-09T09:10:00.000Z",
+        "wrote": "beat demonstration-corpus; the subject is LOT-5B-221"
+      },
+      {
+        "stage": "EVIDENCE_PACKET",
+        "at": "2026-09-09T10:00:00.000Z",
+        "wrote": "claims × 1, qualifiers × 4, chart over DEMO-CARAVAN-A001"
+      },
+      {
+        "stage": "DRAFT",
+        "at": "2026-09-09T11:00:00.000Z",
+        "wrote": "article message, digest sha256:deb1c9baf82b…"
+      },
+      {
+        "stage": "REVIEW",
+        "at": "2026-09-09T14:00:00.000Z",
+        "wrote": "editorial_review × 3 answered yes; PRIVACY not yet answered"
+      },
+      {
+        "stage": "DECISION",
+        "at": "2026-09-09T16:00:00.000Z",
+        "wrote": "P-ARTICLE-1 → RV-ARTICLE-1 APPROVE by editor:desk → AU-ARTICLE-1"
+      },
+      {
+        "stage": "RELEASE",
+        "at": "2026-09-09T17:00:00.000Z",
+        "wrote": "editorial_release EREL-ARTICLE-1 ARCHIVE v1 under AU-ARTICLE-1; channel_publication PUB-ARCHIVE-1"
+      },
+      {
+        "stage": "DISTRIBUTION",
+        "at": "2026-09-10T09:30:00.000Z",
+        "wrote": "EREL-POST-1 SYNDICATED_POST v1 under AU-POST-1, 273 characters, withheld; PUB-ARCHIVE-1 is the only publication"
+      },
+      {
+        "stage": "CORRECTION_WATCH",
+        "at": "2026-09-10T12:00:00.000Z",
+        "wrote": "external_observation OBS-REPEAT-1 descends from EREL-ARTICLE-1; offered as corroboration of DEMO-CARAVAN-A001; refused by repetition_is_not_corroboration"
+      }
+    ],
+    "dimensionReviews": [
+      {
+        "dimension": "EDITORIAL",
+        "reviewer": "editor:desk",
+        "passed": true,
+        "holdingsReviewed": null,
+        "at": "2026-09-09T14:00:00.000Z"
+      },
+      {
+        "dimension": "RIGHTS",
+        "reviewer": "reviewer:rights",
+        "passed": true,
+        "holdingsReviewed": null,
+        "at": "2026-09-09T14:00:00.000Z"
+      },
+      {
+        "dimension": "CONFLICT",
+        "reviewer": "reviewer:conflict",
+        "passed": true,
+        "holdingsReviewed": "The firm holds no position in any party to the demonstration corpus, which is synthetic; nobody benefits if this is believed.",
+        "at": "2026-09-09T14:00:00.000Z"
+      },
+      {
+        "dimension": "PRIVACY",
+        "reviewer": "reviewer:privacy",
+        "passed": true,
+        "holdingsReviewed": null,
+        "at": "2026-09-09T15:00:00.000Z"
+      }
+    ],
+    "article": {
+      "releaseId": "EREL-ARTICLE-1",
+      "channel": "ARCHIVE",
+      "version": 1,
+      "message": {
+        "headline": "LOT-5B-221: 50% of its retained claims come from port-custody-system",
+        "claims": [
+          {
+            "claim": "4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%.",
+            "claimClass": "COMPUTED_RESULT",
+            "artifactId": "DEMO-CARAVAN-A001",
+            "stillUnknown": "Whether the concentration reflects the world or the corpus’s coverage of it: the run read a demonstration corpus and validated nothing."
+          }
+        ],
+        "chart": {
+          "kind": "bar",
+          "measure": "Share of retained claims held by the largest source",
+          "subject": "LOT-5B-221",
+          "largestSource": "port-custody-system",
+          "largestShare": 0.5,
+          "singleSourced": false,
+          "restsOn": "DEMO-CARAVAN-A001"
+        },
+        "qualifiers": [
+          "The Caravan corpus is a committed demonstration. This is a statement about that corpus and about no real lot, sample or party.",
+          "The artifact is NOT_VALIDATED: the run finished, and nothing has checked its result against anything.",
+          "3 records the corpus had taken back before the run were not read (RET-0002, RET-0001).",
+          "Audience response to this article is not evidence for it, and a repetition of it elsewhere is not a second source."
+        ],
+        "channelText": "4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%. The finding is a computed result over the Caravan demonstration corpus, produced by the evidence-concentration workload and not validated. 3 records the corpus had taken back before the run were not read (RET-0002, RET-0001). What remains unknown: Whether the concentration reflects the world or the corpus’s coverage of it: the run read a demonstration corpus and validated nothing."
+      },
+      "messageDigest": "sha256:deb1c9baf82b1891f8aa0176248436c2ac7af5661655ff24c6926d18dc38a3eb",
+      "stillUnknown": "Whether the concentration reflects the world or the corpus’s coverage of it: the run read a demonstration corpus and validated nothing.",
+      "review": {
+        "proposalId": "P-ARTICLE-1",
+        "operationKind": "EDITORIAL_RELEASE",
+        "packetId": "K-ARTICLE-1",
+        "actionDigest": "sha256:deb1c9baf82b1891f8aa0176248436c2ac7af5661655ff24c6926d18dc38a3eb",
+        "reviewId": "RV-ARTICLE-1",
+        "reviewer": "editor:desk",
+        "response": "APPROVE",
+        "authorizationId": "AU-ARTICLE-1",
+        "grantedBy": "editor:desk",
+        "grantedAt": "2026-09-09T16:00:00.000Z",
+        "expiresAt": "2026-09-30T00:00:00.000Z",
+        "revisesProposalId": null,
+        "correctsOperationId": null
+      },
+      "publication": {
+        "publicationId": "PUB-ARCHIVE-1",
+        "channel": "ARCHIVE",
+        "at": "2026-09-09T17:05:00.000Z"
+      },
+      "withheldBecause": null,
+      "characters": 460
+    },
+    "post": {
+      "releaseId": "EREL-POST-1",
+      "channel": "SYNDICATED_POST",
+      "version": 1,
+      "message": {
+        "headline": "Demonstration corpus: 50% of one lot’s claims come from one source",
+        "claims": [
+          {
+            "claim": "4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%.",
+            "claimClass": "COMPUTED_RESULT",
+            "artifactId": "DEMO-CARAVAN-A001",
+            "stillUnknown": "Whether the concentration reflects the world or the corpus’s coverage of it: the run read a demonstration corpus and validated nothing."
+          }
+        ],
+        "chart": {
+          "kind": "none",
+          "because": "No chart on this channel; the archived article carries it, and the post links to the article."
+        },
+        "qualifiers": [
+          "Demonstration corpus — not a real lot.",
+          "Computed result, NOT_VALIDATED."
+        ],
+        "channelText": "Demonstration corpus: 50% of one lot’s claims come from one source. 4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%. Demonstration corpus — not a real lot. Computed result, NOT_VALIDATED. Method and full qualifiers in the archive: PUB-ARCHIVE-1."
+      },
+      "messageDigest": "sha256:30c75bbbc534bf1ce6ab2fea21eafc1238da4e1eb016bba82a335e3de751e209",
+      "stillUnknown": "Whether the concentration reflects the world or the corpus’s coverage of it: the run read a demonstration corpus and validated nothing.",
+      "review": {
+        "proposalId": "P-POST-1",
+        "operationKind": "EDITORIAL_RELEASE",
+        "packetId": "K-POST-1",
+        "actionDigest": "sha256:30c75bbbc534bf1ce6ab2fea21eafc1238da4e1eb016bba82a335e3de751e209",
+        "reviewId": "RV-POST-1",
+        "reviewer": "editor:desk",
+        "response": "APPROVE",
+        "authorizationId": "AU-POST-1",
+        "grantedBy": "editor:desk",
+        "grantedAt": "2026-09-10T09:00:00.000Z",
+        "expiresAt": "2026-09-30T00:00:00.000Z",
+        "revisesProposalId": null,
+        "correctsOperationId": null
+      },
+      "publication": null,
+      "withheldBecause": "Real external execution is disabled for this work. The post is reviewed and authorized for its channel and has not been posted; no channel_publication row exists for it, because a row saying it went out would say something that did not happen.",
+      "characters": 273
+    },
+    "privateReferences": [],
+    "repetition": {
+      "observationId": "OBS-REPEAT-1",
+      "sourceAccount": "account:simulated-repeater",
+      "descendsFromArtifactId": "DEMO-CARAVAN-A001",
+      "descendsViaReleaseId": "EREL-ARTICLE-1",
+      "offeredAsCorroborationOf": "DEMO-CARAVAN-A001",
+      "refusedBy": "repetition_is_not_corroboration"
+    },
+    "refusals": [
+      {
+        "label": "release the article before privacy had answered",
+        "refusedBy": "release_before_every_review_passed:3_of_4"
+      },
+      {
+        "label": "publish a rewritten headline under the approval of the reviewed one",
+        "refusedBy": "release_approved_as_this_message"
+      },
+      {
+        "label": "reissue the reporting as advertising",
+        "refusedBy": "editorial_release_publication_class_check"
+      },
+      {
+        "label": "publish the post from the article’s release, on the post’s channel",
+        "refusedBy": "channel_carries_the_reviewed_message"
+      },
+      {
+        "label": "release the post under the article’s approval",
+        "refusedBy": "editorial_release_authorization_once"
+      },
+      {
+        "label": "drop the qualifiers from the post",
+        "refusedBy": "release_message_has_its_parts"
+      },
+      {
+        "label": "post it with no archived article behind it",
+        "refusedBy": "only_the_archive_originates"
+      },
+      {
+        "label": "count the firm’s own republication as corroboration of its finding",
+        "refusedBy": "repetition_is_not_corroboration"
+      }
+    ],
+    "counts": {
+      "candidates": 1,
+      "dimensionReviews": 4,
+      "releases": 2,
+      "publications": 1,
+      "observations": 1,
+      "corroborations": 0,
+      "proposals": 2,
+      "authorizations": 2,
+      "refusals": 8
+    }
+  },
+  "treasury": {
+    "fixture_only": true,
+    "simulated": true,
+    "nothingMoved": "Every account, provider, balance and receipt here is simulated and named as such. No money exists, no provider was contacted, and no movement happened; the rows record what the ledger accepted and refused.",
+    "entity": "Notation Systems Inc. (SIMULATION)",
+    "accounts": [
+      {
+        "accountId": "SIM-OPERATING",
+        "provider": "simulated-bank",
+        "bucket": "OPERATING",
+        "currency": "CAD",
+        "entity": "Notation Systems Inc. (SIMULATION)"
+      },
+      {
+        "accountId": "SIM-SETTLEMENT",
+        "provider": "simulated-exchange",
+        "bucket": "SETTLEMENT",
+        "currency": "USD",
+        "entity": "Notation Systems Inc. (SIMULATION)"
+      },
+      {
+        "accountId": "SIM-OUTSIDE",
+        "provider": "simulated-bank",
+        "bucket": "OPERATING",
+        "currency": "CAD",
+        "entity": "Someone Else Ltd. (SIMULATION)"
+      }
+    ],
+    "policy": {
+      "version": "SIM-POLICY@1",
+      "reserveFloorMinor": 250000,
+      "adoptedBy": "operator:treasurer"
+    },
+    "eligibility": [
+      {
+        "eligibilityId": "ELIG-CONFIRMED",
+        "contract": "sim:settlement-token",
+        "state": "CONFIRMED",
+        "basis": "Simulated provider onboarding complete for this entity in this jurisdiction."
+      },
+      {
+        "eligibilityId": "ELIG-BLOCKED",
+        "contract": "sim:tokenized-note",
+        "state": "BLOCKED",
+        "basis": "The simulated issuer’s published rules exclude this jurisdiction from acquiring."
+      },
+      {
+        "eligibilityId": "ELIG-UNRESOLVED",
+        "contract": "sim:fund-share",
+        "state": "UNRESOLVED",
+        "basis": "The simulated issuer has not answered whether this entity may subscribe. An unanswered question is not a permission."
+      }
+    ],
+    "budget": {
+      "budgetId": "SIM-SURPLUS",
+      "limitMinor": 300000,
+      "because": "simulated balance 550000 − reserve floor 250000",
+      "chain": [
+        {
+          "reservationId": "HOLD-TP-1",
+          "sequence": 0,
+          "state": "HELD",
+          "deltaMinor": -100000,
+          "balanceAfterMinor": 200000,
+          "follows": null
+        },
+        {
+          "reservationId": "HOLD-TP-4",
+          "sequence": 1,
+          "state": "HELD",
+          "deltaMinor": -50000,
+          "balanceAfterMinor": 150000,
+          "follows": "HOLD-TP-1"
+        },
+        {
+          "reservationId": "HOLD-TP-10",
+          "sequence": 2,
+          "state": "HELD",
+          "deltaMinor": -60000,
+          "balanceAfterMinor": 90000,
+          "follows": "HOLD-TP-4"
+        },
+        {
+          "reservationId": "HOLD-TP-11",
+          "sequence": 3,
+          "state": "HELD",
+          "deltaMinor": -20000,
+          "balanceAfterMinor": 70000,
+          "follows": "HOLD-TP-10"
+        }
+      ],
+      "remainingMinor": 70000
+    },
+    "proposals": [
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-1",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Within the surplus (300000 minor above the floor); destination is the entity’s own settlement account; asset eligibility is CONFIRMED."
+        },
+        "authorizationId": "TA-1",
+        "grantedBy": "operator:treasurer",
+        "revocation": null,
+        "hold": {
+          "reservationId": "HOLD-TP-1",
+          "sequence": 0,
+          "deltaMinor": -100000,
+          "balanceBeforeMinor": 300000,
+          "balanceAfterMinor": 200000
+        },
+        "dispatch": {
+          "dispatchId": "TD-1",
+          "outcome": "CONFIRMED",
+          "at": "2026-09-10T12:00:00.000Z"
+        },
+        "reconciliation": {
+          "reconciliationId": "TRC-1",
+          "found": "DID_HAPPEN",
+          "basis": "SIMULATED receipt sha256:f28791b24fe964952431578462dba4c94b2b3f2f7d59038de7df61c9e0156a53: nothing moved anywhere; the dispatch row is the whole of what happened."
+        },
+        "refusedBy": null,
+        "proposalId": "TP-1",
+        "purpose": "Fund simulated settlement liquidity for approved transfers.",
+        "amountMinor": 100000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "DISPATCHED_AND_RECONCILED"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-2",
+          "response": "DENY",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Reserve check: 200000 minor remains above the floor after TP-1 and this asks for 250000. Denied. A denial is an outcome; it is not a request for a smaller number."
+        },
+        "authorizationId": null,
+        "grantedBy": null,
+        "revocation": null,
+        "hold": null,
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "treasury_authorization_descends_from_a_denial:TP-2",
+        "proposalId": "TP-2",
+        "purpose": "Pre-fund a quarter of simulated settlement volume.",
+        "amountMinor": 250000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "DENIED"
+      },
+      {
+        "revises": "TP-2",
+        "review": {
+          "reviewId": "TR-3",
+          "response": "APPROVE",
+          "reviewer": "operator:second-reviewer",
+          "reasoning": "Within the surplus on its own. (A second reviewer, asked after the first said no.)"
+        },
+        "authorizationId": null,
+        "grantedBy": null,
+        "revocation": null,
+        "hold": null,
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "treasury_authorization_descends_from_a_denial:TP-2",
+        "proposalId": "TP-3",
+        "purpose": "Pre-fund a quarter of simulated settlement volume — first half.",
+        "amountMinor": 120000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "REFUSED_AT_AUTHORIZATION"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-4",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Within the surplus; same destination as TP-1."
+        },
+        "authorizationId": "TA-4",
+        "grantedBy": "operator:treasurer",
+        "revocation": {
+          "revocationId": "TX-4",
+          "revokedBy": "operator:treasurer",
+          "reason": "The simulated counterparty wallet was re-keyed between grant and dispatch. Whatever the authorization says, it is not to be spent.",
+          "at": "2026-09-10T12:30:00.000Z"
+        },
+        "hold": {
+          "reservationId": "HOLD-TP-4",
+          "sequence": 1,
+          "deltaMinor": -50000,
+          "balanceBeforeMinor": 200000,
+          "balanceAfterMinor": 150000
+        },
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "treasury_dispatch_after_revocation:2026-09-10 12:30:00+00",
+        "proposalId": "TP-4",
+        "purpose": "Top up simulated settlement liquidity.",
+        "amountMinor": 50000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "REVOKED_BEFORE_DISPATCH"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-5",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Approved on the economics. (Approval is necessary; it is not sufficient.)"
+        },
+        "authorizationId": null,
+        "grantedBy": null,
+        "revocation": null,
+        "hold": null,
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "authorization_needs_confirmed_eligibility",
+        "proposalId": "TP-5",
+        "purpose": "Acquire a simulated sim:tokenized-note position.",
+        "amountMinor": 30000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:tokenized-note",
+        "eligibility": "BLOCKED",
+        "standing": "REFUSED_AT_AUTHORIZATION"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-6",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Approved on the economics. (Approval is necessary; it is not sufficient.)"
+        },
+        "authorizationId": null,
+        "grantedBy": null,
+        "revocation": null,
+        "hold": null,
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "authorization_needs_confirmed_eligibility",
+        "proposalId": "TP-6",
+        "purpose": "Acquire a simulated sim:fund-share position.",
+        "amountMinor": 30000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:fund-share",
+        "eligibility": "UNRESOLVED",
+        "standing": "REFUSED_AT_AUTHORIZATION"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-7",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Within the surplus."
+        },
+        "authorizationId": null,
+        "grantedBy": null,
+        "revocation": null,
+        "hold": null,
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "treasury_authorization_granted_by_kind_check",
+        "proposalId": "TP-7",
+        "purpose": "Rebalance simulated settlement liquidity.",
+        "amountMinor": 40000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "REFUSED_AT_AUTHORIZATION"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-8",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Approved in error, to show the chain refuses what the reviewer missed."
+        },
+        "authorizationId": "TA-8",
+        "grantedBy": "operator:treasurer",
+        "revocation": null,
+        "hold": null,
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "budget_reservation_balance_after_minor_check",
+        "proposalId": "TP-8",
+        "purpose": "Move the whole surplus and then some.",
+        "amountMinor": 200000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "REFUSED_AT_AUTHORIZATION"
+      },
+      {
+        "revises": null,
+        "review": null,
+        "authorizationId": null,
+        "grantedBy": null,
+        "revocation": null,
+        "hold": null,
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "proposal_stays_within_the_entity",
+        "proposalId": "TP-9",
+        "purpose": "Pay a simulated counterparty.",
+        "amountMinor": 10000,
+        "destination": "SIM-OUTSIDE",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "REFUSED_AS_A_PROPOSAL"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-10",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Within the surplus."
+        },
+        "authorizationId": "TA-10",
+        "grantedBy": "operator:treasurer",
+        "revocation": null,
+        "hold": {
+          "reservationId": "HOLD-TP-10",
+          "sequence": 2,
+          "deltaMinor": -60000,
+          "balanceBeforeMinor": 150000,
+          "balanceAfterMinor": 90000
+        },
+        "dispatch": {
+          "dispatchId": "TD-10",
+          "outcome": "OUTCOME_UNKNOWN",
+          "at": "2026-09-10T13:00:00.000Z"
+        },
+        "reconciliation": {
+          "reconciliationId": "TRC-10",
+          "found": "STILL_UNKNOWN",
+          "basis": "The simulated provider returned no answer within the window. Not treated as nothing happened; not retried; open on the record."
+        },
+        "refusedBy": null,
+        "proposalId": "TP-10",
+        "purpose": "Fund a simulated settlement window.",
+        "amountMinor": 60000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "DISPATCHED_OUTCOME_UNRESOLVED"
+      },
+      {
+        "revises": null,
+        "review": {
+          "reviewId": "TR-11",
+          "response": "APPROVE",
+          "reviewer": "operator:treasurer",
+          "reasoning": "Within the surplus."
+        },
+        "authorizationId": "TA-11",
+        "grantedBy": "operator:treasurer",
+        "revocation": null,
+        "hold": {
+          "reservationId": "HOLD-TP-11",
+          "sequence": 3,
+          "deltaMinor": -20000,
+          "balanceBeforeMinor": 90000,
+          "balanceAfterMinor": 70000
+        },
+        "dispatch": null,
+        "reconciliation": null,
+        "refusedBy": "dispatch_within_the_authorization",
+        "proposalId": "TP-11",
+        "purpose": "A small top-up nobody dispatched in time.",
+        "amountMinor": 20000,
+        "destination": "SIM-SETTLEMENT",
+        "asset": "sim:settlement-token",
+        "eligibility": "CONFIRMED",
+        "standing": "EXPIRED_BEFORE_DISPATCH"
+      }
+    ],
+    "refusals": [
+      {
+        "label": "dispatch the same authorization again against the same hold",
+        "refusedBy": "dispatch_hold_once"
+      },
+      {
+        "label": "authorize a denied proposal",
+        "refusedBy": "treasury_authorization_descends_from_a_denial:TP-2"
+      },
+      {
+        "label": "authorize the split of a denied proposal, approved by a second reviewer",
+        "refusedBy": "treasury_authorization_descends_from_a_denial:TP-2"
+      },
+      {
+        "label": "hold against a balance another hold has already moved past (the race)",
+        "refusedBy": "reservation_one_successor"
+      },
+      {
+        "label": "dispatch after the authorization was revoked",
+        "refusedBy": "treasury_dispatch_after_revocation:2026-09-10 12:30:00+00"
+      },
+      {
+        "label": "authorize an approved movement into an asset whose eligibility is BLOCKED",
+        "refusedBy": "authorization_needs_confirmed_eligibility"
+      },
+      {
+        "label": "authorize an approved movement into an asset whose eligibility is UNRESOLVED",
+        "refusedBy": "authorization_needs_confirmed_eligibility"
+      },
+      {
+        "label": "have the agent grant the authorization for its own proposal",
+        "refusedBy": "treasury_authorization_granted_by_kind_check"
+      },
+      {
+        "label": "hold more than remains above the reserve floor",
+        "refusedBy": "budget_reservation_balance_after_minor_check"
+      },
+      {
+        "label": "propose paying out to another legal entity",
+        "refusedBy": "proposal_stays_within_the_entity"
+      },
+      {
+        "label": "dispatch after the authorization expired",
+        "refusedBy": "dispatch_within_the_authorization"
+      }
+    ],
+    "counts": {
+      "proposals": 10,
+      "reviews": 10,
+      "approved": 9,
+      "denied": 1,
+      "authorizations": 5,
+      "revocations": 1,
+      "holds": 4,
+      "dispatches": 2,
+      "reconciliations": 2,
+      "unresolved": 1,
+      "refusals": 11
+    }
+  },
+  "refusals": [
+    {
+      "label": "count coverage for a facet as NONE while naming an artifact",
+      "refusedBy": "coverage_none_is_zero",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "quote the work before any pricing policy is approved",
+      "refusedBy": "quotation_policy",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "quote an amount that is not units times the rate",
+      "refusedBy": "quotation_is_units_at_the_rate",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "release before the customer accepted, and before anyone reviewed",
+      "refusedBy": "release_scope_accepted",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "have the agent grant the release authorization",
+      "refusedBy": "execution_authorization_granted_by_kind_check",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "have a second reviewer close the same release again, differently",
+      "refusedBy": "review_closes_once",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "release the draft the reviewer did not see",
+      "refusedBy": "release_reviewed",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "present the spatial computation as something a source observed",
+      "refusedBy": "conclusion_presented_at_its_class",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "record a delivery no dispatch carried",
+      "refusedBy": "dossier_delivery_attempt_id_fkey",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "deliver the dossier to the other customer",
+      "refusedBy": "delivery_goes_to_the_dossiers_recipient",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "release version 2 under version 1’s approval",
+      "refusedBy": "release_authorization_once",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "release the article before privacy had answered",
+      "refusedBy": "release_before_every_review_passed:3_of_4",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "publish a rewritten headline under the approval of the reviewed one",
+      "refusedBy": "release_approved_as_this_message",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "reissue the reporting as advertising",
+      "refusedBy": "editorial_release_publication_class_check",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "publish the post from the article’s release, on the post’s channel",
+      "refusedBy": "channel_carries_the_reviewed_message",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "release the post under the article’s approval",
+      "refusedBy": "editorial_release_authorization_once",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "drop the qualifiers from the post",
+      "refusedBy": "release_message_has_its_parts",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "post it with no archived article behind it",
+      "refusedBy": "only_the_archive_originates",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "count the firm’s own republication as corroboration of its finding",
+      "refusedBy": "repetition_is_not_corroboration",
+      "lifecycle": "EDITORIAL"
+    },
+    {
+      "label": "dispatch the same authorization again against the same hold",
+      "refusedBy": "dispatch_hold_once",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "authorize a denied proposal",
+      "refusedBy": "treasury_authorization_descends_from_a_denial:TP-2",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "authorize the split of a denied proposal, approved by a second reviewer",
+      "refusedBy": "treasury_authorization_descends_from_a_denial:TP-2",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "hold against a balance another hold has already moved past (the race)",
+      "refusedBy": "reservation_one_successor",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "dispatch after the authorization was revoked",
+      "refusedBy": "treasury_dispatch_after_revocation:2026-09-10 12:30:00+00",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "authorize an approved movement into an asset whose eligibility is BLOCKED",
+      "refusedBy": "authorization_needs_confirmed_eligibility",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "authorize an approved movement into an asset whose eligibility is UNRESOLVED",
+      "refusedBy": "authorization_needs_confirmed_eligibility",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "have the agent grant the authorization for its own proposal",
+      "refusedBy": "treasury_authorization_granted_by_kind_check",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "hold more than remains above the reserve floor",
+      "refusedBy": "budget_reservation_balance_after_minor_check",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "propose paying out to another legal entity",
+      "refusedBy": "proposal_stays_within_the_entity",
+      "lifecycle": "TREASURY"
+    },
+    {
+      "label": "dispatch after the authorization expired",
+      "refusedBy": "dispatch_within_the_authorization",
+      "lifecycle": "TREASURY"
+    }
+  ],
+  "refusedBy": [
+    "authorization_needs_confirmed_eligibility",
+    "budget_reservation_balance_after_minor_check",
+    "channel_carries_the_reviewed_message",
+    "conclusion_presented_at_its_class",
+    "coverage_none_is_zero",
+    "delivery_goes_to_the_dossiers_recipient",
+    "dispatch_hold_once",
+    "dispatch_within_the_authorization",
+    "dossier_delivery_attempt_id_fkey",
+    "editorial_release_authorization_once",
+    "editorial_release_publication_class_check",
+    "execution_authorization_granted_by_kind_check",
+    "only_the_archive_originates",
+    "proposal_stays_within_the_entity",
+    "quotation_is_units_at_the_rate",
+    "quotation_policy",
+    "release_approved_as_this_message",
+    "release_authorization_once",
+    "release_before_every_review_passed",
+    "release_message_has_its_parts",
+    "release_reviewed",
+    "release_scope_accepted",
+    "repetition_is_not_corroboration",
+    "reservation_one_successor",
+    "review_closes_once",
+    "treasury_authorization_descends_from_a_denial",
+    "treasury_authorization_granted_by_kind_check",
+    "treasury_dispatch_after_revocation"
+  ],
+  "counts": {
+    "refusals": 30,
+    "proposals": 15,
+    "authorizations": 10,
+    "revocations": 1,
+    "dispatches": 4,
+    "reconciliations": 4,
+    "unresolved": 1,
+    "releases": 4,
+    "publications": 1,
+    "deliveries": 2
+  },
+  "notClaimed": [
+    "No customer exists; the buyer is a registered simulated principal and the delivery receipt is the attempt row.",
+    "No money exists; the accounts, provider and balance are simulated and the one confirmed dispatch reconciles against a simulated receipt.",
+    "Nothing was posted; the post is reviewed and authorized for its channel and withheld, and no publication row for it exists.",
+    "No artifact is validated; every conclusion and claim rests on a NOT_VALIDATED computation over a demonstration corpus.",
+    "No approval was supplied by a request; every authorization row rests on a review row by a registered HUMAN principal of the digest it binds to.",
+    "Silence approved nothing; every authorization has a review, every denial is a row, and an unknown outcome is carried as unresolved."
+  ]
+}

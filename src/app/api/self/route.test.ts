@@ -12,6 +12,11 @@ import { GET, POST } from './route';
 
 const ORIGIN = 'http://127.0.0.1:3111';
 const HEAD = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+// The capture is declared after the commit it reads, by the commit's own
+// clock: a capture declared before the source published it is refused on
+// SOURCE_CLOCK_COHERENT, and a fixed instant here aged past HEAD within a day.
+const COMMITTED = Date.parse(execFileSync('git', ['log', '-1', '--format=%cI'], { encoding: 'utf8' }).trim());
+const after = (minutes: number) => new Date(COMMITTED + minutes * 60_000).toISOString();
 
 const req = (method: 'GET' | 'POST', body?: unknown, headers: Record<string, string> = {}) =>
   new Request(`${ORIGIN}/api/self`, {
@@ -22,13 +27,13 @@ const req = (method: 'GET' | 'POST', body?: unknown, headers: Record<string, str
 
 const DECLARED = {
   objectNames: [HEAD],
-  capturedAt: '2026-09-11T09:00:00.000Z',
+  capturedAt: after(1),
   repository: 'notation://source/self/notationsos',
   buildId: 'self-build-1',
-  knownThrough: '2026-09-11T12:00:00.000Z',
+  knownThrough: after(60),
   provenanceClass: 'LIVE_CAPTURE' as const,
   authority: 'role:corpus-steward',
-  ruledAt: '2026-09-11T12:00:00.000Z',
+  ruledAt: after(60),
 };
 
 const enabled = <T>(run: () => T): T => {

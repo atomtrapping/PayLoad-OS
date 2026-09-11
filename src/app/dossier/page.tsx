@@ -5,10 +5,12 @@ import {
   AGENT_MAY_NOT_INVENT, AGENT_MAY_TAILOR, AMENDMENT_RULE, APPROVAL_IS_NOT_A_SUPPLIER_PROPERTY,
   COMPILE_INPUTS, COMPILE_INPUT_MEANING, CONCLUSION_CLASS_RULE, CORRECTION_RULE,
   COVERAGE_HOLE_RULE, DECOMPOSITION_RULE, DELIVERABLE_CHAIN, DELIVERABLE_IMPRINT,
-  DOSSIER_BLOCKED_ON, DOSSIER_STAGES, FACET_CONTRACTS, PRICING_POLICY_RULE, REFRESH_IS_A_RELEASE,
+  DOSSIER_STAGES, FACET_CONTRACTS, PRICING_POLICY_RULE, REFRESH_IS_A_RELEASE,
   STANDING_CONTRACTS, TWO_SNAPSHOTS_RULE, dossierStanding,
 } from '@/domain/dossierService';
 import { CUSTOMER_ENTRY, CUSTOMER_NEED_NOT_KNOW, identityContract } from '@/domain/firmIdentity';
+import { DossierLifecycleView } from '@/components/governance/DossierLifecycleView';
+import { GOVERNANCE_DEMONSTRATION } from '@/fixtures/governance/committed';
 
 export const metadata: Metadata = { title: 'Dossier Services' };
 
@@ -20,7 +22,8 @@ export const metadata: Metadata = { title: 'Dossier Services' };
  * leaking is a defect rather than a wording choice.
  */
 export default function DossierPage() {
-  const standing = dossierStanding();
+  const demo = GOVERNANCE_DEMONSTRATION.dossier;
+  const standing = dossierStanding([{ dossierId: demo.dossierId, recipientId: demo.recipient, facets: demo.coverage.map((c) => c.facet), stage: demo.stages[demo.stages.length - 1].stage }]);
   const delivery = identityContract('Dossier Services');
   return (
     <div className="p-3 sm:p-4 max-w-[1600px] mx-auto w-full flex flex-col gap-3">
@@ -32,11 +35,11 @@ export default function DossierPage() {
       </header>
 
       <div className="surface px-3 py-2 text-[12.5px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: 'var(--text-secondary)' }}>
-        <span className="pill" style={{ color: 'var(--text-muted)' }}>CONTRACT</span>
+        <span className="pill" style={{ color: 'var(--text-muted)' }}>DEMONSTRATION</span>
         <span style={{ color: 'var(--accent)' }} data-testid="dossier-count">
-          {standing.specs} dossiers asked for, {standing.released} released.
+          {standing.specs} dossier asked for by a simulated buyer, {demo.releases.length} releases, version {demo.correction.successorVersion} corrects version {demo.correction.predecessorVersion}, {demo.refusals.length} rows refused.
         </span>
-        <span>{DOSSIER_BLOCKED_ON[1]}</span>
+        <span>{standing.blockedOn[0] ?? GOVERNANCE_DEMONSTRATION.notClaimed[0]}</span>
       </div>
 
       <div className="surface p-3 flex flex-col gap-2">
@@ -48,6 +51,8 @@ export default function DossierPage() {
           from the machinery. If it did, the delivery layer would have leaked.
         </p>
       </div>
+
+      <DossierLifecycleView receipt={demo} />
 
       <Section title="One question becomes nine" id="facets">
         <div className="surface p-0 overflow-x-auto" tabIndex={0}>

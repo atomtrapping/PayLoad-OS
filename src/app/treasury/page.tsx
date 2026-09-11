@@ -9,8 +9,10 @@ import {
   EXECUTION_TERMS, INDEPENDENCE_RULE, LIQUIDITY_CLASSES, LIQUIDITY_RULE, LIQUIDITY_STEPS,
   MATERIAL_CHANGES, NO_DEFAULT_RULE, PROVIDER_ADAPTERS, RECHECK_RULE, REVERSIBILITY_RULE,
   REVIEW_RESPONSES, ROLLOUT_STAGES, ROUND_TRIP, ROUND_TRIP_RULE, SETTLEMENT_STAGES,
-  TREASURY_BLOCKED_ON, UNKNOWN_ELIGIBILITY_RULE, treasuryStanding,
+  UNKNOWN_ELIGIBILITY_RULE, treasuryStanding, type EligibilityState,
 } from '@/domain/treasury';
+import { TreasurySimulationView } from '@/components/governance/TreasurySimulationView';
+import { GOVERNANCE_DEMONSTRATION } from '@/fixtures/governance/committed';
 
 export const metadata: Metadata = { title: 'Treasury' };
 
@@ -22,7 +24,8 @@ export const metadata: Metadata = { title: 'Treasury' };
  * decide from the total.
  */
 export default function TreasuryPage() {
-  const standing = treasuryStanding();
+  const demo = GOVERNANCE_DEMONSTRATION.treasury;
+  const standing = treasuryStanding(demo.proposals.map((p) => ({ proposalId: p.proposalId, bucket: 'OPERATING' as const, eligibility: p.eligibility as EligibilityState, response: p.review?.response ?? null })));
   return (
     <div className="p-3 sm:p-4 max-w-[1600px] mx-auto w-full flex flex-col gap-3">
       <header className="flex flex-col gap-1 max-w-[900px]">
@@ -33,11 +36,11 @@ export default function TreasuryPage() {
       </header>
 
       <div className="surface px-3 py-2 text-[12.5px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: 'var(--text-secondary)' }}>
-        <span className="pill" style={{ color: 'var(--text-muted)' }}>CONTRACT</span>
+        <span className="pill" style={{ color: 'var(--text-muted)' }}>SIMULATION</span>
         <span style={{ color: 'var(--accent)' }} data-testid="treasury-standing">
-          {standing.proposals} proposals, {standing.providersApproved} providers approved, round trip unproven.
+          {standing.proposals} simulated proposals: {standing.approved} approved, {standing.denied} denied, {standing.blockedByEligibility} blocked by eligibility, {demo.counts.dispatches} dispatched, {demo.counts.unresolved} unresolved, {demo.refusals.length} rows refused. {standing.providersApproved} real providers approved; round trip unproven.
         </span>
-        <span>{TREASURY_BLOCKED_ON[0]}</span>
+        <span>{standing.blockedOn[0] ?? demo.nothingMoved}</span>
       </div>
 
       <div className="surface p-3 flex flex-col gap-2">
@@ -46,6 +49,8 @@ export default function TreasuryPage() {
         <p className="m-0 mt-1 text-[13px]" data-testid="not-sufficient" style={{ color: 'var(--text-primary)' }}>{AUTHORIZATION_IS_NOT_SUFFICIENT}</p>
         <p className="m-0 text-[12.5px]" data-testid="unknown-eligibility" style={{ color: 'var(--accent)' }}>{UNKNOWN_ELIGIBILITY_RULE}</p>
       </div>
+
+      <TreasurySimulationView receipt={demo} />
 
       <Section title="What a reviewer is given" id="packet">
         <div className="surface p-0 overflow-x-auto" tabIndex={0}>

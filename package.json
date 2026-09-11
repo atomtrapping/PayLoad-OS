@@ -2,7 +2,7 @@
   "name": "payload-os",
   "version": "0.1.0",
   "private": true,
-  "description": "NotationsOS — the shared information-production system and distribution-workbench prototype for Notation Systems.",
+  "description": "NotationsOS \u2014 the shared information-production system and distribution-workbench prototype for Notation Systems.",
   "scripts": {
     "predev": "node scripts/earth-assets.mjs",
     "dev": "next dev -p 3000 -H 0.0.0.0",
@@ -37,6 +37,7 @@
     "screenshots": "playwright test --project=screenshots",
     "stamp:production": "esbuild scripts/stamp-production.entry.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/stamp-production.mjs --log-level=warning && node .stamp/stamp-production.mjs",
     "stamp:digests": "esbuild scripts/stamp-digests.entry.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/stamp.mjs --log-level=warning && node .stamp/stamp.mjs",
+    "stamp:governance": "esbuild scripts/stamp-governance.entry.ts --bundle --platform=node --format=esm --alias:@=./src --external:@electric-sql/pglite --outfile=.stamp/stamp-governance.mjs --log-level=warning && node .stamp/stamp-governance.mjs",
     "mcp": "esbuild src/mcp/server.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/mcp.mjs --log-level=warning --banner:js=\"import { createRequire } from \\\"module\\\"; const require = createRequire(import.meta.url);\" && node .stamp/mcp.mjs",
     "admit": "esbuild scripts/admit.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/admit.mjs --log-level=warning && node .stamp/admit.mjs"
   },

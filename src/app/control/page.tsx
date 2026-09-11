@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
 import { ChainFigure } from '@/components/primitives/ChainFigure';
 import { Section } from '@/components/primitives/Section';
+import { GovernedActs } from '@/components/governance/GovernedActs';
+import { RefusalRegister } from '@/components/governance/RefusalRegister';
+import { allActs } from '@/components/governance/acts';
+import { GOVERNANCE_DEMONSTRATION } from '@/fixtures/governance/committed';
+import { APPROVAL_IS_OF_A_DIGEST, REVOCATION_RULE } from '@/domain/executionEnvelope';
 import {
   COMMAND_BAR_RULE, COMMAND_EXAMPLES, FIRM_LOOP, FIRM_QUESTIONS, FIRM_STATE_COMPONENTS,
   INTENT_PIPELINE, LAYER_CONTRACTS, MONOLITH_WARNING, OPERATING_PLANES, SEPARATIONS,
@@ -18,6 +23,7 @@ export const metadata: Metadata = { title: 'Control plane' };
  */
 export default function ControlPage() {
   const standing = planeStanding();
+  const demo = GOVERNANCE_DEMONSTRATION;
   return (
     <div className="p-3 sm:p-4 max-w-[1600px] mx-auto w-full flex flex-col gap-3">
       <header className="flex flex-col gap-1 max-w-[900px]">
@@ -41,6 +47,28 @@ export default function ControlPage() {
           {SEPARATIONS.map((line) => <li key={line}>{line}</li>)}
         </ul>
       </div>
+
+      <Section title="Governed operations, demonstrated" id="governed">
+        <div className="surface p-3 flex flex-col gap-2">
+          <p className="m-0 text-[12.5px]" data-testid="governed-counts" style={{ color: 'var(--accent)' }}>
+            {demo.counts.proposals} proposals through one kernel in two databases, and one refused before it was a row: {demo.counts.authorizations} authorized, {demo.counts.revocations} revoked, {demo.counts.dispatches} dispatched, {demo.counts.reconciliations} reconciled, {demo.counts.unresolved} unresolved; {demo.counts.refusals} rows refused by {demo.refusedBy.length} named guards.
+          </p>
+          <p className="m-0 text-[12.5px]" data-testid="approval-is-of-a-digest" style={{ color: 'var(--text-primary)' }}>{APPROVAL_IS_OF_A_DIGEST}</p>
+          <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{REVOCATION_RULE}</p>
+          <ul className="m-0 pl-4 flex flex-col gap-0.5 text-[12px]" data-testid="not-claimed" style={{ color: 'var(--status-conditional)' }}>
+            {demo.notClaimed.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+          <p className="m-0 text-[11.5px]" data-testid="guards" style={{ color: 'var(--text-muted)' }}>
+            Guards that refused something: {demo.refusedBy.map((guard) => <span key={guard} className="mono mr-1.5">{guard}</span>)}
+          </p>
+        </div>
+        <div className="mt-2">
+          <GovernedActs acts={allActs(demo)} label="Every governed act in the demonstration" selectionKey="act" />
+        </div>
+        <div className="mt-2">
+          <RefusalRegister refusals={demo.refusals} testId="all-refusals" />
+        </div>
+      </Section>
 
       <Section title="Three names" id="names">
         <div className="surface p-3 flex flex-col gap-3">

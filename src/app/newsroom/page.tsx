@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { ChainFigure } from '@/components/primitives/ChainFigure';
 import { Section } from '@/components/primitives/Section';
+import { EditorialLifecycleView } from '@/components/governance/EditorialLifecycleView';
+import { GOVERNANCE_DEMONSTRATION } from '@/fixtures/governance/committed';
 import {
   ARCHIVE_RULE, AUDIENCE_RULE, AUTOMATED_REPLY_RULE, CIRCULATION_IS_NOT_CORROBORATION,
-  CONFLICT_RULE, CORRECTION_REACHES, CORRECTION_RULE, EDITORIAL_BLOCKED_ON, EDITORIAL_STAGES,
+  CONFLICT_RULE, CORRECTION_REACHES, CORRECTION_RULE, EDITORIAL_STAGES,
   FOUR_CLASSES_RULE, NEWSROOM_CLASSES, OFFERING_DIFFERENCES, ONE_ACCOUNT_RULE,
   PUBLICATION_CONTRACTS, PUBLISHING_MUST_NOT, REVIEW_BINDS_RULE, REVIEW_DIMENSIONS,
   REVIEW_DIMENSION_ASKS, REVIEW_PACKET, SAME_EVIDENCE_STANDARD_RULE, SELF_CITATION_RULE,
@@ -14,7 +16,11 @@ export const metadata: Metadata = { title: 'Newsroom' };
 
 /** A newsroom over the same evidence, and the loop it refuses. */
 export default function NewsroomPage() {
-  const standing = editorialStanding();
+  const demo = GOVERNANCE_DEMONSTRATION.editorial;
+  const standing = editorialStanding([
+    { releaseId: demo.article.releaseId, publicationClass: 'REPORTING', stage: 'DISTRIBUTION' },
+    { releaseId: demo.post.releaseId, publicationClass: 'REPORTING', stage: 'RELEASE' },
+  ]);
   return (
     <div className="p-3 sm:p-4 max-w-[1600px] mx-auto w-full flex flex-col gap-3">
       <header className="flex flex-col gap-1 max-w-[900px]">
@@ -26,11 +32,11 @@ export default function NewsroomPage() {
       </header>
 
       <div className="surface px-3 py-2 text-[12.5px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: 'var(--text-secondary)' }}>
-        <span className="pill" style={{ color: 'var(--text-muted)' }}>CONTRACT</span>
+        <span className="pill" style={{ color: 'var(--text-muted)' }}>DEMONSTRATION</span>
         <span style={{ color: 'var(--accent)' }} data-testid="editorial-standing">
-          {standing.releases} releases, {standing.published} published.
+          {standing.releases} releases: {demo.counts.publications} archived, {standing.releases - demo.counts.publications} reviewed and withheld, {demo.refusals.length} rows refused.
         </span>
-        <span>{EDITORIAL_BLOCKED_ON[0]}</span>
+        <span>{standing.blockedOn[0] ?? GOVERNANCE_DEMONSTRATION.notClaimed[2]}</span>
       </div>
 
       <div className="surface p-3 flex flex-col gap-2">
@@ -39,6 +45,8 @@ export default function NewsroomPage() {
         <p className="m-0 text-[12.5px]" style={{ color: 'var(--accent)' }}>{CIRCULATION_IS_NOT_CORROBORATION}</p>
         <p className="m-0 text-[12px]" data-testid="audience-rule" style={{ color: 'var(--text-secondary)' }}>{AUDIENCE_RULE}</p>
       </div>
+
+      <EditorialLifecycleView receipt={demo} />
 
       <Section title="Four things that must not collapse" id="classes">
         <div className="surface p-0 overflow-x-auto" tabIndex={0}>

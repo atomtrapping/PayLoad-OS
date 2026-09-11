@@ -26,13 +26,17 @@
  * denial. Both routes around the refusal are rows the database does not
  * accept.
  *
- * REVOCATION, THE RESERVE, AND AN OUTCOME NOBODY KNOWS
+ * REVOCATION, EXPIRY, THE RESERVE, A RACE, AND AN OUTCOME NOBODY KNOWS
  *
  * An authorization is taken back by the treasurer with a reason, and the
- * dispatch after it is refused. A hold larger than the surplus is refused
- * by the chain, not by a check somebody ran. And a dispatch can end
- * OUTCOME_UNKNOWN with a reconciliation that says STILL_UNKNOWN, which is a
- * state the receipt carries as unresolved rather than a row it tidies away.
+ * dispatch after it is refused. Another is left to expire, and the dispatch
+ * after its window is refused by the window check. A hold larger than the
+ * surplus is refused by the chain, not by a check somebody ran; two holds
+ * that each read the same balance and both name the same predecessor are
+ * the race, and the second is refused because one movement may follow any
+ * given movement. And a dispatch can end OUTCOME_UNKNOWN with a
+ * reconciliation that says STILL_UNKNOWN, which is a state the receipt
+ * carries as unresolved rather than a row it tidies away.
  */
 import { sqlText } from '@/db/ddl';
 import type { ReviewResponse } from '@/domain/executionEnvelope';
@@ -50,6 +54,7 @@ export const TREASURY_INSTANTS = {
   dispatchedAgain: '2026-09-10T13:00:00.000Z',
   reconciled: '2026-09-10T14:00:00.000Z',
   expires: '2026-09-11T11:00:00.000Z',
+  afterExpiry: '2026-09-11T12:00:00.000Z',
 } as const;
 
 export const SIMULATION = {
@@ -78,7 +83,8 @@ export type ProposalStanding =
   | 'REFUSED_AT_AUTHORIZATION'
   | 'REVOKED_BEFORE_DISPATCH'
   | 'REFUSED_AS_A_PROPOSAL'
-  | 'DISPATCHED_OUTCOME_UNRESOLVED';
+  | 'DISPATCHED_OUTCOME_UNRESOLVED'
+  | 'EXPIRED_BEFORE_DISPATCH';
 
 export interface TreasuryProposalRecord {
   proposalId: string;
@@ -217,6 +223,10 @@ export async function runTreasurySimulation(ledger: GovernanceLedger): Promise<T
   const revocation4 = { revocationId: 'TX-4', revokedBy: treasurer.principalId, reason: 'The simulated counterparty wallet was re-keyed between grant and dispatch. Whatever the authorization says, it is not to be spent.', at: T.revoked };
   await ledger.write(`INSERT INTO treasury_revocation VALUES ('TX-4', 'TA-4', '${T.granted}', '${T.expires}', '${treasurer.kind}', ${sqlText(treasurer.principalId)}, ${sqlText(revocation4.reason)}, '${T.revoked}')`);
   const hold4 = await hold('HOLD-TP-4', -50000);
+  // The race: a second writer that read the balance HOLD-TP-1 left, and names
+  // HOLD-TP-1 as its predecessor after HOLD-TP-4 already has.
+  await ledger.refuse('hold against a balance another hold has already moved past (the race)',
+    `INSERT INTO budget_reservation VALUES ('HOLD-RACE', ${sqlText(S.budgetId)}, ${chain.length}, 'HELD', -50000, ${hold1.balanceAfterMinor}, ${hold1.balanceAfterMinor - 50000}, ${sqlText(hold1.reservationId)}, ${hold1.balanceAfterMinor}, '${T.held}')`);
   const p4 = await ledger.refuse('dispatch after the authorization was revoked', dispatchRow('TD-4', 'TA-4', 50000, hold4.reservationId, T.dispatchedAgain, 'CONFIRMED'));
   proposals.push(base({ proposalId: 'TP-4', purpose: 'Top up simulated settlement liquidity.', amountMinor: 50000, destination: S.accounts.settlement, asset: S.assets.confirmed.contract, eligibility: 'CONFIRMED',
     review: { reviewId: 'TR-4', response: 'APPROVE', reviewer: treasurer.principalId, reasoning: 'Within the surplus; same destination as TP-1.' }, authorizationId: 'TA-4', grantedBy: treasurer.principalId,
@@ -264,6 +274,16 @@ export async function runTreasurySimulation(ledger: GovernanceLedger): Promise<T
   proposals.push(base({ proposalId: 'TP-10', purpose: 'Fund a simulated settlement window.', amountMinor: 60000, destination: S.accounts.settlement, asset: S.assets.confirmed.contract, eligibility: 'CONFIRMED',
     review: { reviewId: 'TR-10', response: 'APPROVE', reviewer: treasurer.principalId, reasoning: 'Within the surplus.' }, authorizationId: 'TA-10', grantedBy: treasurer.principalId,
     hold: hold10, dispatch: { dispatchId: 'TD-10', outcome: 'OUTCOME_UNKNOWN', at: T.dispatchedAgain }, reconciliation: reconciliation10, standing: 'DISPATCHED_OUTCOME_UNRESOLVED' }));
+
+  /* ── P11: approved, authorized, held, and left past its expiry ── */
+  await ledger.write(proposalRow({ id: 'TP-11', amount: 20000, dest: S.accounts.settlement, asset: S.assets.confirmed, purpose: 'A small top-up nobody dispatched in time.', doingNothing: commonDoingNothing, against: commonAgainst }));
+  await ledger.write(reviewRow('TR-11', 'TP-11', 'APPROVE', treasurer, 'Within the surplus.'));
+  await ledger.write(authorizationRow('TA-11', 'TP-11', CONFIRMED, 20000, S.assets.confirmed, S.accounts.settlement, treasurer));
+  const hold11 = await hold('HOLD-TP-11', -20000);
+  const p11 = await ledger.refuse('dispatch after the authorization expired', dispatchRow('TD-11', 'TA-11', 20000, hold11.reservationId, T.afterExpiry, 'CONFIRMED'));
+  proposals.push(base({ proposalId: 'TP-11', purpose: 'A small top-up nobody dispatched in time.', amountMinor: 20000, destination: S.accounts.settlement, asset: S.assets.confirmed.contract, eligibility: 'CONFIRMED',
+    review: { reviewId: 'TR-11', response: 'APPROVE', reviewer: treasurer.principalId, reasoning: 'Within the surplus.' }, authorizationId: 'TA-11', grantedBy: treasurer.principalId,
+    hold: hold11, standing: 'EXPIRED_BEFORE_DISPATCH', refusedBy: p11.refusedBy }));
 
   const counts = {
     proposals: await ledger.count('treasury_proposal'), reviews: await ledger.count('treasury_review'),

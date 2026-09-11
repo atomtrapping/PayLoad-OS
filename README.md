@@ -205,6 +205,7 @@ does not have.
   [`docs/ACCOMMODATION.md`](docs/ACCOMMODATION.md)
 
 [Open questions](docs/OPEN_QUESTIONS.md) lists the 115 architectural decisions
+- `docs/GOVERNANCE_KERNEL.md` — the governance kernel (principals, decision packets, digest-bound authorization, denial, expiry, revocation, correction lineage) and one dossier, one briefing and one simulated treasury run through it, with every refusal named.
 this repository has not taken, grouped by the part each belongs to. It is the
 only record of what is undecided; everything else in `docs/` records what was
 decided. The Obsidian canvas those questions were harvested from is archived

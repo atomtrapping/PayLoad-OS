@@ -320,7 +320,7 @@
         }
       ],
       "changed": false,
-      "because": "Between 2026-09-06T09:10:00.000Z and 2026-09-08T09:00:00.000Z nothing the corpus holds moved — no record taken back, no artifact refuted, no horizon passed — and the second assessment is the first's, artifact for artifact. Version 2 names the second all the same: a release is built over the latest assessment at its build, and the earlier row stands."
+      "because": "Between 2026-09-06T09:10:00.000Z and 2026-09-08T09:00:00.000Z the ledger records no retraction, and the second assessment is the first's, artifact for artifact: same levels, same headlines, same evidence assessments. Version 2 names the second all the same: a release is built over the latest assessment at its build, and the earlier row stands."
     },
     "estimate": {
       "estimateId": "EST-1",

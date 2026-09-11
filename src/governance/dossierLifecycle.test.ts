@@ -110,7 +110,7 @@ describe('one dossier, end to end', () => {
   it('re-assesses before version 2 as a second row per facet that version 2 names, and says nothing moved', async () => {
     expect(receipt.reassessment.at).toBe(DOSSIER_INSTANTS.corrected);
     expect(receipt.reassessment.changed).toBe(false);
-    expect(receipt.reassessment.because).toMatch(/nothing the corpus holds moved/);
+    expect(receipt.reassessment.because).toMatch(/records no retraction, and the second assessment is the first's/);
     expect(receipt.reassessment.coverage.map((c) => [c.coverageId, c.facet, c.level, c.assessment])).toEqual(receipt.coverage.map((c) => [c.coverageId.replace('COV-1-', 'COV-2-'), c.facet, c.level, c.assessment]));
     const byId = (a: { coverage_id: string }, b: { coverage_id: string }) => (a.coverage_id < b.coverage_id ? -1 : 1);
     expect(await ledger.rows(`SELECT dossier_release_id, coverage_id FROM dossier_release_coverage ORDER BY 1, 2`)).toEqual([

@@ -73,7 +73,12 @@
  * coverage as it stood when it was estimated, by the one method the
  * column may name; and a release whose named assessment carries a level
  * the quotation did not is refused: a material change in scope is an
- * amendment the customer agrees to, never a quiet substitution.
+ * amendment the customer agrees to, never a quiet substitution. A release
+ * built after the corpus moved under its named row — a record a present
+ * artifact rests on taken back, or a present artifact's horizon passed,
+ * between the assessment and the build — is refused too: the row is a
+ * fact at its instant, the build is not at that instant, and the
+ * schema's answer is the re-assessment it now holds a place for.
  *
  * THE ESTIMATE IS A COUNT AND THE PRICE IS A POLICY
  *
@@ -139,7 +144,9 @@ CREATE TABLE dossier_spec (
   UNIQUE (dossier_id, recipient_id)
 );
 
--- One facet of the question. Nine possible; a spec asks for the ones it needs.
+-- One facet of the question. Nine possible; a spec asks for the ones it
+-- needs, and asks before anything counts them: a facet added after the
+-- estimate would change what was estimated and what a release must name.
 CREATE TABLE dossier_facet (
   dossier_facet_id text PRIMARY KEY,
   dossier_id text NOT NULL REFERENCES dossier_spec (dossier_id),
@@ -229,7 +236,7 @@ CREATE TABLE dossier_estimate (
   estimate_digest text NOT NULL CHECK (estimate_digest ~ '^sha256:[a-f0-9]{64}$'),
   estimated_at timestamptz NOT NULL,
   CONSTRAINT estimate_per_facet_is_array CHECK (jsonb_typeof(per_facet) = 'array'),
-  UNIQUE (estimate_id, units)
+  UNIQUE (estimate_id, dossier_id, units, estimated_at)
 );
 
 -- The pricing policy a quotation is priced under, with the rate it sets.
@@ -254,6 +261,9 @@ CREATE TABLE dossier_quotation (
   currency text NOT NULL,
   estimate_id text NOT NULL,
   units integer NOT NULL,
+  -- Denormalised from the estimate and tied, so the quote is dated after
+  -- the count it prices.
+  estimated_at timestamptz NOT NULL,
   amount_minor bigint NOT NULL CHECK (amount_minor > 0),
   -- The corpus as it stood when the quote was given.
   quoted_snapshot text NOT NULL CHECK (quoted_snapshot ~ '^sha256:[a-f0-9]{64}$'),
@@ -262,10 +272,13 @@ CREATE TABLE dossier_quotation (
   quotation_digest text NOT NULL CHECK (quotation_digest ~ '^sha256:[a-f0-9]{64}$'),
   CONSTRAINT quotation_policy FOREIGN KEY (pricing_policy_id, unit_price_minor, currency)
     REFERENCES pricing_policy (policy_id, unit_price_minor, currency),
-  CONSTRAINT quotation_estimate FOREIGN KEY (estimate_id, units) REFERENCES dossier_estimate (estimate_id, units),
+  -- This dossier's estimate, not another's.
+  CONSTRAINT quotation_estimate FOREIGN KEY (estimate_id, dossier_id, units, estimated_at)
+    REFERENCES dossier_estimate (estimate_id, dossier_id, units, estimated_at),
+  CONSTRAINT quotation_after_estimate CHECK (quoted_at >= estimated_at),
   -- The one arithmetic that is a single-row fact.
   CONSTRAINT quotation_is_units_at_the_rate CHECK (amount_minor = units * unit_price_minor),
-  UNIQUE (quotation_id, quoted_snapshot, quoted_at),
+  UNIQUE (quotation_id, dossier_id, quoted_snapshot, quoted_at),
   UNIQUE (quotation_id, quotation_digest)
 );
 
@@ -295,8 +308,9 @@ CREATE TABLE dossier_release (
   monitored boolean NOT NULL DEFAULT false,
 
   CONSTRAINT release_spec FOREIGN KEY (dossier_id, recipient_id) REFERENCES dossier_spec (dossier_id, recipient_id),
-  CONSTRAINT release_quotation FOREIGN KEY (quotation_id, quoted_snapshot, quoted_at)
-    REFERENCES dossier_quotation (quotation_id, quoted_snapshot, quoted_at),
+  -- This dossier's quotation, not another's.
+  CONSTRAINT release_quotation FOREIGN KEY (quotation_id, dossier_id, quoted_snapshot, quoted_at)
+    REFERENCES dossier_quotation (quotation_id, dossier_id, quoted_snapshot, quoted_at),
   CONSTRAINT release_quotation_digest FOREIGN KEY (quotation_id, quotation_digest)
     REFERENCES dossier_quotation (quotation_id, quotation_digest),
   -- The customer accepted THIS quotation. No acceptance, no release.
@@ -583,16 +597,29 @@ CREATE CONSTRAINT TRIGGER conclusion_rests_on_present_evidence
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION refuse_conclusion_without_present_evidence();
 
--- A re-assessment is later than the last. The same instant is refused by
--- the key; an earlier one would be an assessment backdated behind one that
--- already stands.
+-- A re-assessment is later than the last, and later than anything that has
+-- already read the facet as of an instant: an estimate counted it, a
+-- release was built over it. The same instant as the last is refused by
+-- the key; an earlier one would be an assessment backdated behind a row
+-- that stands, or behind a count or a build whose "latest at or before"
+-- it would quietly change.
 CREATE FUNCTION refuse_assessment_behind_the_last() RETURNS trigger AS $$
 DECLARE
   last_at timestamptz;
+  read_at timestamptz;
+  facet_dossier text;
 BEGIN
   SELECT max(assessed_at) INTO last_at FROM dossier_coverage WHERE dossier_facet_id = NEW.dossier_facet_id;
   IF last_at IS NOT NULL AND NEW.assessed_at < last_at THEN
     RAISE EXCEPTION 'assessment_is_later_than_the_last:%:assessed % behind one at %', NEW.dossier_facet_id, NEW.assessed_at, last_at;
+  END IF;
+  SELECT dossier_id INTO facet_dossier FROM dossier_facet WHERE dossier_facet_id = NEW.dossier_facet_id;
+  SELECT greatest(
+    (SELECT max(estimated_at) FROM dossier_estimate WHERE dossier_id = facet_dossier),
+    (SELECT max(built_at) FROM dossier_release WHERE dossier_id = facet_dossier)
+  ) INTO read_at;
+  IF read_at IS NOT NULL AND NEW.assessed_at <= read_at THEN
+    RAISE EXCEPTION 'assessment_is_later_than_the_last:%:assessed % behind a count or a build at %', NEW.dossier_facet_id, NEW.assessed_at, read_at;
   END IF;
   RETURN NEW;
 END;
@@ -636,7 +663,7 @@ BEGIN
       RAISE EXCEPTION 'estimate_misstates_a_facets_level:%:% counted as %, assessed %', NEW.estimate_id, facet_row.facet, quoted.level, facet_row.level;
     END IF;
     -- Parenthesised: the IF reads to the first bare THEN, and the CASE has three.
-    IF quoted.units <> (CASE facet_row.level ${Object.entries(COVERAGE_LEVEL_UNITS).map(([level, units]) => `WHEN '${level}' THEN ${units}`).join(' ')} END) THEN
+    IF quoted.units IS NULL OR quoted.units <> (CASE facet_row.level ${Object.entries(COVERAGE_LEVEL_UNITS).map(([level, units]) => `WHEN '${level}' THEN ${units}`).join(' ')} END) THEN
       RAISE EXCEPTION 'estimate_units_are_not_the_methods:%:% units for % at %', NEW.estimate_id, quoted.units, facet_row.facet, facet_row.level;
     END IF;
     counted := counted + quoted.units;
@@ -666,6 +693,7 @@ DECLARE
   named record;
   quoted_level text;
   later timestamptz;
+  moved text;
 BEGIN
   SELECT * INTO rel FROM dossier_release WHERE dossier_release_id = NEW.dossier_release_id;
   IF rel.dossier_release_id IS NULL THEN
@@ -693,24 +721,48 @@ BEGIN
     IF later IS NOT NULL THEN
       RAISE EXCEPTION 'release_names_a_superseded_assessment:%:% assessed %, but % was re-assessed at %', rel.dossier_release_id, named.coverage_id, named.assessed_at, named.facet, later;
     END IF;
+    -- The corpus moved under the row between its assessment and this build:
+    -- a record a present artifact rests on was taken back, or a present
+    -- artifact's horizon passed. The row is a fact at its instant and the
+    -- build is not at that instant; assess again.
+    SELECT r.record_id || ' taken back at ' || r.issued_at INTO moved
+      FROM dossier_coverage_evidence e
+      JOIN (WITH RECURSIVE reads AS (
+              SELECT i.artifact_id AS reader, i.source_record_id, i.input_artifact_id FROM artifact_input i
+              UNION
+              SELECT reads.reader, i.source_record_id, i.input_artifact_id FROM artifact_input i JOIN reads ON i.artifact_id = reads.input_artifact_id
+            ) SELECT reader, source_record_id FROM reads WHERE source_record_id IS NOT NULL) AS rests ON rests.reader = e.artifact_id
+      JOIN retracted_record r ON r.record_id = rests.source_record_id
+      WHERE e.coverage_id = named.coverage_id AND e.assessment = 'PRESENT'
+        AND r.issued_at > named.assessed_at AND r.issued_at <= rel.built_at
+      ORDER BY r.issued_at, r.record_id LIMIT 1;
+    IF moved IS NULL THEN
+      SELECT a.artifact_id || '''s horizon ended at ' || a.horizon_ends_at INTO moved
+        FROM dossier_coverage_evidence e JOIN derived_artifact a ON a.artifact_id = e.artifact_id
+        WHERE e.coverage_id = named.coverage_id AND e.assessment = 'PRESENT'
+          AND a.horizon_ends_at IS NOT NULL AND a.horizon_ends_at > named.assessed_at AND a.horizon_ends_at <= rel.built_at
+        ORDER BY a.horizon_ends_at, a.artifact_id LIMIT 1;
+    END IF;
+    IF moved IS NOT NULL THEN
+      RAISE EXCEPTION 'release_names_an_assessment_the_corpus_moved_under:%:% assessed %, then %; assess again', rel.dossier_release_id, named.coverage_id, named.assessed_at, moved;
+    END IF;
     SELECT elem->>'level' INTO quoted_level FROM jsonb_array_elements(per_facet) AS elem WHERE elem->>'facet' = named.facet;
     IF quoted_level IS DISTINCT FROM named.level THEN
       RAISE EXCEPTION 'release_scope_changed_since_the_quote:%:% quoted %, assessed % — an amendment the customer agrees to, never a substitution', rel.dossier_release_id, named.facet, quoted_level, named.level;
     END IF;
   END LOOP;
+  -- Two rows for one facet cannot both pass the above: the earlier is
+  -- superseded by the later, or the later is after the build. What remains
+  -- to check is that no facet was left unnamed.
   FOR facet_row IN
-    SELECT f.facet, count(rc.coverage_id) AS named_rows
+    SELECT f.facet
       FROM dossier_facet f
-      LEFT JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id
-      LEFT JOIN dossier_release_coverage rc ON rc.coverage_id = c.coverage_id AND rc.dossier_release_id = rel.dossier_release_id
-      WHERE f.dossier_id = rel.dossier_id GROUP BY f.facet ORDER BY f.facet
+      WHERE f.dossier_id = rel.dossier_id AND NOT EXISTS (
+        SELECT 1 FROM dossier_release_coverage rc JOIN dossier_coverage c ON c.coverage_id = rc.coverage_id
+        WHERE rc.dossier_release_id = rel.dossier_release_id AND c.dossier_facet_id = f.dossier_facet_id)
+      ORDER BY f.facet
   LOOP
-    IF facet_row.named_rows = 0 THEN
-      RAISE EXCEPTION 'release_names_no_assessment_for_a_facet:%:%', rel.dossier_release_id, facet_row.facet;
-    END IF;
-    IF facet_row.named_rows > 1 THEN
-      RAISE EXCEPTION 'release_names_two_assessments_for_a_facet:%:%', rel.dossier_release_id, facet_row.facet;
-    END IF;
+    RAISE EXCEPTION 'release_names_no_assessment_for_a_facet:%:%', rel.dossier_release_id, facet_row.facet;
   END LOOP;
   RETURN NULL;
 END;
@@ -765,6 +817,24 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER spec_terms_are_written_once BEFORE UPDATE OR DELETE ON dossier_spec
   FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_spec_terms();
+CREATE TRIGGER facet_is_written_once BEFORE UPDATE OR DELETE ON dossier_facet
+  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('facet');
+
+-- A facet is asked before anything counts the facets: after an estimate
+-- or a release, adding one would change what was estimated and what a
+-- release must name.
+CREATE FUNCTION refuse_facet_after_the_count() RETURNS trigger AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM dossier_estimate WHERE dossier_id = NEW.dossier_id)
+     OR EXISTS (SELECT 1 FROM dossier_release WHERE dossier_id = NEW.dossier_id) THEN
+    RAISE EXCEPTION 'facet_asked_after_the_estimate:%:%', NEW.dossier_id, NEW.facet;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER facet_asked_before_the_estimate BEFORE INSERT ON dossier_facet
+  FOR EACH ROW EXECUTE FUNCTION refuse_facet_after_the_count();
 
 -- A retraction recorded as issued before an assessment that did not know it
 -- is refused where it would change what a standing row earned. The ledger

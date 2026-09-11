@@ -238,7 +238,7 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   const quotationAction = { dossierId: DOSSIER_ID, recipient: customer.principalId, estimateId: estimate.estimateId, units, unitPriceMinor: PRICING_POLICY.unitPriceMinor, currency: PRICING_POLICY.currency, amountMinor, snapshot, facets: perFacet };
   const quotation = { quotationId: 'QUO-1', policyId: PRICING_POLICY.policyId, unitPriceMinor: PRICING_POLICY.unitPriceMinor, currency: PRICING_POLICY.currency, units, amountMinor, snapshot, digest: digestOf(quotationAction) };
   const quotationRow = (over: { amount?: number } = {}) =>
-    `INSERT INTO dossier_quotation VALUES (${sqlText(quotation.quotationId)}, ${sqlText(DOSSIER_ID)}, ${sqlText(PRICING_POLICY.policyId)}, ${PRICING_POLICY.unitPriceMinor}, '${PRICING_POLICY.currency}', ${sqlText(estimate.estimateId)}, ${units}, ${over.amount ?? amountMinor}, '${snapshot}', '${T.quoted}', '${quotation.digest}')`;
+    `INSERT INTO dossier_quotation VALUES (${sqlText(quotation.quotationId)}, ${sqlText(DOSSIER_ID)}, ${sqlText(PRICING_POLICY.policyId)}, ${PRICING_POLICY.unitPriceMinor}, '${PRICING_POLICY.currency}', ${sqlText(estimate.estimateId)}, ${units}, '${T.estimated}', ${over.amount ?? amountMinor}, '${snapshot}', '${T.quoted}', '${quotation.digest}')`;
 
   await ledger.refuse('quote the work before any pricing policy is approved', quotationRow());
   await ledger.write(`INSERT INTO pricing_policy VALUES (${sqlText(PRICING_POLICY.policyId)}, ${sqlText(steward.principalId)}, '${T.asked}', ${PRICING_POLICY.unitPriceMinor}, '${PRICING_POLICY.currency}', '${PRICING_POLICY.unit}')`);
@@ -350,11 +350,13 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   await ledger.refuse('backdate a re-assessment of DEPENDENCY behind the first', coverageRow({ ...dependency, coverageId: 'COV-BACKDATED', assessedAt: T.asked }));
   await ledger.write(coverageRows(coverage2));
   const changed = coverage2.some((c, i) => c.level !== coverage[i].level || c.assessment !== coverage[i].assessment || c.artifactIds.join(',') !== coverage[i].artifactIds.join(',') || c.evidence.some((e, j) => e.assessment !== coverage[i].evidence[j].assessment));
+  // What was checked, said as what was checked: the retractions the ledger holds between the two instants, and the two assessments side by side.
+  const takenBackBetween = await ledger.count('retracted_record', `issued_at > '${T.covered}' AND issued_at <= '${T.corrected}'`);
   const reassessment = {
     at: T.corrected, coverage: coverage2, changed,
     because: changed
-      ? `Between ${T.covered} and ${T.corrected} the corpus moved, and the second assessment differs from the first; version 2 was built over the second.`
-      : `Between ${T.covered} and ${T.corrected} nothing the corpus holds moved — no record taken back, no artifact refuted, no horizon passed — and the second assessment is the first's, artifact for artifact. Version 2 names the second all the same: a release is built over the latest assessment at its build, and the earlier row stands.`,
+      ? `Between ${T.covered} and ${T.corrected} the second assessment differs from the first (${takenBackBetween} records taken back in between); version 2 was built over the second.`
+      : `Between ${T.covered} and ${T.corrected} the ledger records no retraction, and the second assessment is the first's, artifact for artifact: same levels, same headlines, same evidence assessments. Version 2 names the second all the same: a release is built over the latest assessment at its build, and the earlier row stands.`,
   };
 
   /* ── corrected release ── */

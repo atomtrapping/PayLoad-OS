@@ -279,7 +279,7 @@
     },
     {
       "name": "estimate element units not checked",
-      "find": "    IF quoted.units <> (CASE facet_row.level",
+      "find": "    IF quoted.units IS NULL OR quoted.units <> (CASE facet_row.level",
       "replace": "    IF FALSE AND quoted.units <> (CASE facet_row.level"
     },
     {
@@ -334,13 +334,8 @@
     },
     {
       "name": "missing facet not checked",
-      "find": "    IF facet_row.named_rows = 0 THEN",
-      "replace": "    IF FALSE THEN"
-    },
-    {
-      "name": "two assessments per facet not checked",
-      "find": "    IF facet_row.named_rows > 1 THEN",
-      "replace": "    IF FALSE THEN"
+      "find": "    RAISE EXCEPTION 'release_names_no_assessment_for_a_facet:%:%', rel.dossier_release_id, facet_row.facet;",
+      "replace": "    NULL;"
     },
     {
       "name": "release-side naming trigger removed",
@@ -361,6 +356,76 @@
       "name": "estimate rewritable",
       "find": "CREATE TRIGGER estimate_is_written_once BEFORE UPDATE OR DELETE ON dossier_estimate\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('estimate');\n",
       "replace": ""
+    },
+    {
+      "name": "estimate over a facet it did not count allowed",
+      "find": "    IF quoted.level IS NULL THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "estimate entry without units allowed",
+      "find": "    IF quoted.units IS NULL OR quoted.units <> (CASE facet_row.level",
+      "replace": "    IF quoted.units <> (CASE facet_row.level"
+    },
+    {
+      "name": "per_facet need not be an array",
+      "find": "  CONSTRAINT estimate_per_facet_is_array CHECK (jsonb_typeof(per_facet) = 'array'),\n",
+      "replace": ""
+    },
+    {
+      "name": "re-assessment behind a count or a build allowed",
+      "find": "  IF read_at IS NOT NULL AND NEW.assessed_at <= read_at THEN",
+      "replace": "  IF FALSE THEN"
+    },
+    {
+      "name": "re-assessment at the build instant allowed",
+      "find": "  IF read_at IS NOT NULL AND NEW.assessed_at <= read_at THEN",
+      "replace": "  IF read_at IS NOT NULL AND NEW.assessed_at < read_at THEN"
+    },
+    {
+      "name": "corpus moved under the named row: retractions not checked",
+      "find": "        AND r.issued_at > named.assessed_at AND r.issued_at <= rel.built_at\n",
+      "replace": "        AND FALSE\n"
+    },
+    {
+      "name": "corpus moved under the named row: retraction after the build counted",
+      "find": "        AND r.issued_at > named.assessed_at AND r.issued_at <= rel.built_at\n",
+      "replace": "        AND r.issued_at > named.assessed_at\n"
+    },
+    {
+      "name": "corpus moved under the named row: horizons not checked",
+      "find": "          AND a.horizon_ends_at IS NOT NULL AND a.horizon_ends_at > named.assessed_at AND a.horizon_ends_at <= rel.built_at\n",
+      "replace": "          AND FALSE\n"
+    },
+    {
+      "name": "corpus moved under the named row: never raised",
+      "find": "    IF moved IS NOT NULL THEN\n      RAISE EXCEPTION 'release_names_an_assessment_the_corpus_moved_under",
+      "replace": "    IF FALSE THEN\n      RAISE EXCEPTION 'release_names_an_assessment_the_corpus_moved_under"
+    },
+    {
+      "name": "facet rewritable",
+      "find": "CREATE TRIGGER facet_is_written_once BEFORE UPDATE OR DELETE ON dossier_facet\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('facet');\n",
+      "replace": ""
+    },
+    {
+      "name": "facet after the estimate allowed",
+      "find": "    RAISE EXCEPTION 'facet_asked_after_the_estimate:%:%', NEW.dossier_id, NEW.facet;",
+      "replace": "    NULL;"
+    },
+    {
+      "name": "quotation before its estimate allowed",
+      "find": "  CONSTRAINT quotation_after_estimate CHECK (quoted_at >= estimated_at),\n",
+      "replace": ""
+    },
+    {
+      "name": "quotation may price another dossier's estimate",
+      "find": "  CONSTRAINT quotation_estimate FOREIGN KEY (estimate_id, dossier_id, units, estimated_at)\n    REFERENCES dossier_estimate (estimate_id, dossier_id, units, estimated_at),",
+      "replace": "  CONSTRAINT quotation_estimate FOREIGN KEY (estimate_id)\n    REFERENCES dossier_estimate (estimate_id),"
+    },
+    {
+      "name": "release may carry another dossier's quotation",
+      "find": "  CONSTRAINT release_quotation FOREIGN KEY (quotation_id, dossier_id, quoted_snapshot, quoted_at)\n    REFERENCES dossier_quotation (quotation_id, dossier_id, quoted_snapshot, quoted_at),",
+      "replace": "  CONSTRAINT release_quotation FOREIGN KEY (quotation_id)\n    REFERENCES dossier_quotation (quotation_id),"
     }
   ]
 }

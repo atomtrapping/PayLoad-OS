@@ -11,9 +11,9 @@ import { describe, expect, it } from 'vitest';
 import { CHECK_MEANING, RECORD_PROVENANCE } from '../domain/admission';
 import { cardGrade } from '../domain/computationCard';
 import {
-  CROSSING_DECLARED_BY, CROSSING_LOSS, ENGINE_ARITHMETIC, ENVELOPE_FACTS,
-  admissionStanding, computationArtifactFor, envelopeDropped, readCrossing,
-  replayQualification, structuralRefusals,
+  CROSSING_DECLARED_BY, CROSSING_LOSS, ENGINE_ARITHMETIC, ENVELOPE_DROPPED,
+  admissionStanding, computationArtifactFor, readCrossing, replayQualification,
+  structuralRefusals,
 } from './crossing';
 import type { GatReceipt } from './contracts';
 import { GAT_ADAPTER_VERSION, GAT_RUNTIME_IDENTITY } from './pin';
@@ -82,21 +82,34 @@ describe('the first question: is the run recoverable', () => {
 
 describe('what the boundary drops', () => {
   it('loses the BLAS build and every dispatch control the engine recorded', () => {
-    const dropped = envelopeDropped();
-    expect(dropped).toContain('libraries.blas');
-    expect(dropped).toContain('controls.OPENBLAS_CORETYPE');
-    expect(dropped).toContain('controls.OPENBLAS_NUM_THREADS');
+    expect(ENVELOPE_DROPPED).toContain('libraries.blas');
+    expect(ENVELOPE_DROPPED).toContain('controls.OPENBLAS_CORETYPE');
+    expect(ENVELOPE_DROPPED).toContain('controls.OPENBLAS_NUM_THREADS');
   });
 
-  it('does not count a fact that describes a run rather than deciding it', () => {
-    const qualified = ENVELOPE_FACTS.find((entry) => entry.fact === 'qualified_numpy');
-    expect(qualified?.decidesBytes).toBe(false);
-    expect(envelopeDropped()).not.toContain('qualified_numpy');
+  it('counts no fact the identity already carries, and none that describes a run rather than deciding it', () => {
+    // The engine's diagnostics contract is not in this tree, so the list above
+    // cannot be checked against it from here. This is the half that can be:
+    // nothing named as dropped is a field GatRuntimeIdentity carries.
+    const carried = Object.keys(GAT_RUNTIME_IDENTITY).map((key) => key.toLowerCase());
+    for (const fact of ENVELOPE_DROPPED) {
+      const leaf = fact.split('.').pop()!.replace(/_/g, '');
+      expect(carried.some((key) => key.includes(leaf.toLowerCase()))).toBe(false);
+    }
+    // And a fact that says which wheel was validated does not change the bytes.
+    expect(ENVELOPE_DROPPED).not.toContain('qualified_numpy');
+  });
+
+  it('pins the identity so growing it forces a re-read of what was dropped', () => {
+    // The tripwire the list's own header names. A ninth field on
+    // GatRuntimeIdentity may carry one of these facts, and only a person can
+    // say which — so this fails until somebody has looked.
+    expect(Object.keys(GAT_RUNTIME_IDENTITY)).toHaveLength(8);
   });
 
   it('qualifies the grade rather than overruling it, and counts what is missing', () => {
     const qualification = replayQualification(GAT_RUNTIME_IDENTITY);
-    expect(qualification).toMatch(new RegExp(`${envelopeDropped().length} facts that decide the bytes did not cross`));
+    expect(qualification).toMatch(new RegExp(`${ENVELOPE_DROPPED.length} facts that decide the bytes did not cross`));
     expect(qualification).toContain(GAT_RUNTIME_IDENTITY.numpyVersion);
   });
 

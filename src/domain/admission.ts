@@ -31,6 +31,9 @@
 
 export const ADMISSION_METHOD = 'notationsos.admission.v1';
 
+/** Where this repository names its methods, and where it names no party. */
+export const METHOD_NAMESPACE = 'notationsos.';
+
 /** Each is a gate. A gate that cannot be evaluated is a failure, never a pass. */
 export type AdmissionCheck =
   | 'EVIDENCE_ARTIFACT_BOUND'
@@ -53,7 +56,7 @@ export const CHECK_MEANING: Record<AdmissionCheck, string> = {
   SUBJECT_IDENTIFIED: 'The subject carries a canonical identity, so the record joins on identity rather than on a name.',
   ASSERTION_PRESENT: 'The candidate states a subject, a predicate and a value, so there is a claim to admit. Provenance without a claim is a receipt for an empty envelope, and a gate that let one through would have to invent the claim downstream.',
   RIGHTS_DECIDED: 'A rights decision exists for the operation this admission performs. An undecided right is a refusal, never a default permission.',
-  AUTHORITY_IS_NOT_THE_PROCESS: 'The ruling names an authority, and the authority is not this method. Promotion is an act; a process admitting on its own behalf is a write wearing a ruling’s clothes.',
+  AUTHORITY_IS_NOT_THE_PROCESS: 'The ruling names an authority, and the authority is not a method of this system — not this gate, and not the rail that built the candidate. Promotion is an act; a process admitting on its own behalf is a write wearing a ruling’s clothes.',
   PROVENANCE_DECLARED: 'The candidate declares how it arrived — live capture or backfill — rather than leaving it to be worked out later. Provenance inferred from a clock gap is a guess about testimony, one waterline below testimony itself.',
   SOURCE_CLOCK_COHERENT: 'The source’s own publication time is present and not later than the moment this system obtained it. A record acquired before its source published it did not arrive the way it claims to have arrived, whatever it is labelled.',
   SUPERSESSION_IS_ABOUT_THIS_RECORD: 'A ruling named as superseded is about the same record. A ruling replaces a ruling about the same record or it replaces nothing, because a supersession pointing elsewhere would silently retire a decision nobody revisited.',
@@ -213,8 +216,19 @@ function evaluate(candidate: AdmissionCandidate, authority: string): Array<{ che
   if (sourced === null) fail('SOURCE_CLOCK_COHERENT', 'No readable source time, so nothing says when the source published this.');
   else if (captured !== null && sourced > captured) fail('SOURCE_CLOCK_COHERENT', 'Obtained before the source published it. Whatever the label says, this did not arrive the way it claims to have arrived.');
 
-  if (!readable(authority) || authority.trim() === ADMISSION_METHOD) {
-    fail('AUTHORITY_IS_NOT_THE_PROCESS', 'A ruling names an authority, and that authority is not this method. Nothing admits on its own behalf.');
+  // The whole method namespace, not this gate's own name alone. The check used
+  // to compare against ADMISSION_METHOD only, which stopped the gate naming
+  // itself and stopped nothing else: a producing rail could pass its own
+  // method id — `notationsos.self-admission.v1`, say — and admit what it had
+  // just built. That is the exact act the check exists to refuse, and it was
+  // getting through because the refusal was written against one identifier
+  // instead of against the kind of thing an identifier like that is.
+  //
+  // No party is named in this namespace. An authority is a role or a person;
+  // `notationsos.*` is how this repository names its own methods, so a value
+  // in it is a process wearing a ruling's clothes whichever process it is.
+  if (!readable(authority) || authority.trim().startsWith(METHOD_NAMESPACE)) {
+    fail('AUTHORITY_IS_NOT_THE_PROCESS', `A ruling names an authority, and that authority is not a method of this system. ${authority?.trim() ?? 'An absent authority'} is in the ${METHOD_NAMESPACE} namespace, which is where methods are named and where no party is. Nothing admits on its own behalf.`);
   }
 
   return failed;
@@ -322,6 +336,55 @@ export const ADMITTED_PROVENANCE: readonly RecordProvenance[] = ['LIVE_CAPTURE',
 export function crossedTheGate(provenance: RecordProvenance): boolean {
   return (ADMITTED_PROVENANCE as readonly string[]).includes(provenance);
 }
+
+/* ── What a computation can never meet, whichever one is asking ── */
+
+/**
+ * Four of the eleven checks a computed finding cannot meet, and why.
+ *
+ * These sit here rather than with any one consumer because they are facts
+ * about the gate, not about whatever is being read against it. A caller that
+ * derives a value and wonders whether it may become a record gets the same
+ * four answers for the same four reasons, and a second caller that worked
+ * them out again would be a second chance to work them out differently.
+ *
+ * The distinction they carry is the one worth keeping: the other seven checks
+ * a computation fails are plumbing — carry more fields and they pass. These
+ * four are the corpus saying what a record is. Building past them would be
+ * building the wrong thing well, so a consumer that reports a refusal wants to
+ * say which kind it met.
+ *
+ * `admit` never reads this. It evaluates candidates and returns reasons of its
+ * own; this is prose for the readers who ask the gate a question without
+ * handing it a candidate, and a wrong sentence here cannot admit anything.
+ */
+/**
+ * Narrowed through `Extract`, so a member that is not a real check resolves
+ * away and the object literal below fails to compile with an excess key
+ * rather than carrying a sentence about a check nobody asks.
+ */
+export type StructuralRefusal = Extract<AdmissionCheck, 'BOTH_CLOCKS' | 'SOURCE_CLOCK_COHERENT' | 'AUTHORITY_IS_NOT_THE_PROCESS' | 'PROVENANCE_DECLARED'>;
+
+export const STRUCTURAL_REFUSAL: Record<StructuralRefusal, string> = {
+  BOTH_CLOCKS:
+    'A computation has two timestamps and neither is a clock the corpus asks about. When it began is not when anything was true; when it finished is not when this system came to know a fact about the world. A run over evidence from 1998 does not make a 1998 fact knowable in the moment the process exited, and reading execution time as knowledge time would date every derived finding to its own recomputation.',
+  SOURCE_CLOCK_COHERENT:
+    'A computation has no publication time, because nothing published it. The source clock belongs to whoever issued the evidence, and it travels with the evidence rather than with the run over it.',
+  AUTHORITY_IS_NOT_THE_PROCESS:
+    'An adapter cannot be the authority that admits its own output; that is a write wearing a ruling’s clothes. Only a person outside the run can meet this, and no plumbing supplies one.',
+  PROVENANCE_DECLARED:
+    `A candidate declares LIVE_CAPTURE or BACKFILLED and a computed finding is neither. The vocabulary has ${RECORD_PROVENANCE.length} members and no member for a derivation, which is the corpus saying what it is rather than a gap in it: it records what sources said, and a computation observed nothing. Declaring one of the two anyway would make a derivation indistinguishable from a capture at every later join.`,
+};
+
+/**
+ * The route that does exist, so a structural refusal is not read as a dead end.
+ *
+ * Rule 7: promotion is an act at a boundary, with a record. The engine's output
+ * became evidence because somebody stood behind it, and not because a mapping
+ * was added somewhere.
+ */
+export const THE_ROUTE_THAT_EXISTS =
+  'An operator reads the finding and asserts it under their own authority. The record’s source is then the operator, its provenance is the live capture of their declaration, and its clocks are theirs. The engine’s output became evidence because somebody stood behind it, which is what promotion at a boundary means.';
 
 /* ── The entry stamp: the only shape a writer may accept ── */
 

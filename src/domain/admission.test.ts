@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADMISSION_LOSS, ADMISSION_METHOD, ADMITTED_PROVENANCE, CHECK_MEANING, isAdmitting, RECORD_PROVENANCE, admit, admitInto, admittedRow, crossedTheGate, releaseLeaks, type AdmissionCandidate } from './admission';
+import { ADMISSION_LOSS, ADMISSION_METHOD, ADMITTED_PROVENANCE, METHOD_NAMESPACE, CHECK_MEANING, RECORD_PROVENANCE, STRUCTURAL_REFUSAL, THE_ROUTE_THAT_EXISTS, isAdmitting, admit, admitInto, admittedRow, crossedTheGate, releaseLeaks, type AdmissionCandidate } from './admission';
 
 const AUTHORITY = 'role:corpus-steward';
 const RULED_AT = '2026-09-07T12:00:00Z';
@@ -255,5 +255,65 @@ describe('the admission authority: the gate the store says it is owed', () => {
     expect(row!.value).toBe(12.4);
     expect(row!.unit).toBe('%');
     expect(row!.basis).toBe('As received');
+  });
+});
+
+describe('what a computation can never meet, whichever reader is asking', () => {
+  it('names only checks the gate actually asks', () => {
+    for (const check of Object.keys(STRUCTURAL_REFUSAL)) expect(CHECK_MEANING).toHaveProperty(check);
+    expect(Object.keys(STRUCTURAL_REFUSAL)).toHaveLength(4);
+  });
+
+  it('is structural to computations and not to candidates, which is the whole distinction', () => {
+    // A captured candidate passes all four. If any of them failed here, these
+    // sentences would be describing a gate nothing can cross rather than a
+    // gate a derivation cannot — and the difference is the reason they exist.
+    const ruling = admit(candidate(), AUTHORITY, RULED_AT);
+    for (const check of Object.keys(STRUCTURAL_REFUSAL)) expect(ruling.passed).toContain(check);
+  });
+
+  it('counts the provenance vocabulary rather than quoting a number that can drift', () => {
+    expect(STRUCTURAL_REFUSAL.PROVENANCE_DECLARED).toContain(`${RECORD_PROVENANCE.length} members`);
+    expect(RECORD_PROVENANCE).not.toContain('DERIVED');
+  });
+
+  it('is prose for readers and never a reason the gate emits', () => {
+    // `admit` returns check names, not sentences. A wrong word in a refusal
+    // here misleads a reader; it cannot admit or refuse anything.
+    const refused = admit(candidate({ provenanceClass: null }), AUTHORITY, RULED_AT);
+    expect(refused.failed.map((entry) => entry.check)).toContain('PROVENANCE_DECLARED');
+    expect(JSON.stringify(refused)).not.toContain(STRUCTURAL_REFUSAL.PROVENANCE_DECLARED);
+  });
+
+  it('names the route that does exist, so a structural refusal is not a dead end', () => {
+    expect(THE_ROUTE_THAT_EXISTS).toMatch(/under their own authority/);
+    expect(THE_ROUTE_THAT_EXISTS).toMatch(/promotion at a boundary/);
+  });
+});
+
+describe('who may be an authority, which is nobody in the method namespace', () => {
+  it('refuses every method of this system and not only the gate\u2019s own name', () => {
+    // The rule is about the kind of thing, not about one identifier. A rail
+    // that built a candidate and then named itself as the authority is the
+    // exact act this check exists to refuse, and naming a different method
+    // than the gate never made it a different act.
+    for (const method of [ADMISSION_METHOD, `${METHOD_NAMESPACE}self-admission.v1`, `${METHOD_NAMESPACE}statutory-admission.v1`, `${METHOD_NAMESPACE}anything-at-all`]) {
+      const ruling = admit(candidate(), method, RULED_AT);
+      expect(ruling.outcome, method).toBe('REFUSED');
+      expect(ruling.failed.map((entry) => entry.check), method).toContain('AUTHORITY_IS_NOT_THE_PROCESS');
+    }
+  });
+
+  it('admits under a party, which is what an authority is', () => {
+    for (const party of ['role:corpus-steward', 'person:a.okonkwo', 'desk:exceptions']) {
+      expect(admit(candidate(), party, RULED_AT).outcome, party).toBe('ADMITTED');
+    }
+  });
+
+  it('names the namespace in the refusal, so the remedy is readable from it', () => {
+    const ruling = admit(candidate(), `${METHOD_NAMESPACE}self-admission.v1`, RULED_AT);
+    const because = ruling.failed.find((entry) => entry.check === 'AUTHORITY_IS_NOT_THE_PROCESS')!.because;
+    expect(because).toContain(METHOD_NAMESPACE);
+    expect(because).toMatch(/where no party is/);
   });
 });

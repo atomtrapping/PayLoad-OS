@@ -50,8 +50,25 @@ describe('the spatial comparison as a discovery artifact', () => {
     expect(run.artifact.inputs).toHaveLength(1);
     expect(run.artifact.inputs[0].recordId).toBe(run.sourceRecord.recordId);
     expect(run.artifact.rights).toEqual(run.sourceRecord.rights);
-    expect(run.artifact.rights).toEqual(['DERIVE', 'INGEST']);
     expect(run.artifact.detail.geometryUsedForTraversal).toBe(false);
+  });
+
+  /*
+   * The registration permits SPATIAL_INQUIRY to an INTERNAL audience, by
+   * INGEST and DERIVE. Not one corpus use is that, so the rights list is
+   * empty — the operation names themselves never appear in it.
+   */
+  it('carries the rights the registration permits in the corpus vocabulary, which for this registration is none', () => {
+    expect(run.artifact.rights).toEqual([]);
+    expect(run.registrationTerms.permittedPurposes).toEqual(['SPATIAL_INQUIRY']);
+    expect(run.registrationTerms.allowedAudiences).toEqual(['INTERNAL']);
+    expect(run.registrationTerms.allowedOperations).toEqual(['INGEST', 'DERIVE']);
+    expect(run.registrationTerms.decisions).toHaveLength(9);
+    for (const decision of run.registrationTerms.decisions) expect(decision.state).toBe('DENIED');
+    const delivery = run.registrationTerms.decisions.find((d) => d.use === 'customer_delivery')!;
+    expect(delivery.reasons).toContain('PURPOSE_NOT_PERMITTED');
+    expect(delivery.reasons).toContain('AUDIENCE_NOT_PERMITTED');
+    expect(delivery.reasons).toContain('OPERATION_NOT_PERMITTED');
   });
 
   it('takes its spec identity from the engine’s recipe, so a changed parameter is a different computation', () => {

@@ -70,6 +70,7 @@
  * ledger carries, for the same missing first fact.
  */
 import { ARITHMETIC_CLASSES } from '@/domain/computationCard';
+import { PERMITTED_USES } from '@/domain/corpus';
 import {
   CLAIM_CLASSES, CLASS_CONTRACTS, DERIVABLE_CLASSES, MINING_CONTRACTS, MINING_KINDS,
   VALIDATION_STATES,
@@ -186,9 +187,12 @@ CREATE TABLE derived_artifact (
   model_id text,
   confidence numeric,
   horizon_ends_at timestamptz,
-  -- What may be done with it. Checked against every input; never wider.
+  -- What may be done with it. Checked against every input; never wider; and
+  -- in the corpus's one rights vocabulary, so a source-policy operation name
+  -- cannot land here and be compared with a permitted use as if it were one.
   rights text[] NOT NULL DEFAULT '{}',
   validation text NOT NULL DEFAULT 'NOT_VALIDATED' CHECK (validation IN (${quoted(VALIDATION_STATES)})),
+  CONSTRAINT artifact_rights_are_permitted_uses CHECK (rights <@ ARRAY[${quoted(PERMITTED_USES)}]::text[]),
 
   CONSTRAINT artifact_run FOREIGN KEY (run_id, run_status) REFERENCES workload_run (run_id, status),
   -- A failed computation leaves no result behind.
@@ -216,7 +220,8 @@ CREATE TABLE derived_artifact (
   ),
 
   UNIQUE (artifact_id, computed_at),
-  UNIQUE (artifact_id, claim_class)
+  UNIQUE (artifact_id, claim_class),
+  UNIQUE (artifact_id, run_id)
 );
 
 -- What an artifact read. One row per record consulted.
@@ -235,6 +240,7 @@ CREATE TABLE artifact_input (
 
   -- What this input permits. The floor the artifact's own rights are held to.
   input_rights text[] NOT NULL,
+  CONSTRAINT input_rights_are_permitted_uses CHECK (input_rights <@ ARRAY[${quoted(PERMITTED_USES)}]::text[]),
 
   CONSTRAINT input_artifact FOREIGN KEY (artifact_id, artifact_computed_at)
     REFERENCES derived_artifact (artifact_id, computed_at),

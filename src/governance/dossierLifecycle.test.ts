@@ -37,19 +37,40 @@ describe('one dossier, end to end', () => {
     expect(receipt.boundToRelease).toBe(seeded.caravan.releaseId);
   });
 
-  it('states a hole as a coverage level rather than omitting the facet', () => {
-    const hole = receipt.coverage.find((c) => c.facet === 'SUPPLIER_IDENTITY')!;
-    expect(hole.level).toBe('NONE');
-    expect(hole.artifactIds).toEqual([]);
-    expect(receipt.releases[0].holes.map((h) => h.facet)).toEqual(['SUPPLIER_IDENTITY']);
-    expect(receipt.coverage.find((c) => c.facet === 'DEPENDENCY')!.artifactIds).toEqual(['DEMO-CARAVAN-A001', 'DEMO-CARAVAN-A002']);
-    expect(receipt.coverage.find((c) => c.facet === 'RISK')!.artifactIds).toEqual([seeded.spatial.artifact.artifactId]);
+  it('states a hole as a coverage level and an assessment rather than omitting the facet', () => {
+    const supplier = receipt.coverage.find((c) => c.facet === 'SUPPLIER_IDENTITY')!;
+    expect(supplier).toMatchObject({ level: 'NONE', assessment: 'MISSING', artifactsAvailable: 0, artifactIds: [], evidence: [] });
+    const risk = receipt.coverage.find((c) => c.facet === 'RISK')!;
+    expect(risk).toMatchObject({ level: 'NONE', assessment: 'DISALLOWED', artifactsAvailable: 1, artifactsPresent: 0, artifactsDisallowed: 1, runsRepresented: 1, runsUsable: 0, artifactIds: [seeded.spatial.artifact.artifactId] });
+    expect(risk.evidence[0].because).toMatch(/rights are none; customer_delivery is not among them/);
+    expect(receipt.releases[0].holes.map((h) => [h.facet, h.assessment, h.artifactsAvailable, h.artifactsUsable])).toEqual([['SUPPLIER_IDENTITY', 'MISSING', 0, 0], ['RISK', 'DISALLOWED', 1, 0]]);
   });
 
-  it('estimates deterministically over the coverage rows and quotes at the approved rate', () => {
+  /* Two lot artifacts from one run; one carries customer_delivery and one does not. The headline names the withheld one. */
+  it('assesses each artifact against the right the delivery exercises, and the headline is worst-first', () => {
+    const dependency = receipt.coverage.find((c) => c.facet === 'DEPENDENCY')!;
+    expect(dependency.artifactIds).toEqual(['DEMO-CARAVAN-A001', 'DEMO-CARAVAN-A002']);
+    expect(dependency).toMatchObject({ level: 'THIN', assessment: 'DISALLOWED', artifactsAvailable: 2, artifactsPresent: 1, artifactsStale: 0, artifactsConflicting: 0, artifactsDisallowed: 1, runsRepresented: 1, runsUsable: 1 });
+    expect(dependency.evidence.map((e) => [e.artifactId, e.assessment])).toEqual([['DEMO-CARAVAN-A001', 'PRESENT'], ['DEMO-CARAVAN-A002', 'DISALLOWED']]);
+    expect(dependency.evidence[1].because).toMatch(/acquisition, normalization; customer_delivery is not among them/);
+    expect(dependency.basis).toMatch(/1 may be delivered to this customer and 1 may not/);
+  });
+
+  it('wrote the same assessment into the database that the receipt carries, and read the corpus’s retractions from it', async () => {
+    const rows = await ledger.rows<{ facet: string; level: string; assessment: string; present: number; available: number }>(
+      `SELECT f.facet, c.level, c.assessment, c.artifacts_present AS present, c.artifacts_available AS available
+       FROM dossier_coverage c JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id ORDER BY f.facet`);
+    expect(rows).toEqual([...receipt.coverage].sort((a, b) => (a.facet < b.facet ? -1 : 1)).map((c) => ({ facet: c.facet, level: c.level, assessment: c.assessment, present: c.artifactsPresent, available: c.artifactsAvailable })));
+    expect(await ledger.count('dossier_coverage_evidence')).toBe(3);
+    expect(await ledger.rows(`SELECT retraction_id, record_id, kind FROM retracted_record ORDER BY record_id`)).toEqual([
+      { retraction_id: 'RET-0002', record_id: 'REC-0111', kind: 'WITHDRAWAL' }, { retraction_id: 'RET-0002', record_id: 'REC-0112', kind: 'WITHDRAWAL' }, { retraction_id: 'RET-0001', record_id: 'REC-0203', kind: 'CORRECTION' },
+    ]);
+  });
+
+  it('estimates deterministically over the coverage rows, counting only the present, and quotes at the approved rate', () => {
     expect(receipt.estimate.units).toBe(estimateUnits(receipt.coverage));
-    expect(receipt.estimate.units).toBe(5);
-    expect(receipt.quotation.amountMinor).toBe(5 * PRICING_POLICY.unitPriceMinor);
+    expect(receipt.estimate.units).toBe(4);
+    expect(receipt.quotation.amountMinor).toBe(4 * PRICING_POLICY.unitPriceMinor);
     expect(receipt.quotation.policyId).toBe(PRICING_POLICY.policyId);
   });
 
@@ -65,15 +86,19 @@ describe('one dossier, end to end', () => {
     expect(receipt.releases[0].review.authorizationId).not.toBe(receipt.releases[1].review.authorizationId);
   });
 
-  it('presents every conclusion at the class it was computed at, resting on a real artifact', () => {
+  it('presents its one conclusion at the class it was computed at, resting on the one present artifact, and names the withheld one without quoting it', () => {
     for (const release of receipt.releases) {
+      expect(release.conclusions.map((c) => c.facet)).toEqual(['DEPENDENCY']);
       for (const conclusion of release.conclusions) {
         expect(conclusion.presentedAs).toBe(conclusion.artifactClass);
-        expect([...seeded.caravan.artifactIds, seeded.spatial.artifact.artifactId]).toContain(conclusion.artifactId);
-        expect(conclusion.notCovered.length).toBeGreaterThan(20);
+        expect(conclusion.artifactId).toBe('DEMO-CARAVAN-A001');
+        expect(conclusion.notCovered).toMatch(/DEMO-CARAVAN-A002 bears on this facet and is DISALLOWED for this customer/);
+        expect(conclusion.notCovered).not.toMatch(/LOT-7C-104/);
       }
+      const bytes = JSON.stringify(release);
+      expect(bytes).not.toMatch(/about no building/);
+      expect(bytes).not.toMatch(/LOT-7C-104/);
     }
-    expect(receipt.releases[0].conclusions.find((c) => c.facet === 'RISK')!.statement).toMatch(/about no building/);
   });
 
   it('delivers through a dispatch whose receipt says it was simulated, and reconciles it', () => {
@@ -102,8 +127,11 @@ describe('one dossier, end to end', () => {
   });
 
   it('observed every refusal it claims, by the constraint that refused it', () => {
+    const spatial = seeded.spatial.artifact.artifactId;
     expect(receipt.refusals.map((r) => [r.label, r.refusedBy])).toEqual([
-      ['count coverage for a facet as NONE while naming an artifact', 'coverage_none_is_zero'],
+      ['call a facet with nothing behind it PRESENT', 'coverage_assessment_is_the_rollup'],
+      ['label the spatial computation PRESENT for this customer', `evidence_assessment_is_not_the_artifacts:${spatial}:PRESENT recorded, DISALLOWED from the artifact`],
+      ['count the withheld lot artifact toward the level', 'coverage_level_counts_the_present'],
       ['quote the work before any pricing policy is approved', 'quotation_policy'],
       ['quote an amount that is not units times the rate', 'quotation_is_units_at_the_rate'],
       ['release before the customer accepted, and before anyone reviewed', 'release_scope_accepted'],
@@ -111,17 +139,18 @@ describe('one dossier, end to end', () => {
       ['have a second reviewer close the same release again, differently', 'review_closes_once'],
       ['release the draft the reviewer did not see', 'release_reviewed'],
       ['present the spatial computation as something a source observed', 'conclusion_presented_at_its_class'],
+      ['rest a conclusion on evidence this customer may not receive', `conclusion_rests_on_no_present_evidence:${spatial}:RISK in DREL-1`],
       ['record a delivery no dispatch carried', 'dossier_delivery_attempt_id_fkey'],
       ['deliver the dossier to the other customer', 'delivery_goes_to_the_dossiers_recipient'],
       ['release version 2 under version 1’s approval', 'release_authorization_once'],
     ]);
-    expect(receipt.counts.refusals).toBe(11);
+    expect(receipt.counts.refusals).toBe(14);
   });
 
   it('counts what it wrote', () => {
     expect(receipt.counts).toEqual({
-      specs: 1, coverage: 3, estimates: 1, quotations: 1, releases: 2, conclusions: 4, deliveries: 2,
-      proposals: 3, authorizations: 3, attempts: 2, refusals: 11,
+      specs: 1, coverage: 3, evidence: 3, estimates: 1, quotations: 1, releases: 2, conclusions: 2, deliveries: 2,
+      proposals: 3, authorizations: 3, attempts: 2, refusals: 14,
     });
   });
 

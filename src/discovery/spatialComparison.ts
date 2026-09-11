@@ -33,8 +33,11 @@
  * WHAT IT READ
  *
  * One source record: the layout evidence, under the rights its registration
- * declared. The artifact's rights are that one input's, which is the
- * intersection of a set of one, and the ledger's rights trigger checks it
+ * permits — the corpus's permitted uses, each derived by evaluating the
+ * registration for that use at the capture instant, never the registration's
+ * operation names copied across as if they were uses. The artifact's rights
+ * are that one input's, which is the intersection of a set of one, and the
+ * ledger's rights trigger checks it
  * anyway. The floor plan drawing is named by the layout and is not a second
  * input, because the traversal never reads geometry — `geometryUsedForTraversal`
  * is false in the result and that is the honest count.
@@ -50,6 +53,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ArithmeticClass } from '@/domain/computationCard';
+import { derivePermittedUses, PERMITTED_USES, sourceUseRequests, type PermittedUse } from '@/domain/corpus';
+import { evaluateSourceUse } from '@/data-os/source-policy';
 import type { ClaimClass, MiningKind, ValidationState } from '@/domain/discoveryLayer';
 import { specFingerprint, type WorkloadDefinition } from './engine';
 import { canonicalJson } from '@/fixtures/digest';
@@ -107,7 +112,17 @@ export interface SpatialComparisonRun {
     inputFingerprint: string; outputFingerprint: string;
   };
   /** The source record the artifact read, as the corpus tables need it. The release is the caller's to name. */
-  readonly sourceRecord: { recordId: string; subjectId: string; predicate: string; knownAt: string; rights: readonly string[] };
+  readonly sourceRecord: { recordId: string; subjectId: string; predicate: string; knownAt: string; rights: readonly PermittedUse[] };
+  /**
+   * What the registration says and what that permits, use by use, so a reader
+   * of the receipt can see why the rights list is as short as it is.
+   */
+  readonly registrationTerms: {
+    registrationId: string; sourceId: string;
+    permittedPurposes: readonly string[]; allowedOperations: readonly string[]; allowedAudiences: readonly string[];
+    evaluatedAt: string;
+    decisions: readonly { use: PermittedUse; state: string; reasons: readonly string[] }[];
+  };
   readonly baseline: {
     requestId: string; layoutDigest: string; resultDigest: string;
     /** The baseline receipt's digest read before the scenario ran, and after. */
@@ -121,8 +136,8 @@ export interface SpatialComparisonRun {
   readonly artifact: {
     artifactId: string; claimClass: ClaimClass; subject: string; claim: string; computedAt: string;
     validation: ValidationState; confidence: null; modelId: null; horizonEndsAt: null;
-    rights: readonly string[];
-    inputs: readonly { recordId: string; knownAt: string; rights: readonly string[] }[];
+    rights: readonly PermittedUse[];
+    inputs: readonly { recordId: string; knownAt: string; rights: readonly PermittedUse[] }[];
     detail: Record<string, unknown>;
   };
 }
@@ -137,7 +152,25 @@ export function runSpatialComparison(): SpatialComparisonRun {
     const fixture = preserveFixture(root);
     const service = new SpatialAnalysisService(root, () => FIXTURE_TIME);
     const layoutManifest = fixtureManifest('layout', 'application/json');
-    const rights = [...layoutManifest.sourceRegistration.allowedOperations].sort();
+    const registration = layoutManifest.sourceRegistration;
+    // Evaluated as the caravan corpus would evaluate any source: the fixture is
+    // a demonstration of that corpus's discovery layer, not a corpus of its own.
+    const rights = derivePermittedUses(registration, layoutManifest.capturedAt, registration.sourceId, 'CARAVAN');
+    const requests = sourceUseRequests('CARAVAN');
+    const registrationTerms: SpatialComparisonRun['registrationTerms'] = {
+      registrationId: registration.registrationId, sourceId: registration.sourceId,
+      permittedPurposes: [...registration.permittedPurposes], allowedOperations: [...registration.allowedOperations],
+      allowedAudiences: [...registration.allowedAudiences],
+      evaluatedAt: layoutManifest.capturedAt,
+      decisions: PERMITTED_USES.map((use) => {
+        const r = requests[use];
+        const decision = evaluateSourceUse(registration, {
+          requestId: `${registration.sourceId}:${use}:${layoutManifest.capturedAt}`, registrationId: registration.registrationId,
+          purpose: r.purpose, operation: r.operation, audience: r.audience, requestedAt: layoutManifest.capturedAt,
+        });
+        return { use, state: decision.state, reasons: [...decision.reasons] };
+      }),
+    };
 
     const baseline = service.submit(fixture.baseline);
     const before = service.inspect(fixture.baseline.requestId)!.receipt.digest;
@@ -173,6 +206,7 @@ export function runSpatialComparison(): SpatialComparisonRun {
         outputFingerprint: spatialDigest(comparison),
       },
       sourceRecord,
+      registrationTerms,
       baseline: {
         requestId: fixture.baseline.requestId, layoutDigest: baseline.receipt.result.layoutDigest, resultDigest: baseline.receipt.result.digest,
         receiptDigestBefore: before, receiptDigestAfter: after, unchanged: before === after,

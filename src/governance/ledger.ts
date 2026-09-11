@@ -30,7 +30,7 @@ import { createHash } from 'node:crypto';
 import { canonicalJson } from '@/fixtures/digest';
 import { sqlArray, sqlText } from '@/db/ddl';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from '@/db/discoveryLedger';
-import { DOSSIER_LEDGER_DDL } from '@/db/dossierLedger';
+import { DOSSIER_LEDGER_DDL, DOSSIER_LEDGER_GUARDS } from '@/db/dossierLedger';
 import { EDITORIAL_LEDGER_DDL, EDITORIAL_LEDGER_GUARDS } from '@/db/editorialLedger';
 import { EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS, type PrincipalKind } from '@/db/executionLedger';
 import { TREASURY_LEDGER_DDL, TREASURY_LEDGER_GUARDS } from '@/db/treasuryLedger';
@@ -43,6 +43,8 @@ export const CORPUS_STUB_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);
 CREATE TABLE corpus_record (record_id text PRIMARY KEY, release_id text NOT NULL, subject_id text NOT NULL, predicate text NOT NULL, known_at timestamptz NOT NULL, UNIQUE (record_id, known_at));
+-- What the corpus took back, and how: a correction says something else, a withdrawal says nothing.
+CREATE TABLE retracted_record (retraction_id text NOT NULL, record_id text NOT NULL, kind text NOT NULL CHECK (kind IN ('CORRECTION', 'WITHDRAWAL')), issued_at timestamptz NOT NULL, PRIMARY KEY (retraction_id, record_id));
 `;
 
 /**
@@ -54,7 +56,7 @@ CREATE TABLE corpus_record (record_id text PRIMARY KEY, release_id text NOT NULL
 export type LedgerStack = 'PRODUCTS' | 'TREASURY';
 
 const STACKS: Record<LedgerStack, string> = {
-  PRODUCTS: `${CORPUS_STUB_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}${DISCOVERY_LEDGER_DDL}${DISCOVERY_LEDGER_GUARDS}${DOSSIER_LEDGER_DDL}${EDITORIAL_LEDGER_DDL}${EDITORIAL_LEDGER_GUARDS}`,
+  PRODUCTS: `${CORPUS_STUB_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}${DISCOVERY_LEDGER_DDL}${DISCOVERY_LEDGER_GUARDS}${DOSSIER_LEDGER_DDL}${DOSSIER_LEDGER_GUARDS}${EDITORIAL_LEDGER_DDL}${EDITORIAL_LEDGER_GUARDS}`,
   TREASURY: `${CORPUS_STUB_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}${WARRANT_LEDGER_DDL}${TREASURY_LEDGER_DDL}${TREASURY_LEDGER_GUARDS}`,
 };
 
@@ -146,16 +148,23 @@ export class GovernanceLedger {
     await this.write(list.map((p) => `INSERT INTO principal VALUES (${sqlText(p.principalId)}, '${p.kind}', ${sqlText(p.displayName)}, '${at}')`).join(';\n'));
   }
 
-  /** The demonstration corpus, as the keys need it: its current release and its standing records at an instant. */
-  async seedCorpus(corpus: Corpus, at: string): Promise<{ releaseId: string; records: number }> {
+  /**
+   * The demonstration corpus, as the keys need it: its current release, its
+   * standing records at an instant, and everything it has taken back — every
+   * retraction, whenever issued, so an assessment at a later instant can see
+   * what was known by then.
+   */
+  async seedCorpus(corpus: Corpus, at: string): Promise<{ releaseId: string; records: number; retracted: number }> {
     const release = currentRelease(corpus);
     const standing = standingRecords(corpus, at);
+    const retracted = corpus.retractions.flatMap((retraction) => retraction.affectedRecordIds.map((recordId) => ({ retractionId: retraction.retractionId, recordId, kind: retraction.kind, issuedAt: retraction.issuedAt })));
     await this.write([
       `INSERT INTO corpora VALUES (${sqlText(corpus.corpusId)}, '${corpus.domain}', '{"fixture_only":true}'::jsonb)`,
       `INSERT INTO releases VALUES (${sqlText(release.releaseId)}, ${sqlText(corpus.corpusId)}, 'CURRENT', '${release.knownAt ?? at}', '{"fixture_only":true}'::jsonb)`,
       ...standing.map((record) => `INSERT INTO corpus_record VALUES (${sqlText(record.recordId)}, ${sqlText(release.releaseId)}, ${sqlText(record.subjectId)}, ${sqlText(record.predicate)}, '${record.knownAt}')`),
+      ...retracted.map((r) => `INSERT INTO retracted_record VALUES (${sqlText(r.retractionId)}, ${sqlText(r.recordId)}, '${r.kind}', '${r.issuedAt}')`),
     ].join(';\n'));
-    return { releaseId: release.releaseId, records: standing.length };
+    return { releaseId: release.releaseId, records: standing.length, retracted: retracted.length };
   }
 
   /**

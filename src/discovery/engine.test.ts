@@ -34,10 +34,10 @@ const LATEST_KNOWN = RECORDS.reduce((latest, record) => (record.knownAt > latest
 const T_START = new Date(Date.parse(LATEST_KNOWN) + 60_000).toISOString();
 const T_DONE = new Date(Date.parse(LATEST_KNOWN) + 64_000).toISOString();
 
-/** The real rights, read from the release's schedules rather than invented. */
+/** The real rights, read from the release's schedules rather than invented, in the corpus's permitted-use vocabulary. */
 const rightsOf = (record: CorpusRecord): readonly string[] => {
   const schedule = RELEASE.sources.find((source) => source.sourceId === record.provenance.sourceId);
-  return schedule ? [...schedule.registration.allowedOperations].sort() : [];
+  return schedule ? [...schedule.permittedUses].sort() : [];
 };
 
 const run = (parameters = { minRecords: 1 }, records: readonly CorpusRecord[] = RECORDS) =>
@@ -180,10 +180,16 @@ describe('rights descend into the result', () => {
     }
   });
 
-  it('reads the rights from the release rather than inventing them', () => {
+  it('reads the rights from the release rather than inventing them, in the corpus vocabulary', () => {
     const artifact = run().artifacts[0];
-    const known = new Set(RELEASE.sources.flatMap((source) => source.registration.allowedOperations as readonly string[]));
-    for (const input of artifact.inputs) for (const operation of input.rights) expect(known).toContain(operation);
+    const known = new Set(RELEASE.sources.flatMap((source) => source.permittedUses as readonly string[]));
+    expect(known.size).toBeGreaterThan(0);
+    for (const input of artifact.inputs) {
+      expect(input.rights.length).toBeGreaterThan(0);
+      for (const use of input.rights) expect(known).toContain(use);
+    }
+    // And never a source-policy operation name: the discovery ledger refuses those.
+    for (const source of RELEASE.sources) for (const operation of source.registration.allowedOperations) expect(known).not.toContain(operation);
   });
 });
 

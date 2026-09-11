@@ -77,9 +77,9 @@ async function mined() {
     VALUES ('RUN1', 'W1', 'COMPUTED_RESULT', 'REL-1', '${T_KNOWN}', '${T_FOUND}', 'SUCCEEDED', '${FP(2)}', '${FP(3)}')`);
   for (const id of ['A1', 'A2']) {
     await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights)
-      VALUES ('${id}', 'RUN1', 'SUCCEEDED', 'COMPUTED_RESULT', 'facility:1', 'A documented expansion.', '${T_FOUND}', '{READ}');
+      VALUES ('${id}', 'RUN1', 'SUCCEEDED', 'COMPUTED_RESULT', 'facility:1', 'A documented expansion.', '${T_FOUND}', '{acquisition,normalization}');
       INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
-      VALUES ('I-${id}', '${id}', '${T_FOUND}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', '{READ}')`);
+      VALUES ('I-${id}', '${id}', '${T_FOUND}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', '{acquisition,normalization}')`);
   }
 }
 

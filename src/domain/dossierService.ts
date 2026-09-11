@@ -169,9 +169,9 @@ export const COVERAGE_LEVELS = ['NONE', 'THIN', 'SUPPORTED'] as const;
 export type CoverageLevel = typeof COVERAGE_LEVELS[number];
 
 export const COVERAGE_LEVEL_MEANING: Readonly<Record<CoverageLevel, string>> = {
-  NONE: 'No derived artifact bears on this facet. The dossier states the hole.',
-  THIN: 'One artifact bears on it. The dossier states what it rests on and what it does not.',
-  SUPPORTED: 'Two or more artifacts bear on it, from more than one run.',
+  NONE: 'No usable artifact. Anything that bears on the facet is named with its assessment, and the dossier states the hole.',
+  THIN: 'One usable artifact, or several from one run. The dossier states what it rests on and what it does not.',
+  SUPPORTED: 'Two or more usable artifacts from more than one run.',
 };
 
 /**
@@ -210,11 +210,11 @@ export const COVERAGE_ASSESSMENTS = ['PRESENT', 'STALE', 'CONFLICTING', 'MISSING
 export type CoverageAssessment = typeof COVERAGE_ASSESSMENTS[number];
 
 export const COVERAGE_ASSESSMENT_MEANING: Readonly<Record<CoverageAssessment, string>> = {
-  PRESENT: 'Evidence the dossier may deliver: not contradicted, within its horizon, computed over records the corpus still stands behind, and carrying the right this release exercises.',
-  STALE: 'Evidence that was present and is not now: its horizon has passed, or a record it read has since been taken back by the corpus.',
-  CONFLICTING: 'Evidence the corpus disagrees with itself about: a recorded contradiction about its subject, or a claim that was checked and falsified.',
+  PRESENT: 'Evidence the dossier may deliver: carrying the right this release exercises, not refuted, not contradicted by other evidence on the facet, within its horizon, and computed over records the corpus still stands behind.',
+  STALE: 'Evidence that was present and is not now: its horizon has passed, or a record it read has since been withdrawn by the corpus.',
+  CONFLICTING: 'Evidence the corpus disagrees with: a record it read has since been corrected, another artifact on the facet says something else about the same subject, or the claim was checked and refuted.',
   MISSING: 'No artifact bears on this facet at all.',
-  DISALLOWED: 'Evidence exists and the firm may not deliver it to this audience: its rights — the intersection of everything it read — do not include the right this release exercises.',
+  DISALLOWED: 'Evidence exists and the firm may not deliver it to this audience: its rights — the intersection of everything it read — do not carry the right this release exercises.',
 };
 
 /**
@@ -230,67 +230,89 @@ export const DELIVERY_RIGHT = 'customer_delivery';
 export interface EvidenceUnderAssessment {
   artifactId: string;
   subject: string;
+  claim: string;
   validation: string;
   horizonEndsAt: string | null;
+  /** In the corpus's rights vocabulary. The discovery ledger refuses any other. */
   rights: readonly string[];
   inputRecordIds: readonly string[];
 }
 
 export interface AssessmentContext {
-  /** The instant the coverage was assessed at. Staleness and contradictions are read as of it. */
+  /** The instant the coverage was assessed at. Staleness and conflict are read as of it. */
   assessedAt: string;
   /** The right this dossier's delivery exercises. */
   requiredRight: string;
-  /** Subjects the state ledger holds a recorded contradiction about, noticed at or before `assessedAt`. */
-  contradictedSubjects: ReadonlySet<string>;
-  /** Records the corpus has taken back — withdrawn, or the original of a correction — by `assessedAt`. */
-  takenBackRecordIds: ReadonlySet<string>;
+  /** Records the corpus has taken back by `assessedAt`, with how: a correction says something else; a withdrawal says nothing. */
+  takenBack: ReadonlyMap<string, 'CORRECTION' | 'WITHDRAWAL'>;
+  /** The other artifacts bearing on the same facet, so a disagreement about one subject is seen. */
+  alongside: readonly Pick<EvidenceUnderAssessment, 'artifactId' | 'subject' | 'claim'>[];
 }
 
 /**
  * One artifact, one assessment, in an order that is the argument.
  *
- * Conflict first: a contradiction is a fact about the evidence that the
- * buyer must see whatever the firm's rights in it. Disallowed second: the
- * firm's rights decide whether the buyer sees the artifact at all, before
- * its freshness matters. Stale third. Present is what is left, and it is
- * earned by passing the three, not assumed.
+ * Rights first: the firm's rights decide whether the buyer hears about this
+ * artifact at all, and an artifact the buyer may not receive is not the
+ * buyer's to weigh for conflict or freshness — its reason stays on the
+ * internal evidence row. Conflict second: a corrected input, a disagreeing
+ * neighbour on the facet, or a refuted claim is a fact about the evidence the
+ * buyer must see. Stale third. Present is what is left, and it is earned by
+ * passing the three, not assumed.
  */
 export function assessEvidence(evidence: EvidenceUnderAssessment, context: AssessmentContext): { assessment: CoverageAssessment; because: string } {
-  if (context.contradictedSubjects.has(evidence.subject)) {
-    return { assessment: 'CONFLICTING', because: `The state ledger records a contradiction about ${evidence.subject}, noticed at or before ${context.assessedAt}.` };
-  }
-  if (evidence.validation === 'FALSIFIED') {
-    return { assessment: 'CONFLICTING', because: 'The claim was checked against held-out or observed evidence and failed.' };
-  }
   if (!evidence.rights.includes(context.requiredRight)) {
     return { assessment: 'DISALLOWED', because: `Its rights are ${evidence.rights.length ? evidence.rights.join(', ') : 'none'}; ${context.requiredRight} is not among them, and a dossier delivery exercises it.` };
+  }
+  const corrected = evidence.inputRecordIds.filter((id) => context.takenBack.get(id) === 'CORRECTION');
+  if (corrected.length > 0) {
+    return { assessment: 'CONFLICTING', because: `It read ${corrected.join(', ')}, which the corpus has since corrected: the corpus now says something else about what it read.` };
+  }
+  const disagreeing = context.alongside.filter((other) => other.artifactId !== evidence.artifactId && other.subject === evidence.subject && other.claim !== evidence.claim);
+  if (disagreeing.length > 0) {
+    return { assessment: 'CONFLICTING', because: `${disagreeing.map((other) => other.artifactId).join(', ')} bears on the same facet and says something else about ${evidence.subject}.` };
+  }
+  if (evidence.validation === 'FALSIFIED') {
+    return { assessment: 'CONFLICTING', because: 'The claim was checked against held-out or observed evidence and refuted.' };
   }
   if (evidence.horizonEndsAt !== null && evidence.horizonEndsAt < context.assessedAt) {
     return { assessment: 'STALE', because: `Its horizon ended at ${evidence.horizonEndsAt}, before ${context.assessedAt}.` };
   }
-  const takenBack = evidence.inputRecordIds.filter((id) => context.takenBackRecordIds.has(id));
-  if (takenBack.length > 0) {
-    return { assessment: 'STALE', because: `It read ${takenBack.join(', ')}, which the corpus has since taken back.` };
+  const withdrawn = evidence.inputRecordIds.filter((id) => context.takenBack.get(id) === 'WITHDRAWAL');
+  if (withdrawn.length > 0) {
+    return { assessment: 'STALE', because: `It read ${withdrawn.join(', ')}, which the corpus has since withdrawn.` };
   }
-  return { assessment: 'PRESENT', because: `Not contradicted, within its horizon, computed over records the corpus still stands behind, and carrying ${context.requiredRight}.` };
+  return { assessment: 'PRESENT', because: `Carries ${context.requiredRight}; no input corrected or withdrawn by ${context.assessedAt}; no other artifact on the facet disagrees about ${evidence.subject}; not refuted; within its horizon.` };
+}
+
+export interface CoverageRollup {
+  assessment: CoverageAssessment;
+  present: number; stale: number; conflicting: number; disallowed: number;
 }
 
 /**
- * The facet's assessment from its artifacts'. A conflict is never hidden by
- * a present artifact beside it; a present artifact is what makes the facet
- * deliverable; below that, the most useful of the reasons nothing is.
+ * The facet's assessment from its artifacts', and the counts beside it.
+ *
+ * The headline is worst-first over what is not present — CONFLICTING, then
+ * STALE, then DISALLOWED — and PRESENT only when everything is. A facet with
+ * one present artifact and one the firm may not deliver reads DISALLOWED
+ * with counts 1 and 1, and its level says something is deliverable; a
+ * headline that read PRESENT would have hidden the artifact the buyer is
+ * not being given.
  */
-export function rollupAssessment(assessments: readonly CoverageAssessment[]): CoverageAssessment {
-  if (assessments.length === 0) return 'MISSING';
-  for (const candidate of ['CONFLICTING', 'PRESENT', 'STALE', 'DISALLOWED'] as const) {
-    if (assessments.includes(candidate)) return candidate;
-  }
-  return 'MISSING';
+export function rollupAssessment(assessments: readonly CoverageAssessment[]): CoverageRollup {
+  const count = (a: CoverageAssessment) => assessments.filter((entry) => entry === a).length;
+  const counts = { present: count('PRESENT'), stale: count('STALE'), conflicting: count('CONFLICTING'), disallowed: count('DISALLOWED') };
+  const assessment: CoverageAssessment = assessments.length === 0 ? 'MISSING'
+    : counts.conflicting > 0 ? 'CONFLICTING'
+    : counts.stale > 0 ? 'STALE'
+    : counts.disallowed > 0 ? 'DISALLOWED'
+    : 'PRESENT';
+  return { assessment, ...counts };
 }
 
 export const ASSESSMENT_RULE =
-  'Coverage distinguishes present, stale, conflicting, missing and disallowed evidence, per artifact and rolled up per facet. Only present evidence holds a conclusion up; the rest is named on the page so the buyer can see what exists that they are not being given, and why.';
+  'Coverage distinguishes present, stale, conflicting, missing and disallowed evidence, per artifact and rolled up per facet with the counts beside the headline. Only present evidence holds a conclusion up; the rest is named by identifier and assessment so the buyer can see that something exists that they are not being given — never its claim.';
 
 export function estimateUnits(coverage: ReadonlyArray<{ facet: DossierFacet; level: CoverageLevel }>): number {
   return coverage.reduce((total, entry) => total + COVERAGE_LEVEL_UNITS[entry.level], 0);

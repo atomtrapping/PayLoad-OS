@@ -6,22 +6,33 @@
  * here — the delivery names its own recipient — which is the only reason it can
  * be refused, and the only reason a test of the refusal proves anything.
  *
- * The release now rests on two authorizations in the execution ledger, so
- * this file stacks that ledger too, and the kernel's refusals — an agent
- * granting, an approval of the wrong digest — reach the dossier through the
- * keys rather than through a second copy of the rule.
+ * The release rests on two authorizations in the execution ledger, so this
+ * file stacks that ledger too, and the kernel's refusals — an agent granting,
+ * an approval of the wrong digest — reach the dossier through the keys rather
+ * than through a second copy of the rule.
+ *
+ * And coverage is assessed per artifact by the database: the evidence rows
+ * beneath a coverage row are recomputed at commit from the artifact's rights,
+ * validation, horizon and inputs, the coverage row is held to its evidence,
+ * and a conclusion is held to present evidence. What is tested is that the
+ * wrong assessment is a row somebody can write and the database refuses.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { CANDIDATE_STANDINGS, COVERAGE_LEVELS, DOSSIER_STAGES, REUSABLE_STANDINGS, coverageLevel, estimateUnits } from '@/domain/dossierService';
+import {
+  CANDIDATE_STANDINGS, COVERAGE_ASSESSMENTS, COVERAGE_LEVELS, DOSSIER_STAGES, REUSABLE_STANDINGS,
+  coverageLevel, estimateUnits, rollupAssessment, type CoverageAssessment,
+} from '@/domain/dossierService';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from './discoveryLedger';
 import { EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS } from './executionLedger';
-import { DOSSIER_LEDGER_DDL } from './dossierLedger';
+import { DOSSIER_LEDGER_DDL, DOSSIER_LEDGER_GUARDS } from './dossierLedger';
 
 let client: PGlite;
 let scenario = 0;
 
 const T_KNOWN = '2026-07-01T08:00:00.000Z';
+const T_MINED = '2026-07-01T12:00:00.000Z';
+const T_HORIZON_PAST = '2026-07-01T18:00:00.000Z';
 const T_ASK = '2026-07-02T09:00:00.000Z';
 const T_QUOTE = '2026-07-02T10:00:00.000Z';
 const T_ACCEPT = '2026-07-02T11:00:00.000Z';
@@ -38,6 +49,7 @@ const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);
 CREATE TABLE corpus_record (record_id text PRIMARY KEY, release_id text NOT NULL, subject_id text NOT NULL, predicate text NOT NULL, known_at timestamptz NOT NULL, UNIQUE (record_id, known_at));
+CREATE TABLE retracted_record (retraction_id text NOT NULL, record_id text NOT NULL, kind text NOT NULL CHECK (kind IN ('CORRECTION', 'WITHDRAWAL')), issued_at timestamptz NOT NULL, PRIMARY KEY (retraction_id, record_id));
 `;
 
 beforeAll(async () => { client = new PGlite(); await client.waitReady; });
@@ -46,7 +58,7 @@ afterAll(async () => { await client?.close(); });
 beforeEach(async () => {
   scenario += 1;
   await client.exec(`CREATE SCHEMA dos_${scenario}; SET search_path TO dos_${scenario};
-    ${CORPUS_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}${DISCOVERY_LEDGER_DDL}${DISCOVERY_LEDGER_GUARDS}${DOSSIER_LEDGER_DDL}`);
+    ${CORPUS_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}${DISCOVERY_LEDGER_DDL}${DISCOVERY_LEDGER_GUARDS}${DOSSIER_LEDGER_DDL}${DOSSIER_LEDGER_GUARDS}`);
   await sql(`
     INSERT INTO corpora VALUES ('c', 'CARAVAN', '{}'::jsonb);
     INSERT INTO releases VALUES ('REL-1', 'c', 'CURRENT', '${T_KNOWN}', '{}'::jsonb);
@@ -72,16 +84,91 @@ async function rows(query: string) {
   return (await client.query(query)).rows as Record<string, unknown>[];
 }
 
-/** Two customers, one asking a question with two facets. */
+/** Two customers, one asking a question with two facets. A delivery exercises customer_delivery. */
 const specs = () => sql(`
-  INSERT INTO dossier_spec VALUES ('D1', 'customer:acme', 'Alternative polypropylene suppliers.', 'BUILD', '${T_ASK}');
-  INSERT INTO dossier_spec VALUES ('D2', 'customer:boreal', 'Corridor exposure.', 'SPEC', '${T_ASK}');
+  INSERT INTO dossier_spec VALUES ('D1', 'customer:acme', 'Alternative polypropylene suppliers.', 'BUILD', '${T_ASK}', 'customer_delivery');
+  INSERT INTO dossier_spec VALUES ('D2', 'customer:boreal', 'Corridor exposure.', 'SPEC', '${T_ASK}', 'customer_delivery');
   INSERT INTO dossier_facet VALUES ('F1', 'D1', 'DEPENDENCY');
   INSERT INTO dossier_facet VALUES ('F2', 'D1', 'RISK')`);
 
-const coverage = (id = 'C1', over: { facet?: string; level?: string; count?: number; runs?: number; ids?: string } = {}) => sql(`
-  INSERT INTO dossier_coverage VALUES ('${id}', '${over.facet ?? 'F1'}', '${over.level ?? 'THIN'}', ${over.count ?? 1}, ${over.runs ?? 1},
-    ${over.ids ?? `'{A1}'`}, 'One concentration artifact bears on it.', '${T_ASK}')`);
+/* ── The inventory: records, two runs, and artifacts to assess ── */
+
+const FULL = `'{acquisition,customer_delivery,normalization}'`;
+const NO_DELIVERY = `'{acquisition,normalization}'`;
+
+/** A computed artifact over one or more standing records. Every default earns PRESENT. */
+async function artifact(id: string, over: { subject?: string; claim?: string; rights?: string; inputs?: string[]; validation?: string; run?: string; computedAt?: string } = {}) {
+  const rights = over.rights ?? FULL;
+  const at = over.computedAt ?? T_MINED;
+  await tx([
+    `INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights, validation)
+     VALUES ('${id}', '${over.run ?? 'RUN1'}', 'SUCCEEDED', 'COMPUTED_RESULT', '${over.subject ?? 'org:meridian'}', '${over.claim ?? 'Concentration.'}', '${at}', ${rights}, '${over.validation ?? 'NOT_VALIDATED'}')`,
+    ...(over.inputs ?? ['REC-1']).map((record, i) =>
+      `INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
+       VALUES ('I-${id}-${i}', '${id}', '${at}', 'SOURCE_RECORD', '${record}', '${T_KNOWN}', ${rights})`),
+  ].join(';\n'));
+}
+
+/** A prediction, which is the class that carries a horizon. */
+async function prediction(id: string, horizon: string) {
+  await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, model_id, confidence, horizon_ends_at, rights, validation)
+     VALUES ('${id}', 'RUN-P', 'SUCCEEDED', 'PREDICTION', 'org:meridian', 'Will concentrate further.', '${T_MINED}', 'm@1', 0.6, '${horizon}', ${FULL}, 'NOT_VALIDATED');
+    INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
+     VALUES ('I-${id}', '${id}', '${T_MINED}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', ${FULL})`);
+}
+
+/** Two records, two descriptive runs and a predictive one, and three artifacts: two deliverable, one not. */
+async function mined() {
+  await sql(`
+    INSERT INTO corpus_record VALUES ('REC-1', 'REL-1', 'org:meridian', 'supplies', '${T_KNOWN}');
+    INSERT INTO corpus_record VALUES ('REC-2', 'REL-1', 'corridor:x', 'exposes', '${T_KNOWN}');
+    INSERT INTO workload_spec (workload_id, mining_kind, produces_class, input_selector, method, parameters,
+      implementation_id, implementation_version, output_schema, arithmetic, spec_fingerprint)
+    VALUES ('W1', 'DESCRIPTIVE', 'COMPUTED_RESULT', '{}'::jsonb, 'm', '{}'::jsonb, 'i', '1', 'o', 'FIXED_POINT', '${FP(3)}');
+    INSERT INTO workload_spec (workload_id, mining_kind, produces_class, input_selector, method, parameters,
+      implementation_id, implementation_version, output_schema, arithmetic, spec_fingerprint)
+    VALUES ('W2', 'PREDICTIVE', 'PREDICTION', '{}'::jsonb, 'p', '{}'::jsonb, 'i', '1', 'o', 'FLOATING_POINT', '${FP(4)}');
+    INSERT INTO workload_run (run_id, workload_id, produces_class, corpus_release_id, started_at, completed_at, status, input_fingerprint, output_fingerprint)
+    VALUES ('RUN1', 'W1', 'COMPUTED_RESULT', 'REL-1', '${T_KNOWN}', '${T_MINED}', 'SUCCEEDED', '${FP(4)}', '${FP(5)}');
+    INSERT INTO workload_run (run_id, workload_id, produces_class, corpus_release_id, started_at, completed_at, status, input_fingerprint, output_fingerprint)
+    VALUES ('RUN2', 'W1', 'COMPUTED_RESULT', 'REL-1', '${T_KNOWN}', '${T_MINED}', 'SUCCEEDED', '${FP(4)}', '${FP(6)}');
+    INSERT INTO workload_run (run_id, workload_id, produces_class, corpus_release_id, started_at, completed_at, status, input_fingerprint, output_fingerprint)
+    VALUES ('RUN-P', 'W2', 'PREDICTION', 'REL-1', '${T_KNOWN}', '${T_MINED}', 'SUCCEEDED', '${FP(4)}', '${FP(7)}')`);
+  await artifact('A1');
+  await artifact('A2', { subject: 'corridor:x', claim: 'Exposure.', inputs: ['REC-2'], run: 'RUN2' });
+  await artifact('A3', { subject: 'org:meridian-b', claim: 'Concentration, unlicensed.', rights: NO_DELIVERY });
+}
+
+interface Evidence { artifact: string; run?: string; assessment: CoverageAssessment; because?: string }
+
+/**
+ * A coverage row with its evidence rows, in one transaction. The counts,
+ * runs, level and assessment are what the domain derives from the evidence
+ * unless a test overrides them — which is how a test writes the wrong row.
+ */
+const coverage = async (id = 'C1', over: {
+  facet?: string; evidence?: Evidence[]; assessedAt?: string; withEvidence?: boolean;
+  level?: string; assessment?: string; available?: number; present?: number; stale?: number; conflicting?: number; disallowed?: number;
+  runs?: number; runsUsable?: number; ids?: string[];
+} = {}) => {
+  const evidence = over.evidence ?? [{ artifact: 'A1', assessment: 'PRESENT' }];
+  const rollup = rollupAssessment(evidence.map((e) => e.assessment));
+  const runs = new Set(evidence.map((e) => e.run ?? 'RUN1')).size;
+  const runsUsable = new Set(evidence.filter((e) => e.assessment === 'PRESENT').map((e) => e.run ?? 'RUN1')).size;
+  const ids = over.ids ?? evidence.map((e) => e.artifact);
+  await tx([
+    `INSERT INTO dossier_coverage (coverage_id, dossier_facet_id, level, assessment, artifacts_available, artifacts_present, artifacts_stale, artifacts_conflicting, artifacts_disallowed,
+      runs_represented, runs_usable, artifact_ids, basis, assessed_at)
+     VALUES ('${id}', '${over.facet ?? 'F1'}', '${over.level ?? coverageLevel(rollup.present, runsUsable)}', '${over.assessment ?? rollup.assessment}', ${over.available ?? ids.length},
+      ${over.present ?? rollup.present}, ${over.stale ?? rollup.stale}, ${over.conflicting ?? rollup.conflicting}, ${over.disallowed ?? rollup.disallowed},
+      ${over.runs ?? runs}, ${over.runsUsable ?? runsUsable}, '{${ids.join(',')}}', 'What bears on it, assessed.', '${over.assessedAt ?? T_ASK}')`,
+    ...(over.withEvidence === false ? [] : evidence.map((e, i) =>
+      `INSERT INTO dossier_coverage_evidence VALUES ('${id}-E${i}', '${id}', '${e.artifact}', '${e.run ?? 'RUN1'}', '${e.assessment}', '${e.because ?? 'Assessed.'}')`)),
+  ].join(';\n'));
+};
+
+const retracted = (kind: 'CORRECTION' | 'WITHDRAWAL', issuedAt: string, record = 'REC-1') =>
+  sql(`INSERT INTO retracted_record VALUES ('RET-${kind}', '${record}', '${kind}', '${issuedAt}')`);
 
 const estimate = (id = 'E1', units = 4) => sql(`
   INSERT INTO dossier_estimate VALUES ('${id}', 'D1', 'notationsos.dossier.estimate.v1', ${units},
@@ -118,8 +205,13 @@ const release = (id = 'R1', over: { dossier?: string; recipient?: string; versio
     '${over.quoteDigest ?? QUOTE_DIGEST}', '${over.scope ?? 'AU-SCOPE'}', '${FP(2)}', '${over.builtAt ?? T_BUILD}',
     '${over.digest ?? RELEASE_DIGEST}', '${over.auth ?? 'AU-RELEASE'}', '${T_RELEASE}', false)`);
 
-/** Everything a first release needs. */
-async function priced() { await specs(); await coverage(); await coverage('C2', { facet: 'F2' }); await estimate(); await policy(); await quotation(); }
+/** Everything a first release needs: the dependency facet with one present and one disallowed artifact, the risk facet with one present. */
+async function covered() {
+  await specs(); await mined();
+  await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }] });
+  await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
+}
+async function priced() { await covered(); await estimate(); await policy(); await quotation(); }
 async function released() { await priced(); await accepted(); await reviewed(); await release(); }
 
 /** A dispatch in the kernel, for a delivery to name. */
@@ -133,20 +225,12 @@ const delivery = (id = 'DL1', over: { release?: string; recipient?: string; atte
   INSERT INTO dossier_delivery VALUES ('${id}', '${over.release ?? 'R1'}', '${over.recipient ?? 'customer:acme'}', '${over.attempt ?? 'T1'}',
     'SIMULATED_LOCAL: no customer exists; the receipt is the attempt row.', '${T_DELIVER}')`);
 
-/** A mined artifact for a conclusion to rest on. */
-async function mined() {
-  await sql(`
-    INSERT INTO corpus_record VALUES ('REC-1', 'REL-1', 'org:meridian', 'supplies', '${T_KNOWN}');
-    INSERT INTO workload_spec (workload_id, mining_kind, produces_class, input_selector, method, parameters,
-      implementation_id, implementation_version, output_schema, arithmetic, spec_fingerprint)
-    VALUES ('W1', 'DESCRIPTIVE', 'COMPUTED_RESULT', '{}'::jsonb, 'm', '{}'::jsonb, 'i', '1', 'o', 'FIXED_POINT', '${FP(3)}');
-    INSERT INTO workload_run (run_id, workload_id, produces_class, corpus_release_id, started_at, completed_at, status, input_fingerprint, output_fingerprint)
-    VALUES ('RUN1', 'W1', 'COMPUTED_RESULT', 'REL-1', '${T_KNOWN}', '${T_BUILD}', 'SUCCEEDED', '${FP(4)}', '${FP(5)}')`);
-  await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights)
-    VALUES ('A1', 'RUN1', 'SUCCEEDED', 'COMPUTED_RESULT', 'org:meridian', 'Concentration.', '${T_BUILD}', '{READ}');
-    INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
-    VALUES ('I1', 'A1', '${T_BUILD}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', '{READ}')`);
-}
+const conclusion = (id: string, facet: string, artifactId: string, over: { release?: string; cls?: string; presentedAs?: string; notCovered?: string } = {}) => tx(`
+  INSERT INTO dossier_conclusion VALUES ('${id}', '${over.release ?? 'R1'}', '${facet}', 'They share one upstream producer.',
+    '${over.notCovered ?? 'Two of the five carry no customs record at all.'}', '${artifactId}', '${over.cls ?? 'COMPUTED_RESULT'}', '${over.presentedAs ?? over.cls ?? 'COMPUTED_RESULT'}')`);
+
+const coverageRow = async (id = 'C1') => (await rows(`SELECT level, assessment, artifacts_available AS available, artifacts_present AS present, artifacts_stale AS stale,
+  artifacts_conflicting AS conflicting, artifacts_disallowed AS disallowed, runs_represented AS runs, runs_usable FROM dossier_coverage WHERE coverage_id = '${id}'`))[0];
 
 describe('a dossier goes to the customer who asked for it', () => {
   beforeEach(async () => { await released(); await dispatched(); });
@@ -236,8 +320,235 @@ describe('an approval belongs to one customer and one application', () => {
   });
 });
 
+describe('coverage is assessed per artifact, by the database', () => {
+  beforeEach(async () => { await specs(); await mined(); });
+
+  it('accepts PRESENT for an artifact carrying the delivery right over standing records, not refuted, with no horizon passed', async () => {
+    await coverage();
+    expect(await coverageRow()).toEqual({ level: 'THIN', assessment: 'PRESENT', available: 1, present: 1, stale: 0, conflicting: 0, disallowed: 0, runs: 1, runs_usable: 1 });
+  });
+
+  /* The firm's rights decide whether the buyer hears about the artifact at all. */
+  it('refuses PRESENT for an artifact whose rights do not carry the right the delivery exercises', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A3', assessment: 'PRESENT' }] }))
+      .rejects.toThrow(/evidence_assessment_is_not_the_artifacts:A3:PRESENT recorded, DISALLOWED from the artifact/);
+    await coverage('C1', { evidence: [{ artifact: 'A3', assessment: 'DISALLOWED' }] });
+    expect(await coverageRow()).toEqual({ level: 'NONE', assessment: 'DISALLOWED', available: 1, present: 0, stale: 0, conflicting: 0, disallowed: 1, runs: 1, runs_usable: 0 });
+  });
+
+  it('names a disallowed artifact beside a present one, and the headline is the disallowed one', async () => {
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }] });
+    expect(await coverageRow()).toEqual({ level: 'THIN', assessment: 'DISALLOWED', available: 2, present: 1, stale: 0, conflicting: 0, disallowed: 1, runs: 1, runs_usable: 1 });
+  });
+
+  it('refuses hiding the disallowed artifact under a PRESENT headline', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }], assessment: 'PRESENT' }))
+      .rejects.toThrow(/coverage_assessment_is_the_rollup/);
+  });
+
+  /* The CHECK relating the assessment to the level: only what is present counts toward it. */
+  it('refuses counting the disallowed artifact toward the level', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }], level: 'SUPPORTED' }))
+      .rejects.toThrow(/coverage_level_counts_the_present/);
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }], level: 'NONE' }))
+      .rejects.toThrow(/coverage_level_counts_the_present/);
+    await expect(coverage('C1', { evidence: [{ artifact: 'A3', assessment: 'DISALLOWED' }], level: 'THIN' }))
+      .rejects.toThrow(/coverage_level_counts_the_present/);
+  });
+
+  it('reaches SUPPORTED only over present artifacts from two runs', async () => {
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
+    expect(await coverageRow()).toMatchObject({ level: 'SUPPORTED', assessment: 'PRESENT', present: 2, runs: 2, runs_usable: 2 });
+  });
+
+  /* Worst-first: a stale artifact outranks a disallowed one in the headline, and a conflicting one outranks both. */
+  it('headlines the worse assessment when a facet carries several', async () => {
+    await prediction('AP-PAST', T_HORIZON_PAST);
+    await artifact('A-REFUTED', { subject: 'org:other', claim: 'Refuted.', validation: 'FALSIFIED' });
+    const staleAndDisallowed: Evidence[] = [{ artifact: 'A3', assessment: 'DISALLOWED' }, { artifact: 'AP-PAST', run: 'RUN-P', assessment: 'STALE' }];
+    await expect(coverage('C1', { evidence: staleAndDisallowed, assessment: 'DISALLOWED' })).rejects.toThrow(/coverage_assessment_is_the_rollup/);
+    await coverage('C1', { evidence: staleAndDisallowed });
+    expect(await coverageRow('C1')).toMatchObject({ level: 'NONE', assessment: 'STALE', stale: 1, disallowed: 1 });
+    const allThree: Evidence[] = [...staleAndDisallowed, { artifact: 'A-REFUTED', assessment: 'CONFLICTING' }];
+    await expect(coverage('C2', { facet: 'F2', evidence: allThree, assessment: 'STALE' })).rejects.toThrow(/coverage_assessment_is_the_rollup/);
+    await coverage('C2', { facet: 'F2', evidence: allThree });
+    expect(await coverageRow('C2')).toMatchObject({ level: 'NONE', assessment: 'CONFLICTING', stale: 1, disallowed: 1, conflicting: 1 });
+  });
+
+  it('reads a horizon as of the assessment instant', async () => {
+    await prediction('AP-PAST', T_HORIZON_PAST);
+    await prediction('AP-AHEAD', T_BUILD);
+    await expect(coverage('C1', { evidence: [{ artifact: 'AP-PAST', run: 'RUN-P', assessment: 'PRESENT' }] }))
+      .rejects.toThrow(/evidence_assessment_is_not_the_artifacts:AP-PAST:PRESENT recorded, STALE/);
+    await coverage('C1', { evidence: [{ artifact: 'AP-PAST', run: 'RUN-P', assessment: 'STALE' }, { artifact: 'AP-AHEAD', run: 'RUN-P', assessment: 'PRESENT' }] });
+    expect(await coverageRow()).toMatchObject({ level: 'THIN', assessment: 'STALE', present: 1, stale: 1 });
+  });
+
+  it('makes an artifact stale when a record it read was withdrawn before the assessment, and not when after', async () => {
+    await retracted('WITHDRAWAL', T_MINED);
+    await expect(coverage()).rejects.toThrow(/evidence_assessment_is_not_the_artifacts:A1:PRESENT recorded, STALE/);
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'STALE' }] });
+    expect(await coverageRow()).toMatchObject({ level: 'NONE', assessment: 'STALE', stale: 1 });
+  });
+
+  it('does not yet know a withdrawal issued after the assessment', async () => {
+    await retracted('WITHDRAWAL', T_BUILD);
+    await coverage();
+    expect(await coverageRow()).toMatchObject({ assessment: 'PRESENT' });
+  });
+
+  /* A corrected record means the corpus now says something else about what the artifact read. */
+  it('makes an artifact conflicting when a record it read was corrected', async () => {
+    await retracted('CORRECTION', T_MINED);
+    await expect(coverage()).rejects.toThrow(/evidence_assessment_is_not_the_artifacts:A1:PRESENT recorded, CONFLICTING/);
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'STALE' }] })).rejects.toThrow(/CONFLICTING from the artifact/);
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'CONFLICTING' }] });
+    expect(await coverageRow()).toMatchObject({ level: 'NONE', assessment: 'CONFLICTING', conflicting: 1 });
+  });
+
+  it('makes a refuted artifact conflicting', async () => {
+    await artifact('A-REFUTED', { subject: 'org:other', claim: 'Refuted.', validation: 'FALSIFIED' });
+    await expect(coverage('C1', { evidence: [{ artifact: 'A-REFUTED', assessment: 'PRESENT' }] })).rejects.toThrow(/CONFLICTING from the artifact/);
+    await coverage('C1', { evidence: [{ artifact: 'A-REFUTED', assessment: 'CONFLICTING' }] });
+    expect(await coverageRow()).toMatchObject({ assessment: 'CONFLICTING' });
+  });
+
+  it('makes two artifacts on one facet that disagree about one subject both conflicting', async () => {
+    await artifact('A-DISAGREES', { claim: 'Dispersion.' });
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A-DISAGREES', assessment: 'CONFLICTING' }] }))
+      .rejects.toThrow(/evidence_assessment_is_not_the_artifacts:A1:PRESENT recorded, CONFLICTING/);
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'CONFLICTING' }, { artifact: 'A-DISAGREES', assessment: 'CONFLICTING' }] });
+    expect(await coverageRow()).toMatchObject({ level: 'NONE', assessment: 'CONFLICTING', conflicting: 2 });
+  });
+
+  it('does not read the same disagreement across two facets as a conflict', async () => {
+    await artifact('A-DISAGREES', { claim: 'Dispersion.' });
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }] });
+    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A-DISAGREES', assessment: 'PRESENT' }] });
+    expect(await coverageRow('C2')).toMatchObject({ assessment: 'PRESENT' });
+  });
+
+  it('refuses evidence computed after the assessment that names it', async () => {
+    await artifact('A-LATER', { subject: 'org:later', claim: 'Later.', computedAt: T_BUILD });
+    await expect(coverage('C1', { evidence: [{ artifact: 'A-LATER', assessment: 'PRESENT' }] })).rejects.toThrow(/evidence_computed_after_it_was_assessed:A-LATER/);
+  });
+
+  it('refuses a spec whose required right is not a permitted use', async () => {
+    await expect(sql(`INSERT INTO dossier_spec VALUES ('D3', 'customer:acme', 'q', 'SPEC', '${T_ASK}', 'EXPORT')`)).rejects.toThrow(/required_right/);
+  });
+
+  it('assesses the way the domain does', () => {
+    expect(COVERAGE_ASSESSMENTS).toEqual(['PRESENT', 'STALE', 'CONFLICTING', 'MISSING', 'DISALLOWED']);
+    expect(rollupAssessment([])).toMatchObject({ assessment: 'MISSING' });
+    expect(rollupAssessment(['PRESENT', 'DISALLOWED'])).toMatchObject({ assessment: 'DISALLOWED', present: 1, disallowed: 1 });
+    expect(rollupAssessment(['STALE', 'DISALLOWED', 'CONFLICTING'])).toMatchObject({ assessment: 'CONFLICTING' });
+  });
+});
+
+describe('a coverage row is the sum of its evidence rows', () => {
+  beforeEach(async () => { await specs(); await mined(); });
+
+  it('refuses a coverage row naming an artifact with no evidence row beneath it', async () => {
+    await expect(coverage('C1', { withEvidence: false })).rejects.toThrow(/coverage_does_not_match_its_evidence:C1:names \{A1\} but its evidence rows are \{\}/);
+  });
+
+  it('refuses counts the evidence rows do not give', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }], present: 2, disallowed: 0, assessment: 'PRESENT' }))
+      .rejects.toThrow(/coverage_does_not_match_its_evidence:C1:counts 2\/0\/0\/0 but its evidence rows are 1\/0\/0\/1/);
+  });
+
+  it('refuses runs the evidence rows do not represent', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }], runs: 1, runsUsable: 1, level: 'THIN' }))
+      .rejects.toThrow(/coverage_does_not_match_its_evidence:C1:runs 1\/1 but its evidence rows are 2\/2/);
+  });
+
+  it('refuses an evidence row arriving after the count was taken', async () => {
+    await coverage();
+    await expect(tx(`INSERT INTO dossier_coverage_evidence VALUES ('C1-LATE', 'C1', 'A3', 'RUN1', 'DISALLOWED', 'Late.')`))
+      .rejects.toThrow(/coverage_does_not_match_its_evidence:C1:names \{A1\} but its evidence rows are \{A1,A3\}/);
+  });
+
+  it('refuses removing an evidence row from under a coverage row', async () => {
+    await coverage();
+    await expect(tx(`DELETE FROM dossier_coverage_evidence WHERE artifact_id = 'A1'`)).rejects.toThrow(/coverage_does_not_match_its_evidence/);
+  });
+
+  it('refuses evidence of no coverage, and evidence of no artifact', async () => {
+    await expect(tx(`INSERT INTO dossier_coverage_evidence VALUES ('E', 'C-NOPE', 'A1', 'RUN1', 'PRESENT', 'x')`)).rejects.toThrow(/coverage_id|foreign key/i);
+    await coverage();
+    await expect(tx(`INSERT INTO dossier_coverage_evidence VALUES ('E', 'C1', 'A-NOPE', 'RUN1', 'PRESENT', 'x')`)).rejects.toThrow(/evidence_artifact|foreign key/i);
+  });
+
+  it('refuses evidence assessed MISSING, which is the assessment of nothing', async () => {
+    // The coverage row is written as if the artifact were present, so that it is the evidence row's own check that refuses.
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'MISSING' }], present: 1, runsUsable: 1, level: 'THIN', assessment: 'PRESENT' }))
+      .rejects.toThrow(/dossier_coverage_evidence_assessment_check/);
+  });
+
+  it('carries one evidence row per artifact per coverage', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A1', assessment: 'PRESENT' }], ids: ['A1'], present: 1 }))
+      .rejects.toThrow(/evidence_once_per_coverage/);
+  });
+
+  it('calls a facet with nothing behind it MISSING and nothing else', async () => {
+    await coverage('C1', { evidence: [] });
+    expect(await coverageRow()).toEqual({ level: 'NONE', assessment: 'MISSING', available: 0, present: 0, stale: 0, conflicting: 0, disallowed: 0, runs: 0, runs_usable: 0 });
+    await expect(coverage('C2', { facet: 'F2', evidence: [], assessment: 'PRESENT' })).rejects.toThrow(/coverage_assessment_is_the_rollup/);
+    await expect(coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A1', assessment: 'PRESENT' }], assessment: 'MISSING' })).rejects.toThrow(/coverage_assessment_is_the_rollup/);
+  });
+
+  it('refuses counts that do not add up to what is available', async () => {
+    await expect(coverage('C1', { stale: 1, assessment: 'STALE' })).rejects.toThrow(/coverage_counts_add_up/);
+    await expect(coverage('C1', { ids: ['A1', 'A3'] })).rejects.toThrow(/coverage_counts_add_up/);
+  });
+
+  it('refuses a count that is not the count of what it names', async () => {
+    await expect(coverage('C1', { available: 2, present: 2 })).rejects.toThrow(/coverage_names_what_it_counts/);
+  });
+
+  it('refuses usable runs among artifacts that are not present', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A3', assessment: 'DISALLOWED' }], runsUsable: 1 })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+    await expect(coverage('C1', { runs: 2 })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+  });
+});
+
+describe('a conclusion rests on present evidence', () => {
+  beforeEach(released);
+
+  it('accepts a conclusion on evidence assessed PRESENT for its facet', async () => {
+    await conclusion('K1', 'DEPENDENCY', 'A1');
+    await conclusion('K2', 'RISK', 'A2');
+    expect(await rows(`SELECT count(*)::int AS n FROM dossier_conclusion`)).toEqual([{ n: 2 }]);
+  });
+
+  /* What was disallowed for this customer holds nothing up. */
+  it('refuses a conclusion resting on the disallowed artifact', async () => {
+    await expect(conclusion('K1', 'DEPENDENCY', 'A3')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A3:DEPENDENCY in R1/);
+  });
+
+  it('refuses a conclusion resting on evidence assessed for a different facet', async () => {
+    await expect(conclusion('K1', 'RISK', 'A1')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A1:RISK/);
+  });
+
+  it('refuses a conclusion resting on an artifact no coverage row names', async () => {
+    await artifact('A-UNNAMED', { subject: 'org:unnamed', claim: 'Unnamed.' });
+    await expect(conclusion('K1', 'DEPENDENCY', 'A-UNNAMED')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A-UNNAMED/);
+  });
+});
+
+describe('a conclusion rests on an assessment no later than its build', () => {
+  it('refuses a conclusion resting on evidence assessed after the release was built', async () => {
+    await specs(); await mined();
+    await coverage('C1');
+    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }], assessedAt: T_RELEASE });
+    await estimate(); await policy(); await quotation(); await accepted(); await reviewed(); await release();
+    await conclusion('K1', 'DEPENDENCY', 'A1');
+    await expect(conclusion('K2', 'RISK', 'A2')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A2:RISK/);
+  });
+});
+
 describe('the estimate is a count and the price is a policy', () => {
-  beforeEach(async () => { await specs(); await coverage(); await coverage('C2', { facet: 'F2' }); await estimate(); await policy(); });
+  beforeEach(async () => { await covered(); await estimate(); await policy(); });
 
   it('quotes the estimate’s units at the policy’s rate', async () => {
     await quotation();
@@ -264,15 +575,6 @@ describe('the estimate is a count and the price is a policy', () => {
     expect(coverageLevel(2, 2)).toBe('SUPPORTED');
     expect(estimateUnits([{ facet: 'DEPENDENCY', level: 'THIN' }, { facet: 'RISK', level: 'THIN' }])).toBe(4);
     expect(COVERAGE_LEVELS).toEqual(['NONE', 'THIN', 'SUPPORTED']);
-  });
-
-  it('refuses coverage that says NONE and counts something, or counts nothing and says otherwise', async () => {
-    await expect(coverage('C3', { facet: 'F2', level: 'NONE', count: 1 })).rejects.toThrow(/coverage_none_is_zero|coverage_names_what_it_counts/);
-    await expect(coverage('C3', { facet: 'F2', level: 'THIN', count: 0, ids: `'{}'` })).rejects.toThrow(/coverage_none_is_zero/);
-  });
-
-  it('refuses coverage whose count is not the count of what it names', async () => {
-    await expect(coverage('C3', { facet: 'F2', level: 'THIN', count: 2, ids: `'{A1}'` })).rejects.toThrow(/coverage_names_what_it_counts/);
   });
 });
 
@@ -356,7 +658,7 @@ describe('the quote and the build are two snapshots', () => {
 });
 
 describe('an agent may not invent a price', () => {
-  beforeEach(async () => { await specs(); await coverage(); await coverage('C2', { facet: 'F2' }); await estimate(); });
+  beforeEach(async () => { await covered(); await estimate(); });
 
   /*
    * The structural form of the rule. A quoted number is a commitment, and with
@@ -407,44 +709,38 @@ describe('a refresh is a new release', () => {
 });
 
 describe('a conclusion is served at the class it was computed at', () => {
-  beforeEach(async () => { await released(); await mined(); });
-
-  const conclusion = (presentedAs: string, cls = 'COMPUTED_RESULT') => sql(`
-    INSERT INTO dossier_conclusion VALUES ('K1', 'R1', 'DEPENDENCY', 'They share one upstream producer.',
-      'Two of the five carry no customs record at all.', 'A1', '${cls}', '${presentedAs}')`);
+  beforeEach(released);
 
   /* A dossier is a serving surface and being well-written does not exempt it. */
   it('refuses presenting a computed result as something a source observed', async () => {
-    await expect(conclusion('SOURCE_OBSERVATION'))
+    await expect(conclusion('K1', 'DEPENDENCY', 'A1', { presentedAs: 'SOURCE_OBSERVATION' }))
       .rejects.toThrow(/conclusion_presented_at_its_class/);
   });
 
   it('refuses presenting it as a different derived class', async () => {
-    await expect(conclusion('MODEL_INFERENCE'))
+    await expect(conclusion('K1', 'DEPENDENCY', 'A1', { presentedAs: 'MODEL_INFERENCE' }))
       .rejects.toThrow(/conclusion_presented_at_its_class/);
   });
 
   it('accepts it presented as what it is', async () => {
-    await conclusion('COMPUTED_RESULT');
+    await conclusion('K1', 'DEPENDENCY', 'A1');
     expect(await rows(`SELECT presented_as FROM dossier_conclusion`)).toEqual([{ presented_as: 'COMPUTED_RESULT' }]);
   });
 
   /* An omitted gap reads as completeness. */
   it('refuses a conclusion that does not say what it did not cover', async () => {
-    await expect(sql(`INSERT INTO dossier_conclusion VALUES ('K1', 'R1', 'RISK', 'Fine.', '   ', 'A1', 'COMPUTED_RESULT', 'COMPUTED_RESULT')`))
-      .rejects.toThrow(/not_covered/);
+    await expect(conclusion('K1', 'DEPENDENCY', 'A1', { notCovered: '   ' })).rejects.toThrow(/not_covered/);
   });
 
   it('concludes once per facet per release', async () => {
-    await conclusion('COMPUTED_RESULT');
-    await expect(sql(`INSERT INTO dossier_conclusion VALUES ('K2', 'R1', 'DEPENDENCY', 'Again.', 'Again.', 'A1', 'COMPUTED_RESULT', 'COMPUTED_RESULT')`))
-      .rejects.toThrow(/conclusion_once_per_facet/);
+    await conclusion('K1', 'DEPENDENCY', 'A1');
+    await expect(conclusion('K2', 'DEPENDENCY', 'A1')).rejects.toThrow(/conclusion_once_per_facet/);
   });
 });
 
 describe('nothing has been asked', () => {
-  it('holds no spec, coverage, estimate, quotation, release, conclusion or delivery', async () => {
-    for (const table of ['dossier_spec', 'dossier_coverage', 'dossier_estimate', 'pricing_policy', 'dossier_quotation', 'dossier_release',
+  it('holds no spec, coverage, evidence, estimate, quotation, release, conclusion or delivery', async () => {
+    for (const table of ['dossier_spec', 'dossier_coverage', 'dossier_coverage_evidence', 'dossier_estimate', 'pricing_policy', 'dossier_quotation', 'dossier_release',
       'dossier_conclusion', 'corpus_candidate', 'customer_approval', 'dossier_delivery']) {
       expect(await rows(`SELECT 1 FROM ${table}`), table).toEqual([]);
     }

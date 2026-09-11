@@ -95,14 +95,14 @@ const artifactValues = (id: string, over: { run?: string; cls?: string; at?: str
     ${over.model === undefined ? 'NULL' : over.model === null ? 'NULL' : `'${over.model}'`},
     ${over.confidence === undefined || over.confidence === null ? 'NULL' : over.confidence},
     ${over.horizon ? `'${over.horizon}'` : 'NULL'},
-    ${over.rights ?? `'{READ,DERIVE}'`})`;
+    ${over.rights ?? `'{acquisition,normalization}'`})`;
 };
 
 const ARTIFACT_COLUMNS = `INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, model_id, confidence, horizon_ends_at, rights) VALUES `;
 
 const inputRow = (id: string, over: { artifact?: string; at?: string; record?: string; knownAt?: string; rights?: string } = {}) =>
   `INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
-   VALUES ('${id}', '${over.artifact ?? 'A1'}', '${over.at ?? T_DONE}', 'SOURCE_RECORD', '${over.record ?? 'REC-1'}', '${over.knownAt ?? T_KNOWN}', ${over.rights ?? `'{READ,DERIVE}'`})`;
+   VALUES ('${id}', '${over.artifact ?? 'A1'}', '${over.at ?? T_DONE}', 'SOURCE_RECORD', '${over.record ?? 'REC-1'}', '${over.knownAt ?? T_KNOWN}', ${over.rights ?? `'{acquisition,normalization}'`})`;
 
 /** An artifact and the one input that makes it a derivation rather than an assertion. */
 const artifact = (id = 'A1', over: Parameters<typeof artifactValues>[1] = {}, inputOver: Parameters<typeof inputRow>[1] = {}) =>
@@ -224,7 +224,7 @@ describe('a failed run produced nothing', () => {
   it('refuses an artifact that correctly reports the failed run it came from', async () => {
     await run('R1', { status: 'FAILED', failure: 'MINING_INPUT_SCHEMA_MISMATCH' });
     await expect(tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights)
-      VALUES ('A1', 'R1', 'FAILED', 'COMPUTED_RESULT', 'facility:1', 'supplies facility:2', '${T_DONE}', '{READ}')`))
+      VALUES ('A1', 'R1', 'FAILED', 'COMPUTED_RESULT', 'facility:1', 'supplies facility:2', '${T_DONE}', '{acquisition}')`))
       .rejects.toThrow(/artifact_only_from_a_successful_run/);
   });
 
@@ -302,7 +302,7 @@ describe('an artifact cannot appear in its own ancestry', () => {
   it('refuses an artifact that reads itself', async () => {
     await expect(sql(`INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind,
       input_artifact_id, input_claim_class, input_computed_at, input_rights)
-      VALUES ('I2', 'A1', '${T_DONE}', 'DERIVED_ARTIFACT', 'A1', 'COMPUTED_RESULT', '${T_DONE}', '{READ}')`))
+      VALUES ('I2', 'A1', '${T_DONE}', 'DERIVED_ARTIFACT', 'A1', 'COMPUTED_RESULT', '${T_DONE}', '{acquisition}')`))
       .rejects.toThrow(/input_not_itself|input_artifact_computed_earlier/);
   });
 
@@ -316,7 +316,7 @@ describe('an artifact cannot appear in its own ancestry', () => {
     await artifact('A2', { run: 'R2', at: T_LATER });
     await expect(sql(`INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind,
       input_artifact_id, input_claim_class, input_computed_at, input_rights)
-      VALUES ('I3', 'A1', '${T_DONE}', 'DERIVED_ARTIFACT', 'A2', 'COMPUTED_RESULT', '${T_LATER}', '{READ}')`))
+      VALUES ('I3', 'A1', '${T_DONE}', 'DERIVED_ARTIFACT', 'A2', 'COMPUTED_RESULT', '${T_LATER}', '{acquisition}')`))
       .rejects.toThrow(/input_artifact_computed_earlier/);
   });
 
@@ -332,7 +332,7 @@ describe('an artifact cannot appear in its own ancestry', () => {
     await artifact('A2', { run: 'R2', at: T_DONE });
     await expect(sql(`INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind,
       input_artifact_id, input_claim_class, input_computed_at, input_rights)
-      VALUES ('I4', 'A2', '${T_DONE}', 'DERIVED_ARTIFACT', 'A1', 'COMPUTED_RESULT', '${T_DONE}', '{READ,DERIVE}')`))
+      VALUES ('I4', 'A2', '${T_DONE}', 'DERIVED_ARTIFACT', 'A1', 'COMPUTED_RESULT', '${T_DONE}', '{acquisition,normalization}')`))
       .rejects.toThrow(/input_artifact_computed_earlier/);
   });
 
@@ -341,7 +341,7 @@ describe('an artifact cannot appear in its own ancestry', () => {
     await tx(`${ARTIFACT_COLUMNS}${artifactValues('A2', { run: 'R2', at: T_LATER })};
       INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind,
         input_artifact_id, input_claim_class, input_computed_at, input_rights)
-      VALUES ('I-A2', 'A2', '${T_LATER}', 'DERIVED_ARTIFACT', 'A1', 'COMPUTED_RESULT', '${T_DONE}', '{READ,DERIVE}')`);
+      VALUES ('I-A2', 'A2', '${T_LATER}', 'DERIVED_ARTIFACT', 'A1', 'COMPUTED_RESULT', '${T_DONE}', '{acquisition,normalization}')`);
     expect(await rows(`SELECT input_artifact_id FROM artifact_input WHERE artifact_id = 'A2'`))
       .toEqual([{ input_artifact_id: 'A1' }]);
   });
@@ -352,7 +352,7 @@ describe('an artifact cannot appear in its own ancestry', () => {
     await expect(tx(`${ARTIFACT_COLUMNS}${artifactValues('A2', { run: 'R2', at: T_LATER })};
       INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind,
         input_artifact_id, input_claim_class, input_computed_at, input_rights)
-      VALUES ('I-A2', 'A2', '${T_LATER}', 'DERIVED_ARTIFACT', 'A1', 'MODEL_INFERENCE', '${T_DONE}', '{READ}')`))
+      VALUES ('I-A2', 'A2', '${T_LATER}', 'DERIVED_ARTIFACT', 'A1', 'MODEL_INFERENCE', '${T_DONE}', '{acquisition}')`))
       .rejects.toThrow(/input_artifact_class|foreign key/i);
   });
 });
@@ -442,19 +442,19 @@ describe('rights are inherited, never widened', () => {
    * and the aggregate is redistributed because nobody recorded the descent.
    */
   it('refuses an artifact claiming an operation its input does not carry', async () => {
-    await expect(artifact('A1', { rights: `'{READ,DERIVE,REDISTRIBUTE}'` }, { rights: `'{READ,DERIVE}'` }))
+    await expect(artifact('A1', { rights: `'{acquisition,normalization,redistribution}'` }, { rights: `'{acquisition,normalization}'` }))
       .rejects.toThrow(/artifact_rights_wider_than_inputs/);
   });
 
   it('refuses a later input that is narrower than the rights already claimed', async () => {
-    await artifact('A1', { rights: `'{READ,DERIVE}'` }, { rights: `'{READ,DERIVE}'` });
-    await expect(tx(inputRow('I2', { record: 'REC-2', rights: `'{READ}'` })))
+    await artifact('A1', { rights: `'{acquisition,normalization}'` }, { rights: `'{acquisition,normalization}'` });
+    await expect(tx(inputRow('I2', { record: 'REC-2', rights: `'{acquisition}'` })))
       .rejects.toThrow(/artifact_rights_wider_than_inputs/);
   });
 
   it('accepts rights no wider than every input', async () => {
-    await artifact('A1', { rights: `'{READ}'` }, { rights: `'{READ,DERIVE}'` });
-    expect(await rows(`SELECT rights FROM derived_artifact`)).toEqual([{ rights: ['READ'] }]);
+    await artifact('A1', { rights: `'{acquisition}'` }, { rights: `'{acquisition,normalization}'` });
+    expect(await rows(`SELECT rights FROM derived_artifact`)).toEqual([{ rights: ['acquisition'] }]);
   });
 });
 
@@ -556,5 +556,29 @@ describe('the ledger starts empty', () => {
     await spec();
     await expect(run()).rejects.toThrow(/corpus_release_id|foreign key/i);
     expect(await rows(`SELECT release_id FROM releases`)).toEqual([]);
+  });
+});
+
+describe('rights are one vocabulary', () => {
+  beforeEach(async () => { await corpus(); await spec(); await run(); });
+
+  /*
+   * A source-policy operation name is not a permitted use. Two vocabularies
+   * in one column let a comparison between them succeed or fail by accident,
+   * which is what happened before this check existed.
+   */
+  it('refuses an artifact whose rights name a source operation rather than a permitted use', async () => {
+    await expect(artifact('A1', { rights: `'{DERIVE,INGEST}'` }, { rights: `'{DERIVE,INGEST}'` }))
+      .rejects.toThrow(/artifact_rights_are_permitted_uses/);
+  });
+
+  it('refuses an input whose rights are not permitted uses', async () => {
+    await expect(artifact('A1', { rights: `'{acquisition}'` }, { rights: `'{acquisition,READ}'` }))
+      .rejects.toThrow(/input_rights_are_permitted_uses/);
+  });
+
+  it('accepts an artifact with no rights at all, which is a floor rather than an error', async () => {
+    await artifact('A1', { rights: `'{}'` }, { rights: `'{}'` });
+    expect(await rows(`SELECT rights FROM derived_artifact`)).toEqual([{ rights: [] }]);
   });
 });

@@ -78,9 +78,9 @@ async function mined() {
     ['A-CNT', 'R-CNT', 'COMPUTED_RESULT', `, NULL, NULL`],
   ] as const) {
     await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, model_id, confidence, rights)
-      VALUES ('${id}', '${run}', 'SUCCEEDED', '${cls}', 'org:meridian', 'Concentration in the apparent supply network.', '${T_DONE}'${extra}, '{READ,DERIVE}');
+      VALUES ('${id}', '${run}', 'SUCCEEDED', '${cls}', 'org:meridian', 'Concentration in the apparent supply network.', '${T_DONE}'${extra}, '{acquisition,normalization}');
       INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
-      VALUES ('I-${id}', '${id}', '${T_DONE}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', '{READ,DERIVE}')`);
+      VALUES ('I-${id}', '${id}', '${T_DONE}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', '{acquisition,normalization}')`);
   }
 }
 

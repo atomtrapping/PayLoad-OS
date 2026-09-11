@@ -25,13 +25,28 @@ export function DossierLifecycleView({ receipt }: { receipt: DossierLifecycleRec
       <Section title="Coverage, the estimate and the quotation" id="coverage">
         <div className="surface p-0 overflow-x-auto" tabIndex={0}>
           <table className="ledger-table w-full" data-testid="dossier-coverage">
-            <thead><tr><th scope="col">Facet</th><th scope="col">Level</th><th scope="col">Artifacts</th><th scope="col">Units</th><th scope="col">Basis</th></tr></thead>
+            <thead><tr><th scope="col">Facet</th><th scope="col">Level</th><th scope="col">Assessment</th><th scope="col">Artifacts, each assessed</th><th scope="col">Units</th><th scope="col">Basis</th></tr></thead>
             <tbody>
               {receipt.coverage.map((c) => (
-                <tr key={c.facet} data-facet={c.facet} data-level={c.level}>
+                <tr key={c.facet} data-facet={c.facet} data-level={c.level} data-assessment={c.assessment}>
                   <td><span className="id">{c.facet}</span></td>
                   <td><span className="pill" style={{ color: c.level === 'NONE' ? 'var(--status-conditional)' : 'var(--text-muted)' }}>{c.level}</span></td>
-                  <td className="text-[12px]">{c.artifactIds.length ? c.artifactIds.map((id) => <span key={id} className="id block">{id}</span>) : <span style={{ color: 'var(--text-muted)' }}>none</span>}</td>
+                  <td>
+                    <span className="pill" style={{ color: c.assessment === 'PRESENT' ? 'var(--text-muted)' : 'var(--status-conditional)' }}>{c.assessment}</span>
+                    {c.artifactsAvailable > 0 && <span className="block mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>{c.artifactsPresent} present · {c.artifactsAvailable - c.artifactsPresent} withheld</span>}
+                  </td>
+                  <td className="text-[12px]">
+                    {c.evidence.length ? (
+                      <ul className="m-0 pl-0 list-none flex flex-col gap-0.5">
+                        {c.evidence.map((e) => (
+                          <li key={e.artifactId} data-evidence={e.artifactId} data-evidence-assessment={e.assessment}>
+                            <span className="id mr-1.5">{e.artifactId}</span><span className="pill mr-1.5" style={{ color: e.assessment === 'PRESENT' ? 'var(--text-muted)' : 'var(--status-conditional)' }}>{e.assessment}</span>
+                            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{e.because}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <span style={{ color: 'var(--text-muted)' }}>none</span>}
+                  </td>
                   <td>{c.units}</td>
                   <td className="cell-wide" style={{ color: 'var(--text-muted)' }}>{c.basis}</td>
                 </tr>
@@ -59,7 +74,10 @@ export function DossierLifecycleView({ receipt }: { receipt: DossierLifecycleRec
                 </div>
               ))}
               {release.holes.map((h) => (
-                <p key={h.facet} className="m-0 text-[12px]" data-hole={h.facet} style={{ color: 'var(--status-conditional)' }}><span className="id mr-1.5">{h.facet}</span>{h.level}: {h.basis}</p>
+                <p key={h.facet} className="m-0 text-[12px]" data-hole={h.facet} data-hole-assessment={h.assessment} style={{ color: 'var(--status-conditional)' }}>
+                  <span className="id mr-1.5">{h.facet}</span><span className="pill mr-1.5">{h.level}</span><span className="pill mr-1.5">{h.assessment}</span>
+                  {h.artifactsAvailable} bearing on it, {h.artifactsUsable} usable: {h.basis}
+                </p>
               ))}
               <p className="m-0 text-[11.5px]" data-testid={`dossier-delivery-${release.version}`} style={{ color: 'var(--text-muted)' }}>
                 Delivered by <span className="id">{release.delivery.attemptId}</span> <span className="pill">{release.delivery.outcome}</span> · reconciled <span className="pill">{release.delivery.reconciliation.found}</span> · {release.delivery.receiptBasis}

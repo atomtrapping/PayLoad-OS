@@ -10,13 +10,19 @@
  *
  * A simulated buyer asks three things of the Caravan demonstration corpus:
  * who the suppliers are, what the lots depend on, and what would interrupt
- * access to the sampling floor. The first has nothing behind it and the
- * dossier says so — NONE is a coverage level, and the hole is a row. The
- * second rests on the mining engine's concentration artifacts, which are real
- * computations over the committed corpus. The third rests on the spatial
- * comparison, a deterministic workload whose baseline was observed unchanged.
- * Every conclusion points at its artifact by foreign key and is presented at
- * the class it was computed at.
+ * access to the sampling floor. Every artifact bearing on a facet is assessed
+ * against the right a delivery exercises, its validation, its horizon and the
+ * records it read, and the facet's coverage row carries the counts and the
+ * headline: the first facet has nothing behind it and is MISSING; the second
+ * rests on the mining engine's concentration artifacts, one of which carries
+ * customer_delivery and one of which does not, so its headline is
+ * DISALLOWED with one present and one withheld; the third has the spatial
+ * comparison behind it, a deterministic computation whose source registration
+ * permits nothing the corpus vocabulary calls a use, so it too is a hole —
+ * DISALLOWED, with one artifact in it the buyer may not receive. The one
+ * conclusion rests on the one present artifact, by foreign key, and is
+ * presented at the class it was computed at; the database refuses a
+ * conclusion resting on the withheld one.
  *
  * TWO APPROVALS, BOTH OF BYTES
  *
@@ -40,7 +46,8 @@
  *
  * Version 1's dependency conclusion stated what it did not cover and left out
  * the three records the corpus had taken back before the run — a true
- * omission, found in the run's own record. Version 2 restates that sentence.
+ * omission, found in the run's own record and in the ledger's retraction
+ * table. Version 2 restates that sentence.
  * It is a new proposal through the same gate, naming version 1's delivery
  * operation as what it corrects, reviewed again, authorized again, released as
  * a successor with the reason on the row, and delivered again. Version 1
@@ -49,8 +56,8 @@
  */
 import { DELIVERABLE_FOOTER, PROVENANCE_CHAIN } from '@/domain/firmIdentity';
 import {
-  COVERAGE_LEVEL_UNITS, ESTIMATE_METHOD, coverageLevel, estimateUnits,
-  type CoverageLevel, type DossierFacet, type DossierStage,
+  COVERAGE_LEVEL_UNITS, DELIVERY_RIGHT, ESTIMATE_METHOD, assessEvidence, coverageLevel, estimateUnits, rollupAssessment,
+  type CoverageAssessment, type CoverageLevel, type DossierFacet, type DossierStage, type EvidenceUnderAssessment,
 } from '@/domain/dossierService';
 import { sqlArray, sqlText } from '@/db/ddl';
 import { digestOf, type GovernanceLedger, type GovernedAct, type Refusal } from './ledger';
@@ -81,9 +88,17 @@ export const DOSSIER_ID = 'DOSSIER-DEMO-1';
 export const QUESTION = 'Which specialty-cargo lots in the current Caravan release rest on a single source, what do the samples drawn from them depend on, and what would interrupt access to the sampling floor?';
 export const PRICING_POLICY = { policyId: 'PRICING-2026-DEMONSTRATION', unitPriceMinor: 120000, currency: 'CAD', unit: 'facet-coverage-unit' } as const;
 
-export interface CoverageRow { facet: DossierFacet; level: CoverageLevel; artifactsAvailable: number; runsRepresented: number; artifactIds: readonly string[]; basis: string; units: number }
+/** One artifact bearing on a facet, with what it was assessed as and why. Its claim is not here: a withheld artifact is named, not quoted. */
+export interface EvidenceRow { artifactId: string; runId: string; assessment: CoverageAssessment; because: string }
+export interface CoverageRow {
+  facet: DossierFacet; level: CoverageLevel; assessment: CoverageAssessment;
+  artifactsAvailable: number; artifactsPresent: number; artifactsStale: number; artifactsConflicting: number; artifactsDisallowed: number;
+  runsRepresented: number; runsUsable: number;
+  artifactIds: readonly string[]; evidence: readonly EvidenceRow[]; basis: string; units: number;
+}
 export interface ConclusionRow { facet: DossierFacet; statement: string; notCovered: string; artifactId: string; artifactClass: string; presentedAs: string }
-export interface HoleRow { facet: DossierFacet; level: CoverageLevel; basis: string }
+/** A facet nothing usable bears on. What does bear on it is counted, and its assessment says why it is not usable. */
+export interface HoleRow { facet: DossierFacet; level: CoverageLevel; assessment: CoverageAssessment; artifactsAvailable: number; artifactsUsable: number; basis: string }
 
 export interface DeliveryRecord {
   operationId: string; attemptId: string; outcome: string; venueReceipt: string | null;
@@ -112,7 +127,7 @@ export interface DossierLifecycleReceipt {
   readonly releases: readonly ReleaseRecord[];
   readonly correction: { successorVersion: number; predecessorVersion: number; because: string; correctsOperationId: string; proposalId: string };
   readonly refusals: readonly Refusal[];
-  readonly counts: { specs: number; coverage: number; estimates: number; quotations: number; releases: number; conclusions: number; deliveries: number; proposals: number; authorizations: number; attempts: number; refusals: number };
+  readonly counts: { specs: number; coverage: number; evidence: number; estimates: number; quotations: number; releases: number; conclusions: number; deliveries: number; proposals: number; authorizations: number; attempts: number; refusals: number };
 }
 
 const { customer, otherCustomer, steward, secondReviewer, agent } = PRINCIPALS;
@@ -129,28 +144,59 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   /* ── request → specification ── */
   const facets: DossierFacet[] = ['SUPPLIER_IDENTITY', 'DEPENDENCY', 'RISK'];
   await ledger.write([
-    `INSERT INTO dossier_spec VALUES (${sqlText(DOSSIER_ID)}, ${sqlText(customer.principalId)}, ${sqlText(QUESTION)}, 'SPEC', '${T.asked}')`,
+    `INSERT INTO dossier_spec VALUES (${sqlText(DOSSIER_ID)}, ${sqlText(customer.principalId)}, ${sqlText(QUESTION)}, 'SPEC', '${T.asked}', '${DELIVERY_RIGHT}')`,
     ...facets.map((facet) => `INSERT INTO dossier_facet VALUES (${sqlText(`${DOSSIER_ID}-${facet}`)}, ${sqlText(DOSSIER_ID)}, '${facet}')`),
   ].join(';\n'));
   stages.push({ stage: 'SPEC', at: T.asked, wrote: `dossier_spec ${DOSSIER_ID}, ${facets.length} facets` });
 
-  /* ── coverage: what the inventory holds, per facet, named ── */
-  const lotArtifacts = seeded.caravan.run.result.artifacts.filter((a) => a.subject.startsWith('LOT-')).map((a) => a.artifactId);
-  const assessed: Array<{ facet: DossierFacet; artifactIds: readonly string[]; runsRepresented: number; basis: string }> = [
-    { facet: 'SUPPLIER_IDENTITY', artifactIds: [], runsRepresented: 0, basis: 'No derived artifact in either demonstration run bears on supplier identity. The corpus surfaces lots and samples, not the parties behind them.' },
-    { facet: 'DEPENDENCY', artifactIds: lotArtifacts, runsRepresented: 1, basis: `Evidence-concentration artifacts over the two lots in ${seeded.caravan.releaseId}, from one run (${seeded.caravan.run.result.runId}).` },
-    { facet: 'RISK', artifactIds: [seeded.spatial.artifact.artifactId], runsRepresented: 1, basis: `The spatial baseline-versus-scenario comparison over the synthetic sampling floor, from one run (${seeded.spatial.run.runId}).` },
-  ];
-  const coverage: CoverageRow[] = assessed.map((entry) => {
-    const level = coverageLevel(entry.artifactIds.length, entry.runsRepresented);
-    return { ...entry, level, artifactsAvailable: entry.artifactIds.length, units: COVERAGE_LEVEL_UNITS[level] };
-  });
-  await ledger.write(coverage.map((c) =>
-    `INSERT INTO dossier_coverage VALUES (${sqlText(`COV-${c.facet}`)}, ${sqlText(`${DOSSIER_ID}-${c.facet}`)}, '${c.level}', ${c.artifactsAvailable}, ${c.runsRepresented}, ${sqlArray(c.artifactIds)}, ${sqlText(c.basis)}, '${T.covered}')`).join(';\n'));
-  await stage('COVERAGE', T.covered, `dossier_coverage × ${coverage.length}: ${coverage.map((c) => `${c.facet}=${c.level}`).join(', ')}`);
+  /* ── coverage: every artifact bearing on a facet, assessed; the row is the sum ── */
+  const takenBack = new Map((await ledger.rows<{ record_id: string; kind: 'CORRECTION' | 'WITHDRAWAL' }>(
+    `SELECT record_id, kind FROM retracted_record WHERE issued_at <= '${T.covered}' ORDER BY record_id`)).map((r) => [r.record_id, r.kind]));
+  type Bearing = EvidenceUnderAssessment & { runId: string };
+  const bearing = (a: { artifactId: string; subject: string; claim: string; validation: string; horizonEndsAt: string | null; rights: readonly string[]; inputs: ReadonlyArray<{ recordId: string }> }, runId: string): Bearing =>
+    ({ artifactId: a.artifactId, subject: a.subject, claim: a.claim, validation: a.validation, horizonEndsAt: a.horizonEndsAt, rights: a.rights, inputRecordIds: a.inputs.map((i) => i.recordId), runId });
+  const lotArtifacts = seeded.caravan.run.result.artifacts.filter((a) => a.subject.startsWith('LOT-')).map((a) => bearing(a, seeded.caravan.run.result.runId));
+  const spatialArtifact = bearing(seeded.spatial.artifact, seeded.spatial.run.runId);
+  const terms = seeded.spatial.registrationTerms;
 
-  await ledger.refuse('count coverage for a facet as NONE while naming an artifact',
-    `INSERT INTO dossier_coverage VALUES ('COV-BAD', ${sqlText(`${DOSSIER_ID}-RISK`)}, 'NONE', 1, 1, '{"x"}', 'A hole that names something.', '${T.covered}')`);
+  const assess = (facet: DossierFacet, list: readonly Bearing[], basis: (rollup: ReturnType<typeof rollupAssessment>) => string): CoverageRow => {
+    const alongside = list.map(({ artifactId, subject, claim }) => ({ artifactId, subject, claim }));
+    const evidence: EvidenceRow[] = list.map((e) => ({ artifactId: e.artifactId, runId: e.runId, ...assessEvidence(e, { assessedAt: T.covered, requiredRight: DELIVERY_RIGHT, takenBack, alongside }) }));
+    const rollup = rollupAssessment(evidence.map((e) => e.assessment));
+    const runsRepresented = new Set(evidence.map((e) => e.runId)).size;
+    const runsUsable = new Set(evidence.filter((e) => e.assessment === 'PRESENT').map((e) => e.runId)).size;
+    const level = coverageLevel(rollup.present, runsUsable);
+    return {
+      facet, level, assessment: rollup.assessment,
+      artifactsAvailable: evidence.length, artifactsPresent: rollup.present, artifactsStale: rollup.stale, artifactsConflicting: rollup.conflicting, artifactsDisallowed: rollup.disallowed,
+      runsRepresented, runsUsable, artifactIds: evidence.map((e) => e.artifactId), evidence, basis: basis(rollup), units: COVERAGE_LEVEL_UNITS[level],
+    };
+  };
+  const coverage: CoverageRow[] = [
+    assess('SUPPLIER_IDENTITY', [], () => 'No derived artifact in either demonstration run bears on supplier identity. The corpus surfaces lots and samples, not the parties behind them.'),
+    assess('DEPENDENCY', lotArtifacts, (r) => `${lotArtifacts.length} evidence-concentration artifacts over the lots in ${seeded.caravan.releaseId}, from one run (${seeded.caravan.run.result.runId}): ${r.present} may be delivered to this customer and ${r.disallowed} may not, because its rights do not carry ${DELIVERY_RIGHT}.`),
+    assess('RISK', [spatialArtifact], () => `One computation bears on it — the spatial baseline-versus-scenario comparison from ${seeded.spatial.run.runId} — and may not be delivered to this customer: its source registration permits ${terms.permittedPurposes.join(', ')} to ${terms.allowedAudiences.join(', ')} audiences only, so its rights carry no corpus use at all, ${DELIVERY_RIGHT} included. Nothing here rests on it.`),
+  ];
+  const coverageRow = (c: Pick<CoverageRow, 'facet' | 'level' | 'assessment' | 'artifactsAvailable' | 'artifactsPresent' | 'artifactsStale' | 'artifactsConflicting' | 'artifactsDisallowed' | 'runsRepresented' | 'runsUsable' | 'artifactIds' | 'basis'>, id = `COV-${c.facet}`) =>
+    `INSERT INTO dossier_coverage (coverage_id, dossier_facet_id, level, assessment, artifacts_available, artifacts_present, artifacts_stale, artifacts_conflicting, artifacts_disallowed, runs_represented, runs_usable, artifact_ids, basis, assessed_at)
+     VALUES (${sqlText(id)}, ${sqlText(`${DOSSIER_ID}-${c.facet}`)}, '${c.level}', '${c.assessment}', ${c.artifactsAvailable}, ${c.artifactsPresent}, ${c.artifactsStale}, ${c.artifactsConflicting}, ${c.artifactsDisallowed},
+      ${c.runsRepresented}, ${c.runsUsable}, ${sqlArray(c.artifactIds)}, ${sqlText(c.basis)}, '${T.covered}')`;
+  const evidenceRow = (coverageId: string, e: EvidenceRow, i: number) =>
+    `INSERT INTO dossier_coverage_evidence VALUES (${sqlText(`${coverageId}-E${i}`)}, ${sqlText(coverageId)}, ${sqlText(e.artifactId)}, ${sqlText(e.runId)}, '${e.assessment}', ${sqlText(e.because)})`;
+  const [supplierIdentity, dependency, risk] = coverage;
+
+  // A facet with nothing behind it, written as PRESENT: the rollup CHECK refuses the headline before any trigger runs.
+  await ledger.refuse('call a facet with nothing behind it PRESENT', coverageRow({ ...supplierIdentity, assessment: 'PRESENT' }, 'COV-BAD-1'));
+  // The spatial artifact written as PRESENT, counts and level consistent with that: the evidence trigger recomputes it from the artifact's rights and refuses.
+  await ledger.refuse('label the spatial computation PRESENT for this customer', [
+    coverageRow({ ...risk, level: 'THIN', assessment: 'PRESENT', artifactsPresent: 1, artifactsDisallowed: 0, runsUsable: 1 }, 'COV-BAD-2'),
+    evidenceRow('COV-BAD-2', { ...risk.evidence[0], assessment: 'PRESENT', because: 'It would be convenient.' }, 0),
+  ].join(';\n'));
+  // The withheld lot artifact counted toward the level: the CHECK relating the level to the present count refuses.
+  await ledger.refuse('count the withheld lot artifact toward the level', coverageRow({ ...dependency, level: 'SUPPORTED' }, 'COV-BAD-3'));
+
+  await ledger.write(coverage.flatMap((c) => [coverageRow(c), ...c.evidence.map((e, i) => evidenceRow(`COV-${c.facet}`, e, i))]).join(';\n'));
+  await stage('COVERAGE', T.covered, `dossier_coverage × ${coverage.length}: ${coverage.map((c) => `${c.facet}=${c.level}/${c.assessment}${c.artifactsAvailable ? ` (${c.artifactsPresent} present, ${c.artifactsAvailable - c.artifactsPresent} withheld)` : ''}`).join(', ')}; dossier_coverage_evidence × ${coverage.reduce((n, c) => n + c.evidence.length, 0)}`);
 
   /* ── deterministic estimate: a count over the coverage rows ── */
   const units = estimateUnits(coverage);
@@ -177,7 +223,7 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   const scope = await ledger.govern({
     tag: 'DOSSIER-SCOPE', operationKind: 'DOSSIER_SCOPE', counterparty: customer.principalId, action: quotationAction,
     doingNothing: 'The question stays unanswered and the buyer proceeds on the supplier’s own account of itself.',
-    against: `One of three facets has no evidence behind it at all, and the other two rest on one run each. The dossier will say so on every page, and the buyer is paying ${amountMinor / 100} ${PRICING_POLICY.currency} to be told where the holes are.`,
+    against: `One of three facets has nothing behind it; one has a single computation behind it that the firm may not deliver to this customer; the third rests on one artifact from one run, beside a second the firm may not deliver. The dossier will say so on every page, and the buyer is paying ${amountMinor / 100} ${PRICING_POLICY.currency} to be told where the holes are and what is being withheld.`,
     sections: ['Proposed action', 'Economics and uncertainty', 'Evidence and alternatives'],
     authoredBy: agent, preparedBy: agent, reviewer: customer, response: 'APPROVE',
     reasoning: 'Accepted at the quoted amount. The holes are what I want to know about.',
@@ -186,26 +232,28 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   });
   await stage('SCOPE', T.accepted, `${scope.proposalId} → ${scope.packetId} (${scope.actionDigest.slice(0, 19)}…) → ${scope.reviewId} APPROVE by ${scope.reviewer} → ${scope.authorizationId}`);
 
-  /* ── build: conclusions per facet, at their class, resting on their artifacts ── */
-  const lot = seeded.caravan.run.result.artifacts.find((a) => a.artifactId === lotArtifacts[0])!;
-  const takenBack = seeded.caravan.run.takenBack;
-  const dependencyNotCoveredV1 = `The second lot, ${lotArtifacts.slice(1).join(', ')}, is in the coverage and not in this statement. Samples are not lots and are not counted here.`;
-  const dependencyNotCoveredV2 = `${dependencyNotCoveredV1} Before the run, the corpus had taken back ${takenBack.length} records (${takenBack.map((t) => `${t.recordId} under ${t.retractionId}`).join('; ')}); the artifact read none of them, and version 1 did not say so.`;
+  /* ── build: one conclusion, at its class, resting on the one present artifact; two holes, each with its assessment ── */
+  const present = dependency.evidence.find((e) => e.assessment === 'PRESENT')!;
+  const withheld = dependency.evidence.filter((e) => e.assessment !== 'PRESENT');
+  const lot = seeded.caravan.run.result.artifacts.find((a) => a.artifactId === present.artifactId)!;
+  const takenBackByRun = seeded.caravan.run.takenBack;
+  const dependencyNotCoveredV1 = `${withheld.map((e) => `${e.artifactId} bears on this facet and is ${e.assessment} for this customer (${e.because.replace(/\.$/, '')})`).join('; ')}, so this statement rests on ${present.artifactId} alone. Samples are not lots and are not counted here.`;
+  const dependencyNotCoveredV2 = `${dependencyNotCoveredV1} Before the run, the corpus had taken back ${takenBackByRun.length} records (${takenBackByRun.map((t) => `${t.recordId} under ${t.retractionId}`).join('; ')}); the artifact read none of them, and version 1 did not say so.`;
   const conclusionsFor = (dependencyNotCovered: string): ConclusionRow[] => [
     { facet: 'DEPENDENCY', statement: lot.claim, notCovered: dependencyNotCovered, artifactId: lot.artifactId, artifactClass: lot.claimClass, presentedAs: lot.claimClass },
-    { facet: 'RISK', statement: seeded.spatial.artifact.claim, notCovered: 'A synthetic single-floor fixture, manually annotated; no measured building, no polygon inference, and the Store passage was declared unknown in the baseline.', artifactId: seeded.spatial.artifact.artifactId, artifactClass: seeded.spatial.artifact.claimClass, presentedAs: seeded.spatial.artifact.claimClass },
   ];
-  const holes: HoleRow[] = coverage.filter((c) => c.level === 'NONE').map((c) => ({ facet: c.facet, level: c.level, basis: c.basis }));
+  const holes: HoleRow[] = coverage.filter((c) => c.level === 'NONE').map((c) => ({ facet: c.facet, level: c.level, assessment: c.assessment, artifactsAvailable: c.artifactsAvailable, artifactsUsable: c.artifactsPresent, basis: c.basis }));
   const compiled = (version: number, conclusions: readonly ConclusionRow[]) => ({
     dossierId: DOSSIER_ID, version, recipient: customer.principalId, question: QUESTION, quotationDigest: quotation.digest, builtSnapshot: snapshot,
+    coverage: coverage.map((c) => ({ facet: c.facet, level: c.level, assessment: c.assessment, artifactsAvailable: c.artifactsAvailable, artifactsPresent: c.artifactsPresent })),
     conclusions, holes, footer: DELIVERABLE_FOOTER, chain: PROVENANCE_CHAIN,
-    notClaimed: ['No conclusion is validated; every artifact is NOT_VALIDATED.', 'Nothing here is a statement about a real supplier, lot or building.'],
+    notClaimed: ['No conclusion is validated; every artifact is NOT_VALIDATED.', 'Nothing here is a statement about a real supplier, lot or building.', 'What was withheld is named by identifier and assessment; its claim is not in this release.'],
   });
   const conclusionsV1 = conclusionsFor(dependencyNotCoveredV1);
   const releaseV1 = compiled(1, conclusionsV1);
   const releaseDigestV1 = digestOf(releaseV1);
   const draftDigest = digestOf(compiled(1, conclusionsV1.map((c) => ({ ...c, notCovered: 'TBD' }))));
-  await stage('BUILD', T.built, `compiled release v1 over ${conclusionsV1.length} conclusions and ${holes.length} stated hole, digest ${releaseDigestV1.slice(0, 19)}…; built snapshot equals the quoted snapshot because the corpus did not move between them`);
+  await stage('BUILD', T.built, `compiled release v1 over ${conclusionsV1.length} conclusion and ${holes.length} stated holes (${holes.map((h) => `${h.facet}=${h.assessment}`).join(', ')}), digest ${releaseDigestV1.slice(0, 19)}…; built snapshot equals the quoted snapshot because the corpus did not move between them`);
 
   const releaseRow = (over: { id?: string; version?: number; digest?: string; auth?: string; scopeAuth?: string; builtAt?: string; releasedAt?: string } = {}) =>
     `INSERT INTO dossier_release (dossier_release_id, dossier_id, recipient_id, version, quotation_id, quoted_snapshot, quoted_at, quotation_digest, scope_authorization_id,
@@ -226,10 +274,10 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   const reviewV1 = await ledger.govern({
     tag: 'DOSSIER-RELEASE-1', operationKind: 'DOSSIER_RELEASE', counterparty: customer.principalId, action: releaseV1,
     doingNothing: 'The accepted scope goes undelivered and the quotation lapses at its expiry.',
-    against: 'Both conclusions rest on one run each and neither artifact is validated. The dependency statement covers one of the two lots in the coverage.',
+    against: 'The one conclusion rests on one artifact from one run and is not validated. Two of three facets are holes, one of them with a computation behind it that this customer may not receive.',
     sections: ['Proposed action', 'Evidence and alternatives'],
     authoredBy: agent, preparedBy: agent, reviewer: steward, response: 'APPROVE',
-    reasoning: 'Each conclusion is presented at its computed class and states what it did not cover. The hole in supplier identity is on the page. Release.',
+    reasoning: 'The conclusion is presented at its computed class and states what it did not cover, the withheld lot artifact included. Both holes are on the page with their assessment. Release.',
     releaseId: seeded.caravan.releaseId, policyVersion: 'dossier-release@1',
     proposedAt: T.built, reviewedAt: T.reviewed, grantedAt: T.reviewed, expiresAt: T.expires,
   });
@@ -238,10 +286,13 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   await ledger.refuse('release the draft the reviewer did not see', releaseRow({ digest: draftDigest }));
   await ledger.write(releaseRow());
   await ledger.refuse('present the spatial computation as something a source observed',
-    `INSERT INTO dossier_conclusion VALUES ('CON-BAD', 'DREL-1', 'RISK', 'x', 'y', ${sqlText(seeded.spatial.artifact.artifactId)}, 'COMPUTED_RESULT', 'SOURCE_OBSERVATION')`);
+    `INSERT INTO dossier_conclusion VALUES ('CON-BAD-1', 'DREL-1', 'RISK', 'x', 'y', ${sqlText(seeded.spatial.artifact.artifactId)}, 'COMPUTED_RESULT', 'SOURCE_OBSERVATION')`);
+  // At its own class this time, so the class check passes and the evidence guard is what refuses: the artifact is DISALLOWED for this customer.
+  await ledger.refuse('rest a conclusion on evidence this customer may not receive',
+    `INSERT INTO dossier_conclusion VALUES ('CON-BAD-2', 'DREL-1', 'RISK', 'x', 'y', ${sqlText(seeded.spatial.artifact.artifactId)}, 'COMPUTED_RESULT', 'COMPUTED_RESULT')`);
   await ledger.write(conclusionsV1.map((c, i) =>
     `INSERT INTO dossier_conclusion VALUES (${sqlText(`CON-1-${i}`)}, 'DREL-1', '${c.facet}', ${sqlText(c.statement)}, ${sqlText(c.notCovered)}, ${sqlText(c.artifactId)}, '${c.artifactClass}', '${c.presentedAs}')`).join(';\n'));
-  await stage('RELEASE', T.released, `dossier_release DREL-1 v1 under ${scope.authorizationId} (scope) and ${reviewV1.authorizationId} (review); ${conclusionsV1.length} conclusions`);
+  await stage('RELEASE', T.released, `dossier_release DREL-1 v1 under ${scope.authorizationId} (scope) and ${reviewV1.authorizationId} (review); ${conclusionsV1.length} conclusion, ${holes.length} holes`);
 
   /* ── local delivery receipt: a dispatch in the kernel, simulated and marked ── */
   const deliver = async (tag: string, releaseId: string, authorizationId: string, grantedAt: string, at: string, reconciledAt: string, beforeDelivery?: (attemptId: string) => Promise<void>): Promise<DeliveryRecord> => {
@@ -264,7 +315,7 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   const conclusionsV2 = conclusionsFor(dependencyNotCoveredV2);
   const releaseV2 = compiled(2, conclusionsV2);
   const releaseDigestV2 = digestOf(releaseV2);
-  const because = `Version 1’s DEPENDENCY conclusion stated what it did not cover and omitted that ${takenBack.length} records had been taken back before the run (${takenBack.map((t) => t.retractionId).filter((v, i, a) => a.indexOf(v) === i).join(', ')}). Version 2 restates that sentence; nothing else changed.`;
+  const because = `Version 1’s DEPENDENCY conclusion stated what it did not cover and omitted that ${takenBackByRun.length} records had been taken back before the run (${takenBackByRun.map((t) => t.retractionId).filter((v, i, a) => a.indexOf(v) === i).join(', ')}). Version 2 restates that sentence; nothing else changed.`;
   const reviewV2 = await ledger.govern({
     tag: 'DOSSIER-RELEASE-2', operationKind: 'DOSSIER_RELEASE', counterparty: customer.principalId, action: releaseV2,
     doingNothing: 'Version 1 stands with an incomplete not-covered statement, and the buyer does not learn that three records were excluded.',
@@ -285,7 +336,7 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   await stage('MONITORING', T.deliveredAgain, `DREL-2 v2 succeeds DREL-1 (${reviewV2.proposalId} corrects ${deliveryV1.operationId}); ${deliveryV2.attemptId} CONFIRMED; DREL-1 and its delivery stand`);
 
   const counts = {
-    specs: await ledger.count('dossier_spec'), coverage: await ledger.count('dossier_coverage'), estimates: await ledger.count('dossier_estimate'),
+    specs: await ledger.count('dossier_spec'), coverage: await ledger.count('dossier_coverage'), evidence: await ledger.count('dossier_coverage_evidence'), estimates: await ledger.count('dossier_estimate'),
     quotations: await ledger.count('dossier_quotation'), releases: await ledger.count('dossier_release'), conclusions: await ledger.count('dossier_conclusion'),
     deliveries: await ledger.count('dossier_delivery'),
     proposals: await ledger.count('operation_proposal', "operation_kind LIKE 'DOSSIER_%'"),

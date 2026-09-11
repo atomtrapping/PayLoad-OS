@@ -12,14 +12,25 @@ import AxeBuilder from '@axe-core/playwright';
  */
 test('the dossier page carries one lifecycle end to end, and the inspector shows the correction’s lineage', async ({ page }) => {
   await page.goto('/dossier');
-  await expect(page.getByTestId('dossier-count')).toContainText('1 dossier asked for by a simulated buyer, 2 releases, version 2 corrects version 1, 11 rows refused');
-  await expect(page.getByTestId('dossier-coverage').locator('tbody tr')).toHaveCount(3);
-  await expect(page.getByTestId('dossier-coverage').locator('[data-facet="SUPPLIER_IDENTITY"]')).toHaveAttribute('data-level', 'NONE');
-  await expect(page.getByTestId('dossier-quotation')).toContainText('5 × 120000 = 600000 CAD minor');
+  await expect(page.getByTestId('dossier-count')).toContainText('1 dossier asked for by a simulated buyer, 2 releases, version 2 corrects version 1, 14 rows refused');
+  const coverage = page.getByTestId('dossier-coverage');
+  await expect(coverage.locator('tbody tr')).toHaveCount(3);
+  await expect(coverage.locator('[data-facet="SUPPLIER_IDENTITY"]')).toHaveAttribute('data-level', 'NONE');
+  await expect(coverage.locator('[data-facet="SUPPLIER_IDENTITY"]')).toHaveAttribute('data-assessment', 'MISSING');
+  await expect(coverage.locator('[data-facet="DEPENDENCY"]')).toHaveAttribute('data-assessment', 'DISALLOWED');
+  await expect(coverage.locator('[data-facet="DEPENDENCY"] [data-evidence="DEMO-CARAVAN-A001"]')).toHaveAttribute('data-evidence-assessment', 'PRESENT');
+  await expect(coverage.locator('[data-facet="DEPENDENCY"] [data-evidence="DEMO-CARAVAN-A002"]')).toHaveAttribute('data-evidence-assessment', 'DISALLOWED');
+  await expect(coverage.locator('[data-facet="RISK"]')).toHaveAttribute('data-level', 'NONE');
+  await expect(coverage.locator('[data-facet="RISK"]')).toHaveAttribute('data-assessment', 'DISALLOWED');
+  await expect(page.getByTestId('dossier-quotation')).toContainText('4 × 120000 = 480000 CAD minor');
+  await expect(page.getByTestId('dossier-release-1').locator('[data-conclusion]')).toHaveCount(1);
+  await expect(page.getByTestId('dossier-release-1').locator('[data-hole="RISK"]')).toHaveAttribute('data-hole-assessment', 'DISALLOWED');
+  await expect(page.getByTestId('dossier-release-1')).not.toContainText('about no building');
   await expect(page.getByTestId('dossier-release-2')).toBeVisible();
   await expect(page.getByTestId('dossier-delivery-1')).toContainText('SIMULATED_LOCAL');
   await expect(page.getByTestId('dossier-correction')).toContainText('corrects O-DELIVER-1');
-  await expect(page.getByTestId('dossier-refusals').locator('tbody tr')).toHaveCount(11);
+  await expect(page.getByTestId('dossier-refusals').locator('tbody tr')).toHaveCount(14);
+  await expect(page.getByTestId('dossier-refusals')).toContainText('evidence_assessment_is_not_the_artifacts');
 
   await page.locator('[data-act-select="P-DOSSIER-RELEASE-2"]').click();
   const inspector = page.getByTestId('governed-inspector');
@@ -62,10 +73,10 @@ test('the treasury page shows ten simulated proposals, the reserve as a chain, a
 
 test('the control plane counts every governed act, names every guard, and is accessible with the inspector open', async ({ page }) => {
   await page.goto('/control');
-  await expect(page.getByTestId('governed-counts')).toContainText('15 proposals through one kernel in two databases, and one refused before it was a row: 10 authorized, 1 revoked, 4 dispatched, 4 reconciled, 1 unresolved; 30 rows refused by 28 named guards');
+  await expect(page.getByTestId('governed-counts')).toContainText('15 proposals through one kernel in two databases, and one refused before it was a row: 10 authorized, 1 revoked, 4 dispatched, 4 reconciled, 1 unresolved; 33 rows refused by 31 named guards');
   await expect(page.getByTestId('guards')).toContainText('review_closes_once');
   await expect(page.getByTestId('not-claimed').locator('li')).toHaveCount(6);
-  await expect(page.getByTestId('all-refusals').locator('tbody tr')).toHaveCount(30);
+  await expect(page.getByTestId('all-refusals').locator('tbody tr')).toHaveCount(33);
   await expect(page.getByTestId('governed-act').locator('[data-act-id]')).toHaveCount(16);
 
   await page.locator('[data-act-select="P-DOSSIER-SCOPE"]').click();

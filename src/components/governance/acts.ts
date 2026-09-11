@@ -48,7 +48,7 @@ export function dossierActs(receipt: DossierLifecycleReceipt): GovernedActRow[] 
   scope.review = { ...scope.review!, reasoning: 'The customer accepted the quotation as put, by digest.' };
   const releases = receipt.releases.map((release, index) => {
     const correctedBy = receipt.releases[index + 1];
-    const row = fromKernel(release.review, 'DOSSIER', `${release.releaseId} v${release.version}: ${release.conclusions.length} conclusions, ${release.holes.length} stated hole`, correctedBy ? `RELEASED · DELIVERED (simulated) · CORRECTED BY v${correctedBy.version}` : 'RELEASED · DELIVERED (simulated)', `the compiled release's digest, ${receipt.boundToRelease}`);
+    const row = fromKernel(release.review, 'DOSSIER', `${release.releaseId} v${release.version}: ${release.conclusions.length} conclusion, ${release.holes.length} stated holes (${release.holes.map((h) => h.assessment).join(', ')})`, correctedBy ? `RELEASED · DELIVERED (simulated) · CORRECTED BY v${correctedBy.version}` : 'RELEASED · DELIVERED (simulated)', `the compiled release's digest, ${receipt.boundToRelease}`);
     row.review = { ...row.review!, reasoning: 'Each conclusion presented at its computed class; every gap stated.' };
     row.dispatch = { id: release.delivery.attemptId, outcome: release.delivery.outcome, at: receipt.stages.find((s) => s.stage === (index === 0 ? 'DELIVERED' : 'MONITORING'))?.at ?? '', receipt: release.delivery.venueReceipt };
     row.reconciliation = { found: release.delivery.reconciliation.found, basis: release.delivery.reconciliation.basis };

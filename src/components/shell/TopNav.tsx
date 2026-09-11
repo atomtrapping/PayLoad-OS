@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { CommandPalette } from './CommandPalette';
 import { NotationMark } from './NotationMark';
@@ -18,8 +18,17 @@ export { NAV_AREAS, PRIMARY_NAV } from './nav';
 export function TopNav() {
   const pathname = usePathname() ?? '/';
   const here = locate(pathname);
+  // The arrival wipe is for a navigation inside the terminal, not for the
+  // first paint of a hard load, so the document is marked once the route has
+  // changed from the one it was loaded on. The stylesheet scopes the reveal
+  // to that mark.
+  const loadedOn = useRef<string | null>(null);
+  useEffect(() => {
+    if (loadedOn.current === null) { loadedOn.current = pathname; return; }
+    if (loadedOn.current !== pathname) document.documentElement.setAttribute('data-navigated', '');
+  }, [pathname]);
   return (
-    <header className="app-topbar">
+    <header className="app-topbar" style={{ position: 'sticky' }}>
       <div className="terminal-brand">
         <Link href="/" className="terminal-brand-name" aria-label="NotationsOS home" title="NotationsOS — the internal terminal for the backend behind Caravan, Tradewind and Landshark"><NotationMark size={22} />NotationsOS</Link>
         <Link href="/product" className="terminal-brand-caption" aria-label="Notation Systems product model">Notation Systems / internal</Link>
@@ -35,6 +44,8 @@ export function TopNav() {
       </div>
       <CommandPalette />
       <Suspense fallback={<VerticalContextFrame />}><VerticalContext /></Suspense>
+      {/* Keyed on the route, so a soft navigation remounts it and the sweep plays again. */}
+      <span key={pathname} className="route-beacon" aria-hidden="true" data-testid="route-beacon" />
     </header>
   );
 }

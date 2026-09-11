@@ -161,6 +161,60 @@ hue. The underline disambiguates a link from a reading, and recolouring every
 link on the estate is a larger change than this pass; it is noted here rather
 than silently accepted.
 
+## The clean-room pass (2026-09-11)
+
+The 2026-09-08 reference set had put LCARS section bands and curved chrome on
+the shell. Looked at whole a few days later, the estate read as stacked boxes:
+filled band heads, a filled rail, boxed panels with the same weight as the
+readings inside them, and nothing that moved when a route changed, so a fast
+server felt slow. The founder asked for the direction of the Abstergo/Animus
+interfaces from the Assassin's Creed games. What was taken from that reference
+and what was not:
+
+- **Panes of glass, not bands.** The top bar, the navigation rail, the
+  inspector and the command palette are translucent panes (`--glass`,
+  `--glass-edge`, `--glass-blur`) that the working surface scrolls beneath. The
+  band fills are gone; the `--chrome-*` tokens stay defined because the
+  contrast test still measures ink on rail and a later pass may want them.
+  This revises "What stayed out" above: glass is in, for chrome only. Bloom,
+  background video, gradient fills that mean nothing and looping ambient
+  animation stay out.
+- **Hairlines and corner brackets for every frame.** `--hair` and
+  `--hair-strong` rule the surfaces, tables and the rail; section heads,
+  panels and the inspector carry corner marks sized by `--bracket-arm`. A
+  frame is a line, not a fill.
+- **Ice is the interaction light.** `--ice` marks "here" (the rail tick and the
+  atlas band you are in), "under the pointer" (row and cell hover, button
+  hover) and focus. Gold stays selection and primary action, so the atlas cell
+  you are on is a gold hairline with a faint gold ground rather than a filled
+  block. The epistemic scale is untouched: colour still means what
+  `--ep-*` says it means and nothing else.
+- **One arrival per route.** On a navigation inside the terminal, the new
+  route's surfaces are wiped in from their top edge, 30 ms apart and no later
+  than 150 ms (`surface-reveal`, `--motion-reveal`), and a one-pixel beacon
+  sweeps the top bar's lower edge (`beacon-sweep`, keyed on the pathname).
+  The inspector and the palette enter with `pane-in`. A hard load is not
+  animated: its first paint is its arrival, and a wipe over it would only hold
+  the largest paint back, so the shell marks the document (`data-navigated`)
+  after its first route change and the reveal is scoped to that mark. Every
+  motion plays once and stops; `prefers-reduced-motion` removes all of it.
+  This revises "Motion is opacity only" in a stricter direction: nothing here
+  animates opacity at all. A wipe is a clip and a six-pixel rise, so text is
+  either drawn at its colour or not drawn, and a contrast measurement taken
+  mid-arrival reads the real colours and not a blend. Nothing loops.
+- **Mono, tracked, small for every label.** Area heads, section heads and
+  table heads are mono uppercase with wider tracking and a hairline carrying to
+  the edge; the page title is lighter and larger than before so the hierarchy
+  is type weight and not box weight.
+
+Measured before the pass on the production build at 1440 px: TTFB under
+70 ms on every route but the console, largest contentful paint 80–520 ms,
+about 700 KB of JavaScript per light route, of which the framework runtime
+is the floor. "Slow" was the presentation, not the network, and this pass
+answers it with feedback on navigation rather than with a smaller bundle.
+No network font, image or script was added; the stylesheet grew by the
+tokens and rules named here.
+
 ## Where it is applied
 
 - The shell: ruled section labels in the inspector and the navigation rail, mono

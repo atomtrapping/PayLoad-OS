@@ -153,9 +153,49 @@ export const COMPILE_INPUT_MEANING: Readonly<Record<CompileInput, string>> = {
 };
 
 export const DOSSIER_STAGES = [
-  'SPEC', 'COVERAGE', 'QUOTATION', 'BUILD', 'RELEASE', 'MONITORING',
+  'SPEC', 'COVERAGE', 'ESTIMATE', 'QUOTATION', 'SCOPE', 'BUILD', 'RELEASE', 'DELIVERED', 'MONITORING',
 ] as const;
 export type DossierStage = typeof DOSSIER_STAGES[number];
+
+/* ── Coverage and the estimate ── */
+
+/**
+ * What the inventory holds for one facet, at the time of asking. Three
+ * levels, and NONE is a level rather than an absence: a facet with nothing
+ * behind it still costs the work of saying so, and a customer is owed the
+ * sentence.
+ */
+export const COVERAGE_LEVELS = ['NONE', 'THIN', 'SUPPORTED'] as const;
+export type CoverageLevel = typeof COVERAGE_LEVELS[number];
+
+export const COVERAGE_LEVEL_MEANING: Readonly<Record<CoverageLevel, string>> = {
+  NONE: 'No derived artifact bears on this facet. The dossier states the hole.',
+  THIN: 'One artifact bears on it. The dossier states what it rests on and what it does not.',
+  SUPPORTED: 'Two or more artifacts bear on it, from more than one run.',
+};
+
+/**
+ * The deterministic estimate: units of work per facet by coverage level, and
+ * nothing else. The number is not a price — a price is a policy's unit rate
+ * times these units, and the policy is approved by a person. What an agent
+ * may compute is the units, because the units are a count over rows it can
+ * name; what it may not invent is the rate.
+ */
+export const COVERAGE_LEVEL_UNITS: Readonly<Record<CoverageLevel, number>> = { NONE: 1, THIN: 2, SUPPORTED: 3 };
+
+export const ESTIMATE_METHOD = 'notationsos.dossier.estimate.v1';
+
+export function coverageLevel(artifactsAvailable: number, runsRepresented: number): CoverageLevel {
+  if (artifactsAvailable === 0) return 'NONE';
+  return artifactsAvailable >= 2 && runsRepresented >= 2 ? 'SUPPORTED' : 'THIN';
+}
+
+export function estimateUnits(coverage: ReadonlyArray<{ facet: DossierFacet; level: CoverageLevel }>): number {
+  return coverage.reduce((total, entry) => total + COVERAGE_LEVEL_UNITS[entry.level], 0);
+}
+
+export const ESTIMATE_RULE =
+  'The estimate is a count of units over named coverage rows, reproducible by anyone holding the rows. The quotation multiplies it by a rate from an approved pricing policy, and the multiplication is checked at the row. Neither number comes from context.';
 
 /**
  * The two snapshots, and why both are kept.

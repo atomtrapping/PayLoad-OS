@@ -93,7 +93,7 @@ CREATE TABLE editorial_release (
 
   CONSTRAINT release_candidate FOREIGN KEY (candidate_id, artifact_id)
     REFERENCES story_candidate (candidate_id, artifact_id),
-  CONSTRAINT release_version_once UNIQUE (candidate_id, version),
+  CONSTRAINT editorial_release_version_once UNIQUE (candidate_id, version),
   UNIQUE (editorial_release_id, message_digest),
   UNIQUE (editorial_release_id, artifact_id)
 );

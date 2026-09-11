@@ -31,8 +31,10 @@ import { canonicalJson } from '@/fixtures/digest';
 import { sqlArray, sqlText } from '@/db/ddl';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from '@/db/discoveryLedger';
 import { DOSSIER_LEDGER_DDL } from '@/db/dossierLedger';
-import { EDITORIAL_LEDGER_DDL } from '@/db/editorialLedger';
+import { EDITORIAL_LEDGER_DDL, EDITORIAL_LEDGER_GUARDS } from '@/db/editorialLedger';
 import { EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS, type PrincipalKind } from '@/db/executionLedger';
+import { TREASURY_LEDGER_DDL, TREASURY_LEDGER_GUARDS } from '@/db/treasuryLedger';
+import { WARRANT_LEDGER_DDL } from '@/db/warrantLedger';
 import type { ReviewResponse } from '@/domain/executionEnvelope';
 import { currentRelease, standingRecords } from '@/domain/corpus';
 import type { Corpus } from '@/domain/corpus';
@@ -42,6 +44,19 @@ CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jso
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);
 CREATE TABLE corpus_record (record_id text PRIMARY KEY, release_id text NOT NULL, subject_id text NOT NULL, predicate text NOT NULL, known_at timestamptz NOT NULL, UNIQUE (record_id, known_at));
 `;
+
+/**
+ * Two stacks, two databases. The products stack holds the dossier and the
+ * newsroom over the discovery ledger; the treasury stack holds the firm's
+ * money over the warrant ledger's budget chain. Both rest on the kernel for
+ * their principals, and nothing in one can reference a row in the other.
+ */
+export type LedgerStack = 'PRODUCTS' | 'TREASURY';
+
+const STACKS: Record<LedgerStack, string> = {
+  PRODUCTS: `${CORPUS_STUB_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}${DISCOVERY_LEDGER_DDL}${DISCOVERY_LEDGER_GUARDS}${DOSSIER_LEDGER_DDL}${EDITORIAL_LEDGER_DDL}${EDITORIAL_LEDGER_GUARDS}`,
+  TREASURY: `${CORPUS_STUB_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}${WARRANT_LEDGER_DDL}${TREASURY_LEDGER_DDL}${TREASURY_LEDGER_GUARDS}`,
+};
 
 export const digestOf = (value: unknown) => `sha256:${createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 
@@ -81,16 +96,14 @@ export interface GovernedAct {
 }
 
 export class GovernanceLedger {
-  private constructor(private client: PGlite, readonly schema: string) {}
+  private constructor(private client: PGlite, readonly schema: string, readonly stack: LedgerStack) {}
   readonly refusals: Refusal[] = [];
 
-  static async open(schema = 'gov'): Promise<GovernanceLedger> {
+  static async open(schema = 'gov', stack: LedgerStack = 'PRODUCTS'): Promise<GovernanceLedger> {
     const client = new PGlite();
     await client.waitReady;
-    await client.exec(`CREATE SCHEMA ${schema}; SET search_path TO ${schema};
-      ${CORPUS_STUB_DDL}${EXECUTION_LEDGER_DDL}${EXECUTION_LEDGER_GUARDS}
-      ${DISCOVERY_LEDGER_DDL}${DISCOVERY_LEDGER_GUARDS}${DOSSIER_LEDGER_DDL}${EDITORIAL_LEDGER_DDL}`);
-    return new GovernanceLedger(client, schema);
+    await client.exec(`CREATE SCHEMA ${schema}; SET search_path TO ${schema}; ${STACKS[stack]}`);
+    return new GovernanceLedger(client, schema, stack);
   }
 
   async close() { await this.client.close(); }

@@ -207,6 +207,20 @@ and what was not:
   the edge; the page title is lighter and larger than before so the hierarchy
   is type weight and not box weight.
 
+- **The light palette, rendered on the ground.** The three frontier
+  workbenches (`/frontier`, `/factoring`, `/dispatch-liability`) were written
+  against Tailwind's light palette and stood as white islands on the black
+  instrument. Rather than rewrite 1,600 lines of workbench, one scoped map in
+  the stylesheet renders that palette on the estate: white and neutral
+  grounds become ice tints over the surface colour, emerald, rose, amber and
+  blue tints become the admitted, refused, conditional and pending hues at
+  ten to fourteen percent, neutral text becomes the text role with the same
+  job (one step lighter than a literal reading, because muted measures
+  4.37:1 on a ten-percent ice tint and the workbench audits require 4.5:1
+  everywhere), and every edge is a hairline. Nothing outside the workbenches
+  uses those classes, and the map is scoped to the working surface. The
+  rewrite on the tokens remains the honest end state; the map is the bridge.
+
 Measured before the pass on the production build at 1440 px: TTFB under
 70 ms on every route but the console, largest contentful paint 80–520 ms,
 about 700 KB of JavaScript per light route, of which the framework runtime

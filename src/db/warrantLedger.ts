@@ -96,8 +96,7 @@ CREATE TABLE budget_reservation (
   CONSTRAINT reservation_one_successor UNIQUE (follows_reservation_id),
   CONSTRAINT reservation_sequence_once UNIQUE (budget_id, sequence),
   UNIQUE (reservation_id, balance_after_minor),
-  -- So a dispatch can tie to a hold's state and size rather than repeat them.
-  UNIQUE (reservation_id, state),
+  -- So a dispatch can tie to a hold's size rather than repeat it.
   UNIQUE (reservation_id, delta_minor)
 );
 

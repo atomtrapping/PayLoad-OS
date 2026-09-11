@@ -97,11 +97,11 @@ const revocation = (id = 'RX1', over: { at?: string; kind?: string; by?: string 
   INSERT INTO treasury_revocation VALUES ('${id}', 'AU1', '${T_GRANT}', '${T_EXPIRE}', '${over.kind ?? 'HUMAN'}', '${over.by ?? 'operator:sam'}',
     'The counterparty wallet was re-keyed.', '${over.at ?? T_REVOKE}')`);
 
-const dispatch = (id = 'DP1', over: { at?: string; kind?: string; value?: number | null; outcome?: string; amount?: number; reservation?: string; state?: string; delta?: number; expires?: string } = {}) => sql(`
+const dispatch = (id = 'DP1', over: { at?: string; kind?: string; value?: number | null; outcome?: string; amount?: number; reservation?: string; delta?: number; expires?: string } = {}) => sql(`
   INSERT INTO treasury_dispatch (dispatch_id, authorization_id, authorization_granted_at, authorization_expires_at, amount_minor,
-    reservation_id, reservation_state, reservation_delta_minor, dispatched_at, movement_kind, reversibility, local_value_minor, outcome)
+    reservation_id, reservation_delta_minor, dispatched_at, movement_kind, reversibility, local_value_minor, outcome)
   VALUES ('${id}', 'AU1', '${T_GRANT}', '${over.expires ?? T_EXPIRE}', ${over.amount ?? 100000},
-    '${over.reservation ?? 'HOLD-1'}', '${over.state ?? 'HELD'}', ${over.delta ?? -100000}, '${over.at ?? T_DISPATCH}',
+    '${over.reservation ?? 'HOLD-1'}', ${over.delta ?? -100000}, '${over.at ?? T_DISPATCH}',
     '${over.kind ?? 'TRANSFER'}', 'IRREVERSIBLE', ${over.value === undefined ? 'NULL' : over.value},
     '${over.outcome ?? 'CONFIRMED'}')`);
 
@@ -324,14 +324,15 @@ describe('the reserve is a chain, not a number', () => {
     await expect(dispatch('DP1', { reservation: 'HOLD-NOPE' })).rejects.toThrow(/dispatch_reservation|foreign key/i);
   });
 
+  /*
+   * A released movement is a credit, and a dispatch spends a debit equal to
+   * its amount, so a release can never be the hold a dispatch spends: the
+   * sign check refuses it, and no separate HELD check is needed to.
+   */
   it('refuses a dispatch against a hold that was released', async () => {
     await sql(`INSERT INTO budget_reservation VALUES ('REL-1', 'B-OPS', 1, 'RELEASED', 100000, 200000, 300000, 'HOLD-1', 200000, '${T_GRANT}')`);
-    await expect(dispatch('DP1', { reservation: 'REL-1', state: 'RELEASED', delta: 100000 })).rejects.toThrow(/dispatch_spends_a_hold|dispatch_spends_its_own_amount/);
-  });
-
-  it('refuses a dispatch that misreports its hold as HELD', async () => {
-    await sql(`INSERT INTO budget_reservation VALUES ('REL-1', 'B-OPS', 1, 'RELEASED', 100000, 200000, 300000, 'HOLD-1', 200000, '${T_GRANT}')`);
-    await expect(dispatch('DP1', { reservation: 'REL-1', state: 'HELD', delta: -100000 })).rejects.toThrow(/dispatch_reservation_state|foreign key/i);
+    await expect(dispatch('DP1', { reservation: 'REL-1', delta: 100000 })).rejects.toThrow(/dispatch_spends_its_own_amount/);
+    await expect(dispatch('DP1', { reservation: 'REL-1', delta: -100000 })).rejects.toThrow(/dispatch_reservation_size|foreign key/i);
   });
 
   /* The hold is for the amount the authorization carries, not a smaller one. */
@@ -341,8 +342,10 @@ describe('the reserve is a chain, not a number', () => {
     await expect(dispatch('DP1', { reservation: 'HOLD-2', delta: -100000 })).rejects.toThrow(/dispatch_reservation_size|foreign key/i);
   });
 
+  /* A hold of the right size for the wrong amount: the authorization carries 100000, not 40000. */
   it('refuses a dispatch claiming an amount its authorization does not carry', async () => {
-    await expect(dispatch('DP1', { amount: 40000, delta: -40000 })).rejects.toThrow(/dispatch_amount|foreign key/i);
+    await sql(`INSERT INTO budget_reservation VALUES ('HOLD-2', 'B-OPS', 1, 'HELD', -40000, 200000, 160000, 'HOLD-1', 200000, '${T_GRANT}')`);
+    await expect(dispatch('DP1', { amount: 40000, reservation: 'HOLD-2', delta: -40000 })).rejects.toThrow(/dispatch_amount|foreign key/i);
   });
 
   it('spends a hold once', async () => {

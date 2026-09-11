@@ -71,8 +71,10 @@ export interface Refusal {
 export function constraintOf(message: string): string {
   const quoted = message.match(/constraint "([^"]+)"/) ?? message.match(/"([^"]+)"/);
   if (quoted) return quoted[1];
-  const raised = message.match(/(?:error: )?([a-z_]+(?::[^\s]+)?)/i);
-  return raised ? raised[1] : message.slice(0, 80);
+  // A RAISE EXCEPTION carries its name and, after a colon, whatever it named:
+  // a proposal id, a count, an instant. All of it is the refusal.
+  const raised = message.match(/(?:error: )?([a-z_]+(?::[^\n]+)?)/i);
+  return raised ? raised[1].trim() : message.slice(0, 80);
 }
 
 export interface Principal { principalId: string; kind: PrincipalKind; displayName: string }

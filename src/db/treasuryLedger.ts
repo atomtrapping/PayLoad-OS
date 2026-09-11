@@ -260,9 +260,12 @@ CREATE TABLE treasury_dispatch (
   authorization_granted_at timestamptz NOT NULL,
   authorization_expires_at timestamptz NOT NULL,
   amount_minor bigint NOT NULL,
-  -- The hold this dispatch spends: HELD, and for exactly this amount, both tied.
+  -- The hold this dispatch spends, and its debit, tied. That the reservation
+  -- is HELD follows: the debit equals minus the amount, the amount is
+  -- positive, and the chain's own rule says a negative movement is a hold. A
+  -- separate HELD check was here once and could never be the thing that
+  -- refused a row, so it is not here now.
   reservation_id text NOT NULL,
-  reservation_state text NOT NULL,
   reservation_delta_minor bigint NOT NULL,
   dispatched_at timestamptz NOT NULL,
   movement_kind text NOT NULL CHECK (movement_kind IN (${quoted(MOVEMENT_KINDS)})),
@@ -276,12 +279,9 @@ CREATE TABLE treasury_dispatch (
     REFERENCES treasury_authorization (authorization_id, granted_at, expires_at),
   CONSTRAINT dispatch_amount FOREIGN KEY (authorization_id, amount_minor)
     REFERENCES treasury_authorization (authorization_id, amount_minor),
-  CONSTRAINT dispatch_reservation_state FOREIGN KEY (reservation_id, reservation_state)
-    REFERENCES budget_reservation (reservation_id, state),
   CONSTRAINT dispatch_reservation_size FOREIGN KEY (reservation_id, reservation_delta_minor)
     REFERENCES budget_reservation (reservation_id, delta_minor),
-  -- The money is held, not merely checked, and held in this amount.
-  CONSTRAINT dispatch_spends_a_hold CHECK (reservation_state = 'HELD'),
+  -- The money is held in this amount, not merely checked.
   CONSTRAINT dispatch_spends_its_own_amount CHECK (reservation_delta_minor = -amount_minor),
   CONSTRAINT dispatch_hold_once UNIQUE (reservation_id),
   -- Rechecked at dispatch rather than trusting that an approval was recorded

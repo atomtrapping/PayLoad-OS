@@ -60,9 +60,9 @@ describe('one dossier, end to end', () => {
   it('wrote the same assessment into the database that the receipt carries, and read the corpus’s retractions from it', async () => {
     const rows = await ledger.rows<{ facet: string; level: string; assessment: string; present: number; available: number }>(
       `SELECT f.facet, c.level, c.assessment, c.artifacts_present AS present, c.artifacts_available AS available
-       FROM dossier_coverage c JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id ORDER BY f.facet`);
+       FROM dossier_coverage c JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id WHERE c.assessed_at = '${DOSSIER_INSTANTS.covered}' ORDER BY f.facet`);
     expect(rows).toEqual([...receipt.coverage].sort((a, b) => (a.facet < b.facet ? -1 : 1)).map((c) => ({ facet: c.facet, level: c.level, assessment: c.assessment, present: c.artifactsPresent, available: c.artifactsAvailable })));
-    expect(await ledger.count('dossier_coverage_evidence')).toBe(3);
+    expect(await ledger.count('dossier_coverage_evidence')).toBe(6);
     expect(await ledger.count('retracted_record')).toBe(3); // the backdated one was refused
     expect(await ledger.rows(`SELECT retraction_id, record_id, kind FROM retracted_record ORDER BY record_id`)).toEqual([
       { retraction_id: 'RET-0002', record_id: 'REC-0111', kind: 'WITHDRAWAL' }, { retraction_id: 'RET-0002', record_id: 'REC-0112', kind: 'WITHDRAWAL' }, { retraction_id: 'RET-0001', record_id: 'REC-0203', kind: 'CORRECTION' },
@@ -106,6 +106,20 @@ describe('one dossier, end to end', () => {
     }
   });
 
+  /* The corpus did not move between the two instants, and the receipt says so rather than pretending a refresh found something. */
+  it('re-assesses before version 2 as a second row per facet that version 2 names, and says nothing moved', async () => {
+    expect(receipt.reassessment.at).toBe(DOSSIER_INSTANTS.corrected);
+    expect(receipt.reassessment.changed).toBe(false);
+    expect(receipt.reassessment.because).toMatch(/nothing the corpus holds moved/);
+    expect(receipt.reassessment.coverage.map((c) => [c.coverageId, c.facet, c.level, c.assessment])).toEqual(receipt.coverage.map((c) => [c.coverageId.replace('COV-1-', 'COV-2-'), c.facet, c.level, c.assessment]));
+    const byId = (a: { coverage_id: string }, b: { coverage_id: string }) => (a.coverage_id < b.coverage_id ? -1 : 1);
+    expect(await ledger.rows(`SELECT dossier_release_id, coverage_id FROM dossier_release_coverage ORDER BY 1, 2`)).toEqual([
+      ...receipt.coverage.map((c) => ({ dossier_release_id: 'DREL-1', coverage_id: c.coverageId })).sort(byId),
+      ...receipt.reassessment.coverage.map((c) => ({ dossier_release_id: 'DREL-2', coverage_id: c.coverageId })).sort(byId),
+    ]);
+    expect(receipt.releases[1].holes.map((h) => h.facet)).toEqual(receipt.releases[0].holes.map((h) => h.facet));
+  });
+
   it('delivers through a dispatch whose receipt says it was simulated, and reconciles it', () => {
     for (const release of receipt.releases) {
       expect(release.delivery.outcome).toBe('CONFIRMED');
@@ -139,26 +153,30 @@ describe('one dossier, end to end', () => {
       ['call one present artifact SUPPORTED', 'coverage_level_counts_the_present'],
       ['count the withheld lot artifact as present', 'coverage_does_not_match_its_evidence:COV-BAD-4:counts 2/0/0/0 but its evidence rows are 1/0/0/1'],
       ['rewrite the RISK coverage row as PRESENT after it was written', 'coverage_is_written_once:UPDATE of dossier_coverage'],
-      ['backdate a withdrawal of a record the present lot artifact read', 'retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known'],
+      ['backdate a withdrawal of a record the present lot artifact read', 'retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-1-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known'],
+      ['estimate the work at a level the coverage does not hold', 'estimate_misstates_a_facets_level:EST-BAD:DEPENDENCY counted as SUPPORTED, assessed THIN'],
       ['quote the work before any pricing policy is approved', 'quotation_policy'],
       ['quote an amount that is not units times the rate', 'quotation_is_units_at_the_rate'],
       ['release before the customer accepted, and before anyone reviewed', 'release_scope_accepted'],
       ['have the agent grant the release authorization', 'execution_authorization_granted_by_kind_check'],
       ['have a second reviewer close the same release again, differently', 'review_closes_once'],
       ['release the draft the reviewer did not see', 'release_reviewed'],
+      ['build version 1 naming no assessment for RISK', 'release_names_no_assessment_for_a_facet:DREL-1:RISK'],
       ['present the spatial computation as something a source observed', 'conclusion_presented_at_its_class'],
       ['rest a conclusion on evidence a customer audience may not receive', `conclusion_rests_on_no_present_evidence:${spatial}:RISK in DREL-1`],
       ['record a delivery no dispatch carried', 'dossier_delivery_attempt_id_fkey'],
       ['deliver the dossier to the other customer', 'delivery_goes_to_the_dossiers_recipient'],
+      ['backdate a re-assessment of DEPENDENCY behind the first', `assessment_is_later_than_the_last:${receipt.dossierId}-DEPENDENCY:assessed ${new Date(DOSSIER_INSTANTS.asked).toISOString().replace('T', ' ').replace('.000Z', '+00')} behind one at ${new Date(DOSSIER_INSTANTS.covered).toISOString().replace('T', ' ').replace('.000Z', '+00')}`],
+      ['build version 2 over the first assessment after re-assessing', `release_names_a_superseded_assessment:DREL-2:COV-1-DEPENDENCY assessed ${new Date(DOSSIER_INSTANTS.covered).toISOString().replace('T', ' ').replace('.000Z', '+00')}, but DEPENDENCY was re-assessed at ${new Date(DOSSIER_INSTANTS.corrected).toISOString().replace('T', ' ').replace('.000Z', '+00')}`],
       ['release version 2 under version 1’s approval', 'release_authorization_once'],
     ]);
-    expect(receipt.counts.refusals).toBe(17);
+    expect(receipt.counts.refusals).toBe(21);
   });
 
   it('counts what it wrote', () => {
     expect(receipt.counts).toEqual({
-      specs: 1, coverage: 3, evidence: 3, estimates: 1, quotations: 1, releases: 2, conclusions: 2, deliveries: 2,
-      proposals: 3, authorizations: 3, attempts: 2, refusals: 17,
+      specs: 1, coverage: 6, evidence: 6, estimates: 1, quotations: 1, releases: 2, conclusions: 2, deliveries: 2,
+      proposals: 3, authorizations: 3, attempts: 2, refusals: 21,
     });
   });
 

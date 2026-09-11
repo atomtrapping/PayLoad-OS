@@ -180,15 +180,17 @@ const coverage = async (id = 'C1', over: {
 const retracted = (kind: 'CORRECTION' | 'WITHDRAWAL', issuedAt: string, record = 'REC-1') =>
   tx(`INSERT INTO retracted_record VALUES ('RET-${kind}', '${record}', '${kind}', '${issuedAt}')`);
 
-const estimate = (id = 'E1', units = 4, dossier = 'D1') => sql(`
-  INSERT INTO dossier_estimate VALUES ('${id}', '${dossier}', 'notationsos.dossier.estimate.v1', ${units},
-    '[{"facet":"DEPENDENCY","level":"THIN","units":2},{"facet":"RISK","level":"THIN","units":2}]'::jsonb, '${FP(6)}', '${T_ASK}')`);
+/** The estimate over the coverage as it stood: two THIN facets, four units, unless a test says otherwise. */
+const PER_FACET_THIN_THIN = [{ facet: 'DEPENDENCY', level: 'THIN', units: 2 }, { facet: 'RISK', level: 'THIN', units: 2 }];
+const estimate = (id = 'E1', over: { dossier?: string; units?: number; perFacet?: unknown[]; at?: string; method?: string } = {}) => tx(`
+  INSERT INTO dossier_estimate VALUES ('${id}', '${over.dossier ?? 'D1'}', '${over.method ?? 'notationsos.dossier.estimate.v1'}', ${over.units ?? 4},
+    '${JSON.stringify(over.perFacet ?? PER_FACET_THIN_THIN)}'::jsonb, '${FP(6)}', '${over.at ?? T_ASK}')`);
 
 const policy = (rate = 120000) => sql(`INSERT INTO pricing_policy VALUES ('P-2026', 'operator:jo', '${T_ASK}', ${rate}, 'CAD', 'facet-coverage-unit')`);
 
-const quotation = (id = 'Q1', over: { dossier?: string; estimate?: string; rate?: number; units?: number; amount?: number; digest?: string } = {}) => sql(`
+const quotation = (id = 'Q1', over: { dossier?: string; estimate?: string; rate?: number; units?: number; amount?: number; digest?: string; quotedAt?: string } = {}) => sql(`
   INSERT INTO dossier_quotation VALUES ('${id}', '${over.dossier ?? 'D1'}', 'P-2026', ${over.rate ?? 120000}, 'CAD', '${over.estimate ?? 'E1'}', ${over.units ?? 4},
-    ${over.amount ?? 480000}, '${FP(1)}', '${T_QUOTE}', '${over.digest ?? QUOTE_DIGEST}')`);
+    ${over.amount ?? 480000}, '${FP(1)}', '${over.quotedAt ?? T_QUOTE}', '${over.digest ?? QUOTE_DIGEST}')`);
 
 /** A governed act in the kernel: proposal, packet, approval and authorization, of one digest. */
 async function governed(tag: string, digest: string, reviewer: string, over: { grantorKind?: string; grantor?: string; response?: string } = {}) {
@@ -208,19 +210,25 @@ async function governed(tag: string, digest: string, reviewer: string, over: { g
 const accepted = () => governed('SCOPE', QUOTE_DIGEST, 'customer:acme');
 const reviewed = (tag = 'RELEASE', digest = RELEASE_DIGEST) => governed(tag, digest, 'operator:jo');
 
-const release = (id = 'R1', over: { dossier?: string; recipient?: string; version?: number; builtAt?: string; quotation?: string; quoteDigest?: string; scope?: string; digest?: string; auth?: string } = {}) => sql(`
-  INSERT INTO dossier_release (dossier_release_id, dossier_id, recipient_id, version, quotation_id, quoted_snapshot, quoted_at,
+/** A release, naming the assessments it was built over: C1 and C2 unless a test names otherwise. */
+const release = (id = 'R1', over: { dossier?: string; recipient?: string; version?: number; builtAt?: string; quotation?: string; quotedAt?: string; quoteDigest?: string; scope?: string; digest?: string; auth?: string; names?: string[] } = {}) => tx([
+  `INSERT INTO dossier_release (dossier_release_id, dossier_id, recipient_id, version, quotation_id, quoted_snapshot, quoted_at,
     quotation_digest, scope_authorization_id, built_snapshot, built_at, release_digest, authorization_id, released_at, monitored)
-  VALUES ('${id}', '${over.dossier ?? 'D1'}', '${over.recipient ?? 'customer:acme'}', ${over.version ?? 1}, '${over.quotation ?? 'Q1'}', '${FP(1)}', '${T_QUOTE}',
+  VALUES ('${id}', '${over.dossier ?? 'D1'}', '${over.recipient ?? 'customer:acme'}', ${over.version ?? 1}, '${over.quotation ?? 'Q1'}', '${FP(1)}', '${over.quotedAt ?? T_QUOTE}',
     '${over.quoteDigest ?? QUOTE_DIGEST}', '${over.scope ?? 'AU-SCOPE'}', '${FP(2)}', '${over.builtAt ?? T_BUILD}',
-    '${over.digest ?? RELEASE_DIGEST}', '${over.auth ?? 'AU-RELEASE'}', '${T_RELEASE}', false)`);
+    '${over.digest ?? RELEASE_DIGEST}', '${over.auth ?? 'AU-RELEASE'}', '${T_RELEASE}', false)`,
+  ...(over.names ?? ['C1', 'C2']).map((coverageId) => `INSERT INTO dossier_release_coverage VALUES ('${id}', '${coverageId}')`),
+].join(';\n'));
 
-/** Everything a first release needs: the dependency facet with one present and one disallowed artifact, the risk facet with one present. */
-async function covered() {
-  await specs(); await mined();
+/** The two facets assessed at T_ASK: the dependency facet with one present and one disallowed artifact, the risk facet with one present. */
+async function assessedBoth() {
   await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }] });
   await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
 }
+/** Everything a first release needs. */
+async function covered() { await specs(); await mined(); await assessedBoth(); }
+/** From the assessment to an accepted, reviewed scope, without the release. */
+async function quotedAndReviewed() { await estimate(); await policy(); await quotation(); await accepted(); await reviewed(); }
 async function priced() { await covered(); await estimate(); await policy(); await quotation(); }
 async function released() { await priced(); await accepted(); await reviewed(); await release(); }
 
@@ -682,29 +690,130 @@ describe('a conclusion rests on evidence that is present, not merely there', () 
   it('refuses a conclusion resting on another dossier’s evidence', async () => {
     await released();
     await sql(`INSERT INTO dossier_facet VALUES ('F3', 'D2', 'DEPENDENCY')`);
-    await estimate('E2', 4, 'D2'); await quotation('Q2', { dossier: 'D2', estimate: 'E2', digest: FP(21) });
+    await coverage('C3', { facet: 'F3', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
+    await estimate('E2', { dossier: 'D2', perFacet: [{ facet: 'DEPENDENCY', level: 'THIN', units: 2 }], units: 2 });
+    await quotation('Q2', { dossier: 'D2', estimate: 'E2', units: 2, amount: 240000, digest: FP(21) });
     await governed('SCOPE2', FP(21), 'customer:boreal'); await governed('RELEASE-D2', FP(22), 'operator:jo');
-    await release('R-D2', { dossier: 'D2', recipient: 'customer:boreal', quotation: 'Q2', quoteDigest: FP(21), scope: 'AU-SCOPE2', digest: FP(22), auth: 'AU-RELEASE-D2' });
+    await release('R-D2', { dossier: 'D2', recipient: 'customer:boreal', quotation: 'Q2', quoteDigest: FP(21), scope: 'AU-SCOPE2', digest: FP(22), auth: 'AU-RELEASE-D2', names: ['C3'] });
     await expect(conclusion('K1', 'DEPENDENCY', 'A1', { release: 'R-D2' })).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A1:DEPENDENCY in R-D2/);
   });
 });
 
-describe('a conclusion rests on an assessment no later than its build', () => {
-  it('refuses a conclusion resting on evidence assessed after the release was built', async () => {
-    await specs(); await mined();
-    await coverage('C1');
-    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }], assessedAt: T_RELEASE });
-    await estimate(); await policy(); await quotation(); await accepted(); await reviewed(); await release();
-    await conclusion('K1', 'DEPENDENCY', 'A1');
-    await expect(conclusion('K2', 'RISK', 'A2')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A2:RISK/);
+describe('a conclusion rests on the assessment its release names', () => {
+  it('rests on the named row and no other row for the facet', async () => {
+    await priced(); await accepted(); await reviewed();
+    await artifact('A-X', { subject: 'org:x', claim: 'Also present, later.' });
+    await coverage('C1b', { evidence: [{ artifact: 'A-X', assessment: 'PRESENT' }], assessedAt: T_ACCEPT });
+    await release('R1', { names: ['C1b', 'C2'] });
+    await expect(conclusion('K1', 'DEPENDENCY', 'A1')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A1:DEPENDENCY in R1/);
+    await conclusion('K1', 'DEPENDENCY', 'A-X');
   });
 
-  it('accepts one resting on an assessment made at the build instant', async () => {
-    await specs(); await mined();
-    await coverage('C1', { assessedAt: T_BUILD });
-    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
-    await estimate(); await policy(); await quotation(); await accepted(); await reviewed(); await release();
+  it('accepts one resting on a re-assessment made at the build instant', async () => {
+    await priced(); await accepted(); await reviewed();
+    await coverage('C1b', { assessedAt: T_BUILD });
+    await release('R1', { names: ['C1b', 'C2'] });
     await conclusion('K1', 'DEPENDENCY', 'A1');
+  });
+});
+
+describe('re-assessment is a new row, and a release names what it was built over', () => {
+  beforeEach(async () => { await specs(); await mined(); });
+
+  it('keeps both assessments of a facet, keyed on the instant, each later than the last', async () => {
+    await coverage('C1');
+    await coverage('C1b', { assessedAt: T_QUOTE });
+    expect(await rows(`SELECT coverage_id FROM dossier_coverage WHERE dossier_facet_id = 'F1' ORDER BY assessed_at`)).toEqual([{ coverage_id: 'C1' }, { coverage_id: 'C1b' }]);
+    await expect(coverage('C1c', { assessedAt: T_QUOTE })).rejects.toThrow(/coverage_assessed_once_per_instant/);
+    await expect(coverage('C1d', { assessedAt: T_KNOWN })).rejects.toThrow(/assessment_is_later_than_the_last:F1/);
+  });
+
+  it('refuses a release naming no assessment for a facet, or none at all', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await expect(release('R1', { names: ['C1'] })).rejects.toThrow(/release_names_no_assessment_for_a_facet:R1:RISK/);
+    await expect(release('R1', { names: [] })).rejects.toThrow(/release_names_no_assessment_for_a_facet:R1:DEPENDENCY/);
+  });
+
+  it('refuses a release naming two assessments for a facet, at the release or after it', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await coverage('C1b', { assessedAt: T_ACCEPT });
+    await expect(release('R1', { names: ['C1', 'C1b', 'C2'] })).rejects.toThrow(/release_names_two_assessments_for_a_facet:R1:DEPENDENCY|release_names_a_superseded_assessment/);
+    await release('R1', { names: ['C1b', 'C2'] });
+    await expect(tx(`INSERT INTO dossier_release_coverage VALUES ('R1', 'C1')`)).rejects.toThrow(/release_names_two_assessments_for_a_facet:R1:DEPENDENCY|release_names_a_superseded_assessment/);
+  });
+
+  it('refuses a release naming another dossier’s assessment', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await sql(`INSERT INTO dossier_facet VALUES ('F3', 'D2', 'DEPENDENCY')`);
+    await coverage('C3', { facet: 'F3' });
+    await expect(release('R1', { names: ['C1', 'C2', 'C3'] })).rejects.toThrow(/release_names_another_dossiers_assessment:R1:C3 belongs to D2/);
+  });
+
+  /* A re-assessment binds every later release: the first row stands, and a release built after the second names the second. */
+  it('refuses a release naming a superseded assessment', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await coverage('C1b', { assessedAt: T_ACCEPT });
+    await expect(release('R1', { names: ['C1', 'C2'] })).rejects.toThrow(/release_names_a_superseded_assessment:R1:C1 assessed .*, but DEPENDENCY was re-assessed at/);
+    await release('R1', { names: ['C1b', 'C2'] });
+  });
+
+  it('refuses a release naming an assessment made after its build, and is not superseded by one', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await coverage('C1b', { assessedAt: T_RELEASE });
+    await expect(release('R1', { names: ['C1b', 'C2'] })).rejects.toThrow(/release_names_an_assessment_after_its_build:R1:C1b/);
+    await release('R1', { names: ['C1', 'C2'] });
+  });
+
+  /* The corpus moved after the quote: a record was withdrawn, the re-assessment finds the artifact stale, the level falls, and the accepted scope no longer describes the work. */
+  it('refuses a release built over a level the quotation did not carry, until an amended quotation is accepted', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await retracted('WITHDRAWAL', T_ACCEPT);
+    await coverage('C1b', { evidence: [{ artifact: 'A1', assessment: 'STALE' }, { artifact: 'A3', assessment: 'DISALLOWED' }], assessedAt: T_BUILD });
+    expect(await coverageRow('C1b')).toMatchObject({ level: 'NONE', assessment: 'STALE', stale: 1, disallowed: 1 });
+    await expect(release('R1', { names: ['C1b', 'C2'] })).rejects.toThrow(/release_scope_changed_since_the_quote:R1:DEPENDENCY quoted THIN, assessed NONE/);
+    // The amendment: a new estimate over the coverage as it now stands, quoted and accepted again.
+    await estimate('E2', { perFacet: [{ facet: 'DEPENDENCY', level: 'NONE', units: 1 }, { facet: 'RISK', level: 'THIN', units: 2 }], units: 3, at: T_BUILD });
+    await quotation('Q2', { estimate: 'E2', units: 3, amount: 360000, digest: FP(21), quotedAt: T_BUILD });
+    await governed('SCOPE2', FP(21), 'customer:acme');
+    await release('R1', { quotation: 'Q2', quotedAt: T_BUILD, quoteDigest: FP(21), scope: 'AU-SCOPE2', names: ['C1b', 'C2'] });
+    await expect(conclusion('K1', 'DEPENDENCY', 'A1')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A1:DEPENDENCY in R1/);
+  });
+
+  it('refuses rewriting what a release names, or an estimate', async () => {
+    await assessedBoth(); await quotedAndReviewed(); await release();
+    await expect(tx(`UPDATE dossier_release_coverage SET coverage_id = 'C2' WHERE coverage_id = 'C1'`)).rejects.toThrow(/release_coverage_is_written_once:UPDATE/);
+    await expect(tx(`DELETE FROM dossier_release_coverage WHERE coverage_id = 'C1'`)).rejects.toThrow(/release_coverage_is_written_once:DELETE/);
+    await expect(tx(`UPDATE dossier_estimate SET units = 5 WHERE estimate_id = 'E1'`)).rejects.toThrow(/estimate_is_written_once:UPDATE/);
+  });
+});
+
+describe('an estimate counts the coverage as it stood', () => {
+  beforeEach(async () => { await specs(); await mined(); });
+
+  it('refuses an estimate over a facet nothing had assessed by then', async () => {
+    await expect(estimate()).rejects.toThrow(/estimate_over_an_unassessed_facet:E1:DEPENDENCY had no assessment by/);
+  });
+
+  it('refuses a level the coverage did not hold, units the method does not give, and facets the dossier did not ask', async () => {
+    await assessedBoth();
+    await expect(estimate('E1', { perFacet: [{ facet: 'DEPENDENCY', level: 'SUPPORTED', units: 3 }, { facet: 'RISK', level: 'THIN', units: 2 }], units: 5 }))
+      .rejects.toThrow(/estimate_misstates_a_facets_level:E1:DEPENDENCY counted as SUPPORTED, assessed THIN/);
+    await expect(estimate('E1', { units: 5 })).rejects.toThrow(/estimate_units_are_not_the_methods:E1:5 written, 4 counted/);
+    await expect(estimate('E1', { perFacet: [{ facet: 'DEPENDENCY', level: 'THIN', units: 3 }, { facet: 'RISK', level: 'THIN', units: 2 }], units: 5 }))
+      .rejects.toThrow(/estimate_units_are_not_the_methods:E1:3 units for DEPENDENCY at THIN/);
+    await expect(estimate('E1', { perFacet: [{ facet: 'DEPENDENCY', level: 'THIN', units: 2 }], units: 2 })).rejects.toThrow(/estimate_counts_the_dossiers_facets:E1:1 counted, 2 asked/);
+    await expect(estimate('E1', { perFacet: [...PER_FACET_THIN_THIN, { facet: 'CAPACITY', level: 'NONE', units: 1 }], units: 5 })).rejects.toThrow(/estimate_counts_the_dossiers_facets:E1:3 counted, 2 asked/);
+    await expect(estimate('E1', { perFacet: [{ facet: 'DEPENDENCY', level: 'THIN', units: 2 }, { facet: 'CAPACITY', level: 'THIN', units: 2 }] })).rejects.toThrow(/estimate_counts_the_dossiers_facets:E1:RISK not counted/);
+    await expect(estimate('E1', { method: 'notationsos.dossier.estimate.v2' })).rejects.toThrow(/method/);
+    await estimate();
+  });
+
+  it('counts the latest assessment at or before it was made, not the first', async () => {
+    await assessedBoth();
+    await coverage('C1b', { evidence: [{ artifact: 'A3', assessment: 'DISALLOWED' }], assessedAt: T_QUOTE });
+    await expect(estimate('E1', { at: T_QUOTE })).rejects.toThrow(/estimate_misstates_a_facets_level:E1:DEPENDENCY counted as THIN, assessed NONE/);
+    await estimate('E1', { at: T_QUOTE, perFacet: [{ facet: 'DEPENDENCY', level: 'NONE', units: 1 }, { facet: 'RISK', level: 'THIN', units: 2 }], units: 3 });
+    await estimate('E0', { at: T_ASK }); // as it stood at the first assessment: still THIN
   });
 });
 
@@ -902,7 +1011,7 @@ describe('a conclusion is served at the class it was computed at', () => {
 describe('nothing has been asked', () => {
   it('holds no spec, coverage, evidence, estimate, quotation, release, conclusion or delivery', async () => {
     for (const table of ['dossier_spec', 'dossier_coverage', 'dossier_coverage_evidence', 'dossier_estimate', 'pricing_policy', 'dossier_quotation', 'dossier_release',
-      'dossier_conclusion', 'corpus_candidate', 'customer_approval', 'dossier_delivery']) {
+      'dossier_release_coverage', 'dossier_conclusion', 'corpus_candidate', 'customer_approval', 'dossier_delivery']) {
       expect(await rows(`SELECT 1 FROM ${table}`), table).toEqual([]);
     }
   });

@@ -54,6 +54,9 @@ export function DossierLifecycleView({ receipt }: { receipt: DossierLifecycleRec
             </tbody>
           </table>
         </div>
+        <p className="m-0 mt-2 text-[12px]" data-testid="dossier-reassessment" data-changed={String(receipt.reassessment.changed)} style={{ color: 'var(--text-muted)' }}>
+          Re-assessed at <span className="ts">{receipt.reassessment.at}</span> as {receipt.reassessment.coverage.map((c) => <span key={c.coverageId} className="id mr-1">{c.coverageId}</span>)}: {receipt.reassessment.because}
+        </p>
         <p className="m-0 mt-2 text-[12.5px]" data-testid="dossier-quotation" style={{ color: 'var(--text-primary)' }}>
           Estimate <span className="id">{receipt.estimate.estimateId}</span>: {receipt.estimate.units} units by {receipt.estimate.method}.
           Quotation <span className="id">{receipt.quotation.quotationId}</span>: {receipt.quotation.units} × {receipt.quotation.unitPriceMinor} = {receipt.quotation.amountMinor} {receipt.quotation.currency} minor under {receipt.quotation.policyId} (a demonstration rate), accepted by {receipt.scope.reviewer} as <span className="mono text-[11px]">{receipt.quotation.digest.slice(0, 23)}…</span>.

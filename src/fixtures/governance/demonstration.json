@@ -137,7 +137,7 @@
       {
         "stage": "BUILD",
         "at": "2026-09-07T10:00:00.000Z",
-        "wrote": "compiled release v1 over 1 conclusion and 2 stated holes (SUPPLIER_IDENTITY=MISSING, RISK=DISALLOWED), digest sha256:c95ecda17d99…; built snapshot equals the quoted snapshot because the corpus did not move between them"
+        "wrote": "compiled release v1 over 1 conclusion and 2 stated holes (SUPPLIER_IDENTITY=MISSING, RISK=DISALLOWED), digest sha256:69abe0011bb7…; built snapshot equals the quoted snapshot because the corpus did not move between them"
       },
       {
         "stage": "RELEASE",
@@ -152,11 +152,13 @@
       {
         "stage": "MONITORING",
         "at": "2026-09-08T11:00:00.000Z",
-        "wrote": "DREL-2 v2 succeeds DREL-1 (P-DOSSIER-RELEASE-2 corrects O-DELIVER-1); T-DELIVER-2 CONFIRMED; DREL-1 and its delivery stand"
+        "wrote": "re-assessed at 2026-09-08T09:00:00.000Z (unchanged; dossier_coverage × 3 more); DREL-2 v2 built over it succeeds DREL-1 (P-DOSSIER-RELEASE-2 corrects O-DELIVER-1); T-DELIVER-2 CONFIRMED; DREL-1, its assessment and its delivery stand"
       }
     ],
     "coverage": [
       {
+        "coverageId": "COV-1-SUPPLIER_IDENTITY",
+        "assessedAt": "2026-09-06T09:10:00.000Z",
         "facet": "SUPPLIER_IDENTITY",
         "level": "NONE",
         "assessment": "MISSING",
@@ -173,6 +175,8 @@
         "units": 1
       },
       {
+        "coverageId": "COV-1-DEPENDENCY",
+        "assessedAt": "2026-09-06T09:10:00.000Z",
         "facet": "DEPENDENCY",
         "level": "THIN",
         "assessment": "DISALLOWED",
@@ -205,6 +209,8 @@
         "units": 2
       },
       {
+        "coverageId": "COV-1-RISK",
+        "assessedAt": "2026-09-06T09:10:00.000Z",
         "facet": "RISK",
         "level": "NONE",
         "assessment": "DISALLOWED",
@@ -230,6 +236,92 @@
         "units": 1
       }
     ],
+    "reassessment": {
+      "at": "2026-09-08T09:00:00.000Z",
+      "coverage": [
+        {
+          "coverageId": "COV-2-SUPPLIER_IDENTITY",
+          "assessedAt": "2026-09-08T09:00:00.000Z",
+          "facet": "SUPPLIER_IDENTITY",
+          "level": "NONE",
+          "assessment": "MISSING",
+          "artifactsAvailable": 0,
+          "artifactsPresent": 0,
+          "artifactsStale": 0,
+          "artifactsConflicting": 0,
+          "artifactsDisallowed": 0,
+          "runsRepresented": 0,
+          "runsUsable": 0,
+          "artifactIds": [],
+          "evidence": [],
+          "basis": "No derived artifact in either demonstration run bears on supplier identity. The corpus surfaces lots and samples, not the parties behind them.",
+          "units": 1
+        },
+        {
+          "coverageId": "COV-2-DEPENDENCY",
+          "assessedAt": "2026-09-08T09:00:00.000Z",
+          "facet": "DEPENDENCY",
+          "level": "THIN",
+          "assessment": "DISALLOWED",
+          "artifactsAvailable": 2,
+          "artifactsPresent": 1,
+          "artifactsStale": 0,
+          "artifactsConflicting": 0,
+          "artifactsDisallowed": 1,
+          "runsRepresented": 1,
+          "runsUsable": 1,
+          "artifactIds": [
+            "DEMO-CARAVAN-A001",
+            "DEMO-CARAVAN-A002"
+          ],
+          "evidence": [
+            {
+              "artifactId": "DEMO-CARAVAN-A001",
+              "runId": "DEMO-CARAVAN",
+              "assessment": "PRESENT",
+              "because": "Carries customer_delivery; no input corrected or withdrawn by 2026-09-08T09:00:00.000Z; no other artifact on the facet disagrees about LOT-5B-221; not refuted; within its horizon."
+            },
+            {
+              "artifactId": "DEMO-CARAVAN-A002",
+              "runId": "DEMO-CARAVAN",
+              "assessment": "DISALLOWED",
+              "because": "Its rights are acquisition, normalization; customer_delivery is not among them, and a dossier delivery exercises it."
+            }
+          ],
+          "basis": "2 evidence-concentration artifacts over the lots in REL-CAR-2026.09.01, from one run (DEMO-CARAVAN): 1 present, 1 disallowed for customer delivery (its rights carry no customer_delivery), 0 stale, 0 conflicting.",
+          "units": 2
+        },
+        {
+          "coverageId": "COV-2-RISK",
+          "assessedAt": "2026-09-08T09:00:00.000Z",
+          "facet": "RISK",
+          "level": "NONE",
+          "assessment": "DISALLOWED",
+          "artifactsAvailable": 1,
+          "artifactsPresent": 0,
+          "artifactsStale": 0,
+          "artifactsConflicting": 0,
+          "artifactsDisallowed": 1,
+          "runsRepresented": 1,
+          "runsUsable": 0,
+          "artifactIds": [
+            "SPATIAL-demo-floor-P-07-CLOSED"
+          ],
+          "evidence": [
+            {
+              "artifactId": "SPATIAL-demo-floor-P-07-CLOSED",
+              "runId": "SPATIAL-RUN-P-07-CLOSED",
+              "assessment": "DISALLOWED",
+              "because": "Its rights are none; customer_delivery is not among them, and a dossier delivery exercises it."
+            }
+          ],
+          "basis": "One computation bears on it — the spatial baseline-versus-scenario comparison from SPATIAL-RUN-P-07-CLOSED — and may not be delivered to a customer audience: its source registration permits SPATIAL_INQUIRY to INTERNAL audiences only, so its rights carry no corpus use at all, customer_delivery included. Nothing here rests on it.",
+          "units": 1
+        }
+      ],
+      "changed": false,
+      "because": "Between 2026-09-06T09:10:00.000Z and 2026-09-08T09:00:00.000Z nothing the corpus holds moved — no record taken back, no artifact refuted, no horizon passed — and the second assessment is the first's, artifact for artifact. Version 2 names the second all the same: a release is built over the latest assessment at its build, and the earlier row stands."
+    },
     "estimate": {
       "estimateId": "EST-1",
       "method": "notationsos.dossier.estimate.v1",
@@ -266,13 +358,13 @@
       {
         "releaseId": "DREL-1",
         "version": 1,
-        "releaseDigest": "sha256:c95ecda17d997b316ee35e51cb3d7daf2c88da35eabc2613695181057e8f366a",
+        "releaseDigest": "sha256:69abe0011bb7b9e9a92fba1e13fef4f50299d418ebdf3f6ea6ce8805bc44011c",
         "builtSnapshot": "sha256:209dd42fd06b7e54b84184a8f10fb3926eb130d071bc2594f3a7bcc97c139e4c",
         "review": {
           "proposalId": "P-DOSSIER-RELEASE-1",
           "operationKind": "DOSSIER_RELEASE",
           "packetId": "K-DOSSIER-RELEASE-1",
-          "actionDigest": "sha256:c95ecda17d997b316ee35e51cb3d7daf2c88da35eabc2613695181057e8f366a",
+          "actionDigest": "sha256:69abe0011bb7b9e9a92fba1e13fef4f50299d418ebdf3f6ea6ce8805bc44011c",
           "reviewId": "RV-DOSSIER-RELEASE-1",
           "reviewer": "operator:corpus-steward",
           "response": "APPROVE",
@@ -330,13 +422,13 @@
       {
         "releaseId": "DREL-2",
         "version": 2,
-        "releaseDigest": "sha256:ff7eb81444e7ae392c32357430f36665da1c2d1450fd1850186be7b1371f567b",
+        "releaseDigest": "sha256:141b123e24016b8cb093520ff580de8b5c2257449e5cffcc2740cc53422d0552",
         "builtSnapshot": "sha256:209dd42fd06b7e54b84184a8f10fb3926eb130d071bc2594f3a7bcc97c139e4c",
         "review": {
           "proposalId": "P-DOSSIER-RELEASE-2",
           "operationKind": "DOSSIER_RELEASE",
           "packetId": "K-DOSSIER-RELEASE-2",
-          "actionDigest": "sha256:ff7eb81444e7ae392c32357430f36665da1c2d1450fd1850186be7b1371f567b",
+          "actionDigest": "sha256:141b123e24016b8cb093520ff580de8b5c2257449e5cffcc2740cc53422d0552",
           "reviewId": "RV-DOSSIER-RELEASE-2",
           "reviewer": "operator:corpus-steward",
           "response": "APPROVE",
@@ -422,7 +514,11 @@
       },
       {
         "label": "backdate a withdrawal of a record the present lot artifact read",
-        "refusedBy": "retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known"
+        "refusedBy": "retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-1-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known"
+      },
+      {
+        "label": "estimate the work at a level the coverage does not hold",
+        "refusedBy": "estimate_misstates_a_facets_level:EST-BAD:DEPENDENCY counted as SUPPORTED, assessed THIN"
       },
       {
         "label": "quote the work before any pricing policy is approved",
@@ -449,6 +545,10 @@
         "refusedBy": "release_reviewed"
       },
       {
+        "label": "build version 1 naming no assessment for RISK",
+        "refusedBy": "release_names_no_assessment_for_a_facet:DREL-1:RISK"
+      },
+      {
         "label": "present the spatial computation as something a source observed",
         "refusedBy": "conclusion_presented_at_its_class"
       },
@@ -465,14 +565,22 @@
         "refusedBy": "delivery_goes_to_the_dossiers_recipient"
       },
       {
+        "label": "backdate a re-assessment of DEPENDENCY behind the first",
+        "refusedBy": "assessment_is_later_than_the_last:DOSSIER-DEMO-1-DEPENDENCY:assessed 2026-09-06 09:00:00+00 behind one at 2026-09-06 09:10:00+00"
+      },
+      {
+        "label": "build version 2 over the first assessment after re-assessing",
+        "refusedBy": "release_names_a_superseded_assessment:DREL-2:COV-1-DEPENDENCY assessed 2026-09-06 09:10:00+00, but DEPENDENCY was re-assessed at 2026-09-08 09:00:00+00"
+      },
+      {
         "label": "release version 2 under version 1’s approval",
         "refusedBy": "release_authorization_once"
       }
     ],
     "counts": {
       "specs": 1,
-      "coverage": 3,
-      "evidence": 3,
+      "coverage": 6,
+      "evidence": 6,
       "estimates": 1,
       "quotations": 1,
       "releases": 2,
@@ -481,7 +589,7 @@
       "proposals": 3,
       "authorizations": 3,
       "attempts": 2,
-      "refusals": 17
+      "refusals": 21
     }
   },
   "editorial": {
@@ -1202,7 +1310,12 @@
     },
     {
       "label": "backdate a withdrawal of a record the present lot artifact read",
-      "refusedBy": "retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known",
+      "refusedBy": "retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-1-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "estimate the work at a level the coverage does not hold",
+      "refusedBy": "estimate_misstates_a_facets_level:EST-BAD:DEPENDENCY counted as SUPPORTED, assessed THIN",
       "lifecycle": "DOSSIER"
     },
     {
@@ -1236,6 +1349,11 @@
       "lifecycle": "DOSSIER"
     },
     {
+      "label": "build version 1 naming no assessment for RISK",
+      "refusedBy": "release_names_no_assessment_for_a_facet:DREL-1:RISK",
+      "lifecycle": "DOSSIER"
+    },
+    {
       "label": "present the spatial computation as something a source observed",
       "refusedBy": "conclusion_presented_at_its_class",
       "lifecycle": "DOSSIER"
@@ -1253,6 +1371,16 @@
     {
       "label": "deliver the dossier to the other customer",
       "refusedBy": "delivery_goes_to_the_dossiers_recipient",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "backdate a re-assessment of DEPENDENCY behind the first",
+      "refusedBy": "assessment_is_later_than_the_last:DOSSIER-DEMO-1-DEPENDENCY:assessed 2026-09-06 09:00:00+00 behind one at 2026-09-06 09:10:00+00",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "build version 2 over the first assessment after re-assessing",
+      "refusedBy": "release_names_a_superseded_assessment:DREL-2:COV-1-DEPENDENCY assessed 2026-09-06 09:10:00+00, but DEPENDENCY was re-assessed at 2026-09-08 09:00:00+00",
       "lifecycle": "DOSSIER"
     },
     {
@@ -1357,6 +1485,7 @@
     }
   ],
   "refusedBy": [
+    "assessment_is_later_than_the_last",
     "authorization_needs_confirmed_eligibility",
     "budget_reservation_balance_after_minor_check",
     "channel_carries_the_reviewed_message",
@@ -1372,6 +1501,7 @@
     "dossier_delivery_attempt_id_fkey",
     "editorial_release_authorization_once",
     "editorial_release_publication_class_check",
+    "estimate_misstates_a_facets_level",
     "evidence_assessment_is_not_the_artifacts",
     "execution_authorization_granted_by_kind_check",
     "only_the_archive_originates",
@@ -1382,6 +1512,8 @@
     "release_authorization_once",
     "release_before_every_review_passed",
     "release_message_has_its_parts",
+    "release_names_a_superseded_assessment",
+    "release_names_no_assessment_for_a_facet",
     "release_reviewed",
     "release_scope_accepted",
     "repetition_is_not_corroboration",
@@ -1393,7 +1525,7 @@
     "treasury_dispatch_after_revocation"
   ],
   "counts": {
-    "refusals": 36,
+    "refusals": 40,
     "proposals": 15,
     "authorizations": 10,
     "revocations": 1,

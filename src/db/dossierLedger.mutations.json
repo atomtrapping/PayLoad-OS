@@ -114,28 +114,18 @@
     },
     {
       "name": "conclusion guard ignores the facet",
-      "find": "    JOIN dossier_facet f ON f.dossier_id = r.dossier_id AND f.facet = NEW.facet",
-      "replace": "    JOIN dossier_facet f ON f.dossier_id = r.dossier_id"
+      "find": "    JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id AND f.facet = NEW.facet",
+      "replace": "    JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id"
     },
     {
       "name": "conclusion guard ignores the release",
-      "find": "    WHERE r.dossier_release_id = NEW.dossier_release_id AND e.assessment = 'PRESENT'",
+      "find": "    WHERE rc.dossier_release_id = NEW.dossier_release_id AND e.assessment = 'PRESENT'",
       "replace": "    WHERE e.assessment = 'PRESENT'"
     },
     {
       "name": "conclusion guard accepts anything but DISALLOWED",
-      "find": "    WHERE r.dossier_release_id = NEW.dossier_release_id AND e.assessment = 'PRESENT'",
-      "replace": "    WHERE r.dossier_release_id = NEW.dossier_release_id AND e.assessment <> 'DISALLOWED'"
-    },
-    {
-      "name": "conclusion guard ignores when the assessment was made",
-      "find": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id AND c.assessed_at <= r.built_at",
-      "replace": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id"
-    },
-    {
-      "name": "conclusion guard excludes the build instant",
-      "find": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id AND c.assessed_at <= r.built_at",
-      "replace": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id AND c.assessed_at < r.built_at"
+      "find": "    WHERE rc.dossier_release_id = NEW.dossier_release_id AND e.assessment = 'PRESENT'",
+      "replace": "    WHERE rc.dossier_release_id = NEW.dossier_release_id AND e.assessment <> 'DISALLOWED'"
     },
     {
       "name": "level CHECK removed",
@@ -256,6 +246,121 @@
       "name": "spec question rewritable",
       "find": "  IF NEW.dossier_id <> OLD.dossier_id OR NEW.recipient_id <> OLD.recipient_id OR NEW.question <> OLD.question\n",
       "replace": "  IF NEW.dossier_id <> OLD.dossier_id OR NEW.recipient_id <> OLD.recipient_id\n"
+    },
+    {
+      "name": "conclusion guard reads any row of the facet, not the named one",
+      "find": "    JOIN dossier_coverage c ON c.coverage_id = rc.coverage_id\n    JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id AND f.facet = NEW.facet",
+      "replace": "    JOIN dossier_coverage c0 ON c0.coverage_id = rc.coverage_id\n    JOIN dossier_coverage c ON c.dossier_facet_id = c0.dossier_facet_id\n    JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id AND f.facet = NEW.facet"
+    },
+    {
+      "name": "same-instant re-assessment allowed",
+      "find": "  CONSTRAINT coverage_assessed_once_per_instant UNIQUE (dossier_facet_id, assessed_at),\n",
+      "replace": ""
+    },
+    {
+      "name": "backdated re-assessment allowed",
+      "find": "  IF last_at IS NOT NULL AND NEW.assessed_at < last_at THEN",
+      "replace": "  IF FALSE THEN"
+    },
+    {
+      "name": "estimate facet count not checked",
+      "find": "  IF n_quoted <> n_facets THEN",
+      "replace": "  IF FALSE THEN"
+    },
+    {
+      "name": "estimate over an unassessed facet allowed",
+      "find": "    IF facet_row.level IS NULL THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "estimate level not checked",
+      "find": "    IF quoted.level <> facet_row.level THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "estimate element units not checked",
+      "find": "    IF quoted.units <> (CASE facet_row.level",
+      "replace": "    IF FALSE AND quoted.units <> (CASE facet_row.level"
+    },
+    {
+      "name": "estimate total units not checked",
+      "find": "  IF NEW.units <> counted THEN",
+      "replace": "  IF FALSE THEN"
+    },
+    {
+      "name": "estimate reads the first assessment, not the latest",
+      "find": "             ORDER BY c.assessed_at DESC LIMIT 1) AS level",
+      "replace": "             ORDER BY c.assessed_at ASC LIMIT 1) AS level"
+    },
+    {
+      "name": "estimate ignores its own instant",
+      "find": " AND c.assessed_at <= NEW.estimated_at\n",
+      "replace": "\n"
+    },
+    {
+      "name": "estimate method free",
+      "find": "  method text NOT NULL CHECK (method = '${ESTIMATE_METHOD}'),",
+      "replace": "  method text NOT NULL,"
+    },
+    {
+      "name": "release may name another dossier's assessment",
+      "find": "    IF named.dossier_id <> rel.dossier_id THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "release may name an assessment after its build",
+      "find": "    IF named.assessed_at > rel.built_at THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "after-build check excludes the build instant",
+      "find": "    IF named.assessed_at > rel.built_at THEN",
+      "replace": "    IF named.assessed_at >= rel.built_at THEN"
+    },
+    {
+      "name": "release may name a superseded assessment",
+      "find": "    IF later IS NOT NULL THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "superseded ignores the build bound",
+      "find": "AND c2.assessed_at > named.assessed_at AND c2.assessed_at <= rel.built_at;",
+      "replace": "AND c2.assessed_at > named.assessed_at;"
+    },
+    {
+      "name": "scope change not checked",
+      "find": "    IF quoted_level IS DISTINCT FROM named.level THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "missing facet not checked",
+      "find": "    IF facet_row.named_rows = 0 THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "two assessments per facet not checked",
+      "find": "    IF facet_row.named_rows > 1 THEN",
+      "replace": "    IF FALSE THEN"
+    },
+    {
+      "name": "release-side naming trigger removed",
+      "find": "CREATE CONSTRAINT TRIGGER release_names_its_assessments\n  AFTER INSERT ON dossier_release\n  DEFERRABLE INITIALLY DEFERRED\n  FOR EACH ROW EXECUTE FUNCTION refuse_release_unlike_what_it_names();\n",
+      "replace": ""
+    },
+    {
+      "name": "naming-side trigger removed",
+      "find": "CREATE CONSTRAINT TRIGGER named_assessment_is_the_releases\n  AFTER INSERT ON dossier_release_coverage\n  DEFERRABLE INITIALLY DEFERRED\n  FOR EACH ROW EXECUTE FUNCTION refuse_release_unlike_what_it_names();\n",
+      "replace": ""
+    },
+    {
+      "name": "release naming rewritable",
+      "find": "CREATE TRIGGER release_coverage_is_written_once BEFORE UPDATE OR DELETE ON dossier_release_coverage\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('release_coverage');\n",
+      "replace": ""
+    },
+    {
+      "name": "estimate rewritable",
+      "find": "CREATE TRIGGER estimate_is_written_once BEFORE UPDATE OR DELETE ON dossier_estimate\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('estimate');\n",
+      "replace": ""
     }
   ]
 }

@@ -5,7 +5,7 @@ import {
   AGENT_MAY_NOT_INVENT, AGENT_MAY_TAILOR, AMENDMENT_RULE, APPROVAL_IS_NOT_A_SUPPLIER_PROPERTY,
   COMPILE_INPUTS, COMPILE_INPUT_MEANING, CONCLUSION_CLASS_RULE, CORRECTION_RULE,
   COVERAGE_HOLE_RULE, DECOMPOSITION_RULE, DELIVERABLE_CHAIN, DELIVERABLE_IMPRINT,
-  DOSSIER_STAGES, FACET_CONTRACTS, PRICING_POLICY_RULE, REFRESH_IS_A_RELEASE,
+  DOSSIER_STAGES, FACET_CONTRACTS, PRICING_POLICY_RULE, REASSESSMENT_RULE, REFRESH_IS_A_RELEASE,
   STANDING_CONTRACTS, TWO_SNAPSHOTS_RULE, dossierStanding,
 } from '@/domain/dossierService';
 import { CUSTOMER_ENTRY, CUSTOMER_NEED_NOT_KNOW, identityContract } from '@/domain/firmIdentity';
@@ -103,6 +103,7 @@ export default function DossierPage() {
           <p className="m-0 mt-1 text-[12.5px]" data-testid="two-snapshots" style={{ color: 'var(--text-primary)' }}>{TWO_SNAPSHOTS_RULE}</p>
           <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{AMENDMENT_RULE}</p>
           <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{REFRESH_IS_A_RELEASE}</p>
+          <p className="m-0 text-[12px]" data-testid="reassessment-rule" style={{ color: 'var(--text-secondary)' }}>{REASSESSMENT_RULE}</p>
           <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{CORRECTION_RULE}</p>
         </div>
       </Section>

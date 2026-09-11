@@ -339,6 +339,9 @@ export const TWO_SNAPSHOTS_RULE =
 export const AMENDMENT_RULE =
   'A material change of scope is an amendment the customer agrees to, or an exception somebody owns. It is never an unannounced change in what they receive.';
 
+export const REASSESSMENT_RULE =
+  'An assessment is a fact at its instant. A corpus that moves after the quote is assessed again — a new coverage row for the facet at a later instant, with its own evidence — and the earlier row stands. A release names, for every facet, the assessment it was built over, the latest at or before its build; a conclusion rests on present evidence in that row and no other; and a level that moved since the quote is a change of scope, which is an amendment the customer agrees to, never a substitution.';
+
 export const REFRESH_IS_A_RELEASE =
   'A monitored refresh is a new release rather than an edit. The previously delivered dossier stays inspectable, so a customer who acted on last quarter’s version can see what it said when they acted.';
 

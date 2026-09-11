@@ -25,6 +25,7 @@ const T_HORIZON = '2026-06-01T00:00:00.000Z';
 const FP = (n: number) => `sha256:${String(n).repeat(2).padStart(64, '0')}`;
 
 /* The corpus tables the ledger's foreign keys point at. */
+
 const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);

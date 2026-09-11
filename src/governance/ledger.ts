@@ -30,6 +30,7 @@ import { createHash } from 'node:crypto';
 import { canonicalJson } from '@/fixtures/digest';
 import { sqlArray, sqlText } from '@/db/ddl';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from '@/db/discoveryLedger';
+import { RETRACTED_RECORD_DDL } from '@/db/retractedRecord';
 import { DOSSIER_LEDGER_DDL, DOSSIER_LEDGER_GUARDS } from '@/db/dossierLedger';
 import { EDITORIAL_LEDGER_DDL, EDITORIAL_LEDGER_GUARDS } from '@/db/editorialLedger';
 import { EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS, type PrincipalKind } from '@/db/executionLedger';
@@ -39,13 +40,6 @@ import type { ReviewResponse } from '@/domain/executionEnvelope';
 import { currentRelease, standingRecords } from '@/domain/corpus';
 import type { Corpus } from '@/domain/corpus';
 
-export const CORPUS_STUB_DDL = `
-CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
-CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);
-CREATE TABLE corpus_record (record_id text PRIMARY KEY, release_id text NOT NULL, subject_id text NOT NULL, predicate text NOT NULL, known_at timestamptz NOT NULL, UNIQUE (record_id, known_at));
--- What the corpus took back, and how: a correction says something else, a withdrawal says nothing.
-CREATE TABLE retracted_record (retraction_id text NOT NULL, record_id text NOT NULL, kind text NOT NULL CHECK (kind IN ('CORRECTION', 'WITHDRAWAL')), issued_at timestamptz NOT NULL, PRIMARY KEY (retraction_id, record_id));
-`;
 
 /**
  * Two stacks, two databases. The products stack holds the dossier and the
@@ -53,6 +47,17 @@ CREATE TABLE retracted_record (retraction_id text NOT NULL, record_id text NOT N
  * money over the warrant ledger's budget chain. Both rest on the kernel for
  * their principals, and nothing in one can reference a row in the other.
  */
+/**
+ * The corpus tables the ledgers key into, as a stub: no database holds the
+ * corpus yet, so its current release and standing records are seeded here
+ * from the fixture, and what it took back from `src/db/retractedRecord.ts`.
+ */
+export const CORPUS_STUB_DDL = `
+CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
+CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);
+CREATE TABLE corpus_record (record_id text PRIMARY KEY, release_id text NOT NULL, subject_id text NOT NULL, predicate text NOT NULL, known_at timestamptz NOT NULL, UNIQUE (record_id, known_at));
+${RETRACTED_RECORD_DDL}`;
+
 export type LedgerStack = 'PRODUCTS' | 'TREASURY';
 
 const STACKS: Record<LedgerStack, string> = {
@@ -90,6 +95,8 @@ export interface GovernedAct {
   reviewId: string;
   reviewer: string;
   response: ReviewResponse;
+  /** What the reviewer wrote, as it went into proposal_review. */
+  reasoning: string;
   /** Present only when the review approved. A denial produces no authorization, and that absence is the point. */
   authorizationId: string | null;
   grantedBy: string | null;
@@ -205,7 +212,7 @@ export class GovernanceLedger {
       ] : []),
     ].join(';\n'));
     return {
-      proposalId, operationKind: act.operationKind, packetId, actionDigest, reviewId, reviewer: act.reviewer.principalId, response: act.response,
+      proposalId, operationKind: act.operationKind, packetId, actionDigest, reviewId, reviewer: act.reviewer.principalId, response: act.response, reasoning: act.reasoning,
       authorizationId: act.response === 'APPROVE' ? authorizationId : null,
       grantedBy: act.response === 'APPROVE' ? grantor.principalId : null,
       grantedAt: act.grantedAt, expiresAt: act.expiresAt,

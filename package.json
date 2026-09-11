@@ -39,7 +39,8 @@
     "stamp:digests": "esbuild scripts/stamp-digests.entry.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/stamp.mjs --log-level=warning && node .stamp/stamp.mjs",
     "stamp:governance": "esbuild scripts/stamp-governance.entry.ts --bundle --platform=node --format=esm --alias:@=./src --external:@electric-sql/pglite --outfile=.stamp/stamp-governance.mjs --log-level=warning && node .stamp/stamp-governance.mjs",
     "mcp": "esbuild src/mcp/server.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/mcp.mjs --log-level=warning --banner:js=\"import { createRequire } from \\\"module\\\"; const require = createRequire(import.meta.url);\" && node .stamp/mcp.mjs",
-    "admit": "esbuild scripts/admit.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/admit.mjs --log-level=warning && node .stamp/admit.mjs"
+    "admit": "esbuild scripts/admit.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/admit.mjs --log-level=warning && node .stamp/admit.mjs",
+    "mutate:dossier": "node scripts/mutate-ledger.mjs src/db/dossierLedger.mutations.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

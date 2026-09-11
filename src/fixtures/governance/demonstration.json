@@ -137,7 +137,7 @@
       {
         "stage": "BUILD",
         "at": "2026-09-07T10:00:00.000Z",
-        "wrote": "compiled release v1 over 1 conclusion and 2 stated holes (SUPPLIER_IDENTITY=MISSING, RISK=DISALLOWED), digest sha256:8aca9aafc886…; built snapshot equals the quoted snapshot because the corpus did not move between them"
+        "wrote": "compiled release v1 over 1 conclusion and 2 stated holes (SUPPLIER_IDENTITY=MISSING, RISK=DISALLOWED), digest sha256:c95ecda17d99…; built snapshot equals the quoted snapshot because the corpus did not move between them"
       },
       {
         "stage": "RELEASE",
@@ -201,7 +201,7 @@
             "because": "Its rights are acquisition, normalization; customer_delivery is not among them, and a dossier delivery exercises it."
           }
         ],
-        "basis": "2 evidence-concentration artifacts over the lots in REL-CAR-2026.09.01, from one run (DEMO-CARAVAN): 1 may be delivered to this customer and 1 may not, because its rights do not carry customer_delivery.",
+        "basis": "2 evidence-concentration artifacts over the lots in REL-CAR-2026.09.01, from one run (DEMO-CARAVAN): 1 present, 1 disallowed for customer delivery (its rights carry no customer_delivery), 0 stale, 0 conflicting.",
         "units": 2
       },
       {
@@ -226,7 +226,7 @@
             "because": "Its rights are none; customer_delivery is not among them, and a dossier delivery exercises it."
           }
         ],
-        "basis": "One computation bears on it — the spatial baseline-versus-scenario comparison from SPATIAL-RUN-P-07-CLOSED — and may not be delivered to this customer: its source registration permits SPATIAL_INQUIRY to INTERNAL audiences only, so its rights carry no corpus use at all, customer_delivery included. Nothing here rests on it.",
+        "basis": "One computation bears on it — the spatial baseline-versus-scenario comparison from SPATIAL-RUN-P-07-CLOSED — and may not be delivered to a customer audience: its source registration permits SPATIAL_INQUIRY to INTERNAL audiences only, so its rights carry no corpus use at all, customer_delivery included. Nothing here rests on it.",
         "units": 1
       }
     ],
@@ -254,6 +254,7 @@
       "reviewId": "RV-DOSSIER-SCOPE",
       "reviewer": "customer:demonstration-buyer",
       "response": "APPROVE",
+      "reasoning": "Accepted at the quoted amount. The holes are what I want to know about.",
       "authorizationId": "AU-DOSSIER-SCOPE",
       "grantedBy": "customer:demonstration-buyer",
       "grantedAt": "2026-09-06T11:00:00.000Z",
@@ -265,16 +266,17 @@
       {
         "releaseId": "DREL-1",
         "version": 1,
-        "releaseDigest": "sha256:8aca9aafc886d2bd9e9bd4033676d150a6db9e205ad6187eed4cc011ea0a5aa2",
+        "releaseDigest": "sha256:c95ecda17d997b316ee35e51cb3d7daf2c88da35eabc2613695181057e8f366a",
         "builtSnapshot": "sha256:209dd42fd06b7e54b84184a8f10fb3926eb130d071bc2594f3a7bcc97c139e4c",
         "review": {
           "proposalId": "P-DOSSIER-RELEASE-1",
           "operationKind": "DOSSIER_RELEASE",
           "packetId": "K-DOSSIER-RELEASE-1",
-          "actionDigest": "sha256:8aca9aafc886d2bd9e9bd4033676d150a6db9e205ad6187eed4cc011ea0a5aa2",
+          "actionDigest": "sha256:c95ecda17d997b316ee35e51cb3d7daf2c88da35eabc2613695181057e8f366a",
           "reviewId": "RV-DOSSIER-RELEASE-1",
           "reviewer": "operator:corpus-steward",
           "response": "APPROVE",
+          "reasoning": "The conclusion is presented at its computed class and states what it did not cover, the withheld lot artifact included. Both holes are on the page with their assessment. Release.",
           "authorizationId": "AU-DOSSIER-RELEASE-1",
           "grantedBy": "operator:corpus-steward",
           "grantedAt": "2026-09-07T10:30:00.000Z",
@@ -286,7 +288,7 @@
           {
             "facet": "DEPENDENCY",
             "statement": "4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%.",
-            "notCovered": "DEMO-CARAVAN-A002 bears on this facet and is DISALLOWED for this customer (Its rights are acquisition, normalization; customer_delivery is not among them, and a dossier delivery exercises it), so this statement rests on DEMO-CARAVAN-A001 alone. Samples are not lots and are not counted here.",
+            "notCovered": "DEMO-CARAVAN-A002 bears on this facet and is DISALLOWED for customer delivery, so this statement rests on DEMO-CARAVAN-A001 alone. Samples are not lots and are not counted here.",
             "artifactId": "DEMO-CARAVAN-A001",
             "artifactClass": "COMPUTED_RESULT",
             "presentedAs": "COMPUTED_RESULT"
@@ -307,7 +309,7 @@
             "assessment": "DISALLOWED",
             "artifactsAvailable": 1,
             "artifactsUsable": 0,
-            "basis": "One computation bears on it — the spatial baseline-versus-scenario comparison from SPATIAL-RUN-P-07-CLOSED — and may not be delivered to this customer: its source registration permits SPATIAL_INQUIRY to INTERNAL audiences only, so its rights carry no corpus use at all, customer_delivery included. Nothing here rests on it."
+            "basis": "One computation bears on it — the spatial baseline-versus-scenario comparison from SPATIAL-RUN-P-07-CLOSED — and may not be delivered to a customer audience: its source registration permits SPATIAL_INQUIRY to INTERNAL audiences only, so its rights carry no corpus use at all, customer_delivery included. Nothing here rests on it."
           }
         ],
         "delivery": {
@@ -328,16 +330,17 @@
       {
         "releaseId": "DREL-2",
         "version": 2,
-        "releaseDigest": "sha256:3de501fa0f25f252d898a96eea61acf67b3de07eaac1641a5e55e2f9e37243b9",
+        "releaseDigest": "sha256:ff7eb81444e7ae392c32357430f36665da1c2d1450fd1850186be7b1371f567b",
         "builtSnapshot": "sha256:209dd42fd06b7e54b84184a8f10fb3926eb130d071bc2594f3a7bcc97c139e4c",
         "review": {
           "proposalId": "P-DOSSIER-RELEASE-2",
           "operationKind": "DOSSIER_RELEASE",
           "packetId": "K-DOSSIER-RELEASE-2",
-          "actionDigest": "sha256:3de501fa0f25f252d898a96eea61acf67b3de07eaac1641a5e55e2f9e37243b9",
+          "actionDigest": "sha256:ff7eb81444e7ae392c32357430f36665da1c2d1450fd1850186be7b1371f567b",
           "reviewId": "RV-DOSSIER-RELEASE-2",
           "reviewer": "operator:corpus-steward",
           "response": "APPROVE",
+          "reasoning": "The omission is real and is in the run’s own record. Release the correction as a successor; version 1 stays.",
           "authorizationId": "AU-DOSSIER-RELEASE-2",
           "grantedBy": "operator:corpus-steward",
           "grantedAt": "2026-09-08T09:30:00.000Z",
@@ -349,7 +352,7 @@
           {
             "facet": "DEPENDENCY",
             "statement": "4 retained claims about LOT-5B-221 rest on 3 sources; the largest holds 50%.",
-            "notCovered": "DEMO-CARAVAN-A002 bears on this facet and is DISALLOWED for this customer (Its rights are acquisition, normalization; customer_delivery is not among them, and a dossier delivery exercises it), so this statement rests on DEMO-CARAVAN-A001 alone. Samples are not lots and are not counted here. Before the run, the corpus had taken back 3 records (REC-0111 under RET-0002; REC-0112 under RET-0002; REC-0203 under RET-0001); the artifact read none of them, and version 1 did not say so.",
+            "notCovered": "DEMO-CARAVAN-A002 bears on this facet and is DISALLOWED for customer delivery, so this statement rests on DEMO-CARAVAN-A001 alone. Samples are not lots and are not counted here. Before the run, the corpus had taken back 3 records (REC-0111 under RET-0002; REC-0112 under RET-0002; REC-0203 under RET-0001); the artifact read none of them, and version 1 did not say so.",
             "artifactId": "DEMO-CARAVAN-A001",
             "artifactClass": "COMPUTED_RESULT",
             "presentedAs": "COMPUTED_RESULT"
@@ -370,7 +373,7 @@
             "assessment": "DISALLOWED",
             "artifactsAvailable": 1,
             "artifactsUsable": 0,
-            "basis": "One computation bears on it — the spatial baseline-versus-scenario comparison from SPATIAL-RUN-P-07-CLOSED — and may not be delivered to this customer: its source registration permits SPATIAL_INQUIRY to INTERNAL audiences only, so its rights carry no corpus use at all, customer_delivery included. Nothing here rests on it."
+            "basis": "One computation bears on it — the spatial baseline-versus-scenario comparison from SPATIAL-RUN-P-07-CLOSED — and may not be delivered to a customer audience: its source registration permits SPATIAL_INQUIRY to INTERNAL audiences only, so its rights carry no corpus use at all, customer_delivery included. Nothing here rests on it."
           }
         ],
         "delivery": {
@@ -402,12 +405,24 @@
         "refusedBy": "coverage_assessment_is_the_rollup"
       },
       {
-        "label": "label the spatial computation PRESENT for this customer",
+        "label": "label the spatial computation PRESENT",
         "refusedBy": "evidence_assessment_is_not_the_artifacts:SPATIAL-demo-floor-P-07-CLOSED:PRESENT recorded, DISALLOWED from the artifact"
       },
       {
-        "label": "count the withheld lot artifact toward the level",
+        "label": "call one present artifact SUPPORTED",
         "refusedBy": "coverage_level_counts_the_present"
+      },
+      {
+        "label": "count the withheld lot artifact as present",
+        "refusedBy": "coverage_does_not_match_its_evidence:COV-BAD-4:counts 2/0/0/0 but its evidence rows are 1/0/0/1"
+      },
+      {
+        "label": "rewrite the RISK coverage row as PRESENT after it was written",
+        "refusedBy": "coverage_is_written_once:UPDATE of dossier_coverage"
+      },
+      {
+        "label": "backdate a withdrawal of a record the present lot artifact read",
+        "refusedBy": "retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known"
       },
       {
         "label": "quote the work before any pricing policy is approved",
@@ -438,7 +453,7 @@
         "refusedBy": "conclusion_presented_at_its_class"
       },
       {
-        "label": "rest a conclusion on evidence this customer may not receive",
+        "label": "rest a conclusion on evidence a customer audience may not receive",
         "refusedBy": "conclusion_rests_on_no_present_evidence:SPATIAL-demo-floor-P-07-CLOSED:RISK in DREL-1"
       },
       {
@@ -466,7 +481,7 @@
       "proposals": 3,
       "authorizations": 3,
       "attempts": 2,
-      "refusals": 14
+      "refusals": 17
     }
   },
   "editorial": {
@@ -594,6 +609,7 @@
         "reviewId": "RV-ARTICLE-1",
         "reviewer": "editor:desk",
         "response": "APPROVE",
+        "reasoning": "The headline says what the chart shows, the qualifiers say what it is not, and still-unknown is on the page. Release to the archive.",
         "authorizationId": "AU-ARTICLE-1",
         "grantedBy": "editor:desk",
         "grantedAt": "2026-09-09T16:00:00.000Z",
@@ -643,6 +659,7 @@
         "reviewId": "RV-POST-1",
         "reviewer": "editor:desk",
         "response": "APPROVE",
+        "reasoning": "The post says demonstration, says not validated, and points at the archive. It may be released for its channel. It may not be posted: external execution is disabled.",
         "authorizationId": "AU-POST-1",
         "grantedBy": "editor:desk",
         "grantedAt": "2026-09-10T09:00:00.000Z",
@@ -1164,13 +1181,28 @@
       "lifecycle": "DOSSIER"
     },
     {
-      "label": "label the spatial computation PRESENT for this customer",
+      "label": "label the spatial computation PRESENT",
       "refusedBy": "evidence_assessment_is_not_the_artifacts:SPATIAL-demo-floor-P-07-CLOSED:PRESENT recorded, DISALLOWED from the artifact",
       "lifecycle": "DOSSIER"
     },
     {
-      "label": "count the withheld lot artifact toward the level",
+      "label": "call one present artifact SUPPORTED",
       "refusedBy": "coverage_level_counts_the_present",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "count the withheld lot artifact as present",
+      "refusedBy": "coverage_does_not_match_its_evidence:COV-BAD-4:counts 2/0/0/0 but its evidence rows are 1/0/0/1",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "rewrite the RISK coverage row as PRESENT after it was written",
+      "refusedBy": "coverage_is_written_once:UPDATE of dossier_coverage",
+      "lifecycle": "DOSSIER"
+    },
+    {
+      "label": "backdate a withdrawal of a record the present lot artifact read",
+      "refusedBy": "retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known",
       "lifecycle": "DOSSIER"
     },
     {
@@ -1209,7 +1241,7 @@
       "lifecycle": "DOSSIER"
     },
     {
-      "label": "rest a conclusion on evidence this customer may not receive",
+      "label": "rest a conclusion on evidence a customer audience may not receive",
       "refusedBy": "conclusion_rests_on_no_present_evidence:SPATIAL-demo-floor-P-07-CLOSED:RISK in DREL-1",
       "lifecycle": "DOSSIER"
     },
@@ -1331,6 +1363,8 @@
     "conclusion_presented_at_its_class",
     "conclusion_rests_on_no_present_evidence",
     "coverage_assessment_is_the_rollup",
+    "coverage_does_not_match_its_evidence",
+    "coverage_is_written_once",
     "coverage_level_counts_the_present",
     "delivery_goes_to_the_dossiers_recipient",
     "dispatch_hold_once",
@@ -1352,13 +1386,14 @@
     "release_scope_accepted",
     "repetition_is_not_corroboration",
     "reservation_one_successor",
+    "retraction_contradicts_a_standing_assessment",
     "review_closes_once",
     "treasury_authorization_descends_from_a_denial",
     "treasury_authorization_granted_by_kind_check",
     "treasury_dispatch_after_revocation"
   ],
   "counts": {
-    "refusals": 33,
+    "refusals": 36,
     "proposals": 15,
     "authorizations": 10,
     "revocations": 1,

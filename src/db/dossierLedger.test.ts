@@ -19,8 +19,9 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
+import { RETRACTED_RECORD_DDL } from './retractedRecord';
 import {
-  CANDIDATE_STANDINGS, COVERAGE_ASSESSMENTS, COVERAGE_LEVELS, DOSSIER_STAGES, REUSABLE_STANDINGS,
+  CANDIDATE_STANDINGS, COVERAGE_ASSESSMENTS, COVERAGE_LEVELS, DELIVERY_RIGHT, DOSSIER_STAGES, REUSABLE_STANDINGS,
   coverageLevel, estimateUnits, rollupAssessment, type CoverageAssessment,
 } from '@/domain/dossierService';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from './discoveryLedger';
@@ -32,6 +33,7 @@ let scenario = 0;
 
 const T_KNOWN = '2026-07-01T08:00:00.000Z';
 const T_MINED = '2026-07-01T12:00:00.000Z';
+const T_MINED_OVER = '2026-07-01T13:00:00.000Z';
 const T_HORIZON_PAST = '2026-07-01T18:00:00.000Z';
 const T_ASK = '2026-07-02T09:00:00.000Z';
 const T_QUOTE = '2026-07-02T10:00:00.000Z';
@@ -45,12 +47,12 @@ const QUOTE_DIGEST = FP(7);
 const RELEASE_DIGEST = FP(8);
 const RELEASE_2_DIGEST = FP(9);
 
+
 const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);
 CREATE TABLE corpus_record (record_id text PRIMARY KEY, release_id text NOT NULL, subject_id text NOT NULL, predicate text NOT NULL, known_at timestamptz NOT NULL, UNIQUE (record_id, known_at));
-CREATE TABLE retracted_record (retraction_id text NOT NULL, record_id text NOT NULL, kind text NOT NULL CHECK (kind IN ('CORRECTION', 'WITHDRAWAL')), issued_at timestamptz NOT NULL, PRIMARY KEY (retraction_id, record_id));
-`;
+${RETRACTED_RECORD_DDL}`;
 
 beforeAll(async () => { client = new PGlite(); await client.waitReady; });
 afterAll(async () => { await client?.close(); });
@@ -109,12 +111,20 @@ async function artifact(id: string, over: { subject?: string; claim?: string; ri
   ].join(';\n'));
 }
 
-/** A prediction, which is the class that carries a horizon. */
-async function prediction(id: string, horizon: string) {
+/** A prediction, which is the class that carries a horizon. Its subject is its own, so it disagrees with nothing. */
+async function prediction(id: string, horizon: string, over: { validation?: string } = {}) {
   await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, model_id, confidence, horizon_ends_at, rights, validation)
-     VALUES ('${id}', 'RUN-P', 'SUCCEEDED', 'PREDICTION', 'org:meridian', 'Will concentrate further.', '${T_MINED}', 'm@1', 0.6, '${horizon}', ${FULL}, 'NOT_VALIDATED');
+     VALUES ('${id}', 'RUN-P', 'SUCCEEDED', 'PREDICTION', 'org:${id}', 'Will concentrate further.', '${T_MINED}', 'm@1', 0.6, '${horizon}', ${FULL}, '${over.validation ?? 'NOT_VALIDATED'}');
     INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
      VALUES ('I-${id}', '${id}', '${T_MINED}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', ${FULL})`);
+}
+
+/** An artifact computed over another artifact rather than over a record. */
+async function derivedOver(id: string, inputArtifact: string) {
+  await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights, validation)
+     VALUES ('${id}', 'RUN1', 'SUCCEEDED', 'COMPUTED_RESULT', 'org:${id}', 'Over ${inputArtifact}.', '${T_MINED_OVER}', ${FULL}, 'NOT_VALIDATED');
+    INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, input_artifact_id, input_claim_class, input_computed_at, input_rights)
+     VALUES ('I-${id}', '${id}', '${T_MINED_OVER}', 'DERIVED_ARTIFACT', '${inputArtifact}', 'COMPUTED_RESULT', '${T_MINED}', ${FULL})`);
 }
 
 /** Two records, two descriptive runs and a predictive one, and three artifacts: two deliverable, one not. */
@@ -168,16 +178,16 @@ const coverage = async (id = 'C1', over: {
 };
 
 const retracted = (kind: 'CORRECTION' | 'WITHDRAWAL', issuedAt: string, record = 'REC-1') =>
-  sql(`INSERT INTO retracted_record VALUES ('RET-${kind}', '${record}', '${kind}', '${issuedAt}')`);
+  tx(`INSERT INTO retracted_record VALUES ('RET-${kind}', '${record}', '${kind}', '${issuedAt}')`);
 
-const estimate = (id = 'E1', units = 4) => sql(`
-  INSERT INTO dossier_estimate VALUES ('${id}', 'D1', 'notationsos.dossier.estimate.v1', ${units},
+const estimate = (id = 'E1', units = 4, dossier = 'D1') => sql(`
+  INSERT INTO dossier_estimate VALUES ('${id}', '${dossier}', 'notationsos.dossier.estimate.v1', ${units},
     '[{"facet":"DEPENDENCY","level":"THIN","units":2},{"facet":"RISK","level":"THIN","units":2}]'::jsonb, '${FP(6)}', '${T_ASK}')`);
 
 const policy = (rate = 120000) => sql(`INSERT INTO pricing_policy VALUES ('P-2026', 'operator:jo', '${T_ASK}', ${rate}, 'CAD', 'facet-coverage-unit')`);
 
-const quotation = (id = 'Q1', over: { dossier?: string; rate?: number; units?: number; amount?: number; digest?: string } = {}) => sql(`
-  INSERT INTO dossier_quotation VALUES ('${id}', '${over.dossier ?? 'D1'}', 'P-2026', ${over.rate ?? 120000}, 'CAD', 'E1', ${over.units ?? 4},
+const quotation = (id = 'Q1', over: { dossier?: string; estimate?: string; rate?: number; units?: number; amount?: number; digest?: string } = {}) => sql(`
+  INSERT INTO dossier_quotation VALUES ('${id}', '${over.dossier ?? 'D1'}', 'P-2026', ${over.rate ?? 120000}, 'CAD', '${over.estimate ?? 'E1'}', ${over.units ?? 4},
     ${over.amount ?? 480000}, '${FP(1)}', '${T_QUOTE}', '${over.digest ?? QUOTE_DIGEST}')`);
 
 /** A governed act in the kernel: proposal, packet, approval and authorization, of one digest. */
@@ -198,10 +208,10 @@ async function governed(tag: string, digest: string, reviewer: string, over: { g
 const accepted = () => governed('SCOPE', QUOTE_DIGEST, 'customer:acme');
 const reviewed = (tag = 'RELEASE', digest = RELEASE_DIGEST) => governed(tag, digest, 'operator:jo');
 
-const release = (id = 'R1', over: { dossier?: string; recipient?: string; version?: number; builtAt?: string; quoteDigest?: string; scope?: string; digest?: string; auth?: string } = {}) => sql(`
+const release = (id = 'R1', over: { dossier?: string; recipient?: string; version?: number; builtAt?: string; quotation?: string; quoteDigest?: string; scope?: string; digest?: string; auth?: string } = {}) => sql(`
   INSERT INTO dossier_release (dossier_release_id, dossier_id, recipient_id, version, quotation_id, quoted_snapshot, quoted_at,
     quotation_digest, scope_authorization_id, built_snapshot, built_at, release_digest, authorization_id, released_at, monitored)
-  VALUES ('${id}', '${over.dossier ?? 'D1'}', '${over.recipient ?? 'customer:acme'}', ${over.version ?? 1}, 'Q1', '${FP(1)}', '${T_QUOTE}',
+  VALUES ('${id}', '${over.dossier ?? 'D1'}', '${over.recipient ?? 'customer:acme'}', ${over.version ?? 1}, '${over.quotation ?? 'Q1'}', '${FP(1)}', '${T_QUOTE}',
     '${over.quoteDigest ?? QUOTE_DIGEST}', '${over.scope ?? 'AU-SCOPE'}', '${FP(2)}', '${over.builtAt ?? T_BUILD}',
     '${over.digest ?? RELEASE_DIGEST}', '${over.auth ?? 'AU-RELEASE'}', '${T_RELEASE}', false)`);
 
@@ -433,8 +443,48 @@ describe('coverage is assessed per artifact, by the database', () => {
     await expect(coverage('C1', { evidence: [{ artifact: 'A-LATER', assessment: 'PRESENT' }] })).rejects.toThrow(/evidence_computed_after_it_was_assessed:A-LATER/);
   });
 
-  it('refuses a spec whose required right is not a permitted use', async () => {
+  /* The bar is not the writer's to choose: a spec that named a right every artifact carries would make everything PRESENT. */
+  it('refuses a spec whose required right is anything but the right a delivery exercises', async () => {
     await expect(sql(`INSERT INTO dossier_spec VALUES ('D3', 'customer:acme', 'q', 'SPEC', '${T_ASK}', 'EXPORT')`)).rejects.toThrow(/required_right/);
+    await expect(sql(`INSERT INTO dossier_spec VALUES ('D3', 'customer:acme', 'q', 'SPEC', '${T_ASK}', 'acquisition')`)).rejects.toThrow(/required_right/);
+    expect(DOSSIER_LEDGER_DDL).toContain(`required_right = '${DELIVERY_RIGHT}'`);
+  });
+
+  /* The CASE is in the domain's order, and only an artifact carrying two faults can show it. */
+  it('holds the order between faults: rights before a refuted claim, a refuted claim before a passed horizon, a correction before a withdrawal', async () => {
+    await artifact('A-ND-REFUTED', { subject: 'org:nd', claim: 'Unlicensed and refuted.', rights: NO_DELIVERY, validation: 'FALSIFIED' });
+    await expect(coverage('C1', { evidence: [{ artifact: 'A-ND-REFUTED', assessment: 'CONFLICTING' }] })).rejects.toThrow(/A-ND-REFUTED:CONFLICTING recorded, DISALLOWED from the artifact/);
+    await prediction('AP-REFUTED-PAST', T_HORIZON_PAST, { validation: 'FALSIFIED' });
+    await expect(coverage('C1', { evidence: [{ artifact: 'AP-REFUTED-PAST', run: 'RUN-P', assessment: 'STALE' }] })).rejects.toThrow(/AP-REFUTED-PAST:STALE recorded, CONFLICTING from the artifact/);
+    await retracted('CORRECTION', T_MINED); await retracted('WITHDRAWAL', T_MINED);
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'STALE' }] })).rejects.toThrow(/A1:STALE recorded, CONFLICTING from the artifact/);
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'CONFLICTING' }] });
+  });
+
+  it('does not yet know a correction issued after the assessment either', async () => {
+    await retracted('CORRECTION', T_BUILD);
+    await coverage();
+    expect(await coverageRow()).toMatchObject({ assessment: 'PRESENT' });
+  });
+
+  /* A record taken back reaches everything computed over it, at any depth. */
+  it('follows inputs through derived artifacts to the records beneath', async () => {
+    await derivedOver('A-OVER', 'A1');
+    await retracted('WITHDRAWAL', T_MINED);
+    await expect(coverage('C1', { evidence: [{ artifact: 'A-OVER', assessment: 'PRESENT' }] })).rejects.toThrow(/A-OVER:PRESENT recorded, STALE from the artifact/);
+    await coverage('C1', { evidence: [{ artifact: 'A-OVER', assessment: 'STALE' }] });
+  });
+
+  it('reads each instant where the domain does: computed at the assessment is there to be assessed, and a horizon ending at it has not passed', async () => {
+    await artifact('A-AT', { subject: 'org:at', claim: 'At the instant.', computedAt: T_ASK });
+    await prediction('AP-AT', T_ASK);
+    await coverage('C1', { evidence: [{ artifact: 'A-AT', assessment: 'PRESENT' }, { artifact: 'AP-AT', run: 'RUN-P', assessment: 'PRESENT' }] });
+    expect(await coverageRow()).toMatchObject({ assessment: 'PRESENT', present: 2 });
+  });
+
+  it('knows a retraction issued at the assessment instant', async () => {
+    await retracted('WITHDRAWAL', T_ASK);
+    await expect(coverage()).rejects.toThrow(/A1:PRESENT recorded, STALE from the artifact/);
   });
 
   it('assesses the way the domain does', () => {
@@ -468,9 +518,21 @@ describe('a coverage row is the sum of its evidence rows', () => {
       .rejects.toThrow(/coverage_does_not_match_its_evidence:C1:names \{A1\} but its evidence rows are \{A1,A3\}/);
   });
 
-  it('refuses removing an evidence row from under a coverage row', async () => {
+  it('refuses removing an evidence row from under a coverage row, because the rows are written once', async () => {
     await coverage();
-    await expect(tx(`DELETE FROM dossier_coverage_evidence WHERE artifact_id = 'A1'`)).rejects.toThrow(/coverage_does_not_match_its_evidence/);
+    await expect(tx(`DELETE FROM dossier_coverage_evidence WHERE artifact_id = 'A1'`)).rejects.toThrow(/evidence_is_written_once:DELETE/);
+  });
+
+  it('refuses runs the evidence rows do not represent, one count at a time', async () => {
+    await artifact('A-ND2', { subject: 'org:nd2', claim: 'Unlicensed, second run.', rights: NO_DELIVERY, run: 'RUN2' });
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }], runsUsable: 1, level: 'THIN' }))
+      .rejects.toThrow(/runs 2\/1 but its evidence rows are 2\/2/);
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A-ND2', run: 'RUN2', assessment: 'DISALLOWED' }], runs: 1 }))
+      .rejects.toThrow(/runs 1\/1 but its evidence rows are 2\/1/);
+  });
+
+  it('ties evidence to the run the artifact came from', async () => {
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', run: 'RUN2', assessment: 'PRESENT' }] })).rejects.toThrow(/evidence_artifact|foreign key/i);
   });
 
   it('refuses evidence of no coverage, and evidence of no artifact', async () => {
@@ -506,9 +568,69 @@ describe('a coverage row is the sum of its evidence rows', () => {
     await expect(coverage('C1', { available: 2, present: 2 })).rejects.toThrow(/coverage_names_what_it_counts/);
   });
 
-  it('refuses usable runs among artifacts that are not present', async () => {
-    await expect(coverage('C1', { evidence: [{ artifact: 'A3', assessment: 'DISALLOWED' }], runsUsable: 1 })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+  it('refuses runs that are not among the artifacts, one conjunct at a time', async () => {
+    await artifact('A-X', { subject: 'org:x', claim: 'Also present, same run.' });
+    await artifact('A-ND2', { subject: 'org:nd2', claim: 'Unlicensed, second run.', rights: NO_DELIVERY, run: 'RUN2' });
+    // more runs than artifacts
     await expect(coverage('C1', { runs: 2 })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+    // an artifact from no run
+    await expect(coverage('C1', { evidence: [{ artifact: 'A3', assessment: 'DISALLOWED' }], runs: 0 })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+    // more usable runs than present artifacts
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A-ND2', run: 'RUN2', assessment: 'DISALLOWED' }], runsUsable: 2 })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+    // more usable runs than runs
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A-X', assessment: 'PRESENT' }], runsUsable: 2, level: 'SUPPORTED' })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+    // a present artifact from no usable run
+    await expect(coverage('C1', { runsUsable: 0 })).rejects.toThrow(/coverage_runs_are_among_artifacts/);
+  });
+
+  it('refuses SUPPORTED over two present artifacts from one run', async () => {
+    await artifact('A-X', { subject: 'org:x', claim: 'Also present, same run.' });
+    await expect(coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A-X', assessment: 'PRESENT' }], level: 'SUPPORTED' })).rejects.toThrow(/coverage_level_counts_the_present/);
+  });
+});
+
+describe('an assessment is a fact at its instant, and the rows are written once', () => {
+  beforeEach(async () => { await specs(); await mined(); });
+
+  it('refuses rewriting a coverage row or an evidence row', async () => {
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }] });
+    await expect(tx(`UPDATE dossier_coverage_evidence SET assessment = 'PRESENT' WHERE artifact_id = 'A3';
+      UPDATE dossier_coverage SET artifacts_present = 2, artifacts_disallowed = 0, assessment = 'PRESENT' WHERE coverage_id = 'C1'`))
+      .rejects.toThrow(/evidence_is_written_once:UPDATE/);
+    await expect(tx(`UPDATE dossier_coverage SET assessed_at = '${T_BUILD}' WHERE coverage_id = 'C1'`)).rejects.toThrow(/coverage_is_written_once:UPDATE/);
+    await expect(tx(`DELETE FROM dossier_coverage WHERE coverage_id = 'C1'`)).rejects.toThrow(/coverage_is_written_once:DELETE/);
+    expect(await coverageRow()).toMatchObject({ assessment: 'DISALLOWED', present: 1, disallowed: 1 });
+  });
+
+  it('lets a spec move through its stages and nothing else', async () => {
+    await sql(`UPDATE dossier_spec SET stage = 'COVERAGE' WHERE dossier_id = 'D1'`);
+    await expect(sql(`UPDATE dossier_spec SET recipient_id = 'customer:boreal' WHERE dossier_id = 'D1'`)).rejects.toThrow(/spec_terms_are_written_once:UPDATE/);
+    await expect(sql(`UPDATE dossier_spec SET question = 'Something else.' WHERE dossier_id = 'D1'`)).rejects.toThrow(/spec_terms_are_written_once:UPDATE/);
+    await expect(sql(`UPDATE dossier_spec SET required_right = 'acquisition' WHERE dossier_id = 'D1'`)).rejects.toThrow(/required_right/);
+    await expect(sql(`DELETE FROM dossier_spec WHERE dossier_id = 'D2'`)).rejects.toThrow(/spec_terms_are_written_once:DELETE/);
+    expect(await rows(`SELECT stage FROM dossier_spec WHERE dossier_id = 'D1'`)).toEqual([{ stage: 'COVERAGE' }]);
+  });
+
+  /* The ledger cannot accept that something was known at an instant its own row says it was not. */
+  it('refuses a retraction backdated behind an assessment that did not know it', async () => {
+    await coverage();
+    await expect(retracted('WITHDRAWAL', T_MINED)).rejects.toThrow(/retraction_contradicts_a_standing_assessment:RET-WITHDRAWAL:A1 in C1 is PRESENT and would be STALE had REC-1 been known/);
+    await expect(retracted('CORRECTION', T_ASK)).rejects.toThrow(/would be CONFLICTING/);
+    expect(await rows(`SELECT 1 FROM retracted_record`)).toEqual([]);
+  });
+
+  it('accepts a retraction issued after the assessment, and a backdated one that changes nothing', async () => {
+    await coverage('C1', { evidence: [{ artifact: 'A3', assessment: 'DISALLOWED' }] });
+    await retracted('WITHDRAWAL', T_MINED); // A3 read REC-1 and is DISALLOWED either way
+    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
+    await retracted('CORRECTION', T_BUILD, 'REC-2'); // after the assessment: not yet known to it
+    expect(await rows(`SELECT count(*)::int AS n FROM retracted_record`)).toEqual([{ n: 2 }]);
+  });
+
+  it('reaches a backdated retraction through derived artifacts too', async () => {
+    await derivedOver('A-OVER', 'A1');
+    await coverage('C1', { evidence: [{ artifact: 'A-OVER', assessment: 'PRESENT' }] });
+    await expect(retracted('WITHDRAWAL', T_MINED)).rejects.toThrow(/retraction_contradicts_a_standing_assessment:RET-WITHDRAWAL:A-OVER/);
   });
 });
 
@@ -534,6 +656,37 @@ describe('a conclusion rests on present evidence', () => {
     await artifact('A-UNNAMED', { subject: 'org:unnamed', claim: 'Unnamed.' });
     await expect(conclusion('K1', 'DEPENDENCY', 'A-UNNAMED')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A-UNNAMED/);
   });
+
+  it('refuses rewriting a conclusion or a release', async () => {
+    await conclusion('K1', 'DEPENDENCY', 'A1');
+    await expect(tx(`UPDATE dossier_conclusion SET artifact_id = 'A3' WHERE conclusion_id = 'K1'`)).rejects.toThrow(/conclusion_is_written_once:UPDATE/);
+    await expect(tx(`DELETE FROM dossier_conclusion WHERE conclusion_id = 'K1'`)).rejects.toThrow(/conclusion_is_written_once:DELETE/);
+    await expect(tx(`UPDATE dossier_release SET built_at = '${T_QUOTE}' WHERE dossier_release_id = 'R1'`)).rejects.toThrow(/release_is_written_once:UPDATE/);
+    await expect(tx(`DELETE FROM dossier_release WHERE dossier_release_id = 'R1'`)).rejects.toThrow(/release_is_written_once:DELETE/);
+  });
+});
+
+describe('a conclusion rests on evidence that is present, not merely there', () => {
+  it('refuses a conclusion resting on stale or conflicting evidence', async () => {
+    await specs(); await mined();
+    await prediction('AP-PAST', T_HORIZON_PAST);
+    await artifact('A-REFUTED', { subject: 'org:other', claim: 'Refuted.', validation: 'FALSIFIED' });
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'AP-PAST', run: 'RUN-P', assessment: 'STALE' }, { artifact: 'A-REFUTED', assessment: 'CONFLICTING' }] });
+    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
+    await estimate(); await policy(); await quotation(); await accepted(); await reviewed(); await release();
+    await expect(conclusion('K1', 'DEPENDENCY', 'AP-PAST', { cls: 'PREDICTION' })).rejects.toThrow(/conclusion_rests_on_no_present_evidence:AP-PAST:DEPENDENCY/);
+    await expect(conclusion('K1', 'DEPENDENCY', 'A-REFUTED')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A-REFUTED:DEPENDENCY/);
+    await conclusion('K1', 'DEPENDENCY', 'A1');
+  });
+
+  it('refuses a conclusion resting on another dossier’s evidence', async () => {
+    await released();
+    await sql(`INSERT INTO dossier_facet VALUES ('F3', 'D2', 'DEPENDENCY')`);
+    await estimate('E2', 4, 'D2'); await quotation('Q2', { dossier: 'D2', estimate: 'E2', digest: FP(21) });
+    await governed('SCOPE2', FP(21), 'customer:boreal'); await governed('RELEASE-D2', FP(22), 'operator:jo');
+    await release('R-D2', { dossier: 'D2', recipient: 'customer:boreal', quotation: 'Q2', quoteDigest: FP(21), scope: 'AU-SCOPE2', digest: FP(22), auth: 'AU-RELEASE-D2' });
+    await expect(conclusion('K1', 'DEPENDENCY', 'A1', { release: 'R-D2' })).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A1:DEPENDENCY in R-D2/);
+  });
 });
 
 describe('a conclusion rests on an assessment no later than its build', () => {
@@ -544,6 +697,14 @@ describe('a conclusion rests on an assessment no later than its build', () => {
     await estimate(); await policy(); await quotation(); await accepted(); await reviewed(); await release();
     await conclusion('K1', 'DEPENDENCY', 'A1');
     await expect(conclusion('K2', 'RISK', 'A2')).rejects.toThrow(/conclusion_rests_on_no_present_evidence:A2:RISK/);
+  });
+
+  it('accepts one resting on an assessment made at the build instant', async () => {
+    await specs(); await mined();
+    await coverage('C1', { assessedAt: T_BUILD });
+    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A2', run: 'RUN2', assessment: 'PRESENT' }] });
+    await estimate(); await policy(); await quotation(); await accepted(); await reviewed(); await release();
+    await conclusion('K1', 'DEPENDENCY', 'A1');
   });
 });
 

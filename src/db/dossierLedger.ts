@@ -44,8 +44,23 @@
  *
  * And a conclusion rests on present evidence: the artifact it names must be
  * assessed PRESENT, for that facet, in the dossier it is released under, at
- * an assessment no later than the build. What was disallowed for this
- * customer holds nothing up.
+ * an assessment no later than the build. What was disallowed for customer
+ * delivery holds nothing up.
+ *
+ * THE ASSESSMENT IS A FACT AT ITS INSTANT, AND THE ROWS ARE WRITTEN ONCE
+ *
+ * A coverage row, its evidence rows, a release and its conclusions are
+ * never updated or deleted. Every guard above checks a row as it is
+ * written; a rewrite afterwards would be a row none of them looked at, so
+ * the ledger refuses the rewrite instead. What that leaves is the append:
+ * an artifact that arrives on a facet later is checked together with
+ * every artifact already there, since a neighbour that disagrees changes
+ * what an earlier row earned. And a retraction that claims to have been
+ * issued before an assessment which did not know it is refused: the ledger
+ * cannot accept that something was known at an instant its own row says
+ * it was not. Re-assessment — the corpus moved and the dossier should be
+ * read against it again — is a new coverage row that this schema does not
+ * yet model; one row per facet, once.
  *
  * THE ESTIMATE IS A COUNT AND THE PRICE IS A POLICY
  *
@@ -90,9 +105,8 @@
  * may not invent a price". The demonstration seeds one, and says so.
  */
 import {
-  CANDIDATE_STANDINGS, COVERAGE_ASSESSMENTS, COVERAGE_LEVELS, DOSSIER_FACETS, DOSSIER_STAGES, REUSABLE_STANDINGS,
+  CANDIDATE_STANDINGS, COVERAGE_ASSESSMENTS, COVERAGE_LEVELS, DELIVERY_RIGHT, DOSSIER_FACETS, DOSSIER_STAGES, REUSABLE_STANDINGS,
 } from '@/domain/dossierService';
-import { PERMITTED_USES } from '@/domain/corpus';
 import { DERIVABLE_CLASSES } from '@/domain/discoveryLayer';
 import { quoted } from './ddl';
 
@@ -104,9 +118,10 @@ CREATE TABLE dossier_spec (
   question text NOT NULL CHECK (length(btrim(question)) > 0),
   stage text NOT NULL CHECK (stage IN (${quoted(DOSSIER_STAGES)})),
   asked_at timestamptz NOT NULL,
-  -- The right a delivery of this dossier exercises, in the corpus's rights
-  -- vocabulary. Every artifact's assessment is against it.
-  required_right text NOT NULL CHECK (required_right IN (${quoted(PERMITTED_USES)})),
+  -- The right a delivery of this dossier exercises. Every artifact's
+  -- assessment is against it, so it is not the writer's to choose: one
+  -- value, the domain's, and widening it is a decision rather than a write.
+  required_right text NOT NULL CHECK (required_right = '${DELIVERY_RIGHT}'),
   UNIQUE (dossier_id, recipient_id)
 );
 
@@ -124,6 +139,8 @@ CREATE TABLE dossier_facet (
 CREATE TABLE dossier_coverage (
   coverage_id text PRIMARY KEY,
   dossier_facet_id text NOT NULL UNIQUE REFERENCES dossier_facet (dossier_facet_id),
+  -- The two vocabulary checks document; the two CASE constraints below
+  -- refuse, and sort first, so these are never the constraint named.
   level text NOT NULL CHECK (level IN (${quoted(COVERAGE_LEVELS)})),
   assessment text NOT NULL CHECK (assessment IN (${quoted(COVERAGE_ASSESSMENTS)})),
   artifacts_available integer NOT NULL CHECK (artifacts_available >= 0),
@@ -379,20 +396,23 @@ CREATE INDEX evidence_by_coverage ON dossier_coverage_evidence (coverage_id);
 `;
 
 /**
- * The deferred guards. Each reads the rows as they will stand at commit, so
- * a coverage row and its evidence rows go in together or not at all.
+ * The guards. The deferred ones read the rows as they will stand at commit,
+ * so a coverage row and its evidence rows go in together or not at all; the
+ * immediate ones refuse a rewrite of a row that was already checked.
  *
- * Assumes a `retracted_record (retraction_id, record_id, kind, issued_at)`
- * table beside the corpus tables: what the corpus took back, and when, and
- * whether it said something else (CORRECTION) or nothing (WITHDRAWAL).
+ * Reads `retracted_record` from `src/db/retractedRecord.ts`: what the corpus
+ * took back, and when, and whether it said something else (CORRECTION) or
+ * nothing (WITHDRAWAL).
  */
 export const DOSSIER_LEDGER_GUARDS = `
--- An evidence row's assessment is the artifact's, recomputed here in the
--- domain's order: the delivery right first, then a corrected input, a
--- disagreeing neighbour on the facet or a refuted claim, then the horizon
--- and a withdrawn input, then PRESENT. And an artifact computed after the
--- assessment instant was not there to be assessed.
-CREATE FUNCTION refuse_evidence_not_assessed_as_the_artifact_is() RETURNS trigger AS $$
+-- The assessment an artifact earns on one coverage row, recomputed from what
+-- the ledger holds, in the domain's order: the delivery right first, then a
+-- corrected input, a disagreeing neighbour on the facet or a refuted claim,
+-- then the horizon and a withdrawn input, then PRESENT. Inputs are followed
+-- through derived artifacts down to the source records, so a record taken
+-- back reaches everything computed over it at any depth. And an artifact
+-- computed after the assessment instant was not there to be assessed.
+CREATE FUNCTION dossier_expected_assessment(target_coverage text, target_artifact text) RETURNS text AS $$
 DECLARE
   cov dossier_coverage%ROWTYPE;
   art derived_artifact%ROWTYPE;
@@ -400,30 +420,30 @@ DECLARE
   corrected text;
   withdrawn text;
   disagreeing text;
-  expected text;
 BEGIN
-  SELECT * INTO cov FROM dossier_coverage WHERE coverage_id = NEW.coverage_id;
-  SELECT * INTO art FROM derived_artifact WHERE artifact_id = NEW.artifact_id;
-  IF cov.coverage_id IS NULL OR art.artifact_id IS NULL THEN
-    RETURN NEW; -- the foreign keys refuse these
-  END IF;
+  SELECT * INTO cov FROM dossier_coverage WHERE coverage_id = target_coverage;
+  SELECT * INTO art FROM derived_artifact WHERE artifact_id = target_artifact;
   SELECT s.required_right INTO required
     FROM dossier_facet f JOIN dossier_spec s ON s.dossier_id = f.dossier_id
     WHERE f.dossier_facet_id = cov.dossier_facet_id;
   IF art.computed_at > cov.assessed_at THEN
-    RAISE EXCEPTION 'evidence_computed_after_it_was_assessed:%:computed % assessed %', NEW.artifact_id, art.computed_at, cov.assessed_at;
+    RAISE EXCEPTION 'evidence_computed_after_it_was_assessed:%:computed % assessed %', target_artifact, art.computed_at, cov.assessed_at;
   END IF;
-  SELECT string_agg(i.source_record_id, ', ' ORDER BY i.source_record_id) INTO corrected
-    FROM artifact_input i JOIN retracted_record r ON r.record_id = i.source_record_id
-    WHERE i.artifact_id = NEW.artifact_id AND r.kind = 'CORRECTION' AND r.issued_at <= cov.assessed_at;
-  SELECT string_agg(i.source_record_id, ', ' ORDER BY i.source_record_id) INTO withdrawn
-    FROM artifact_input i JOIN retracted_record r ON r.record_id = i.source_record_id
-    WHERE i.artifact_id = NEW.artifact_id AND r.kind = 'WITHDRAWAL' AND r.issued_at <= cov.assessed_at;
+  WITH RECURSIVE reads AS (
+    SELECT i.source_record_id, i.input_artifact_id FROM artifact_input i WHERE i.artifact_id = target_artifact
+    UNION
+    SELECT i.source_record_id, i.input_artifact_id FROM artifact_input i JOIN reads ON i.artifact_id = reads.input_artifact_id
+  )
+  SELECT string_agg(x, ', ' ORDER BY x) FILTER (WHERE kind = 'CORRECTION'), string_agg(x, ', ' ORDER BY x) FILTER (WHERE kind = 'WITHDRAWAL')
+    INTO corrected, withdrawn
+    FROM (SELECT DISTINCT reads.source_record_id AS x, r.kind
+          FROM reads JOIN retracted_record r ON r.record_id = reads.source_record_id
+          WHERE r.issued_at <= cov.assessed_at) AS taken_back;
   SELECT string_agg(o.artifact_id, ', ' ORDER BY o.artifact_id) INTO disagreeing
     FROM dossier_coverage_evidence e JOIN derived_artifact o ON o.artifact_id = e.artifact_id
-    WHERE e.coverage_id = NEW.coverage_id AND e.artifact_id <> NEW.artifact_id
+    WHERE e.coverage_id = target_coverage AND e.artifact_id <> target_artifact
       AND o.subject = art.subject AND o.claim <> art.claim;
-  expected := CASE
+  RETURN CASE
     WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'
     WHEN corrected IS NOT NULL THEN 'CONFLICTING'
     WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'
@@ -431,6 +451,23 @@ BEGIN
     WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'
     WHEN withdrawn IS NOT NULL THEN 'STALE'
     ELSE 'PRESENT' END;
+END;
+$$ LANGUAGE plpgsql;
+
+-- The evidence row written is held to its artifact. A neighbour arriving in
+-- a later transaction would change what an earlier row earned, and cannot
+-- arrive: the coverage row names its artifacts, is written once, and must
+-- match its evidence rows. Within one transaction every row is checked at
+-- commit, against every other.
+CREATE FUNCTION refuse_evidence_not_assessed_as_the_artifact_is() RETURNS trigger AS $$
+DECLARE
+  expected text;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM dossier_coverage WHERE coverage_id = NEW.coverage_id)
+     OR NOT EXISTS (SELECT 1 FROM derived_artifact WHERE artifact_id = NEW.artifact_id) THEN
+    RETURN NEW; -- the foreign keys refuse these
+  END IF;
+  expected := dossier_expected_assessment(NEW.coverage_id, NEW.artifact_id);
   IF NEW.assessment <> expected THEN
     RAISE EXCEPTION 'evidence_assessment_is_not_the_artifacts:%:% recorded, % from the artifact', NEW.artifact_id, NEW.assessment, expected;
   END IF;
@@ -439,7 +476,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE CONSTRAINT TRIGGER evidence_assessment_is_the_artifacts
-  AFTER INSERT OR UPDATE ON dossier_coverage_evidence
+  AFTER INSERT ON dossier_coverage_evidence
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION refuse_evidence_not_assessed_as_the_artifact_is();
 
@@ -449,15 +486,13 @@ CREATE CONSTRAINT TRIGGER evidence_assessment_is_the_artifacts
 -- after the count was taken.
 CREATE FUNCTION refuse_coverage_unlike_its_evidence() RETURNS trigger AS $$
 DECLARE
-  target text;
   cov dossier_coverage%ROWTYPE;
   named text[];
   listed text[];
   n_present integer; n_stale integer; n_conflicting integer; n_disallowed integer;
   n_runs integer; n_runs_usable integer;
 BEGIN
-  IF TG_OP = 'DELETE' THEN target := OLD.coverage_id; ELSE target := NEW.coverage_id; END IF;
-  SELECT * INTO cov FROM dossier_coverage WHERE coverage_id = target;
+  SELECT * INTO cov FROM dossier_coverage WHERE coverage_id = NEW.coverage_id;
   IF cov.coverage_id IS NULL THEN
     RETURN NULL; -- the foreign key refuses evidence of no coverage
   END IF;
@@ -466,30 +501,30 @@ BEGIN
          count(*) FILTER (WHERE assessment = 'CONFLICTING'), count(*) FILTER (WHERE assessment = 'DISALLOWED'),
          count(DISTINCT run_id), count(DISTINCT run_id) FILTER (WHERE assessment = 'PRESENT')
     INTO listed, n_present, n_stale, n_conflicting, n_disallowed, n_runs, n_runs_usable
-    FROM dossier_coverage_evidence WHERE coverage_id = target;
+    FROM dossier_coverage_evidence WHERE coverage_id = cov.coverage_id;
   SELECT coalesce(array_agg(x ORDER BY x), '{}') INTO named FROM unnest(cov.artifact_ids) AS x;
   IF named <> listed THEN
-    RAISE EXCEPTION 'coverage_does_not_match_its_evidence:%:names % but its evidence rows are %', target, named, listed;
+    RAISE EXCEPTION 'coverage_does_not_match_its_evidence:%:names % but its evidence rows are %', cov.coverage_id, named, listed;
   END IF;
   IF cov.artifacts_present <> n_present OR cov.artifacts_stale <> n_stale
      OR cov.artifacts_conflicting <> n_conflicting OR cov.artifacts_disallowed <> n_disallowed THEN
     RAISE EXCEPTION 'coverage_does_not_match_its_evidence:%:counts %/%/%/% but its evidence rows are %/%/%/%',
-      target, cov.artifacts_present, cov.artifacts_stale, cov.artifacts_conflicting, cov.artifacts_disallowed, n_present, n_stale, n_conflicting, n_disallowed;
+      cov.coverage_id, cov.artifacts_present, cov.artifacts_stale, cov.artifacts_conflicting, cov.artifacts_disallowed, n_present, n_stale, n_conflicting, n_disallowed;
   END IF;
   IF cov.runs_represented <> n_runs OR cov.runs_usable <> n_runs_usable THEN
-    RAISE EXCEPTION 'coverage_does_not_match_its_evidence:%:runs %/% but its evidence rows are %/%', target, cov.runs_represented, cov.runs_usable, n_runs, n_runs_usable;
+    RAISE EXCEPTION 'coverage_does_not_match_its_evidence:%:runs %/% but its evidence rows are %/%', cov.coverage_id, cov.runs_represented, cov.runs_usable, n_runs, n_runs_usable;
   END IF;
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE CONSTRAINT TRIGGER coverage_matches_evidence
-  AFTER INSERT OR UPDATE ON dossier_coverage
+  AFTER INSERT ON dossier_coverage
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION refuse_coverage_unlike_its_evidence();
 
 CREATE CONSTRAINT TRIGGER evidence_matches_coverage
-  AFTER INSERT OR UPDATE OR DELETE ON dossier_coverage_evidence
+  AFTER INSERT ON dossier_coverage_evidence
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION refuse_coverage_unlike_its_evidence();
 
@@ -514,9 +549,79 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE CONSTRAINT TRIGGER conclusion_rests_on_present_evidence
-  AFTER INSERT OR UPDATE ON dossier_conclusion
+  AFTER INSERT ON dossier_conclusion
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION refuse_conclusion_without_present_evidence();
+
+-- Written once. Every guard above checked the row as it went in; a rewrite
+-- would be a row none of them looked at.
+CREATE FUNCTION refuse_rewriting_a_ledger_row() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION '%_is_written_once:% of %', TG_ARGV[0], TG_OP, TG_TABLE_NAME;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER coverage_is_written_once BEFORE UPDATE OR DELETE ON dossier_coverage
+  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('coverage');
+CREATE TRIGGER evidence_is_written_once BEFORE UPDATE OR DELETE ON dossier_coverage_evidence
+  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('evidence');
+CREATE TRIGGER conclusion_is_written_once BEFORE UPDATE OR DELETE ON dossier_conclusion
+  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('conclusion');
+CREATE TRIGGER release_is_written_once BEFORE UPDATE OR DELETE ON dossier_release
+  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('release');
+
+-- A spec moves through its stages; its terms do not move. (The right the
+-- assessment was made against is one of them, and its CHECK already holds
+-- it to one value, so it is not tested again here.)
+CREATE FUNCTION refuse_rewriting_spec_terms() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'spec_terms_are_written_once:DELETE of %', OLD.dossier_id;
+  END IF;
+  IF NEW.dossier_id <> OLD.dossier_id OR NEW.recipient_id <> OLD.recipient_id OR NEW.question <> OLD.question
+     OR NEW.asked_at <> OLD.asked_at THEN
+    RAISE EXCEPTION 'spec_terms_are_written_once:UPDATE of % beyond its stage', OLD.dossier_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER spec_terms_are_written_once BEFORE UPDATE OR DELETE ON dossier_spec
+  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_spec_terms();
+
+-- A retraction recorded as issued before an assessment that did not know it
+-- is refused where it would change what a standing row earned. The ledger
+-- cannot accept that something was known at an instant its own row says it
+-- was not; a retraction issued after the assessment is simply not yet known
+-- to it, and goes in.
+CREATE FUNCTION refuse_retraction_contradicting_an_assessment() RETURNS trigger AS $$
+DECLARE
+  standing record;
+  expected text;
+BEGIN
+  FOR standing IN
+    WITH RECURSIVE readers AS (
+      SELECT i.artifact_id FROM artifact_input i WHERE i.source_record_id = NEW.record_id
+      UNION
+      SELECT i.artifact_id FROM artifact_input i JOIN readers ON i.input_artifact_id = readers.artifact_id
+    )
+    SELECT e.coverage_id, e.artifact_id, e.assessment
+      FROM dossier_coverage_evidence e JOIN readers ON readers.artifact_id = e.artifact_id
+      ORDER BY e.coverage_id, e.artifact_id
+  LOOP
+    expected := dossier_expected_assessment(standing.coverage_id, standing.artifact_id);
+    IF standing.assessment <> expected THEN
+      RAISE EXCEPTION 'retraction_contradicts_a_standing_assessment:%:% in % is % and would be % had % been known', NEW.retraction_id, standing.artifact_id, standing.coverage_id, standing.assessment, expected, NEW.record_id;
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER retraction_leaves_assessments_standing
+  AFTER INSERT ON retracted_record
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION refuse_retraction_contradicting_an_assessment();
 `;
 
 /** The classes a conclusion may carry, for the drift check against the domain. */

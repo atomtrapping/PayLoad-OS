@@ -1,0 +1,261 @@
+{
+  "source": "src/db/dossierLedger.ts",
+  "test": "src/db/dossierLedger.test.ts",
+  "mutations": [
+    {
+      "name": "no DISALLOWED arm",
+      "find": "    WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'\n",
+      "replace": ""
+    },
+    {
+      "name": "no corrected arm",
+      "find": "    WHEN corrected IS NOT NULL THEN 'CONFLICTING'\n",
+      "replace": ""
+    },
+    {
+      "name": "corrected read as STALE",
+      "find": "    WHEN corrected IS NOT NULL THEN 'CONFLICTING'",
+      "replace": "    WHEN corrected IS NOT NULL THEN 'STALE'"
+    },
+    {
+      "name": "no disagreeing arm",
+      "find": "    WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'\n",
+      "replace": ""
+    },
+    {
+      "name": "no FALSIFIED arm",
+      "find": "    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n",
+      "replace": ""
+    },
+    {
+      "name": "no horizon arm",
+      "find": "    WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'\n",
+      "replace": ""
+    },
+    {
+      "name": "horizon compared inclusively",
+      "find": "art.horizon_ends_at < cov.assessed_at THEN 'STALE'",
+      "replace": "art.horizon_ends_at <= cov.assessed_at THEN 'STALE'"
+    },
+    {
+      "name": "no withdrawn arm",
+      "find": "    WHEN withdrawn IS NOT NULL THEN 'STALE'\n",
+      "replace": ""
+    },
+    {
+      "name": "DISALLOWED arm below the CONFLICTING arms",
+      "find": "    WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'\n    WHEN corrected IS NOT NULL THEN 'CONFLICTING'\n    WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'\n    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n",
+      "replace": "    WHEN corrected IS NOT NULL THEN 'CONFLICTING'\n    WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'\n    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n    WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'\n"
+    },
+    {
+      "name": "STALE arms above the FALSIFIED arm",
+      "find": "    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n    WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'\n",
+      "replace": "    WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'\n    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n"
+    },
+    {
+      "name": "retraction instant ignored",
+      "find": "          WHERE r.issued_at <= cov.assessed_at) AS taken_back;",
+      "replace": "          ) AS taken_back;"
+    },
+    {
+      "name": "retraction instant exclusive",
+      "find": "          WHERE r.issued_at <= cov.assessed_at) AS taken_back;",
+      "replace": "          WHERE r.issued_at < cov.assessed_at) AS taken_back;"
+    },
+    {
+      "name": "inputs not followed through derived artifacts",
+      "find": "    UNION\n    SELECT i.source_record_id, i.input_artifact_id FROM artifact_input i JOIN reads ON i.artifact_id = reads.input_artifact_id\n",
+      "replace": ""
+    },
+    {
+      "name": "computed-after check removed",
+      "find": "  IF art.computed_at > cov.assessed_at THEN\n    RAISE EXCEPTION 'evidence_computed_after_it_was_assessed",
+      "replace": "  IF FALSE THEN\n    RAISE EXCEPTION 'evidence_computed_after_it_was_assessed"
+    },
+    {
+      "name": "computed-after check inclusive",
+      "find": "  IF art.computed_at > cov.assessed_at THEN",
+      "replace": "  IF art.computed_at >= cov.assessed_at THEN"
+    },
+    {
+      "name": "disagreement read across facets",
+      "find": "    WHERE e.coverage_id = target_coverage AND e.artifact_id <> target_artifact\n",
+      "replace": "    WHERE e.artifact_id <> target_artifact\n"
+    },
+    {
+      "name": "evidence trigger never raises",
+      "find": "  IF NEW.assessment <> expected THEN\n    RAISE EXCEPTION 'evidence_assessment_is_not_the_artifacts",
+      "replace": "  IF FALSE THEN\n    RAISE EXCEPTION 'evidence_assessment_is_not_the_artifacts"
+    },
+    {
+      "name": "artifact set not compared",
+      "find": "  IF named <> listed THEN",
+      "replace": "  IF FALSE THEN"
+    },
+    {
+      "name": "counts not compared",
+      "find": "  IF cov.artifacts_present <> n_present OR cov.artifacts_stale <> n_stale\n     OR cov.artifacts_conflicting <> n_conflicting OR cov.artifacts_disallowed <> n_disallowed THEN",
+      "replace": "  IF FALSE THEN"
+    },
+    {
+      "name": "runs_represented not compared",
+      "find": "  IF cov.runs_represented <> n_runs OR cov.runs_usable <> n_runs_usable THEN",
+      "replace": "  IF cov.runs_usable <> n_runs_usable THEN"
+    },
+    {
+      "name": "runs_usable not compared",
+      "find": "  IF cov.runs_represented <> n_runs OR cov.runs_usable <> n_runs_usable THEN",
+      "replace": "  IF cov.runs_represented <> n_runs THEN"
+    },
+    {
+      "name": "evidence-side trigger removed",
+      "find": "CREATE CONSTRAINT TRIGGER evidence_matches_coverage\n  AFTER INSERT ON dossier_coverage_evidence\n  DEFERRABLE INITIALLY DEFERRED\n  FOR EACH ROW EXECUTE FUNCTION refuse_coverage_unlike_its_evidence();\n",
+      "replace": ""
+    },
+    {
+      "name": "conclusion guard ignores the facet",
+      "find": "    JOIN dossier_facet f ON f.dossier_id = r.dossier_id AND f.facet = NEW.facet",
+      "replace": "    JOIN dossier_facet f ON f.dossier_id = r.dossier_id"
+    },
+    {
+      "name": "conclusion guard ignores the release",
+      "find": "    WHERE r.dossier_release_id = NEW.dossier_release_id AND e.assessment = 'PRESENT'",
+      "replace": "    WHERE e.assessment = 'PRESENT'"
+    },
+    {
+      "name": "conclusion guard accepts anything but DISALLOWED",
+      "find": "    WHERE r.dossier_release_id = NEW.dossier_release_id AND e.assessment = 'PRESENT'",
+      "replace": "    WHERE r.dossier_release_id = NEW.dossier_release_id AND e.assessment <> 'DISALLOWED'"
+    },
+    {
+      "name": "conclusion guard ignores when the assessment was made",
+      "find": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id AND c.assessed_at <= r.built_at",
+      "replace": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id"
+    },
+    {
+      "name": "conclusion guard excludes the build instant",
+      "find": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id AND c.assessed_at <= r.built_at",
+      "replace": "    JOIN dossier_coverage c ON c.dossier_facet_id = f.dossier_facet_id AND c.assessed_at < r.built_at"
+    },
+    {
+      "name": "level CHECK removed",
+      "find": "  CONSTRAINT coverage_level_counts_the_present CHECK (level = CASE\n    WHEN artifacts_present = 0 THEN 'NONE'\n    WHEN artifacts_present >= 2 AND runs_usable >= 2 THEN 'SUPPORTED'\n    ELSE 'THIN' END),\n",
+      "replace": ""
+    },
+    {
+      "name": "level CHECK ignores runs",
+      "find": "    WHEN artifacts_present >= 2 AND runs_usable >= 2 THEN 'SUPPORTED'",
+      "replace": "    WHEN artifacts_present >= 2 THEN 'SUPPORTED'"
+    },
+    {
+      "name": "rollup CHECK removed",
+      "find": "  CONSTRAINT coverage_assessment_is_the_rollup CHECK (assessment = CASE\n    WHEN artifacts_available = 0 THEN 'MISSING'\n    WHEN artifacts_conflicting > 0 THEN 'CONFLICTING'\n    WHEN artifacts_stale > 0 THEN 'STALE'\n    WHEN artifacts_disallowed > 0 THEN 'DISALLOWED'\n    ELSE 'PRESENT' END)",
+      "replace": "  CONSTRAINT coverage_assessment_is_the_rollup CHECK (TRUE)"
+    },
+    {
+      "name": "rollup order: DISALLOWED before STALE",
+      "find": "    WHEN artifacts_stale > 0 THEN 'STALE'\n    WHEN artifacts_disallowed > 0 THEN 'DISALLOWED'",
+      "replace": "    WHEN artifacts_disallowed > 0 THEN 'DISALLOWED'\n    WHEN artifacts_stale > 0 THEN 'STALE'"
+    },
+    {
+      "name": "rollup order: STALE before CONFLICTING",
+      "find": "    WHEN artifacts_conflicting > 0 THEN 'CONFLICTING'\n    WHEN artifacts_stale > 0 THEN 'STALE'",
+      "replace": "    WHEN artifacts_stale > 0 THEN 'STALE'\n    WHEN artifacts_conflicting > 0 THEN 'CONFLICTING'"
+    },
+    {
+      "name": "counts-add-up CHECK removed",
+      "find": "  CONSTRAINT coverage_counts_add_up CHECK (artifacts_present + artifacts_stale + artifacts_conflicting + artifacts_disallowed = artifacts_available),\n",
+      "replace": ""
+    },
+    {
+      "name": "names-what-it-counts CHECK removed",
+      "find": "  CONSTRAINT coverage_names_what_it_counts CHECK (cardinality(artifact_ids) = artifacts_available),\n",
+      "replace": ""
+    },
+    {
+      "name": "runs CHECK: more runs than artifacts allowed",
+      "find": "    runs_represented <= artifacts_available AND (runs_represented = 0) = (artifacts_available = 0)",
+      "replace": "    (runs_represented = 0) = (artifacts_available = 0)"
+    },
+    {
+      "name": "runs CHECK: artifacts from no run allowed",
+      "find": "    runs_represented <= artifacts_available AND (runs_represented = 0) = (artifacts_available = 0)",
+      "replace": "    runs_represented <= artifacts_available"
+    },
+    {
+      "name": "runs CHECK: more usable runs than present artifacts allowed",
+      "find": "    AND runs_usable <= artifacts_present AND runs_usable <= runs_represented AND (runs_usable = 0) = (artifacts_present = 0)",
+      "replace": "    AND runs_usable <= runs_represented AND (runs_usable = 0) = (artifacts_present = 0)"
+    },
+    {
+      "name": "runs CHECK: more usable runs than runs allowed",
+      "find": "    AND runs_usable <= artifacts_present AND runs_usable <= runs_represented AND (runs_usable = 0) = (artifacts_present = 0)",
+      "replace": "    AND runs_usable <= artifacts_present AND (runs_usable = 0) = (artifacts_present = 0)"
+    },
+    {
+      "name": "runs CHECK: a present artifact from no usable run allowed",
+      "find": "    AND runs_usable <= artifacts_present AND runs_usable <= runs_represented AND (runs_usable = 0) = (artifacts_present = 0)",
+      "replace": "    AND runs_usable <= artifacts_present AND runs_usable <= runs_represented"
+    },
+    {
+      "name": "evidence may be MISSING",
+      "find": " AND assessment <> 'MISSING'),",
+      "replace": "),"
+    },
+    {
+      "name": "evidence keyed on the artifact alone",
+      "find": "  CONSTRAINT evidence_artifact FOREIGN KEY (artifact_id, run_id) REFERENCES derived_artifact (artifact_id, run_id),",
+      "replace": "  CONSTRAINT evidence_artifact FOREIGN KEY (artifact_id) REFERENCES derived_artifact (artifact_id),"
+    },
+    {
+      "name": "required right free",
+      "find": "  required_right text NOT NULL CHECK (required_right = '${DELIVERY_RIGHT}'),",
+      "replace": "  required_right text NOT NULL,"
+    },
+    {
+      "name": "coverage rewritable",
+      "find": "CREATE TRIGGER coverage_is_written_once BEFORE UPDATE OR DELETE ON dossier_coverage\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('coverage');\n",
+      "replace": ""
+    },
+    {
+      "name": "evidence rewritable",
+      "find": "CREATE TRIGGER evidence_is_written_once BEFORE UPDATE OR DELETE ON dossier_coverage_evidence\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('evidence');\n",
+      "replace": ""
+    },
+    {
+      "name": "conclusion rewritable",
+      "find": "CREATE TRIGGER conclusion_is_written_once BEFORE UPDATE OR DELETE ON dossier_conclusion\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('conclusion');\n",
+      "replace": ""
+    },
+    {
+      "name": "release rewritable",
+      "find": "CREATE TRIGGER release_is_written_once BEFORE UPDATE OR DELETE ON dossier_release\n  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_ledger_row('release');\n",
+      "replace": ""
+    },
+    {
+      "name": "spec recipient rewritable",
+      "find": "  IF NEW.dossier_id <> OLD.dossier_id OR NEW.recipient_id <> OLD.recipient_id OR NEW.question <> OLD.question\n",
+      "replace": "  IF NEW.dossier_id <> OLD.dossier_id OR NEW.question <> OLD.question\n"
+    },
+    {
+      "name": "spec deletable",
+      "find": "  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'spec_terms_are_written_once:DELETE of %', OLD.dossier_id;\n  END IF;\n",
+      "replace": "  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;\n"
+    },
+    {
+      "name": "backdated retraction accepted",
+      "find": "    IF standing.assessment <> expected THEN\n      RAISE EXCEPTION 'retraction_contradicts_a_standing_assessment",
+      "replace": "    IF FALSE THEN\n      RAISE EXCEPTION 'retraction_contradicts_a_standing_assessment"
+    },
+    {
+      "name": "retraction not followed through derived artifacts",
+      "find": "      UNION\n      SELECT i.artifact_id FROM artifact_input i JOIN readers ON i.input_artifact_id = readers.artifact_id\n",
+      "replace": ""
+    },
+    {
+      "name": "spec question rewritable",
+      "find": "  IF NEW.dossier_id <> OLD.dossier_id OR NEW.recipient_id <> OLD.recipient_id OR NEW.question <> OLD.question\n",
+      "replace": "  IF NEW.dossier_id <> OLD.dossier_id OR NEW.recipient_id <> OLD.recipient_id\n"
+    }
+  ]
+}

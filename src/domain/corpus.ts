@@ -465,7 +465,7 @@ export interface Corpus {
 
 /* ── Selectors ── */
 
-function compareInstants(a: ISODateTime, b: ISODateTime): number {
+export function compareInstants(a: ISODateTime, b: ISODateTime): number {
   const left = Date.parse(a), right = Date.parse(b);
   if (!Number.isFinite(left) || !Number.isFinite(right)) throw new Error('CORPUS_INVALID_TIMESTAMP');
   return left - right;

@@ -22,6 +22,7 @@ const T_SENT = '2026-05-02T11:00:00.000Z';
 const T_LATER = '2026-05-09T11:00:00.000Z';
 const FP = (n: number) => `sha256:${String(n).repeat(2).padStart(64, '0')}`;
 
+
 const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);

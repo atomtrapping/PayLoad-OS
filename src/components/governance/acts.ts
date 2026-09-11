@@ -36,7 +36,7 @@ export interface GovernedActRow {
 
 const fromKernel = (act: GovernedAct, lifecycle: Lifecycle, subject: string, standing: string, boundTo: string): GovernedActRow => ({
   id: act.proposalId, lifecycle, kind: act.operationKind, subject, digest: act.actionDigest, boundTo,
-  review: { response: act.response, reviewer: act.reviewer, reasoning: '' },
+  review: { response: act.response, reviewer: act.reviewer, reasoning: act.reasoning },
   authorization: act.authorizationId ? { id: act.authorizationId, grantedBy: act.grantedBy!, grantedAt: act.grantedAt, expiresAt: act.expiresAt } : null,
   revocation: null, dispatch: null, reconciliation: null,
   corrects: act.correctsOperationId, revises: act.revisesProposalId,
@@ -45,11 +45,9 @@ const fromKernel = (act: GovernedAct, lifecycle: Lifecycle, subject: string, sta
 
 export function dossierActs(receipt: DossierLifecycleReceipt): GovernedActRow[] {
   const scope = fromKernel(receipt.scope, 'DOSSIER', `Quotation ${receipt.quotation.quotationId}: ${receipt.quotation.units} units × ${receipt.quotation.unitPriceMinor} = ${receipt.quotation.amountMinor} ${receipt.quotation.currency} minor`, 'ACCEPTED BY THE CUSTOMER', `the quotation's digest, ${receipt.boundToRelease}`);
-  scope.review = { ...scope.review!, reasoning: 'The customer accepted the quotation as put, by digest.' };
   const releases = receipt.releases.map((release, index) => {
     const correctedBy = receipt.releases[index + 1];
     const row = fromKernel(release.review, 'DOSSIER', `${release.releaseId} v${release.version}: ${release.conclusions.length} conclusion, ${release.holes.length} stated holes (${release.holes.map((h) => h.assessment).join(', ')})`, correctedBy ? `RELEASED · DELIVERED (simulated) · CORRECTED BY v${correctedBy.version}` : 'RELEASED · DELIVERED (simulated)', `the compiled release's digest, ${receipt.boundToRelease}`);
-    row.review = { ...row.review!, reasoning: 'Each conclusion presented at its computed class; every gap stated.' };
     row.dispatch = { id: release.delivery.attemptId, outcome: release.delivery.outcome, at: receipt.stages.find((s) => s.stage === (index === 0 ? 'DELIVERED' : 'MONITORING'))?.at ?? '', receipt: release.delivery.venueReceipt };
     row.reconciliation = { found: release.delivery.reconciliation.found, basis: release.delivery.reconciliation.basis };
     return row;
@@ -59,10 +57,8 @@ export function dossierActs(receipt: DossierLifecycleReceipt): GovernedActRow[] 
 
 export function editorialActs(receipt: EditorialLifecycleReceipt): GovernedActRow[] {
   const article = fromKernel(receipt.article.review, 'EDITORIAL', `${receipt.article.channel}: ${receipt.article.message.headline}`, 'RELEASED · ARCHIVED', `the article's digest, ${receipt.boundToRelease}`);
-  article.review = { ...article.review!, reasoning: 'The headline says what the chart shows; the qualifiers say what it is not.' };
   article.dispatch = receipt.article.publication ? { id: receipt.article.publication.publicationId, outcome: 'ARCHIVED', at: receipt.article.publication.at, receipt: null } : null;
   const post = fromKernel(receipt.post.review, 'EDITORIAL', `${receipt.post.channel}: ${receipt.post.message.headline} (${receipt.post.characters} characters)`, 'RELEASED · WITHHELD', `the post's digest, ${receipt.boundToRelease}`);
-  post.review = { ...post.review!, reasoning: receipt.post.withheldBecause ?? '' };
   return [article, post];
 }
 

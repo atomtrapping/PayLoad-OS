@@ -57,6 +57,7 @@
  * from context is committing the firm to something nobody decided.
  */
 import { PROVENANCE_CHAIN, DELIVERABLE_FOOTER } from './firmIdentity';
+import { compareInstants } from './corpus';
 import type { ClaimClass } from './discoveryLayer';
 
 /* ── The question, decomposed ── */
@@ -238,13 +239,16 @@ export interface EvidenceUnderAssessment {
   inputRecordIds: readonly string[];
 }
 
+/** One record the corpus took back, with how. A record can carry both: corrected under one retraction, withdrawn under another. */
+export interface TakenBackRecord { recordId: string; kind: 'CORRECTION' | 'WITHDRAWAL' }
+
 export interface AssessmentContext {
   /** The instant the coverage was assessed at. Staleness and conflict are read as of it. */
   assessedAt: string;
   /** The right this dossier's delivery exercises. */
   requiredRight: string;
-  /** Records the corpus has taken back by `assessedAt`, with how: a correction says something else; a withdrawal says nothing. */
-  takenBack: ReadonlyMap<string, 'CORRECTION' | 'WITHDRAWAL'>;
+  /** What the corpus had taken back by `assessedAt`: a correction says something else; a withdrawal says nothing. */
+  takenBack: readonly TakenBackRecord[];
   /** The other artifacts bearing on the same facet, so a disagreement about one subject is seen. */
   alongside: readonly Pick<EvidenceUnderAssessment, 'artifactId' | 'subject' | 'claim'>[];
 }
@@ -252,19 +256,24 @@ export interface AssessmentContext {
 /**
  * One artifact, one assessment, in an order that is the argument.
  *
- * Rights first: the firm's rights decide whether the buyer hears about this
- * artifact at all, and an artifact the buyer may not receive is not the
- * buyer's to weigh for conflict or freshness — its reason stays on the
- * internal evidence row. Conflict second: a corrected input, a disagreeing
- * neighbour on the facet, or a refuted claim is a fact about the evidence the
- * buyer must see. Stale third. Present is what is left, and it is earned by
- * passing the three, not assumed.
+ * Rights first: the firm's rights decide whether the buyer may receive this
+ * artifact, and one they may not is named to them by identifier and
+ * assessment only — the reason is on the evidence row and the operator's
+ * receipt, not in the release. Conflict second: a corrected input, a
+ * disagreeing neighbour on the facet, or a refuted claim is a fact about
+ * the evidence the buyer must see. Stale third. Present is what is left,
+ * and it is earned by passing the three, not assumed.
+ *
+ * `inputRecordIds` is every source record the artifact rests on, through
+ * any derived artifacts it read; the ledger's guard follows the inputs down
+ * the same way. Instants are compared as instants, not as spellings.
  */
 export function assessEvidence(evidence: EvidenceUnderAssessment, context: AssessmentContext): { assessment: CoverageAssessment; because: string } {
   if (!evidence.rights.includes(context.requiredRight)) {
     return { assessment: 'DISALLOWED', because: `Its rights are ${evidence.rights.length ? evidence.rights.join(', ') : 'none'}; ${context.requiredRight} is not among them, and a dossier delivery exercises it.` };
   }
-  const corrected = evidence.inputRecordIds.filter((id) => context.takenBack.get(id) === 'CORRECTION');
+  const takenBackAs = (kind: TakenBackRecord['kind']) => [...new Set(context.takenBack.filter((t) => t.kind === kind).map((t) => t.recordId))];
+  const corrected = evidence.inputRecordIds.filter((id) => takenBackAs('CORRECTION').includes(id));
   if (corrected.length > 0) {
     return { assessment: 'CONFLICTING', because: `It read ${corrected.join(', ')}, which the corpus has since corrected: the corpus now says something else about what it read.` };
   }
@@ -275,10 +284,10 @@ export function assessEvidence(evidence: EvidenceUnderAssessment, context: Asses
   if (evidence.validation === 'FALSIFIED') {
     return { assessment: 'CONFLICTING', because: 'The claim was checked against held-out or observed evidence and refuted.' };
   }
-  if (evidence.horizonEndsAt !== null && evidence.horizonEndsAt < context.assessedAt) {
+  if (evidence.horizonEndsAt !== null && compareInstants(evidence.horizonEndsAt, context.assessedAt) < 0) {
     return { assessment: 'STALE', because: `Its horizon ended at ${evidence.horizonEndsAt}, before ${context.assessedAt}.` };
   }
-  const withdrawn = evidence.inputRecordIds.filter((id) => context.takenBack.get(id) === 'WITHDRAWAL');
+  const withdrawn = evidence.inputRecordIds.filter((id) => takenBackAs('WITHDRAWAL').includes(id));
   if (withdrawn.length > 0) {
     return { assessment: 'STALE', because: `It read ${withdrawn.join(', ')}, which the corpus has since withdrawn.` };
   }
@@ -312,7 +321,7 @@ export function rollupAssessment(assessments: readonly CoverageAssessment[]): Co
 }
 
 export const ASSESSMENT_RULE =
-  'Coverage distinguishes present, stale, conflicting, missing and disallowed evidence, per artifact and rolled up per facet with the counts beside the headline. Only present evidence holds a conclusion up; the rest is named by identifier and assessment so the buyer can see that something exists that they are not being given — never its claim.';
+  'Coverage distinguishes present, stale, conflicting, missing and disallowed evidence, per artifact and rolled up per facet with the counts beside the headline. Only present evidence holds a conclusion up; the rest is named by identifier and assessment so the buyer can see that something exists that they are not being given — never its claim, and never the internal reason. An assessment is a fact at its instant: the rows are written once, and a corpus that has moved since is a new assessment, not an edit.';
 
 export function estimateUnits(coverage: ReadonlyArray<{ facet: DossierFacet; level: CoverageLevel }>): number {
   return coverage.reduce((total, entry) => total + COVERAGE_LEVEL_UNITS[entry.level], 0);

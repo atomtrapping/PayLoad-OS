@@ -7,7 +7,7 @@ import { PERMITTED_USES } from './corpus';
 
 const AT = '2026-09-06T09:10:00.000Z';
 const context = (over: Partial<AssessmentContext> = {}): AssessmentContext => ({
-  assessedAt: AT, requiredRight: DELIVERY_RIGHT, takenBack: new Map(), alongside: [], ...over,
+  assessedAt: AT, requiredRight: DELIVERY_RIGHT, takenBack: [], alongside: [], ...over,
 });
 const evidence = (over: Partial<EvidenceUnderAssessment> = {}): EvidenceUnderAssessment => ({
   artifactId: 'A1', subject: 'LOT-1', claim: '4 claims rest on 3 sources.', validation: 'NOT_VALIDATED', horizonEndsAt: null,
@@ -28,10 +28,10 @@ describe('the five assessments, one artifact at a time', () => {
   });
 
   it('is conflicting when a record it read was corrected: the corpus now says something else', () => {
-    const result = assessEvidence(evidence(), context({ takenBack: new Map([['REC-2', 'CORRECTION']]) }));
+    const result = assessEvidence(evidence(), context({ takenBack: [{ recordId: 'REC-2', kind: 'CORRECTION' }] }));
     expect(result.assessment).toBe('CONFLICTING');
     expect(result.because).toMatch(/read REC-2, which the corpus has since corrected/);
-    expect(assessEvidence(evidence(), context({ takenBack: new Map([['REC-9', 'CORRECTION']]) })).assessment).toBe('PRESENT');
+    expect(assessEvidence(evidence(), context({ takenBack: [{ recordId: 'REC-9', kind: 'CORRECTION' }] })).assessment).toBe('PRESENT');
   });
 
   it('is conflicting when another artifact on the facet says something else about the same subject', () => {
@@ -60,9 +60,23 @@ describe('the five assessments, one artifact at a time', () => {
   it('is stale when its horizon passed, or when a record it read was withdrawn', () => {
     expect(assessEvidence(evidence({ horizonEndsAt: '2026-09-01T00:00:00.000Z' }), context()).assessment).toBe('STALE');
     expect(assessEvidence(evidence({ horizonEndsAt: '2026-12-01T00:00:00.000Z' }), context()).assessment).toBe('PRESENT');
-    const stale = assessEvidence(evidence(), context({ takenBack: new Map([['REC-2', 'WITHDRAWAL']]) }));
+    const stale = assessEvidence(evidence(), context({ takenBack: [{ recordId: 'REC-2', kind: 'WITHDRAWAL' }] }));
     expect(stale.assessment).toBe('STALE');
     expect(stale.because).toMatch(/read REC-2, which the corpus has since withdrawn/);
+  });
+
+  it('reads a record both corrected and withdrawn as corrected, whichever was recorded first', () => {
+    const both = [{ recordId: 'REC-2', kind: 'WITHDRAWAL' as const }, { recordId: 'REC-2', kind: 'CORRECTION' as const }];
+    expect(assessEvidence(evidence(), context({ takenBack: both })).assessment).toBe('CONFLICTING');
+    expect(assessEvidence(evidence(), context({ takenBack: [...both].reverse() })).assessment).toBe('CONFLICTING');
+  });
+
+  it('compares the horizon as an instant, not as a spelling', () => {
+    // 10:10 at +02:00 is 08:10Z, an hour before the 09:10Z assessment; the string sorts after it.
+    expect(assessEvidence(evidence({ horizonEndsAt: '2026-09-06T10:10:00+02:00' }), context()).assessment).toBe('STALE');
+    // The same instant spelled differently is not before itself.
+    expect(assessEvidence(evidence({ horizonEndsAt: '2026-09-06T09:10:00Z' }), context()).assessment).toBe('PRESENT');
+    expect(() => assessEvidence(evidence({ horizonEndsAt: 'yesterday' }), context())).toThrow(/CORPUS_INVALID_TIMESTAMP/);
   });
 
   /* The order is the argument: rights gate the view; then conflict; then staleness. */
@@ -80,6 +94,7 @@ describe('the facet’s assessment from its artifacts’', () => {
     expect(rollupAssessment(['PRESENT', 'CONFLICTING', 'DISALLOWED']).assessment).toBe('CONFLICTING');
     expect(rollupAssessment(['DISALLOWED', 'PRESENT'])).toEqual({ assessment: 'DISALLOWED', present: 1, stale: 0, conflicting: 0, disallowed: 1 });
     expect(rollupAssessment(['PRESENT', 'STALE']).assessment).toBe('STALE');
+    expect(rollupAssessment(['STALE', 'DISALLOWED']).assessment).toBe('STALE');
     expect(rollupAssessment(['PRESENT', 'PRESENT']).assessment).toBe('PRESENT');
     expect(rollupAssessment(['DISALLOWED']).assessment).toBe('DISALLOWED');
   });

@@ -28,6 +28,7 @@ const T_DISPATCH = '2026-09-02T12:00:00.000Z';
 const T_EXPIRE = '2026-09-03T11:00:00.000Z';
 const T_STALE = '2026-09-04T09:00:00.000Z';
 
+
 const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);

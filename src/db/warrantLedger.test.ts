@@ -21,6 +21,7 @@ const T_OPEN = '2026-10-01T09:00:00.000Z';
 const T_HOLD = '2026-10-01T10:00:00.000Z';
 const T_LATER = '2026-10-02T10:00:00.000Z';
 
+
 const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);

@@ -53,7 +53,8 @@ describe('one dossier, end to end', () => {
     expect(dependency).toMatchObject({ level: 'THIN', assessment: 'DISALLOWED', artifactsAvailable: 2, artifactsPresent: 1, artifactsStale: 0, artifactsConflicting: 0, artifactsDisallowed: 1, runsRepresented: 1, runsUsable: 1 });
     expect(dependency.evidence.map((e) => [e.artifactId, e.assessment])).toEqual([['DEMO-CARAVAN-A001', 'PRESENT'], ['DEMO-CARAVAN-A002', 'DISALLOWED']]);
     expect(dependency.evidence[1].because).toMatch(/acquisition, normalization; customer_delivery is not among them/);
-    expect(dependency.basis).toMatch(/1 may be delivered to this customer and 1 may not/);
+    expect(dependency.basis).toMatch(/1 present, 1 disallowed for customer delivery/);
+    expect(JSON.stringify(receipt)).not.toMatch(/this customer/);
   });
 
   it('wrote the same assessment into the database that the receipt carries, and read the corpus’s retractions from it', async () => {
@@ -62,6 +63,7 @@ describe('one dossier, end to end', () => {
        FROM dossier_coverage c JOIN dossier_facet f ON f.dossier_facet_id = c.dossier_facet_id ORDER BY f.facet`);
     expect(rows).toEqual([...receipt.coverage].sort((a, b) => (a.facet < b.facet ? -1 : 1)).map((c) => ({ facet: c.facet, level: c.level, assessment: c.assessment, present: c.artifactsPresent, available: c.artifactsAvailable })));
     expect(await ledger.count('dossier_coverage_evidence')).toBe(3);
+    expect(await ledger.count('retracted_record')).toBe(3); // the backdated one was refused
     expect(await ledger.rows(`SELECT retraction_id, record_id, kind FROM retracted_record ORDER BY record_id`)).toEqual([
       { retraction_id: 'RET-0002', record_id: 'REC-0111', kind: 'WITHDRAWAL' }, { retraction_id: 'RET-0002', record_id: 'REC-0112', kind: 'WITHDRAWAL' }, { retraction_id: 'RET-0001', record_id: 'REC-0203', kind: 'CORRECTION' },
     ]);
@@ -74,8 +76,11 @@ describe('one dossier, end to end', () => {
     expect(receipt.quotation.policyId).toBe(PRICING_POLICY.policyId);
   });
 
-  it('has the customer accept the quotation by digest, and a steward approve each release by digest', () => {
+  it('has the customer accept the quotation by digest, and a steward approve each release by digest, in their own words', () => {
     expect(receipt.scope.reviewer).toBe('customer:demonstration-buyer');
+    expect(receipt.scope.reasoning).toMatch(/Accepted at the quoted amount/);
+    expect(receipt.releases[0].review.reasoning).toMatch(/withheld lot artifact included/);
+    expect(receipt.releases[1].review.reasoning).toMatch(/version 1 stays/);
     expect(receipt.scope.actionDigest).toBe(receipt.quotation.digest);
     expect(receipt.scope.authorizationId).toBe('AU-DOSSIER-SCOPE');
     for (const release of receipt.releases) {
@@ -92,8 +97,8 @@ describe('one dossier, end to end', () => {
       for (const conclusion of release.conclusions) {
         expect(conclusion.presentedAs).toBe(conclusion.artifactClass);
         expect(conclusion.artifactId).toBe('DEMO-CARAVAN-A001');
-        expect(conclusion.notCovered).toMatch(/DEMO-CARAVAN-A002 bears on this facet and is DISALLOWED for this customer/);
-        expect(conclusion.notCovered).not.toMatch(/LOT-7C-104/);
+        expect(conclusion.notCovered).toMatch(/DEMO-CARAVAN-A002 bears on this facet and is DISALLOWED for customer delivery, so this statement rests on DEMO-CARAVAN-A001 alone/);
+        expect(conclusion.notCovered).not.toMatch(/LOT-7C-104|rights are/);
       }
       const bytes = JSON.stringify(release);
       expect(bytes).not.toMatch(/about no building/);
@@ -130,8 +135,11 @@ describe('one dossier, end to end', () => {
     const spatial = seeded.spatial.artifact.artifactId;
     expect(receipt.refusals.map((r) => [r.label, r.refusedBy])).toEqual([
       ['call a facet with nothing behind it PRESENT', 'coverage_assessment_is_the_rollup'],
-      ['label the spatial computation PRESENT for this customer', `evidence_assessment_is_not_the_artifacts:${spatial}:PRESENT recorded, DISALLOWED from the artifact`],
-      ['count the withheld lot artifact toward the level', 'coverage_level_counts_the_present'],
+      ['label the spatial computation PRESENT', `evidence_assessment_is_not_the_artifacts:${spatial}:PRESENT recorded, DISALLOWED from the artifact`],
+      ['call one present artifact SUPPORTED', 'coverage_level_counts_the_present'],
+      ['count the withheld lot artifact as present', 'coverage_does_not_match_its_evidence:COV-BAD-4:counts 2/0/0/0 but its evidence rows are 1/0/0/1'],
+      ['rewrite the RISK coverage row as PRESENT after it was written', 'coverage_is_written_once:UPDATE of dossier_coverage'],
+      ['backdate a withdrawal of a record the present lot artifact read', 'retraction_contradicts_a_standing_assessment:RET-BACKDATED:DEMO-CARAVAN-A001 in COV-DEPENDENCY is PRESENT and would be STALE had REC-0204 been known'],
       ['quote the work before any pricing policy is approved', 'quotation_policy'],
       ['quote an amount that is not units times the rate', 'quotation_is_units_at_the_rate'],
       ['release before the customer accepted, and before anyone reviewed', 'release_scope_accepted'],
@@ -139,18 +147,18 @@ describe('one dossier, end to end', () => {
       ['have a second reviewer close the same release again, differently', 'review_closes_once'],
       ['release the draft the reviewer did not see', 'release_reviewed'],
       ['present the spatial computation as something a source observed', 'conclusion_presented_at_its_class'],
-      ['rest a conclusion on evidence this customer may not receive', `conclusion_rests_on_no_present_evidence:${spatial}:RISK in DREL-1`],
+      ['rest a conclusion on evidence a customer audience may not receive', `conclusion_rests_on_no_present_evidence:${spatial}:RISK in DREL-1`],
       ['record a delivery no dispatch carried', 'dossier_delivery_attempt_id_fkey'],
       ['deliver the dossier to the other customer', 'delivery_goes_to_the_dossiers_recipient'],
       ['release version 2 under version 1’s approval', 'release_authorization_once'],
     ]);
-    expect(receipt.counts.refusals).toBe(14);
+    expect(receipt.counts.refusals).toBe(17);
   });
 
   it('counts what it wrote', () => {
     expect(receipt.counts).toEqual({
       specs: 1, coverage: 3, evidence: 3, estimates: 1, quotations: 1, releases: 2, conclusions: 2, deliveries: 2,
-      proposals: 3, authorizations: 3, attempts: 2, refusals: 14,
+      proposals: 3, authorizations: 3, attempts: 2, refusals: 17,
     });
   });
 

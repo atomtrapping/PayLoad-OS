@@ -30,6 +30,7 @@ const DIGEST = `sha256:${'a'.repeat(64)}`;
 const OTHER_DIGEST = `sha256:${'b'.repeat(64)}`;
 
 /* The corpus tables the authorization's release foreign key points at. */
+
 const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, title text NOT NULL, description text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);

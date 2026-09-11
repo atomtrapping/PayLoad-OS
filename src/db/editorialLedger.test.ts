@@ -30,6 +30,7 @@ const ARTICLE = FP(4);
 const POST = FP(5);
 const MESSAGE = `'{"headline":"A documented expansion","claims":["A documented expansion."],"chart":{"kind":"none"},"qualifiers":["Demonstration corpus."],"channelText":"The article."}'::jsonb`;
 
+
 const CORPUS_DDL = `
 CREATE TABLE corpora (corpus_id text PRIMARY KEY, domain text NOT NULL, data jsonb NOT NULL);
 CREATE TABLE releases (release_id text PRIMARY KEY, corpus_id text NOT NULL REFERENCES corpora(corpus_id), status text NOT NULL, known_at timestamptz NOT NULL, data jsonb NOT NULL);

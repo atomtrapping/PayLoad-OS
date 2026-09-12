@@ -179,9 +179,15 @@ It does not meter or price a call. The receipt carries the fields a bill line
 needs — a party, a request, a served instant — because those are the same fields
 a rights decision needs, but nothing counts them yet.
 
-It does not yet write the receipts from the live surface. The ledger exists and
-accepts them (below), and `src/mcp/serve.ts` still only returns them; wiring the
-running server to a database is the step after this one.
+It does not keep the record beyond the process. `src/mcp/serve.ts` takes an
+optional sink and writes every ask to it, and `src/governance/terminalStore.ts`
+is a sink over the real tables — but it opens its own PGlite, so the record
+lives and dies with the process. Giving it a provisioned database is a change
+of constructor, not of design.
+
+A sink that throws does not fail the call. The plane's answer is not made wrong
+by the recorder being unavailable, so a failed write is counted and reported on
+the response as `unrecorded` rather than swallowed or raised.
 
 ## What the substrate holds afterwards
 
@@ -319,3 +325,10 @@ would run any of it refused, because it names a corpus release and there are
 none. Two of the thirty run real asks through `admitCapability` and write the
 receipts unedited, so a decision the plane can produce and the ledger will not
 accept surfaces as a failure rather than at runtime.
+`src/mcp/record.test.ts` (7): the live surface driven with a real store behind
+it, writing the declaration once and every ask under it, a refusal with its
+code, and an operate's proposal into the kernel with the side effects the
+capability declared and the plane as its author; an ask that reached no
+described capability refused and not written, because a ledger that invents
+the thing it records is worse than one that says nothing; and the answer
+standing when the sink throws, with the record reported incomplete.

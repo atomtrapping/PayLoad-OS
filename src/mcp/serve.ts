@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { admitCall, admitCapability, servedCallReceipt, type CallAdmission, type ProposedOperation, type ServedCallReceipt, type TerminalSession } from '@/domain/terminalPlane';
 import { TOOL_CAPABILITY, capabilityById } from '@/domain/capabilityRegistry';
 import { getCorpusSource } from '@/adapter/corpusSource';
+import type { RecordingFailure, ServedCallSink } from './record';
 import { MCP_TOOLS, runMcpTool } from './tools';
 
 export interface ServedCall {
@@ -45,6 +46,13 @@ export interface ServedCall {
    * integrator than a refusal that would imply they were not allowed.
    */
   unreachable?: { because: string; reachableToday: string };
+  /**
+   * Present only when a sink was given and could not write the ask down. The
+   * answer stands — a correct refusal is not made wrong by the recorder being
+   * unavailable — and this says the record is incomplete rather than leaving
+   * an operator to assume it is not.
+   */
+  unrecorded?: RecordingFailure;
 }
 
 /**
@@ -77,6 +85,7 @@ export async function serveToolCall(
   toolName: string,
   args: unknown,
   at: string,
+  sink?: ServedCallSink,
 ): Promise<ServedCall> {
   const tool = MCP_TOOLS.find((candidate) => candidate.name === toolName);
   if (tool !== undefined) z.object(tool.shape).parse(args ?? {});
@@ -84,7 +93,8 @@ export async function serveToolCall(
   const corpus = tool === undefined ? undefined : await corpusOfCall(args);
   const admission = admitCall(session, toolName, at, corpus);
   const receipt = servedCallReceipt(session, toolName, at, admission, corpus);
-  return outcomeOf(receipt, admission, () => runMcpTool(toolName, args));
+  const served = await outcomeOf(receipt, admission, () => runMcpTool(toolName, args));
+  return record(served, session, sink);
 }
 
 /**
@@ -105,6 +115,7 @@ export async function serveCapabilityCall(
   capabilityId: string,
   args: unknown,
   at: string,
+  sink?: ServedCallSink,
 ): Promise<ServedCall> {
   const capability = capabilityById(capabilityId);
   const corpus = capability === undefined ? undefined : await corpusOfCall(args);
@@ -112,20 +123,47 @@ export async function serveCapabilityCall(
   const toolName = Object.keys(TOOL_CAPABILITY).find((name) => TOOL_CAPABILITY[name] === capabilityId);
   const receipt = { ...servedCallReceipt(session, toolName ?? capabilityId, at, admission, corpus), capability: capability?.id ?? null };
   if (admission.outcome === 'ADMITTED' && toolName === undefined) {
-    return {
+    return record({
       receipt,
       admission,
       unreachable: {
         because: `${capabilityId} is admitted for this session and no transport reaches it.`,
         reachableToday: capability?.reachableToday ?? 'not reachable',
       },
-    };
+    }, session, sink);
   }
   if (toolName !== undefined && admission.outcome === 'ADMITTED') {
     z.object(MCP_TOOLS.find((candidate) => candidate.name === toolName)!.shape).parse(args ?? {});
   }
-  return outcomeOf(receipt, admission, toolName === undefined ? undefined : () => runMcpTool(toolName, args));
+  const served = await outcomeOf(receipt, admission, toolName === undefined ? undefined : () => runMcpTool(toolName, args));
+  return record(served, session, sink);
 }
+
+/**
+ * Write the ask down, if there is anywhere to write it.
+ *
+ * The session is opened first and once, because a call points at a
+ * declaration and a declaration cannot arrive after the call that rests on it.
+ * A throw from either is caught: the answer above is already correct, and a
+ * recorder that is down should cost a note on the response rather than the
+ * response itself.
+ */
+async function record(served: ServedCall, session: TerminalSession, sink?: ServedCallSink): Promise<ServedCall> {
+  if (sink === undefined) return served;
+  try {
+    await sink.openSession(session);
+  } catch (error) {
+    return { ...served, unrecorded: { what: 'SESSION', at: served.receipt.servedAt, because: reasonOf(error) } };
+  }
+  try {
+    await sink.recordCall(served.receipt, session, served.proposal);
+  } catch (error) {
+    return { ...served, unrecorded: { what: 'CALL', at: served.receipt.servedAt, because: reasonOf(error) } };
+  }
+  return served;
+}
+
+const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** One place the three outcomes become one answer shape. */
 async function outcomeOf(

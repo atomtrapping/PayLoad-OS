@@ -55,7 +55,7 @@
  * the substrate, including the parts no terminal can operate yet, because that
  * map is what says where the work is.
  */
-import type { ServedKind } from './terminalPlane';
+import type { ServedKind } from './terminalVocabulary';
 
 /**
  * What invoking a capability does to the world.

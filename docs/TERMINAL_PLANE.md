@@ -179,10 +179,52 @@ It does not meter or price a call. The receipt carries the fields a bill line
 needs — a party, a request, a served instant — because those are the same fields
 a rights decision needs, but nothing counts them yet.
 
-It does not persist the receipts. They are returned and not yet written to a
-ledger, so a pattern of asking is visible to whoever holds the call and not to
-the system. That is the next increment, and it is where "recorded against a
-party" stops being a shape and starts being a fact.
+It does not yet write the receipts from the live surface. The ledger exists and
+accepts them (below), and `src/mcp/serve.ts` still only returns them; wiring the
+running server to a database is the step after this one.
+
+## What the substrate holds afterwards
+
+`src/db/terminalLedger.ts` is where a pattern of asking stops being visible only
+to whoever held the call. Three tables.
+
+| Table | Holds |
+| --- | --- |
+| `terminal_capability` | One row per capability, seeded from the registry, with its kind and whether it reaches an estate |
+| `terminal_session` | The declaration: party, class, one purpose, the corpora named, the window it stands for |
+| `served_call` | One row per ask — admitted, refused or proposed — with the capability, the corpus, the instant and why |
+
+The registry is a table rather than a `CHECK` over 161 strings because the
+guards need to reason about a capability's kind, and a `CHECK` cannot. A call
+naming a capability the registry does not describe has no row to point at,
+which is the plane's refusal held a second time for a writer that never heard
+of the plane.
+
+The rules the plane enforces are enforced here again, from the row:
+
+- The `(class, purpose)` pairs are generated from `declarablePurposes`, so a
+  customer terminal declaring internal research is refused by the database.
+  Model training and trading are refused to every class.
+- A session is written once. A widening is a new session a party is answerable
+  for; an `UPDATE` would be the escalation-inside-one the design refuses.
+- A call carries its session's window, tied back by composite key, and must
+  fall inside it. A declaration is not extended by calling after it.
+- Only a `READ` may be `ADMITTED`. A row saying an operate was served is not
+  accepted, whatever produced it. An `ADMIT` is refused to any session that is
+  not the firm's own.
+- Each outcome carries what it must: a refusal its code, a proposal its
+  proposal, an admission neither.
+- A proposed call points at `operation_proposal`, and two deferred guards keep
+  the pair honest — the proposal's `operation_kind` is the capability that was
+  asked for, and its `counterparty` is the terminal that asked.
+
+A refusal is recorded as fully as an answer, because a pattern of being refused
+is the pattern worth seeing.
+
+The vocabulary the three modules share lives in
+`src/domain/terminalVocabulary.ts`, alone, importing only the corpus's rights
+words. A database module that had to pull in the MCP tool list to learn what a
+terminal class is would be a layering mistake with a runtime cost.
 
 ## The HTTP feed is unchanged
 
@@ -263,3 +305,17 @@ answered for one session and refused for another; nothing served on a refusal;
 malformed arguments still a tool error; a capability asked for by name, an
 undescribed one refused, and an operate dispatching nothing.
 `src/architecture.test.ts`: nothing but the governed surface dispatches a tool.
+`src/db/terminalLedger.test.ts` (30), against a real PostgreSQL engine in raw
+SQL: the seed equals the registry; a call naming an undescribed capability, or
+claiming a kind that is not the registry's, refused; a class declaring a
+purpose it does not call at, and model training and trading for every class,
+refused; a session that names no corpus or expires before it opens, refused;
+a session rewritten, refused; a call outside its window, or carrying a window
+or a class its session did not declare, refused; each outcome held to what it
+must carry; an admitted operate refused and the proposal it should have been
+accepted; an admission refused outside the firm and proposed inside it; a
+proposal for another act or another party refused; and the authorization that
+would run any of it refused, because it names a corpus release and there are
+none. Two of the thirty run real asks through `admitCapability` and write the
+receipts unedited, so a decision the plane can produce and the ledger will not
+accept surfaces as a failure rather than at runtime.

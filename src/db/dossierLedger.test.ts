@@ -98,26 +98,50 @@ const specs = () => sql(`
 const FULL = `'{acquisition,customer_delivery,normalization}'`;
 const NO_DELIVERY = `'{acquisition,normalization}'`;
 
+/**
+ * A validation record: the dated fact an artifact's state is held to.
+ * FALSIFIED did not pass; any other outcome did. Declared at the computation,
+ * which is never after the check.
+ */
+const validationRecord = (artifactId: string, outcome: string, validatedAt: string, over: { id?: string; computedAt?: string } = {}) =>
+  `INSERT INTO artifact_validation (validation_id, artifact_id, artifact_computed_at, method, metric, baseline, direction, result, threshold, threshold_declared_at, validated_at, passed, outcome, evidence)
+   VALUES ('${over.id ?? `V-${artifactId}`}', '${artifactId}', '${over.computedAt ?? T_MINED}', 'held_out_comparison', 'precision', 'majority_class', 'HIGHER_IS_BETTER',
+    ${outcome === 'FALSIFIED' ? 0.5 : 0.9}, 0.8, '${over.computedAt ?? T_MINED}', '${validatedAt}', ${outcome !== 'FALSIFIED'}, '${outcome}', 'Held-out records.')`;
+
+/** The state an artifact is written with: unvalidated has no instant; anything else is dated, at the computation unless a test says otherwise. */
+const validationColumns = (over: { validation?: string; validatedAt?: string }, computedAt: string) => {
+  const validation = over.validation ?? 'NOT_VALIDATED';
+  const validatedAt = validation === 'NOT_VALIDATED' ? null : (over.validatedAt ?? computedAt);
+  return { validation, validatedAt, sql: `'${validation}', ${validatedAt ? `'${validatedAt}'` : 'NULL'}` };
+};
+
 /** A computed artifact over one or more standing records. Every default earns PRESENT. */
-async function artifact(id: string, over: { subject?: string; claim?: string; rights?: string; inputs?: string[]; validation?: string; run?: string; computedAt?: string } = {}) {
+async function artifact(id: string, over: { subject?: string; claim?: string; rights?: string; inputs?: string[]; validation?: string; validatedAt?: string; run?: string; computedAt?: string } = {}) {
   const rights = over.rights ?? FULL;
   const at = over.computedAt ?? T_MINED;
+  const validation = validationColumns(over, at);
   await tx([
-    `INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights, validation)
-     VALUES ('${id}', '${over.run ?? 'RUN1'}', 'SUCCEEDED', 'COMPUTED_RESULT', '${over.subject ?? 'org:meridian'}', '${over.claim ?? 'Concentration.'}', '${at}', ${rights}, '${over.validation ?? 'NOT_VALIDATED'}')`,
+    `INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights, validation, validated_at)
+     VALUES ('${id}', '${over.run ?? 'RUN1'}', 'SUCCEEDED', 'COMPUTED_RESULT', '${over.subject ?? 'org:meridian'}', '${over.claim ?? 'Concentration.'}', '${at}', ${rights}, ${validation.sql})`,
     ...(over.inputs ?? ['REC-1']).map((record, i) =>
       `INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
        VALUES ('I-${id}-${i}', '${id}', '${at}', 'SOURCE_RECORD', '${record}', '${T_KNOWN}', ${rights})`),
+    ...(validation.validatedAt ? [validationRecord(id, validation.validation, validation.validatedAt, { computedAt: at })] : []),
   ].join(';\n'));
 }
 
 /** A prediction, which is the class that carries a horizon. Its subject is its own, so it disagrees with nothing. */
-async function prediction(id: string, horizon: string, over: { validation?: string } = {}) {
-  await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, model_id, confidence, horizon_ends_at, rights, validation)
-     VALUES ('${id}', 'RUN-P', 'SUCCEEDED', 'PREDICTION', 'org:${id}', 'Will concentrate further.', '${T_MINED}', 'm@1', 0.6, '${horizon}', ${FULL}, '${over.validation ?? 'NOT_VALIDATED'}');
+async function prediction(id: string, horizon: string, over: { validation?: string; validatedAt?: string } = {}) {
+  const validation = validationColumns(over, T_MINED);
+  await tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, model_id, confidence, horizon_ends_at, rights, validation, validated_at)
+     VALUES ('${id}', 'RUN-P', 'SUCCEEDED', 'PREDICTION', 'org:${id}', 'Will concentrate further.', '${T_MINED}', 'm@1', 0.6, '${horizon}', ${FULL}, ${validation.sql});
     INSERT INTO artifact_input (input_id, artifact_id, artifact_computed_at, input_kind, source_record_id, source_known_at, input_rights)
-     VALUES ('I-${id}', '${id}', '${T_MINED}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', ${FULL})`);
+     VALUES ('I-${id}', '${id}', '${T_MINED}', 'SOURCE_RECORD', 'REC-1', '${T_KNOWN}', ${FULL})${validation.validatedAt ? `;\n    ${validationRecord(id, validation.validation, validation.validatedAt)}` : ''}`);
 }
+
+/** A refutation recorded later: the dated record, and the state moved to it, in one transaction. */
+const refuted = (artifactId: string, validatedAt: string, over: { id?: string } = {}) => tx(`${validationRecord(artifactId, 'FALSIFIED', validatedAt, over)};
+  UPDATE derived_artifact SET validation = 'FALSIFIED', validated_at = '${validatedAt}' WHERE artifact_id = '${artifactId}'`);
 
 /** An artifact computed over another artifact rather than over a record. */
 async function derivedOver(id: string, inputArtifact: string) {
@@ -495,6 +519,29 @@ describe('coverage is assessed per artifact, by the database', () => {
     await expect(coverage()).rejects.toThrow(/A1:PRESENT recorded, STALE from the artifact/);
   });
 
+  /* A refutation is dated like a retraction: the assessment reads the validation record standing at its instant. */
+  it('reads a refutation as of the assessment instant, and knows one recorded at it', async () => {
+    await artifact('A-REFUTED-LATER', { subject: 'org:later', claim: 'Refuted after the assessment.', validation: 'FALSIFIED', validatedAt: T_BUILD });
+    await expect(coverage('C1', { evidence: [{ artifact: 'A-REFUTED-LATER', assessment: 'CONFLICTING' }] }))
+      .rejects.toThrow(/A-REFUTED-LATER:CONFLICTING recorded, PRESENT from the artifact/);
+    await coverage('C1', { evidence: [{ artifact: 'A-REFUTED-LATER', assessment: 'PRESENT' }] });
+    await artifact('A-REFUTED-AT', { subject: 'org:at', claim: 'Refuted at the instant.', validation: 'FALSIFIED', validatedAt: T_ASK });
+    await expect(coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A-REFUTED-AT', assessment: 'PRESENT' }] }))
+      .rejects.toThrow(/A-REFUTED-AT:PRESENT recorded, CONFLICTING from the artifact/);
+    await coverage('C2', { facet: 'F2', evidence: [{ artifact: 'A-REFUTED-AT', assessment: 'CONFLICTING' }] });
+  });
+
+  /* And it reads the record standing then, not the state the artifact carries now. */
+  it('reads the validation standing at the instant, not the artifact’s current state', async () => {
+    await artifact('A-REHAB', { subject: 'org:rehab', claim: 'Refuted, then held out.', validation: 'FALSIFIED', validatedAt: T_MINED });
+    await tx(`${validationRecord('A-REHAB', 'HELD_OUT', T_BUILD, { id: 'V-A-REHAB-2' })};
+      UPDATE derived_artifact SET validation = 'HELD_OUT', validated_at = '${T_BUILD}' WHERE artifact_id = 'A-REHAB'`);
+    await expect(coverage('C1', { evidence: [{ artifact: 'A-REHAB', assessment: 'PRESENT' }] }))
+      .rejects.toThrow(/A-REHAB:PRESENT recorded, CONFLICTING from the artifact/);
+    await coverage('C1', { evidence: [{ artifact: 'A-REHAB', assessment: 'CONFLICTING' }] });
+    await coverage('C1b', { assessedAt: T_RELEASE, evidence: [{ artifact: 'A-REHAB', assessment: 'PRESENT' }] });
+  });
+
   it('assesses the way the domain does', () => {
     expect(COVERAGE_ASSESSMENTS).toEqual(['PRESENT', 'STALE', 'CONFLICTING', 'MISSING', 'DISALLOWED']);
     expect(rollupAssessment([])).toMatchObject({ assessment: 'MISSING' });
@@ -640,6 +687,29 @@ describe('an assessment is a fact at its instant, and the rows are written once'
     await coverage('C1', { evidence: [{ artifact: 'A-OVER', assessment: 'PRESENT' }] });
     await expect(retracted('WITHDRAWAL', T_MINED)).rejects.toThrow(/retraction_contradicts_a_standing_assessment:RET-WITHDRAWAL:A-OVER/);
   });
+
+  /* The same for a refutation: the record is dated, and the row read the one standing at its instant. */
+  it('refuses a refutation backdated behind an assessment that did not know it', async () => {
+    await coverage();
+    await expect(refuted('A1', T_MINED)).rejects.toThrow(/validation_contradicts_a_standing_assessment:V-A1:A1 in C1 is PRESENT and would be CONFLICTING had V-A1 been known/);
+    await expect(refuted('A1', T_ASK)).rejects.toThrow(/would be CONFLICTING had V-A1 been known/);
+    expect(await rows(`SELECT validation, validated_at FROM derived_artifact WHERE artifact_id = 'A1'`)).toEqual([{ validation: 'NOT_VALIDATED', validated_at: null }]);
+    expect(await rows(`SELECT 1 FROM artifact_validation`)).toEqual([]);
+    expect(await coverageRow()).toMatchObject({ assessment: 'PRESENT', present: 1 });
+  });
+
+  it('accepts a refutation after the assessment, which stands, and a backdated one that changes nothing', async () => {
+    await coverage('C1', { evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }] });
+    await refuted('A1', T_BUILD); // after the assessment: not yet known to it
+    expect(await coverageRow()).toMatchObject({ assessment: 'DISALLOWED', present: 1, disallowed: 1 });
+    await refuted('A3', T_MINED); // A3 is DISALLOWED either way
+    expect(await rows(`SELECT artifact_id FROM artifact_validation ORDER BY artifact_id`)).toEqual([{ artifact_id: 'A1' }, { artifact_id: 'A3' }]);
+    /* The re-assessment reads the refutation. */
+    await expect(coverage('C1b', { assessedAt: T_RELEASE, evidence: [{ artifact: 'A1', assessment: 'PRESENT' }, { artifact: 'A3', assessment: 'DISALLOWED' }] }))
+      .rejects.toThrow(/A1:PRESENT recorded, CONFLICTING from the artifact/);
+    await coverage('C1b', { assessedAt: T_RELEASE, evidence: [{ artifact: 'A1', assessment: 'CONFLICTING' }, { artifact: 'A3', assessment: 'DISALLOWED' }] });
+    expect(await coverageRow('C1b')).toMatchObject({ assessment: 'CONFLICTING', conflicting: 1, disallowed: 1 });
+  });
 });
 
 describe('a conclusion rests on present evidence', () => {
@@ -755,6 +825,25 @@ describe('re-assessment is a new row, and a release names what it was built over
     await quotation('Q2', { estimate: 'E2', estimatedAt: T_BUILD, units: 3, amount: 360000, digest: FP(21), quotedAt: T_BUILD });
     await governed('SCOPE2', FP(21), 'customer:acme');
     await release('R1', { quotation: 'Q2', quotedAt: T_BUILD, quoteDigest: FP(21), scope: 'AU-SCOPE2', names: ['C1b', 'C2'] });
+  });
+
+  it('refuses a release built after a present artifact was refuted under its named assessment', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await refuted('A1', T_ACCEPT);
+    await expect(release()).rejects.toThrow(/release_names_an_assessment_the_corpus_moved_under:R1:C1 assessed .*, then A1 refuted at .*; assess again/);
+    /* A refutation of an artifact the row did not count as present moves nothing under it. */
+    await refuted('A3', T_ACCEPT);
+    await expect(release()).rejects.toThrow(/then A1 refuted at/);
+  });
+
+  /* A refutation dated after the build, and a validation that passed between the assessment and the build, move nothing under the row. */
+  it('lets a release be built under a refutation dated after its build, and over a validation that passed', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await refuted('A1', T_DELIVER);
+    await tx(`${validationRecord('A2', 'HELD_OUT', T_ACCEPT)};
+      UPDATE derived_artifact SET validation = 'HELD_OUT', validated_at = '${T_ACCEPT}' WHERE artifact_id = 'A2'`);
+    await release();
+    expect(await rows(`SELECT count(*)::int AS n FROM dossier_release`)).toEqual([{ n: 1 }]);
   });
 
   it('refuses a release built after a present artifact’s horizon passed under its named assessment', async () => {

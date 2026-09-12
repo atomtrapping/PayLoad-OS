@@ -62,6 +62,21 @@
  * The pass itself is checked against the numbers: a validation cannot record
  * a pass the metric does not support.
  *
+ * A VALIDATION IS DATED, AND THE STATE IS ITS LATEST RECORD
+ *
+ * An artifact's validation state used to be a free column: FALSIFIED could
+ * be written over it at any time, with no instant, over an artifact a
+ * coverage assessment had already read as present — and the assessment
+ * would be wrong with nothing to say when it became so. Now the validation
+ * record is the dated fact and is written once; the artifact carries the
+ * outcome and the instant of its latest record, and a deferred guard holds
+ * the two together from both sides: a state moved with no record behind it,
+ * a record the state does not carry, and a state that is not the latest
+ * record's by instant are refused. What reads the state as of an instant
+ * (the dossier ledger's assessment) reads the record standing at that
+ * instant, and refuses a record backdated behind an assessment that did not
+ * know it, the same way it refuses a backdated retraction.
+ *
  * AND NOTHING CAN BE COMPUTED AT ALL
  *
  * A run names the release it computed over. There are none — no connector has
@@ -73,7 +88,7 @@ import { ARITHMETIC_CLASSES } from '@/domain/computationCard';
 import { PERMITTED_USES } from '@/domain/corpus';
 import {
   CLAIM_CLASSES, CLASS_CONTRACTS, DERIVABLE_CLASSES, MINING_CONTRACTS, MINING_KINDS,
-  VALIDATION_STATES,
+  VALIDATION_OUTCOMES, VALIDATION_STATES,
 } from '@/domain/discoveryLayer';
 
 /** The classes for which a confidence and a fitted model are meaningful. */
@@ -192,6 +207,12 @@ CREATE TABLE derived_artifact (
   -- cannot land here and be compared with a permitted use as if it were one.
   rights text[] NOT NULL DEFAULT '{}',
   validation text NOT NULL DEFAULT 'NOT_VALIDATED' CHECK (validation IN (${quoted(VALIDATION_STATES)})),
+  -- From when: the instant of the latest validation record, which the guard
+  -- below holds it to. Unvalidated has no instant.
+  validated_at timestamptz,
+  CONSTRAINT artifact_validation_state_is_dated CHECK ((validation = 'NOT_VALIDATED') = (validated_at IS NULL)),
+  -- A check before the result checked nothing.
+  CONSTRAINT artifact_validated_after_it_was_computed CHECK (validated_at IS NULL OR validated_at >= computed_at),
   CONSTRAINT artifact_rights_are_permitted_uses CHECK (rights <@ ARRAY[${quoted(PERMITTED_USES)}]::text[]),
 
   CONSTRAINT artifact_run FOREIGN KEY (run_id, run_status) REFERENCES workload_run (run_id, status),
@@ -276,10 +297,15 @@ CREATE TABLE artifact_input (
   CONSTRAINT input_once UNIQUE (artifact_id, input_kind, source_record_id, input_artifact_id)
 );
 
--- Whether a result was ever checked, and against what.
+-- Whether a result was ever checked, and against what. A dated fact, written
+-- once: a later check is a later record, and the artifact's state is the
+-- latest of them.
 CREATE TABLE artifact_validation (
   validation_id text PRIMARY KEY,
   artifact_id text NOT NULL REFERENCES derived_artifact (artifact_id),
+  -- Denormalised from the artifact and tied to it, so the check below is
+  -- about the result that was actually computed.
+  artifact_computed_at timestamptz NOT NULL,
   method text NOT NULL CHECK (length(btrim(method)) > 0),
   metric text NOT NULL CHECK (length(btrim(metric)) > 0),
   -- A metric with no baseline is a number, not a finding.
@@ -291,8 +317,15 @@ CREATE TABLE artifact_validation (
   threshold_declared_at timestamptz NOT NULL,
   validated_at timestamptz NOT NULL,
   passed boolean NOT NULL,
+  -- The state the artifact holds from this instant: the method that passed,
+  -- or FALSIFIED. Unvalidated is the absence of a record, not an outcome.
+  outcome text NOT NULL CHECK (outcome IN (${quoted(VALIDATION_OUTCOMES)})),
   evidence text NOT NULL CHECK (length(btrim(evidence)) > 0),
 
+  CONSTRAINT validation_artifact FOREIGN KEY (artifact_id, artifact_computed_at)
+    REFERENCES derived_artifact (artifact_id, computed_at),
+  -- A check before the result checked nothing.
+  CONSTRAINT validation_after_the_computation CHECK (validated_at >= artifact_computed_at),
   -- A threshold chosen after seeing the result is not a threshold.
   CONSTRAINT validation_threshold_declared_first CHECK (threshold_declared_at <= validated_at),
   -- And the pass is the numbers, not a claim beside them.
@@ -301,7 +334,12 @@ CREATE TABLE artifact_validation (
       WHEN 'HIGHER_IS_BETTER' THEN result >= threshold
       ELSE result <= threshold
     END
-  )
+  ),
+  -- And the outcome is the pass: a refutation that passed, or a pass that
+  -- refuted, is a contradiction.
+  CONSTRAINT validation_outcome_matches_the_pass CHECK (passed = (outcome <> 'FALSIFIED')),
+  -- One record per artifact per instant, so "the latest" names one row.
+  CONSTRAINT validation_once_per_instant UNIQUE (artifact_id, validated_at)
 );
 
 -- What was handed to a reader, and as what.
@@ -430,5 +468,53 @@ CREATE CONSTRAINT TRIGGER input_rights_bound_artifact
   AFTER INSERT OR UPDATE ON artifact_input
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION refuse_rights_wider_than_inputs();
+
+-- The artifact's validation state is its latest record. The record and the
+-- state are written in one transaction and checked at commit from both
+-- sides: a state moved with no record behind it, a record the state does
+-- not carry, and a state that is not the latest record's are all refused.
+-- "Latest" is by instant, not by arrival: a record dated earlier than one
+-- already standing goes in as history and does not become the state.
+CREATE FUNCTION refuse_artifact_state_unlike_its_validation() RETURNS trigger AS $$
+DECLARE
+  art derived_artifact%ROWTYPE;
+  latest artifact_validation%ROWTYPE;
+BEGIN
+  SELECT * INTO art FROM derived_artifact WHERE artifact_id = NEW.artifact_id;
+  IF art.artifact_id IS NULL THEN
+    RETURN NEW; -- the foreign key refuses this
+  END IF;
+  SELECT * INTO latest FROM artifact_validation WHERE artifact_id = art.artifact_id ORDER BY validated_at DESC LIMIT 1;
+  IF latest.validation_id IS NULL THEN
+    IF art.validation <> 'NOT_VALIDATED' THEN
+      RAISE EXCEPTION 'artifact_validation_is_not_its_latest_record:%:% at % recorded, no validation record', art.artifact_id, art.validation, art.validated_at;
+    END IF;
+  ELSIF art.validation <> latest.outcome OR art.validated_at IS DISTINCT FROM latest.validated_at THEN
+    RAISE EXCEPTION 'artifact_validation_is_not_its_latest_record:%:% at % recorded, % at % from %', art.artifact_id, art.validation, art.validated_at, latest.outcome, latest.validated_at, latest.validation_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER artifact_state_is_its_latest_validation
+  AFTER INSERT OR UPDATE OF validation, validated_at ON derived_artifact
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION refuse_artifact_state_unlike_its_validation();
+
+CREATE CONSTRAINT TRIGGER validation_is_the_artifacts_state
+  AFTER INSERT ON artifact_validation
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION refuse_artifact_state_unlike_its_validation();
+
+-- Written once. A validation record is a dated fact; a later check is a
+-- later record, and what it moves is the artifact's state, not the history.
+CREATE FUNCTION refuse_rewriting_a_validation_record() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'validation_is_written_once:% of %', TG_OP, OLD.validation_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER validation_is_written_once BEFORE UPDATE OR DELETE ON artifact_validation
+  FOR EACH ROW EXECUTE FUNCTION refuse_rewriting_a_validation_record();
 `;
 

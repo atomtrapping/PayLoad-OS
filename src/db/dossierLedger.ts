@@ -58,7 +58,12 @@
  * what an earlier row earned. And a retraction that claims to have been
  * issued before an assessment which did not know it is refused: the ledger
  * cannot accept that something was known at an instant its own row says
- * it was not.
+ * it was not. A refutation is dated the same way — the validation record
+ * carries its instant, the assessment reads the record standing at its own
+ * instant — and a refutation backdated behind an assessment that did not
+ * know it is refused for the same reason. One recorded after the assessment
+ * goes in, and the row stands as a fact at its instant; the re-assessment
+ * reads it.
  *
  * RE-ASSESSMENT IS A NEW ROW, AND A RELEASE NAMES WHAT IT WAS BUILT OVER
  *
@@ -75,10 +80,11 @@
  * the quotation did not is refused: a material change in scope is an
  * amendment the customer agrees to, never a quiet substitution. A release
  * built after the corpus moved under its named row — a record a present
- * artifact rests on taken back, or a present artifact's horizon passed,
- * between the assessment and the build — is refused too: the row is a
- * fact at its instant, the build is not at that instant, and the
- * schema's answer is the re-assessment it now holds a place for.
+ * artifact rests on taken back, a present artifact's horizon passed, or a
+ * present artifact refuted, between the assessment and the build — is
+ * refused too: the row is a fact at its instant, the build is not at that
+ * instant, and the schema's answer is the re-assessment it now holds a
+ * place for.
  *
  * THE ESTIMATE IS A COUNT AND THE PRICE IS A POLICY
  *
@@ -453,8 +459,10 @@ export const DOSSIER_LEDGER_GUARDS = `
 -- corrected input, a disagreeing neighbour on the facet or a refuted claim,
 -- then the horizon and a withdrawn input, then PRESENT. Inputs are followed
 -- through derived artifacts down to the source records, so a record taken
--- back reaches everything computed over it at any depth. And an artifact
--- computed after the assessment instant was not there to be assessed.
+-- back reaches everything computed over it at any depth. A retraction and a
+-- refutation are read as of the assessment instant: the retraction issued
+-- by then, the validation record standing then. And an artifact computed
+-- after the assessment instant was not there to be assessed.
 CREATE FUNCTION dossier_expected_assessment(target_coverage text, target_artifact text) RETURNS text AS $$
 DECLARE
   cov dossier_coverage%ROWTYPE;
@@ -463,6 +471,7 @@ DECLARE
   corrected text;
   withdrawn text;
   disagreeing text;
+  standing_validation text;
 BEGIN
   SELECT * INTO cov FROM dossier_coverage WHERE coverage_id = target_coverage;
   SELECT * INTO art FROM derived_artifact WHERE artifact_id = target_artifact;
@@ -486,11 +495,17 @@ BEGIN
     FROM dossier_coverage_evidence e JOIN derived_artifact o ON o.artifact_id = e.artifact_id
     WHERE e.coverage_id = target_coverage AND e.artifact_id <> target_artifact
       AND o.subject = art.subject AND o.claim <> art.claim;
+  -- The validation standing at the assessment instant: the latest record at
+  -- or before it. A refutation dated after the instant is not yet known.
+  SELECT v.outcome INTO standing_validation
+    FROM artifact_validation v
+    WHERE v.artifact_id = target_artifact AND v.validated_at <= cov.assessed_at
+    ORDER BY v.validated_at DESC LIMIT 1;
   RETURN CASE
     WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'
     WHEN corrected IS NOT NULL THEN 'CONFLICTING'
     WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'
-    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'
+    WHEN standing_validation = 'FALSIFIED' THEN 'CONFLICTING'
     WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'
     WHEN withdrawn IS NOT NULL THEN 'STALE'
     ELSE 'PRESENT' END;
@@ -722,9 +737,10 @@ BEGIN
       RAISE EXCEPTION 'release_names_a_superseded_assessment:%:% assessed %, but % was re-assessed at %', rel.dossier_release_id, named.coverage_id, named.assessed_at, named.facet, later;
     END IF;
     -- The corpus moved under the row between its assessment and this build:
-    -- a record a present artifact rests on was taken back, or a present
-    -- artifact's horizon passed. The row is a fact at its instant and the
-    -- build is not at that instant; assess again.
+    -- a record a present artifact rests on was taken back, a present
+    -- artifact's horizon passed, or a present artifact was refuted. The row
+    -- is a fact at its instant and the build is not at that instant; assess
+    -- again.
     SELECT r.record_id || ' taken back at ' || r.issued_at INTO moved
       FROM dossier_coverage_evidence e
       JOIN (WITH RECURSIVE reads AS (
@@ -742,6 +758,13 @@ BEGIN
         WHERE e.coverage_id = named.coverage_id AND e.assessment = 'PRESENT'
           AND a.horizon_ends_at IS NOT NULL AND a.horizon_ends_at > named.assessed_at AND a.horizon_ends_at <= rel.built_at
         ORDER BY a.horizon_ends_at, a.artifact_id LIMIT 1;
+    END IF;
+    IF moved IS NULL THEN
+      SELECT v.artifact_id || ' refuted at ' || v.validated_at INTO moved
+        FROM dossier_coverage_evidence e JOIN artifact_validation v ON v.artifact_id = e.artifact_id
+        WHERE e.coverage_id = named.coverage_id AND e.assessment = 'PRESENT'
+          AND v.outcome = 'FALSIFIED' AND v.validated_at > named.assessed_at AND v.validated_at <= rel.built_at
+        ORDER BY v.validated_at, v.artifact_id LIMIT 1;
     END IF;
     IF moved IS NOT NULL THEN
       RAISE EXCEPTION 'release_names_an_assessment_the_corpus_moved_under:%:% assessed %, then %; assess again', rel.dossier_release_id, named.coverage_id, named.assessed_at, moved;
@@ -869,6 +892,36 @@ CREATE CONSTRAINT TRIGGER retraction_leaves_assessments_standing
   AFTER INSERT ON retracted_record
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION refuse_retraction_contradicting_an_assessment();
+
+-- A validation record dated at or before an assessment that did not know it
+-- is refused the same way, where it would change what a standing row
+-- earned: the row read the record standing at its instant, and a record
+-- now claiming to have stood then says the row knew something it did not.
+-- A record dated after the assessment is not yet known to it, and goes in;
+-- the row stands, and the re-assessment reads it.
+CREATE FUNCTION refuse_validation_contradicting_an_assessment() RETURNS trigger AS $$
+DECLARE
+  standing record;
+  expected text;
+BEGIN
+  FOR standing IN
+    SELECT e.coverage_id, e.artifact_id, e.assessment
+      FROM dossier_coverage_evidence e WHERE e.artifact_id = NEW.artifact_id
+      ORDER BY e.coverage_id
+  LOOP
+    expected := dossier_expected_assessment(standing.coverage_id, standing.artifact_id);
+    IF standing.assessment <> expected THEN
+      RAISE EXCEPTION 'validation_contradicts_a_standing_assessment:%:% in % is % and would be % had % been known', NEW.validation_id, standing.artifact_id, standing.coverage_id, standing.assessment, expected, NEW.validation_id;
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER validation_leaves_assessments_standing
+  AFTER INSERT ON artifact_validation
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION refuse_validation_contradicting_an_assessment();
 `;
 
 /** The classes a conclusion may carry, for the drift check against the domain. */

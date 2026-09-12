@@ -298,12 +298,33 @@ export const VALIDATION_STATES = ['NOT_VALIDATED', 'HELD_OUT', 'BACKTESTED', 'OU
 export type ValidationState = typeof VALIDATION_STATES[number];
 
 /**
+ * The states a validation record can leave an artifact in. Unvalidated is
+ * the absence of a record, never an outcome one carries.
+ */
+export type ValidationOutcome = Exclude<ValidationState, 'NOT_VALIDATED'>;
+export const VALIDATION_OUTCOMES: readonly ValidationOutcome[] =
+  VALIDATION_STATES.filter((state): state is ValidationOutcome => state !== 'NOT_VALIDATED');
+
+/**
  * `NOT_VALIDATED` is the honest default and the common case. It is a recorded
  * state rather than a missing field, for the same reason an unknown dispatch
  * outcome is: a claim whose validation is silent is not a claim that passed.
  */
 export const VALIDATION_RULE =
   'NOT_VALIDATED is a state, not an absence. A derivation that has never been checked says so, and silence is never read as having passed.';
+
+/**
+ * And the state is dated. A refutation with no instant could be written
+ * over an artifact that a coverage assessment had already read as present,
+ * and the assessment would be wrong with nothing to say when it became so.
+ * So the validation record is the dated fact, written once; the artifact
+ * carries the outcome and instant of its latest record; an assessment reads
+ * the record standing at its own instant; and a record dated at or before an
+ * assessment that did not know it is refused where it would change what
+ * that assessment earned — the same treatment a backdated retraction gets.
+ */
+export const VALIDATION_INSTANT_RULE =
+  'A validation is dated. An artifact carries the outcome and the instant of its latest validation record; an assessment reads the record standing at its own instant; and a record dated at or before an assessment that did not know it is refused where it would change what that assessment earned, the same way a retraction is.';
 
 /* ── Which substrate answers which question ── */
 
@@ -500,7 +521,8 @@ export const VALIDATION_RECORD: readonly ValidationContract[] = [
   { field: 'result', answers: 'What the metric came out at.' },
   { field: 'threshold', answers: 'What would have counted as passing, declared before the result rather than after it.' },
   { field: 'evidence', answers: 'Which held-out records, independent sources or historical observations it was checked against.' },
-  { field: 'validatedAt', answers: 'When, which bounds what could have been held out.' },
+  { field: 'validatedAt', answers: 'When, which bounds what could have been held out — and from which instant the artifact holds the outcome.' },
+  { field: 'outcome', answers: 'The state the artifact holds from that instant: HELD_OUT, BACKTESTED or OUTCOME_OBSERVED when it passed, FALSIFIED when it did not.' },
 ];
 
 /* ── Rights ── */

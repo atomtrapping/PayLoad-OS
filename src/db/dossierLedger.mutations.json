@@ -24,7 +24,7 @@
     },
     {
       "name": "no FALSIFIED arm",
-      "find": "    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n",
+      "find": "    WHEN standing_validation = 'FALSIFIED' THEN 'CONFLICTING'\n",
       "replace": ""
     },
     {
@@ -44,13 +44,13 @@
     },
     {
       "name": "DISALLOWED arm below the CONFLICTING arms",
-      "find": "    WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'\n    WHEN corrected IS NOT NULL THEN 'CONFLICTING'\n    WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'\n    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n",
-      "replace": "    WHEN corrected IS NOT NULL THEN 'CONFLICTING'\n    WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'\n    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n    WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'\n"
+      "find": "    WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'\n    WHEN corrected IS NOT NULL THEN 'CONFLICTING'\n    WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'\n    WHEN standing_validation = 'FALSIFIED' THEN 'CONFLICTING'\n",
+      "replace": "    WHEN corrected IS NOT NULL THEN 'CONFLICTING'\n    WHEN disagreeing IS NOT NULL THEN 'CONFLICTING'\n    WHEN standing_validation = 'FALSIFIED' THEN 'CONFLICTING'\n    WHEN NOT (required = ANY (art.rights)) THEN 'DISALLOWED'\n"
     },
     {
       "name": "STALE arms above the FALSIFIED arm",
-      "find": "    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n    WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'\n",
-      "replace": "    WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'\n    WHEN art.validation = 'FALSIFIED' THEN 'CONFLICTING'\n"
+      "find": "    WHEN standing_validation = 'FALSIFIED' THEN 'CONFLICTING'\n    WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'\n",
+      "replace": "    WHEN art.horizon_ends_at IS NOT NULL AND art.horizon_ends_at < cov.assessed_at THEN 'STALE'\n    WHEN standing_validation = 'FALSIFIED' THEN 'CONFLICTING'\n"
     },
     {
       "name": "retraction instant ignored",
@@ -426,6 +426,51 @@
       "name": "release may carry another dossier's quotation",
       "find": "  CONSTRAINT release_quotation FOREIGN KEY (quotation_id, dossier_id, quoted_snapshot, quoted_at)\n    REFERENCES dossier_quotation (quotation_id, dossier_id, quoted_snapshot, quoted_at),",
       "replace": "  CONSTRAINT release_quotation FOREIGN KEY (quotation_id)\n    REFERENCES dossier_quotation (quotation_id),"
+    },
+    {
+      "name": "refutation instant ignored",
+      "find": "    WHERE v.artifact_id = target_artifact AND v.validated_at <= cov.assessed_at\n",
+      "replace": "    WHERE v.artifact_id = target_artifact\n"
+    },
+    {
+      "name": "refutation instant exclusive",
+      "find": "    WHERE v.artifact_id = target_artifact AND v.validated_at <= cov.assessed_at\n",
+      "replace": "    WHERE v.artifact_id = target_artifact AND v.validated_at < cov.assessed_at\n"
+    },
+    {
+      "name": "refutation read as the artifact's current state",
+      "find": "  SELECT v.outcome INTO standing_validation\n    FROM artifact_validation v\n    WHERE v.artifact_id = target_artifact AND v.validated_at <= cov.assessed_at\n    ORDER BY v.validated_at DESC LIMIT 1;\n",
+      "replace": "  standing_validation := art.validation;\n"
+    },
+    {
+      "name": "earliest validation read as the standing one",
+      "find": "    ORDER BY v.validated_at DESC LIMIT 1;\n  RETURN CASE",
+      "replace": "    ORDER BY v.validated_at ASC LIMIT 1;\n  RETURN CASE"
+    },
+    {
+      "name": "backdated refutation accepted",
+      "find": "    IF standing.assessment <> expected THEN\n      RAISE EXCEPTION 'validation_contradicts_a_standing_assessment",
+      "replace": "    IF FALSE THEN\n      RAISE EXCEPTION 'validation_contradicts_a_standing_assessment"
+    },
+    {
+      "name": "corpus moved under the named row: refutations not checked",
+      "find": "          AND v.outcome = 'FALSIFIED' AND v.validated_at > named.assessed_at AND v.validated_at <= rel.built_at\n",
+      "replace": "          AND FALSE\n"
+    },
+    {
+      "name": "corpus moved under the named row: refutation after the build counted",
+      "find": "          AND v.outcome = 'FALSIFIED' AND v.validated_at > named.assessed_at AND v.validated_at <= rel.built_at\n",
+      "replace": "          AND v.outcome = 'FALSIFIED' AND v.validated_at > named.assessed_at\n"
+    },
+    {
+      "name": "corpus moved under the named row: a passing validation counted as a refutation",
+      "find": "          AND v.outcome = 'FALSIFIED' AND v.validated_at > named.assessed_at AND v.validated_at <= rel.built_at\n",
+      "replace": "          AND v.validated_at > named.assessed_at AND v.validated_at <= rel.built_at\n"
+    },
+    {
+      "name": "corpus moved under the named row: a refutation of a non-present artifact counted",
+      "find": "        WHERE e.coverage_id = named.coverage_id AND e.assessment = 'PRESENT'\n          AND v.outcome = 'FALSIFIED'",
+      "replace": "        WHERE e.coverage_id = named.coverage_id\n          AND v.outcome = 'FALSIFIED'"
     }
   ]
 }

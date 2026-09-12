@@ -6,11 +6,13 @@ import {
 import { PERMITTED_USES } from './corpus';
 
 const AT = '2026-09-06T09:10:00.000Z';
+const BEFORE = '2026-09-01T00:00:00.000Z';
+const LATER = '2026-09-07T00:00:00.000Z';
 const context = (over: Partial<AssessmentContext> = {}): AssessmentContext => ({
   assessedAt: AT, requiredRight: DELIVERY_RIGHT, takenBack: [], alongside: [], ...over,
 });
 const evidence = (over: Partial<EvidenceUnderAssessment> = {}): EvidenceUnderAssessment => ({
-  artifactId: 'A1', subject: 'LOT-1', claim: '4 claims rest on 3 sources.', validation: 'NOT_VALIDATED', horizonEndsAt: null,
+  artifactId: 'A1', subject: 'LOT-1', claim: '4 claims rest on 3 sources.', validation: 'NOT_VALIDATED', validatedAt: null, horizonEndsAt: null,
   rights: ['acquisition', 'customer_delivery', 'normalization'], inputRecordIds: ['REC-1', 'REC-2'], ...over,
 });
 
@@ -44,9 +46,20 @@ describe('the five assessments, one artifact at a time', () => {
     expect(assessEvidence(evidence(), context({ alongside: [{ artifactId: 'A1', subject: 'LOT-1', claim: 'x' }] })).assessment).toBe('PRESENT');
   });
 
-  it('is conflicting when the claim was refuted', () => {
-    expect(assessEvidence(evidence({ validation: 'FALSIFIED' }), context()).assessment).toBe('CONFLICTING');
-    expect(assessEvidence(evidence({ validation: 'BACKTESTED' }), context()).assessment).toBe('PRESENT');
+  it('is conflicting when the claim was refuted by the assessment instant', () => {
+    expect(assessEvidence(evidence({ validation: 'FALSIFIED', validatedAt: BEFORE }), context()).assessment).toBe('CONFLICTING');
+    expect(assessEvidence(evidence({ validation: 'FALSIFIED', validatedAt: AT }), context()).assessment).toBe('CONFLICTING');
+    expect(assessEvidence(evidence({ validation: 'BACKTESTED', validatedAt: BEFORE }), context()).assessment).toBe('PRESENT');
+  });
+
+  /* A refutation is dated like a retraction: one after the instant is not yet known to the assessment. */
+  it('does not know a refutation dated after the instant', () => {
+    const refutedLater = evidence({ validation: 'FALSIFIED', validatedAt: LATER });
+    expect(assessEvidence(refutedLater, context()).assessment).toBe('PRESENT');
+    expect(assessEvidence(refutedLater, context()).because).toContain('not refuted');
+    expect(assessEvidence(refutedLater, context({ assessedAt: LATER })).assessment).toBe('CONFLICTING');
+    /* The same instant under another spelling is the same instant. */
+    expect(assessEvidence(evidence({ validation: 'FALSIFIED', validatedAt: '2026-09-06T11:10:00+02:00' }), context()).assessment).toBe('CONFLICTING');
   });
 
   it('is disallowed when its rights do not carry the right the delivery exercises', () => {
@@ -81,7 +94,7 @@ describe('the five assessments, one artifact at a time', () => {
 
   /* The order is the argument: rights gate the view; then conflict; then staleness. */
   it('keeps the precedence: disallowed over conflicting over stale', () => {
-    const everything = evidence({ validation: 'FALSIFIED', rights: [], horizonEndsAt: '2026-01-01T00:00:00.000Z' });
+    const everything = evidence({ validation: 'FALSIFIED', validatedAt: BEFORE, rights: [], horizonEndsAt: '2026-01-01T00:00:00.000Z' });
     expect(assessEvidence(everything, context()).assessment).toBe('DISALLOWED');
     expect(assessEvidence({ ...everything, rights: [DELIVERY_RIGHT] }, context()).assessment).toBe('CONFLICTING');
     expect(assessEvidence({ ...everything, rights: [DELIVERY_RIGHT], validation: 'NOT_VALIDATED' }, context()).assessment).toBe('STALE');

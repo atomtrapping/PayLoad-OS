@@ -154,8 +154,8 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
 
   /* ── coverage: every artifact bearing on a facet, assessed; the row is the sum ── */
   type Bearing = EvidenceUnderAssessment & { runId: string };
-  const bearing = (a: { artifactId: string; subject: string; claim: string; validation: string; horizonEndsAt: string | null; rights: readonly string[]; inputs: ReadonlyArray<{ recordId: string }> }, runId: string): Bearing =>
-    ({ artifactId: a.artifactId, subject: a.subject, claim: a.claim, validation: a.validation, horizonEndsAt: a.horizonEndsAt, rights: a.rights, inputRecordIds: a.inputs.map((i) => i.recordId), runId });
+  const bearing = (a: { artifactId: string; subject: string; claim: string; validation: string; validatedAt?: string | null; horizonEndsAt: string | null; rights: readonly string[]; inputs: ReadonlyArray<{ recordId: string }> }, runId: string): Bearing =>
+    ({ artifactId: a.artifactId, subject: a.subject, claim: a.claim, validation: a.validation, validatedAt: a.validatedAt ?? null, horizonEndsAt: a.horizonEndsAt, rights: a.rights, inputRecordIds: a.inputs.map((i) => i.recordId), runId });
   const lotArtifacts = seeded.caravan.run.result.artifacts.filter((a) => a.subject.startsWith('LOT-')).map((a) => bearing(a, seeded.caravan.run.result.runId));
   const spatialArtifact = bearing(seeded.spatial.artifact, seeded.spatial.run.runId);
   const terms = seeded.spatial.registrationTerms;

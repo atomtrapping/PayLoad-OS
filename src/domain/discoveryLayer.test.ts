@@ -4,7 +4,7 @@ import {
   DERIVATION_RULE, DISCOVERY_BLOCKED_ON, EXECUTION_IS_NOT_VALIDITY, FITTED_CLASSES, FLYWHEEL,
   GAP_LOOP, GAP_LOOP_RULE, INFERENCE_CONTRACT, INFORMATION_CAPITAL, LAYER_POSITION,
   MINING_CONTRACTS, MINING_KINDS, PRESCRIPTIVE_BOUNDARY, RIGHTS_INHERITANCE_RULE, SUBSTRATE_RULE,
-  SUBSTRATE_WORKLOADS, VALIDATION_RECORD, VALIDATION_RULE, VALIDATION_STATES,
+  SUBSTRATE_WORKLOADS, VALIDATION_INSTANT_RULE, VALIDATION_OUTCOMES, VALIDATION_RECORD, VALIDATION_RULE, VALIDATION_STATES,
   WORKLOAD_IDENTITIES, WORKLOAD_IDENTITY_CONTRACTS, classContract, discoveryStanding,
   inheritedRights, originOf,
 } from './discoveryLayer';
@@ -223,11 +223,20 @@ describe('the workload, the run and the artifact are three identities', () => {
 
   it('makes a validation record say what it was measured against and what would have passed', () => {
     const fields = VALIDATION_RECORD.map((entry) => entry.field);
-    for (const field of ['method', 'target', 'metric', 'baseline', 'result', 'threshold', 'evidence', 'validatedAt']) {
+    for (const field of ['method', 'target', 'metric', 'baseline', 'result', 'threshold', 'evidence', 'validatedAt', 'outcome']) {
       expect(fields, field).toContain(field);
     }
     expect(VALIDATION_RECORD.find((f) => f.field === 'threshold')!.answers)
       .toContain('declared before the result rather than after it');
+  });
+
+  /* The state is dated, and unvalidated is not an outcome a record can carry. */
+  it('dates a validation, and holds the artifact to its latest record', () => {
+    expect(VALIDATION_OUTCOMES).toEqual(['HELD_OUT', 'BACKTESTED', 'OUTCOME_OBSERVED', 'FALSIFIED']);
+    expect(VALIDATION_OUTCOMES).not.toContain('NOT_VALIDATED');
+    expect(VALIDATION_INSTANT_RULE).toContain('latest validation record');
+    expect(VALIDATION_INSTANT_RULE).toContain('standing at its own instant');
+    expect(VALIDATION_INSTANT_RULE).toContain('the same way a retraction is');
   });
 });
 

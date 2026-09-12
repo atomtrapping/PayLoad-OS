@@ -232,7 +232,9 @@ export interface EvidenceUnderAssessment {
   artifactId: string;
   subject: string;
   claim: string;
+  /** The artifact's validation state: the outcome of its latest validation record, and that record's instant. */
   validation: string;
+  validatedAt: string | null;
   horizonEndsAt: string | null;
   /** In the corpus's rights vocabulary. The discovery ledger refuses any other. */
   rights: readonly string[];
@@ -266,7 +268,9 @@ export interface AssessmentContext {
  *
  * `inputRecordIds` is every source record the artifact rests on, through
  * any derived artifacts it read; the ledger's guard follows the inputs down
- * the same way. Instants are compared as instants, not as spellings.
+ * the same way. A refutation is read as of the assessment instant, like a
+ * retraction and a horizon: one dated after it is not yet known to it.
+ * Instants are compared as instants, not as spellings.
  */
 export function assessEvidence(evidence: EvidenceUnderAssessment, context: AssessmentContext): { assessment: CoverageAssessment; because: string } {
   if (!evidence.rights.includes(context.requiredRight)) {
@@ -281,8 +285,8 @@ export function assessEvidence(evidence: EvidenceUnderAssessment, context: Asses
   if (disagreeing.length > 0) {
     return { assessment: 'CONFLICTING', because: `${disagreeing.map((other) => other.artifactId).join(', ')} bears on the same facet and says something else about ${evidence.subject}.` };
   }
-  if (evidence.validation === 'FALSIFIED') {
-    return { assessment: 'CONFLICTING', because: 'The claim was checked against held-out or observed evidence and refuted.' };
+  if (evidence.validation === 'FALSIFIED' && evidence.validatedAt !== null && compareInstants(evidence.validatedAt, context.assessedAt) <= 0) {
+    return { assessment: 'CONFLICTING', because: `The claim was checked against held-out or observed evidence and refuted at ${evidence.validatedAt}.` };
   }
   if (evidence.horizonEndsAt !== null && compareInstants(evidence.horizonEndsAt, context.assessedAt) < 0) {
     return { assessment: 'STALE', because: `Its horizon ended at ${evidence.horizonEndsAt}, before ${context.assessedAt}.` };

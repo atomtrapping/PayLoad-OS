@@ -459,15 +459,32 @@ describe('rights are inherited, never widened', () => {
   });
 });
 
+/**
+ * A validation record, and the state it leaves the artifact in, written
+ * together: the guard holds the artifact's state to its latest record.
+ */
+const record = (id: string, over: {
+  at?: string; outcome?: string; passed?: boolean; result?: number; threshold?: number; direction?: string;
+  declaredAt?: string; computedAt?: string; artifact?: string;
+} = {}) => {
+  const outcome = over.outcome ?? 'HELD_OUT';
+  const passed = over.passed ?? outcome !== 'FALSIFIED';
+  return `INSERT INTO artifact_validation (validation_id, artifact_id, artifact_computed_at, method, metric, baseline, direction,
+      result, threshold, threshold_declared_at, validated_at, passed, outcome, evidence)
+    VALUES ('${id}', '${over.artifact ?? 'A1'}', '${over.computedAt ?? T_DONE}', 'held_out_comparison', 'precision', 'majority_class', '${over.direction ?? 'HIGHER_IS_BETTER'}',
+      ${over.result ?? (passed ? 0.9 : 0.5)}, ${over.threshold ?? 0.8}, '${over.declaredAt ?? T_START}', '${over.at ?? T_LATER}',
+      ${passed}, '${outcome}', 'Held-out records REC-2.')`;
+};
+const state = (validation: string, at: string | null, artifact = 'A1') =>
+  `UPDATE derived_artifact SET validation = '${validation}', validated_at = ${at ? `'${at}'` : 'NULL'} WHERE artifact_id = '${artifact}'`;
+const artifactState = async (artifact = 'A1') =>
+  rows(`SELECT validation, validated_at::text AS validated_at FROM derived_artifact WHERE artifact_id = '${artifact}'`);
+
 describe('a threshold declared after the result is not a threshold', () => {
   beforeEach(async () => { await corpus(); await spec(); await run(); await artifact('A1'); });
 
-  const validation = (over: { declaredAt?: string; result?: number; threshold?: number; direction?: string; passed?: boolean } = {}) => sql(`
-    INSERT INTO artifact_validation (validation_id, artifact_id, method, metric, baseline, direction,
-      result, threshold, threshold_declared_at, validated_at, passed, evidence)
-    VALUES ('V1', 'A1', 'held_out_comparison', 'precision', 'majority_class', '${over.direction ?? 'HIGHER_IS_BETTER'}',
-      ${over.result ?? 0.9}, ${over.threshold ?? 0.8}, '${over.declaredAt ?? T_START}', '${T_LATER}',
-      ${over.passed ?? true}, 'Held-out records REC-2.')`);
+  const validation = (over: Parameters<typeof record>[1] = {}) =>
+    tx(`${record('V1', over)}; ${state(over.outcome ?? 'HELD_OUT', over.at ?? T_LATER)}`);
 
   it('refuses a threshold declared after the measurement', async () => {
     await expect(validation({ declaredAt: T_HORIZON }))
@@ -481,7 +498,7 @@ describe('a threshold declared after the result is not a threshold', () => {
   });
 
   it('refuses a failure the metric does not support either', async () => {
-    await expect(validation({ result: 0.9, threshold: 0.8, passed: false }))
+    await expect(validation({ result: 0.9, threshold: 0.8, passed: false, outcome: 'FALSIFIED' }))
       .rejects.toThrow(/validation_pass_matches_the_metric/);
   });
 
@@ -495,8 +512,82 @@ describe('a threshold declared after the result is not a threshold', () => {
    * NOT_VALIDATED and stays there until something checks it.
    */
   it('leaves an artifact unvalidated until a validation says otherwise', async () => {
-    expect(await rows(`SELECT validation FROM derived_artifact`)).toEqual([{ validation: 'NOT_VALIDATED' }]);
+    expect(await artifactState()).toEqual([{ validation: 'NOT_VALIDATED', validated_at: null }]);
     expect(await rows(`SELECT validation_id FROM artifact_validation`)).toEqual([]);
+  });
+});
+
+describe('a validation is dated, and the state is its latest record', () => {
+  beforeEach(async () => { await corpus(); await spec(); await run(); await artifact('A1'); });
+
+  const AT_LATER = /2026-05-01 10:00:00/;
+
+  /* The pair is one fact: a state has an instant, and unvalidated has none. */
+  it('refuses a state with no instant, and an instant on an unvalidated artifact', async () => {
+    await expect(tx(state('HELD_OUT', null))).rejects.toThrow(/artifact_validation_state_is_dated/);
+    await expect(tx(state('NOT_VALIDATED', T_LATER))).rejects.toThrow(/artifact_validation_state_is_dated/);
+  });
+
+  /* A check before the result checked nothing, on the record and on the artifact. */
+  it('refuses a validation dated before the computation it checks', async () => {
+    await expect(tx(record('V1', { at: T_KNOWN, declaredAt: T_KNOWN }))).rejects.toThrow(/validation_after_the_computation/);
+    await expect(tx(state('HELD_OUT', T_KNOWN))).rejects.toThrow(/artifact_validated_after_it_was_computed/);
+    await tx(`${record('V1', { at: T_DONE, declaredAt: T_START })}; ${state('HELD_OUT', T_DONE)}`);
+  });
+
+  it('ties the record to the computation it checks', async () => {
+    await expect(tx(`${record('V1', { computedAt: T_LATER })}; ${state('HELD_OUT', T_LATER)}`)).rejects.toThrow(/validation_artifact|foreign key/i);
+  });
+
+  /* The outcome is the pass, and unvalidated is not an outcome. */
+  it('refuses an outcome the pass does not support', async () => {
+    await expect(tx(`${record('V1', { outcome: 'FALSIFIED', passed: true, result: 0.9 })}; ${state('FALSIFIED', T_LATER)}`))
+      .rejects.toThrow(/validation_outcome_matches_the_pass/);
+    await expect(tx(`${record('V1', { outcome: 'HELD_OUT', passed: false, result: 0.5 })}; ${state('HELD_OUT', T_LATER)}`))
+      .rejects.toThrow(/validation_outcome_matches_the_pass/);
+    await expect(tx(`${record('V1', { outcome: 'NOT_VALIDATED' })}; ${state('NOT_VALIDATED', null)}`)).rejects.toThrow(/outcome/);
+  });
+
+  /* Held from both sides, at commit. */
+  it('refuses moving the state with no record behind it, and a record the state does not carry', async () => {
+    await expect(tx(state('HELD_OUT', T_LATER)))
+      .rejects.toThrow(/artifact_validation_is_not_its_latest_record:A1:HELD_OUT at .* recorded, no validation record/);
+    await expect(tx(record('V1')))
+      .rejects.toThrow(/artifact_validation_is_not_its_latest_record:A1:NOT_VALIDATED at <NULL> recorded, HELD_OUT at .* from V1/);
+    await expect(tx(`${record('V1', { outcome: 'FALSIFIED' })}; ${state('HELD_OUT', T_LATER)}`))
+      .rejects.toThrow(/artifact_validation_is_not_its_latest_record:A1:HELD_OUT at .* recorded, FALSIFIED at .* from V1/);
+    await expect(tx(`${record('V1')}; ${state('HELD_OUT', T_HORIZON)}`))
+      .rejects.toThrow(/artifact_validation_is_not_its_latest_record:A1:HELD_OUT at 2026-06-01 .* recorded, HELD_OUT at 2026-05-01 .* from V1/);
+    expect(await artifactState()).toEqual([{ validation: 'NOT_VALIDATED', validated_at: null }]);
+    expect(await rows(`SELECT 1 FROM artifact_validation`)).toEqual([]);
+  });
+
+  it('accepts the record and the state together, and a later record moves the state', async () => {
+    await tx(`${record('V1')}; ${state('HELD_OUT', T_LATER)}`);
+    expect((await artifactState())[0]).toMatchObject({ validation: 'HELD_OUT', validated_at: expect.stringMatching(AT_LATER) });
+    await tx(`${record('V2', { at: T_HORIZON, outcome: 'FALSIFIED' })}; ${state('FALSIFIED', T_HORIZON)}`);
+    expect((await artifactState())[0]).toMatchObject({ validation: 'FALSIFIED', validated_at: expect.stringMatching(/2026-06-01/) });
+    /* And it cannot be moved back without a later record. */
+    await expect(tx(state('HELD_OUT', T_LATER))).rejects.toThrow(/artifact_validation_is_not_its_latest_record:A1:HELD_OUT .* FALSIFIED .* from V2/);
+  });
+
+  /* "Latest" is by instant. A record dated behind one already standing is history, not the state. */
+  it('holds the state to the latest record by instant, not by arrival', async () => {
+    await tx(`${record('V-LATE', { at: T_HORIZON, outcome: 'FALSIFIED' })}; ${state('FALSIFIED', T_HORIZON)}`);
+    await expect(tx(`${record('V-EARLY', { at: T_LATER })}; ${state('HELD_OUT', T_LATER)}`))
+      .rejects.toThrow(/artifact_validation_is_not_its_latest_record:A1:HELD_OUT .* FALSIFIED .* from V-LATE/);
+    await tx(record('V-EARLY', { at: T_LATER }));
+    expect((await artifactState())[0]).toMatchObject({ validation: 'FALSIFIED' });
+    expect(await rows(`SELECT count(*)::int AS n FROM artifact_validation`)).toEqual([{ n: 2 }]);
+  });
+
+  it('refuses two records at one instant, and rewriting a record', async () => {
+    await tx(`${record('V1')}; ${state('HELD_OUT', T_LATER)}`);
+    await expect(tx(record('V1b'))).rejects.toThrow(/validation_once_per_instant/);
+    await expect(tx(`UPDATE artifact_validation SET result = 0.5, passed = false, outcome = 'FALSIFIED' WHERE validation_id = 'V1'`))
+      .rejects.toThrow(/validation_is_written_once:UPDATE of V1/);
+    await expect(tx(`DELETE FROM artifact_validation WHERE validation_id = 'V1'`)).rejects.toThrow(/validation_is_written_once:DELETE of V1/);
+    expect(await rows(`SELECT outcome FROM artifact_validation`)).toEqual([{ outcome: 'HELD_OUT' }]);
   });
 });
 

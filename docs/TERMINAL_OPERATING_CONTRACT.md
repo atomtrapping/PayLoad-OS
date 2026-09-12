@@ -13,6 +13,14 @@ Schema-v3 internal result custody and the optional fixture-only Iceberg bridge
 extend this baseline. Their activation, recovery limits and follow-on evidence
 are recorded in [Data infrastructure increment](DATA_INFRASTRUCTURE_INCREMENT.md).
 
+Optional authenticated agent coordination uses this same endpoint through the
+`coordination` command. Operator-assigned board membership binds declarations,
+message authors and ACK actors; PostgreSQL retains the board alongside, not in
+place of, the execution ledger. Typed job/result links recheck existing terminal
+permissions. Board messages never approve, schedule or complete work. The feature
+is disabled by default and has a separate explicit migration: see
+[Agent coordination](AGENT_COORDINATION.md).
+
 ## Operating path
 
 1. Authenticate with an operator-issued bearer credential and `discover`.

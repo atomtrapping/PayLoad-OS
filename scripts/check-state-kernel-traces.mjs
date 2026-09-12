@@ -21,7 +21,8 @@ export function forbiddenTracePath(value) {
     /(?:^|\/)(?:\.payload|\.stamp|\.git)(?:\/|$)/.test(path) ||
     /^\.env(?:\.|$)/.test(path) ||
     /^(?:tools|artifacts|docs|tests|clients|test-results|playwright-report|deploy)\//.test(path) ||
-    path.startsWith('scripts/deployment') || path.startsWith('scripts/access-smoke') || path.startsWith('src/db/fixtures/') ||
+    path.startsWith('scripts/deployment') || path.startsWith('scripts/access-smoke') ||
+    path.startsWith('scripts/coordination-admin') || path.startsWith('src/db/fixtures/') ||
     path.startsWith('native/state-kernel/target/') || /\.(?:test|spec)\.(?:[cm]?[jt]sx?|py)$/.test(path) ||
     ['next.config.ts', 'tsconfig.tsbuildinfo', 'package-lock.json', 'readme.md', 'dockerfile', '.dockerignore'].includes(path);
 }

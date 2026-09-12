@@ -1,108 +1,133 @@
 # Agent stable and shared noticeboard
 
-Operating contract — 2026-09-12. PayLoad-OS already has a shared stable and board; this document maps their current local behavior and the next integration boundary. It does **not** claim production-safe multi-agent coordination. Registration and posting launch no workers.
+Operating contract — 2026-09-12. PayLoad-OS has an opt-in authenticated PostgreSQL board alongside the preserved fixture/local sandbox. Neither registration nor posting launches workers. This is an implemented coordination boundary, not a claim of qualified managed multi-agent operation.
 
-## Readiness
+## Readiness and surfaces
 
-| Capability | Current standing | Implementation |
-|---|---|---|
-| Stable, declared contracts and connections | Implemented; declarations, not authenticated agents or running processes | `src/coordination/{types,ledger,seed}.ts`, `/agents` |
-| Threads, directed handoffs, broadcasts and inbox | Implemented in fixture/local scope | `ledger.ts`, `inbox.ts`, `/board` |
-| Message and ACK persistence | Opt-in, seed-pinned local file; no PostgreSQL board adapter | `src/coordination/store.ts` |
-| Contract/build-inspection workers | Manually started deterministic local workers; no model or fleet manager | `contract-review.ts`, `candidate-build-review.ts` |
-| Regulatory review worker | Reads a digest-pinned retained capture; posts and reads back its result before ACK; no source collection or state mutation | `regulatory-agent.ts`, `npm run agent:regulatory -- --once` |
-| Authenticated board participants and memberships | Not implemented; ingress authentication does not bind message authors | `src/coordination/http.ts` |
-| Reviewed mining jobs, leases and retained results | Implemented separately; not linked to board messages | `src/terminal/service.ts` and existing execution ledger |
-| PostgreSQL board and typed job/result links | Next increment; no inactive scaffold or automatic migration added | Plan below |
-
-## Existing surfaces and rules
-
-| Surface | Contract |
+| Capability | Current standing |
 |---|---|
-| `/agents` | Stable search, definition/connection inspectors and opt-in local registration |
-| `/board` | Topic/kind filters, threads, directed/broadcast posting, replies, ACKs and manual refresh |
-| `GET /api/coordination` | Full scoped snapshot: participants, messages, ACKs, connections, release contexts |
-| `POST /api/coordination` | Exact `register`, `post` or `acknowledge` command; updated snapshot on success |
-| `GET /api/coordination/inbox` | Participant inbox with sequence pagination and optional acknowledged/broadcast messages |
-| `clients/javascript/coordination.mjs`, `clients/python/payload_coordination.py` | Dependency-free clients for those same endpoints |
+| Authenticated stable, messages and ACKs | Implemented in `src/coordination/{contracts,service,database,schema}.ts`; same PostgreSQL pool and terminal authentication |
+| Board membership and authorship | Operator-configured principal bindings; server-owned author and ACK identities; no self-enrollment |
+| Typed terminal job/result links | Implemented through existing terminal reads and current permission checks; no parallel job ledger |
+| JavaScript/Python authenticated clients | Implemented; explicit calls, bounded transport, no automatic retries or worker launch |
+| Existing contract, candidate and regulatory workers | Still manually started local-sandbox workers; not migrated to authenticated boards |
+| Managed PostgreSQL operation | TLS/roles, concurrent deployment, backup/restore and operational recovery still require dedicated-target qualification |
 
-A participant declares id/version, purpose, kind, authority, runtime, status, domains, inputs, outputs, capabilities and reference. `REFERENCE`, `PLANNED` and `LOCAL` describe definitions, not liveness. Connections match exact input/output names and common domains; `MATCH`/`PARTIAL` are contract declarations, not execution permission or schema/semantic verification.
+| Surface | Authority and purpose |
+|---|---|
+| `POST /api/v1/terminal`, `command: "coordination"` | Authenticated durable board; Bearer identity plus current database membership |
+| `/agents?mode=authenticated`, `/board?mode=authenticated` | Explicit Bearer connection, owned registration, inbox, typed job inspection and readback-before-ACK; token held only in memory |
+| `/agents`, `/board` without the mode parameter | Preserved fixture/local stable and noticeboard UI |
+| `GET/POST /api/coordination`, `GET /api/coordination/inbox` | Preserved sandbox API and simulated participant selectors |
+| `coordination:admin` CLI | Explicit database migration/configuration; never an HTTP or worker capability |
 
-The repository binds the board to `firm:coordination-demo`; available release contexts currently come from Caravan fixtures. Message kinds are `NOTE`, `REQUEST`, `HANDOFF`, `BLOCKER`, `RESULT`. Null recipient means broadcast; HANDOFF requires another registered recipient. Replies preserve their parent's topic and exact release/build/knowledge context. There are no edit/delete commands.
+Authority/runtime/capability labels are declarations, not grants or liveness. Connection `MATCH`/`PARTIAL` labels compare exact contract names and shared domains; they do not validate schemas, semantics or deployed processes. **ACK means receipt—not a claim, completion, acceptance, correctness, admission or authority grant.**
 
-Identical author/request-id retries preserve the original message and timestamp; changed payloads return `IDEMPOTENCY_CONFLICT`. Changed definitions require new participant ids. Only the directed recipient may ACK; a broadcast permits another in-scope participant with the applicable domain. **ACK records receipt—not a work claim, completion, acceptance, correctness, admission or authority grant.**
+## Authenticated setup: explicit operator actions
 
-## Local operation
+Use an approved isolated database with the actual corpus tables and existing **terminal schema version 3**. Coordination migration installs its separate version-1 tables and guards; it refuses missing/incompatible terminal prerequisites. Follow [terminal setup](TERMINAL_OPERATING_CONTRACT.md#local-operator-setup) for backend database/source configuration and `PAYLOAD_TERMINAL_PRINCIPALS`. Keep bearer tokens and database credentials out of request files, source control and command arguments.
 
-From the repository root, with dependencies already installed, use separate terminals:
+With dependencies/build prerequisites installed and operator migration credentials selected:
+
+```sh
+# Only when the existing terminal installation needs its explicit migration:
+npm run terminal:service -- migrate
+npm run coordination:admin -- migrate
+# Prepare these operator-owned UTF-8 JSON files before invoking configuration:
+npm run coordination:admin -- configure --request operator/create-board.json
+npm run coordination:admin -- configure --request operator/grant-member.json
+```
+
+Example file contents; substitute your approved corpus and registered principal identity:
+
+```json
+{"operation":"create-board","boardId":"board-research","corpusId":"landshark.terminal-parcels","audit":{"actor":"operator","reason":"Dedicated research board"}}
+```
+
+```json
+{"operation":"grant-member","boardId":"board-research","member":{"principalId":"PRINCIPAL-RESEARCH-A","participantId":"agent.research-a.v1","kind":"AGENT","displayName":"Research agent A"},"audit":{"actor":"operator","reason":"Explicit research assignment"}}
+```
+
+Grant each intended participant separately. The principal id, kind and display name must match its terminal registration; the token must permit `FIRM_INTERNAL`, `internal_research` and this corpus. Membership grants no token, corpus entitlement or reviewer authority. A human/policy reviewer still needs the existing terminal review entitlement.
+
+Set **`PAYLOAD_COORDINATION_DURABLE=1`** on the backend only after setup; the default is `0`. Run/restart the normal web service. Discovery reports whether coordination is enabled. No board, member, participant or seed history is imported automatically; no migration or scheduler runs on requests. Revocation uses the same configuration command with a file containing:
+
+```json
+{"operation":"revoke-member","boardId":"board-research","principalId":"PRINCIPAL-RESEARCH-A","audit":{"actor":"operator","reason":"Assignment ended"}}
+```
+
+Configuration files are strict UTF-8 JSON, at most 65,536 bytes. Administrative changes retain audit events; `audit.actor` and `audit.reason` are declared operator labels, not independently authenticated identities. Use separately controlled administrative credentials; embedded tests do not qualify a deployed role separation.
+
+## Authenticated commands and clients
+
+The wire envelope is `{"command":"coordination","request":{"operation":"identity","boardId":"board-research"}}`. Operations are `identity`, `stable`, `register`, `post`, `message`, `inbox`, `acknowledge`; unknown fields and caller-selected author/ACK identities refuse. Registration accepts only the declaration below: id, scope and the single authoritative corpus domain come from membership and the corpus table.
+
+Node REPL example, with the origin/token supplied securely through the environment and the recipient independently provisioned:
+
+```javascript
+const { AuthenticatedCoordinationClient } = await import('./clients/javascript/coordination.mjs');
+const board = new AuthenticatedCoordinationClient({
+  origin: process.env.PAYLOAD_TERMINAL_ORIGIN, token: process.env.PAYLOAD_TERMINAL_TOKEN,
+  boardId: 'board-research'
+});
+await board.identity();
+await board.register({
+  name: 'Research declaration', kind: 'AGENT', version: '1.0.0', purpose: 'Review research requests.',
+  authority: 'derived', runtime: 'JavaScript', status: 'LOCAL', inputs: ['ReviewRequest/v1'],
+  outputs: ['ReviewResult/v1'], capabilities: ['research.review'], reference: 'Operator-owned definition'
+});
+await board.post({
+  requestId: 'research-request-001', recipientId: 'agent.research-b.v1', kind: 'REQUEST',
+  topic: 'research-review', title: 'Review request', body: 'Bounded review instructions.',
+  replyTo: null, link: null
+});
+const page = await board.inbox({ limit: 20 });
+page.messages; // Inspect each { message, linkedJob } before acknowledging.
+```
+
+For an inspected incoming message, call `board.acknowledge(message.id, message.digest)`; `board.message(messageId)` reads it directly. Do not ACK your own outbound message. JavaScript methods accept an optional final `AbortSignal`; `forget()` clears the instance's token.
+
+Python uses `AuthenticatedCoordinationClient(origin, token, board_id, *, opener=None, timeout=10)` from `clients/python/payload_coordination.py`. It exposes `identity()`, `stable()`, `register(definition)`, `post(message)`, `message(message_id)`, `inbox(**options)`, `acknowledge(message_id, expected_digest)` and `forget()`. Authenticated inbox options use the wire's camelCase names, unlike the legacy client's snake_case options. Both authenticated clients refuse redirects, allow HTTPS or loopback HTTP, retain tokens in memory, and do not automatically retry uncertain writes. The existing `npm run terminal:cli -- <command-file.json>` can send the same envelope.
+
+Definitions and membership identities are immutable. A changed definition needs a separately provisioned principal/participant binding or board, not a replacement participant id under the old board/principal pair. Registration and readback validate complete normalized declarations, exact bindings and digests; rehashed malformed rows refuse.
+
+Message kinds remain `NOTE`, `REQUEST`, `HANDOFF`, `BLOCKER`, `RESULT`. Null recipient broadcasts within the board; HANDOFF requires a different active registered recipient. Directed messages are readable only by their author/recipient. Replies preserve topic and exact typed link and cannot redirect a private thread to a third party or broadcast it. There are no edit/delete commands.
+
+An exact author/request-id retry returns the retained message, sequence and timestamp; changed payloads refuse. Recipient revocation blocks new deliveries but does not rewrite earlier history. All calls remain subject to current caller membership and linked-resource permission. After uncertain result publication, retry the identical request, inspect the retained result, then ACK the original request. ACK retries preserve the original receipt; cursor advancement is never proof of processing.
+
+## Typed links, visibility and bounds
+
+A link is `{jobId, actionDigest, resultDigest?}`. The board corpus/purpose must match the job. The existing terminal service enforces owner-or-authorized-reviewer visibility, exact action binding and, for result links, current source permission plus durable receipt integrity. Ordinary agents cannot borrow another owner's job authority from shared membership.
+
+Linked-job summaries contain bounded current job state, correction references, fixture status and permitted result/receipt digests—not raw results, requests, snapshots or receipts. Inboxes withhold entire inaccessible linked messages and their ACKs, reporting `withheld`. Integrity/backend failures fail closed rather than masquerading as an empty inbox. Current membership is rechecked after link inspection.
+
+- Per board: at most 200 members/definitions and 5,000 immutable messages; definitions at most 4,096 bytes and retained messages at most 16,384 bytes. These ceilings refuse further growth; archival is not automatic.
+- Inbox `limit` is 1–50 (default 20). Defaults: `afterSequence: 0`, `includeAcknowledged: false`, `includeBroadcasts: true`, `kind: null`.
+- Stable connection output stops at 200 entries or its **950,000-byte assembly budget**, reporting `connectionsTruncated`; it retains the bounded participant roster. Inbox assembly uses the same budget and resumes before an omitted oversized page entry.
+- Follow `nextSequence` while `hasMore`, even when all entries on a page were withheld. Start each new pending-work scan at zero so unacknowledged work is reconsidered. Body limit is 65,536 bytes; the terminal transport response ceiling is 1,100,000 bytes.
+
+## Preserved local sandbox and workers
 
 ```sh
 npm run dev:coordination
-# In another terminal: register and run one pass, then post a request.
+# Separate terminals, manual one-pass workers:
 npm run agent:contract-review -- --once
-# Optional separate worker, using an existing operator-selected evidence root:
 npm run agent:candidate-build-review -- --once --root .payload/evidence
+npm run agent:regulatory -- --once --root .payload/source-qualification
 ```
 
-The server binds `127.0.0.1`, uses `PORT` or 3000, and sets `PAYLOAD_COORDINATION_LOCAL=1`. Visit `http://127.0.0.1:3000/agents` and `/board`. Without that flag, the board is read-only fixtures. Both modes remain `fixture_only: true`; local mode reports `LOCAL_SANDBOX`, `LOCAL_FILE`, `canWrite: true`. Use demonstration messages, never secrets or protected customer workloads.
+The development command binds `127.0.0.1`, uses `PORT` or 3000 and sets `PAYLOAD_COORDINATION_LOCAL=1`. Open `/agents` and `/board`; without the flag they are read-only fixtures. Both modes remain `fixture_only: true`; writable mode is `LOCAL_SANDBOX`/`LOCAL_FILE`. It uses `firm:coordination-demo` and Caravan fixture release contexts, not durable board membership. Internal ingress authentication does not convert its author selectors into agent identities. Keep this sandbox off for authenticated deployment.
 
-The contract worker registers `agent.contract-review.v1` and handles directed REQUEST/HANDOFF messages with topic `contract-review` and body exactly `{"participantId":"agent.release"}`. Run the same command again after posting. A plain command also runs once; `--watch` repeats passes with a two-second wait. `PAYLOAD_COORDINATION_URL` selects the worker server, defaulting to `http://127.0.0.1:3000`.
+The contract worker registers `agent.contract-review.v1`: directed REQUEST/HANDOFF, topic `contract-review`, body exactly `{"participantId":"agent.release"}`. Run again after posting; `--watch` opts into two-second polling. `PAYLOAD_COORDINATION_URL` defaults to `http://127.0.0.1:3000`.
 
-The candidate worker registers `agent.candidate-build-review.v1`; topic is `candidate-build-review`, context must be null, and body is exactly `{"buildId":"…","expectedDigest":"sha256:…"}` using the full retained build digest, not its membership root. Its URL must be an HTTP literal-loopback origin; only the operator's `--root` selects evidence. It reads back the bound result before ACK, exposes no raw evidence, and grants no current retrieval rights. See [candidate-build worker](CANDIDATE_BUILD_REVIEW_WORKER.md).
+The candidate worker registers `agent.candidate-build-review.v1`: topic `candidate-build-review`, null context, body `{"buildId":"…","expectedDigest":"sha256:…"}` with the full retained build digest. It reads back its bound result before ACK. See [candidate worker](CANDIDATE_BUILD_REVIEW_WORKER.md). The regulatory worker registers `agent.regulatory-manager.v1` and inspects digest-pinned retained captures without collection or admission; see [regulatory manager](REGULATORY_MANAGER.md). These workers still use the local API and have **not** adopted authenticated membership, typed links or digest-bound ACKs.
 
-After contract-worker registration, enter this in a Node REPL from the repository root:
+Legacy `CoordinationClient` remains available in both SDK files. JavaScript uses `snapshot()`, `register(fullParticipant)`, `post(fullMessage)`, `inbox(participantId, options)`, `acknowledge(messageId, participantId)`. Full local messages include `authorId`, `context` and `replyTo`; local registration includes `id`, `scope`, `domains`. Legacy HTTP commands are `register`, `post`, `acknowledge`; request cap is 16 KiB and inbox limit is 1–100. Python uses `after_sequence`, `include_acknowledged`, `include_broadcasts` options. Do not mix legacy actor-selected ACKs with authenticated digest-bound ACKs.
 
-```javascript
-const { CoordinationClient } = await import('./clients/javascript/coordination.mjs');
-const client = new CoordinationClient('http://127.0.0.1:3000');
-const snapshot = await client.snapshot();
-await client.register({
-  id: 'agent.review.local-v1', name: 'Local review definition', kind: 'AGENT', version: '0.1.0',
-  purpose: 'Record demonstration review notes.', authority: 'derived', runtime: 'JavaScript',
-  status: 'LOCAL', scope: snapshot.scope, domains: ['CARAVAN'], inputs: ['CorpusRelease/v1'],
-  outputs: ['ReviewNote/v1'], capabilities: ['release.review'], reference: 'Local demonstration'
-});
-await client.post({
-  requestId: 'demo-contract-review-001', authorId: 'apparatus.coordination',
-  recipientId: 'agent.contract-review.v1', kind: 'REQUEST', topic: 'contract-review',
-  title: 'Review release-agent inputs', body: JSON.stringify({ participantId: 'agent.release' }),
-  context: null, replyTo: null
-});
-// Rerun the contract worker in its terminal, then query this inbox:
-const pending = await client.inbox('apparatus.coordination', {
-  afterSequence: 0, limit: 50, includeAcknowledged: false, includeBroadcasts: false, kind: 'RESULT'
-});
-pending.messages; // Inspect the expected worker's result and its replyTo binding.
-```
+Local replay uses `.payload/coordination/events.json`, bounded at 200 definitions, 5,000 messages, 15,000 log entries and 16 MiB. A lock, synced temporary file and atomic rename serialize cooperating writers. A crashed `writer.lock` requires deliberate operator recovery after confirming the writer stopped. Preserve logs; do not automatically reset history or delete locks. The exact seed digest is pinned: register workers through the API, **never edit the seed to add them**.
 
-Then ACK an inspected result with `await client.acknowledge('<actual RESULT message id>', 'apparatus.coordination')`, substituting its returned id.
+## Remaining qualification and adoption
 
-The HTTP forms are `{"operation":"register","participant":{…}}`, `{"operation":"post","message":{…}}`, and `{"operation":"acknowledge","messageId":"…","participantId":"…"}`. All command fields are required; bodies are limited to 16 KiB. Python exposes `register`, `post`, `acknowledge`, and `inbox(..., after_sequence=0, limit=50, include_acknowledged=False, include_broadcasts=False)`.
+Embedded PostgreSQL tests exercise current membership, ordinary-agent/reviewer isolation, exact retries, immutable guards, malformed-row refusal, file-backed reopen, result-before-ACK recovery and permission-based withholding. They do not qualify managed PostgreSQL TLS, least-privilege deployment roles, real multi-process contention, backup/restore or operator disaster recovery. See the [coordination verification record](COORDINATION_DURABLE_VERIFICATION.md) for commands, results and evidence limits.
 
-Inbox example: `GET /api/coordination/inbox?participant=agent.contract-review.v1&after=0&limit=50&acknowledged=false&broadcasts=false`. Limit is 1–100. Follow `nextSequence` while `hasMore`; start each new pending-work pass at zero. A cursor is a scan position, not a processing receipt. Persist a result before acknowledging; retry the same request id after uncertainty. Unsupported messages remain pending.
-
-## Authority and recovery boundaries
-
-The stable's authority/capability labels and selected author ids are simulated declarations. Current internal ingress can authenticate one operator, but does not establish participant ownership or multi-agent isolation. [Terminal execution](TERMINAL_OPERATING_CONTRACT.md) separately authenticates registered principals, scopes reads, requires exact HUMAN/POLICY review, and owns job claims, leases, results and custody. Board prose does not exercise those powers.
-
-Local commands replay from `.payload/coordination/events.json`: maximum 200 definitions, 5,000 messages, 15,000 log entries and 16 MiB. An exclusive lock, synced temporary file and atomic rename serialize cooperating local writers. This is not a distributed, signed or independently verified ledger. A crashed writer can leave `writer.lock`; preserve history and establish that the writer stopped before operator recovery. Do not automatically delete locks or reset logs.
-
-The log pins the exact seed digest. **Do not edit the seed to register new workers**: register through the API. Seed changes can make retained logs refuse replay; any migration must preserve original identities, ordering and acknowledgements explicitly.
-
-## Next increment: one coordination module, one execution ledger
-
-1. Add a server-bound service seam in `src/coordination` using the existing authenticated terminal principals. Bind authors, ACK actors and board membership server-side; retain a clearly separate fixture mode. Registration declarations must never grant capabilities or reviewer status.
-2. Add a PostgreSQL message/ACK repository in the existing pool, with immutable event identities, exact idempotency conflicts, scoped bounded pagination and transactional writes. Use an explicit versioned migration; preserve local logs without automatic import, overwrite or seed reinterpretation.
-3. Add typed board references to existing terminal job ids, reviewed action digests and retained result digests. Validate ownership, current scope and exact bindings before reads/writes. Job state must be read from the terminal ledger, never inferred from message text or ACKs.
-4. Extend the existing clients and registers with authenticated “my inbox,” linked job/result views and bounded refresh. Use result-readback-before-ACK recovery. There is **no second scheduler**: terminal execution retains its existing review, claims, fencing and retry policy. Any future worker launch requires a separate explicit operator configuration.
-
-## Acceptance gates for that increment
-
-- Two authenticated agents exchange scoped requests/results; neither can impersonate the other's author/ACK identity or read another board.
-- Concurrent identical posts produce one event; changed inputs refuse. Restart preserves participants, message sequence, timestamps and ACKs.
-- Crash after result commit but before ACK recovers the same durable result without duplicate work history; ACK alone never marks a terminal job complete.
-- Cross-corpus/job references and changed action/result digests refuse. Agents cannot replace HUMAN/POLICY review; stale execution claims cannot publish results.
-- Two competing workers still use the existing terminal job lease/fence. Browser reload shows pending request, linked job, retained result and receipt without inventing completion.
-- Existing fixture/local clients, worker recovery, ledger/inbox rules, UI retries and desktop/mobile accessibility remain covered by `src/coordination/*.test.ts`, API/UI tests, `tests/python/test_coordination_client.py` and `tests/e2e/coordination.spec.ts`.
-
-These gates are a plan, not new qualification results. See also [commercial agent](COMMERCIAL_AGENT.md), [economic architecture](ECONOMIC_ARCHITECTURE.md), and [data infrastructure](DATA_INFRASTRUCTURE_INCREMENT.md).
+Next work is dedicated-target deployment qualification and deliberate worker adoption of the authenticated API, with preserved local histories and explicit operator configuration. The built-in UI already offers the authenticated mode described above. There is **no second scheduler**, automatic worker launch, automatic seed import or new execution grant. Existing terminal HUMAN/POLICY review, leases, fencing and result custody remain authoritative. See [terminal contract](TERMINAL_OPERATING_CONTRACT.md), [data infrastructure](DATA_INFRASTRUCTURE_INCREMENT.md), [commercial agent](COMMERCIAL_AGENT.md), and [economic architecture](ECONOMIC_ARCHITECTURE.md).

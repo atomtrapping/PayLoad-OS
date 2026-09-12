@@ -6,7 +6,7 @@ import { createPublicationWorker, retentionPlan } from './retention';
 
 export async function configuredTerminalService(): Promise<TerminalService> {
   const { createPool } = await import('@/db');
-  return new TerminalService(postgresTerminalDatabase(createPool()), getCorpusSource(), () => workerArtifact().digest, executeMining, retentionPlan()?.destination);
+  return new TerminalService(postgresTerminalDatabase(createPool()), getCorpusSource(), () => workerArtifact().digest, executeMining, retentionPlan()?.destination, process.env.PAYLOAD_COORDINATION_DURABLE === '1');
 }
 
 export async function configuredPublicationWorker() {

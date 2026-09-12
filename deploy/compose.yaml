@@ -34,6 +34,8 @@ services:
       PAYLOAD_STATE_KERNEL_LOCAL: "1"
       PAYLOAD_OPERATIONS_LOCAL: "1"
       PAYLOAD_COORDINATION_LOCAL: "0"
+      # Enable only after explicit coordination migration and membership configuration.
+      PAYLOAD_COORDINATION_DURABLE: "${PAYLOAD_COORDINATION_DURABLE:-0}"
       PAYLOAD_TERMINAL_RETENTION: disabled
       PAYLOAD_PRODUCTION_DIR: /app/.payload/evidence
       PAYLOAD_NOTATION_STATE_DIR: /app/.payload/notation-state

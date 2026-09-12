@@ -308,6 +308,8 @@ The state-kernel launcher builds the locked Rust crate before enabling the loopb
 
 The coordination launcher binds to `127.0.0.1` and uses `PORT` when set, otherwise port 3000. Visit `/agents` to inspect and register definitions and `/board` to post, reply and acknowledge. Local history persists in the git-ignored `.payload/coordination/events.json`. Selecting an author simulates an identity; it is not authentication. The same `GET` / `POST /api/coordination` JSON interface and `GET /api/coordination/inbox` are available to C++, Rust, Python and JavaScript clients; dependency-free JavaScript and Python clients are included under `clients/`.
 
+Authenticated coordination is a separate opt-in mode: `/agents?mode=authenticated` and `/board?mode=authenticated` use the existing terminal Bearer endpoint and PostgreSQL pool. An operator must explicitly migrate and grant board memberships before setting `PAYLOAD_COORDINATION_DURABLE=1` (default `0`). Authors and ACK actors are server-bound; job/result links retain the execution ledger's permission checks. There is no new scheduler, automatic sandbox import or authenticated worker launch. See [Agent coordination](docs/AGENT_COORDINATION.md) for configuration and current qualification limits.
+
 Run the contract reviewer once to register `agent.contract-review.v1`, post a directed `REQUEST` with topic `contract-review` and body `{"participantId":"agent.release"}`, then run it again to receive a result. `--watch` repeats passes with a two-second wait. Each pending-work pass starts its inbox scan at zero; durable acknowledgements exclude handled inputs. `PAYLOAD_COORDINATION_URL` selects the worker's local server URL. See [Agent coordination](docs/AGENT_COORDINATION.md) for the two-terminal workflow, client examples, cursor semantics and recovery behavior.
 
 To exercise local evidence intake without a web server, use the included synthetic notice:
@@ -407,7 +409,7 @@ native/state-kernel small Rust notation command/replay kernel; stable IDs, expli
 src/state-kernel fixed native-process adapter, loopback contract and immutable local saved versions; not domain canonical state
 src/data-os     Bench-derived source policy/capture, local evidence store, fixed Carrier parser, candidate builds and read-only reference comparison; no canonical corpus admission
 src/acquisition operator-only source requests, fixed FMCSA and Samsara HTTPS transports, source parsers, immutable capture history and CLIs; no customer API
-src/coordination agent/apparatus definitions, scope and message rules, contract matching, participant inbox, deterministic contract/build-inspection workers and opt-in local event log
+src/coordination shared declarations/inbox, authenticated PostgreSQL board and terminal links; preserved local workers/event log
 clients         dependency-free JavaScript and Python coordination clients
 scripts         local server launcher, contract-review and candidate-build-review workers; evidence intake/normalization/candidate-build entry points
 examples/evidence synthetic notice and operator-declared intake manifest
@@ -444,6 +446,7 @@ src/app         operating model: /model (a permanent redirect from /product)
                 corpus: /releases, /releases/[releaseId], /stream, /retractions, /api, /api/v1/* (fixture feed)
                 workbench: /cases, /cases/new, /cases/[caseId], /rulings, /rulings/[rulingId], /replay/[caseId], /profiles, /evidence
                 coordination: /agents, /board, /api/coordination, /api/coordination/inbox (read-only fixtures or local sandbox)
+                authenticated coordination: /agents?mode=authenticated, /board?mode=authenticated, existing /api/v1/terminal
                 product: /products (the first information product, caravan.lot-state.v0: customer question, subjects, fields with evidence requirements, freshness, permitted uses, correction at two knowledge times, the ten-question delivered-record contract, the acceptance target)
                 production: /candidates (the local rail's acquisitions, normalizations, candidate build and refusals, all UNADMITTED; reproduced from examples/ by npm run stamp:production)
                 projection: /api/projections/sources/[releaseId] (descriptor GET), /api/projections/preview (read-only POST over pinned fixture releases)

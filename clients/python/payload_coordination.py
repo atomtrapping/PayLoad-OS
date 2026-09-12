@@ -6,12 +6,13 @@ All retries reuse the exact encoded command and the caller-supplied requestId.
 
 import json
 import math
+import re
 import socket
 import time
 from http.client import IncompleteRead
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request, urlopen, build_opener, HTTPRedirectHandler
 
 
 class CoordinationClientError(Exception):
@@ -20,6 +21,87 @@ class CoordinationClientError(Exception):
         self.status = status
         self.code = code
         self.detail = detail
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+class AuthenticatedCoordinationClient:
+    """Explicit Bearer board access through the existing terminal endpoint.
+
+    No cookies, redirects or automatic retries. After uncertainty read back the
+    message, or retry its exact requestId/body. The token lives only in memory.
+    """
+    def __init__(self, origin, token, board_id, *, opener=None, timeout=10):
+        url = urlparse(origin)
+        if (url.username or url.password or url.path not in ("", "/") or url.query or url.fragment
+                or not url.netloc or not (url.scheme == "https" or (url.scheme == "http" and url.hostname in ("localhost", "127.0.0.1", "::1")))):
+            raise ValueError("TERMINAL_ORIGIN_REFUSED")
+        if not isinstance(token, str) or not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", token):
+            raise ValueError("AUTHENTICATION_REQUIRED")
+        if not isinstance(board_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", board_id):
+            raise ValueError("COORDINATION_BOARD_INVALID")
+        if isinstance(timeout, bool) or not isinstance(timeout, (float, int)) or not 0 < timeout <= 30:
+            raise ValueError("COORDINATION_TIMEOUT_INVALID")
+        self._url, self._token, self.board_id = urljoin(origin, "/api/v1/terminal"), token, board_id
+        self._opener = build_opener(_NoRedirect()).open if opener is None else getattr(opener, "open", opener)
+        self.timeout = timeout
+
+    def command(self, operation, **fields):
+        if not self._token:
+            raise ValueError("AUTHENTICATION_REQUIRED")
+        request = dict(fields, operation=operation, boardId=self.board_id)
+        body = json.dumps({"command": "coordination", "request": request}, allow_nan=False, separators=(",", ":")).encode()
+        if len(body) > 65536:
+            raise ValueError("BODY_TOO_LARGE")
+        wire = Request(self._url, data=body, method="POST", headers={"Authorization": "Bearer " + self._token, "Content-Type": "application/json"})
+        response = None
+        deadline = time.monotonic() + self.timeout
+        try:
+            try:
+                response = self._opener(wire, timeout=self.timeout)
+            except HTTPError as error:
+                response = error
+            received = bytearray()
+            while True:
+                if time.monotonic() >= deadline:
+                    raise CoordinationClientError(0, "TIMEOUT", "Coordination deadline exceeded.")
+                # read1 performs at most one underlying read, allowing an elapsed
+                # deadline check between chunks; socket operations also time out.
+                part = response.read1(min(65536, 1100001 - len(received)))
+                if time.monotonic() >= deadline:
+                    raise CoordinationClientError(0, "TIMEOUT", "Coordination deadline exceeded.")
+                if not part:
+                    break
+                if len(received) + len(part) > 1100000:
+                    raise ValueError("TERMINAL_RESPONSE_LIMIT")
+                received.extend(part)
+            value = json.loads(received.decode("utf-8"))
+            if time.monotonic() >= deadline:
+                raise CoordinationClientError(0, "TIMEOUT", "Coordination deadline exceeded.")
+            if not isinstance(value, dict):
+                raise ValueError("TERMINAL_RESPONSE_INVALID")
+            if response.status != 200:
+                code = value.get("error")
+                raise CoordinationClientError(response.status, code if isinstance(code, str) and re.fullmatch(r"[A-Z][A-Z0-9_]{0,79}", code) else "TERMINAL_REFUSED", "Coordination request refused.")
+            if value.get("protocol") != "payload.terminal.v1" or "result" not in value or "error" in value:
+                raise ValueError("TERMINAL_RESPONSE_INVALID")
+            return value["result"]
+        finally:
+            if response is not None:
+                response.close()
+
+    def identity(self): return self.command("identity")
+    def stable(self): return self.command("stable")
+    def register(self, definition): return self.command("register", definition=definition)
+    def post(self, message): return self.command("post", message=message)
+    def message(self, message_id): return self.command("message", messageId=message_id)
+    def inbox(self, **options): return self.command("inbox", **options)
+    def acknowledge(self, message_id, expected_digest):
+        return self.command("acknowledge", messageId=message_id, expectedDigest=expected_digest)
+    def forget(self): self._token = ""
 
 
 class CoordinationClient:

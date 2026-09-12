@@ -10,6 +10,7 @@ import type { AuthenticatedTerminal } from './auth';
 import { assertAuthenticated } from './auth';
 import { recordTerminalRead } from './readLedger';
 import { enqueuePublication, publicationHasCapacity } from './publication';
+import { CoordinationService } from '@/coordination/service';
 import { commitment, id, limits, MINING_CAPABILITY, miningRequest, refuse, reviewRequest, terminalCommand, TERMINAL_PROTOCOL, type MiningRequest } from './contracts';
 import type { TerminalDatabase, TerminalSql } from './database';
 import { pinRelease, recheckPermission, recheckSnapshotSources, snapshotDigest, validateMiningResult, type MiningExecutor, type MiningSnapshot, type MiningWork } from './mining';
@@ -38,7 +39,7 @@ const summary = (job: JobSummary) => ({
 export class TerminalService {
   constructor(private readonly db: TerminalDatabase, private readonly source: CorpusSource,
     private readonly methodDigest: () => string, private readonly executor: MiningExecutor,
-    private readonly retentionDestination?: string) {}
+    private readonly retentionDestination?: string, private readonly coordinationEnabled = false) {}
 
   private async principal(sql: TerminalSql, who: AuthenticatedTerminal) {
     assertAuthenticated(who);
@@ -59,10 +60,14 @@ export class TerminalService {
     assertAuthenticated(who);
     const parsed = terminalCommand.parse(input);
     switch (parsed.command) {
+      case 'coordination':
+        if (!this.coordinationEnabled) refuse('COORDINATION_NOT_ENABLED', 503);
+        return new CoordinationService(this.db, this).command(who, parsed.request);
       case 'discover': return { protocol: TERMINAL_PROTOCOL, identity: { principalId: who.principalId, terminalId: who.terminalId, purpose: who.purpose, corpusScope: who.corpusScope, canReview: who.canReview },
         reads: MCP_TOOLS.filter(t => admitCall(who.session, t.name, new Date().toISOString()).admitted).map(t => t.name), mining: who.terminalClass === 'FIRM_INTERNAL' && who.purpose === 'internal_research'
           ? { capability: MINING_CAPABILITY, methodDigest: this.methodDigest(), retentionDestination: this.retentionDestination, limits, reviewRequired: true, output: 'NOT_VALIDATED', sideEffects: ['retain exact request', 'retain computed candidate and receipt'] } : null,
-        operating: who.terminalClass === 'FIRM_INTERNAL' ? operatingSnapshot() : undefined };
+        operating: who.terminalClass === 'FIRM_INTERNAL' ? operatingSnapshot() : undefined,
+        coordination: { enabled: this.coordinationEnabled, endpoint: '/api/v1/terminal', command: 'coordination', scheduler: false } };
       case 'read': {
         const served = await serveToolCall(who.session, parsed.tool, parsed.args, new Date().toISOString());
         const recording = await recordTerminalRead(this.db, who, served);

@@ -51,7 +51,7 @@ test('offline tools, operator artifacts, documentation and local state are forbi
     '.PAYLOAD/evidence/x', '.git/config', '.env.local', 'artifacts/design.zip', 'docs/audit.md',
     'scripts/build-traces.test.mjs', 'tests/e2e/test.spec.ts', 'native/state-kernel/target/debug/notations-state-kernel.exe',
     'Dockerfile', '.dockerignore', 'deploy/compose.yaml', 'scripts/deployment-preflight.entry.ts',
-    'scripts/access-smoke.mjs', 'src/db/fixtures/tls.ts',
+    'scripts/access-smoke.mjs', 'scripts/coordination-admin.entry.ts', 'src/db/fixtures/tls.ts',
     '../private/input.json', 'D:/private/input.json', 'D:\\private\\input.json',
     '/private/input.json', '\\\\server\\share\\input.json', '//server/share/input.json']) {
     assert.equal(forbiddenTracePath(path), true, path);
@@ -85,6 +85,10 @@ test('Next excludes every audited test-source extension without excluding runtim
       assert.equal(excludes(resolve(repository, path).replaceAll('\\', '/')), true, path);
     }
   }
+  for (const path of ['scripts/coordination-admin.entry.ts', 'scripts/deployment-preflight.entry.ts']) {
+    assert.equal(forbiddenTracePath(path), true, path);
+    assert.equal(excludes(resolve(repository, path).replaceAll('\\', '/')), true, path);
+  }
   for (const path of ['scripts/gat-audit-runner.py', 'scripts/gat-source.mjs', 'examples/evidence/notice.txt',
     'src/domain/corpus.ts', 'node_modules/pg/lib/index.js']) {
     assert.equal(excludes(resolve(repository, path).replaceAll('\\', '/')), false, path);
@@ -92,6 +96,8 @@ test('Next excludes every audited test-source extension without excluding runtim
   const scenario = fixture();
   try {
     scenario.trace('api/compute/clearance/artifacts/[id]/route', ['scripts/build-traces.test.mjs']);
+    assert.throws(() => auditBuildTraces(scenario.root), /traced unrelated/);
+    scenario.trace('api/compute/clearance/artifacts/[id]/route', ['scripts/coordination-admin.entry.ts']);
     assert.throws(() => auditBuildTraces(scenario.root), /traced unrelated/);
   } finally { scenario.cleanup(); }
 });

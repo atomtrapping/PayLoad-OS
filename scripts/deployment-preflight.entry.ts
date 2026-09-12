@@ -35,6 +35,9 @@ export function deploymentPreflight(environment: NodeJS.ProcessEnv = process.env
   for (const flag of ['PAYLOAD_SOURCE_COLLECTION', 'PAYLOAD_SAMSARA_COLLECTION', 'GAT_INTEGRATION', 'PAYLOAD_COORDINATION_LOCAL']) {
     if (environment[flag] !== '0') throw new Error('DEPLOYMENT_DISABLED_CAPABILITY');
   }
+  // Durable coordination is an explicit opt-in over the existing terminal plane.
+  // The local JSON sandbox stays disabled above; this never migrates or grants membership.
+  if (!['0', '1'].includes(environment.PAYLOAD_COORDINATION_DURABLE ?? '0')) throw new Error('DEPLOYMENT_COORDINATION_REFUSED');
   for (const [key, expected] of Object.entries({ PAYLOAD_PRODUCTION_DIR: '/app/.payload/evidence',
     PAYLOAD_NOTATION_STATE_DIR: '/app/.payload/notation-state', PAYLOAD_SOURCE_QUALIFICATION_DIR: '/app/.payload/source-qualification' })) {
     if (environment[key] !== expected) throw new Error('DEPLOYMENT_STATE_ROOT_REFUSED');

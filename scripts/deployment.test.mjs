@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, matchesGlob, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 import { allowedRuntimePath, auditDeployment } from './deployment-audit.mjs';
 
 const workspace = fileURLToPath(new URL('../', import.meta.url));
@@ -33,7 +35,8 @@ function fixture() {
 test('runtime file policy rejects histories, credentials, host binaries and tool scaffolding', () => {
   for (const path of ['.payload/evidence/raw', '.PAYLOAD/history.json', '.env', '.env.production',
     'node_modules/example/.env', 'node_modules/example/.envrc', 'examples/key.pem', 'scripts/admin.key', 'db.p12', '.git/config',
-    '.stamp/unreviewed-worker.mjs', 'scripts/source.entry.ts', 'scripts/deployment.test.mjs',
+    '.stamp/unreviewed-worker.mjs', '.stamp/coordination-admin.mjs', 'scripts/coordination-admin.entry.ts',
+    'scripts/source.entry.ts', 'scripts/deployment.test.mjs',
     'native/state-kernel/target/debug/notations-state-kernel.exe', 'native/state-kernel/Cargo.toml',
     '../operator/secret', 'C:/operator/secret', '/operator/secret', 'docs/audit.md',
     'examples/regression.test.ts', 'examples/__pycache__/runner.pyc', 'vitest.config.ts']) {
@@ -88,7 +91,7 @@ test('Docker context is default-deny with secret exclusions after every allowlis
   for (const path of ['.env', '.env.example', '.payload/history', '.stamp/worker.mjs', '.git/config',
     'native/state-kernel/target/debug/kernel', 'public/cesium/local.js', 'deploy/secret.key',
     'src/db/fixtures/ca.pem', 'src/db/fixtures/tls.ts', 'src/.env.production', 'node_modules/next/package.json',
-    'artifacts/package.payload', 'unreviewed-folder/server.js']) assert.equal(allowed(path), false, path);
+    'scripts/coordination-admin.entry.ts', 'artifacts/package.payload', 'unreviewed-folder/server.js']) assert.equal(allowed(path), false, path);
   for (const path of ['src/app/page.tsx', 'src/access/config.ts', 'examples/carrier/source.json',
     'native/state-kernel/src/main.rs', 'native/state-kernel/Cargo.lock', 'scripts/production-worker.entry.ts',
     'scripts/terminal-mining-worker.entry.ts', 'scripts/terminal-service.entry.ts',
@@ -110,6 +113,7 @@ test('Docker recipe preserves pins, explicit runtime selection, preflight and no
   assert.match(recipe, /npm run terminal:build/);
   assert.match(recipe, /npm run terminal:service:build/);
   assert.doesNotMatch(recipe, /node node_modules\/esbuild\/bin\/esbuild/);
+  assert.doesNotMatch(recipe, /coordination-admin|coordination:admin/);
   assert.ok(read('.gitattributes').includes('deploy/*.sh text eol=lf'));
   assert.match(recipe, /node scripts\/deployment-audit\.mjs \/runtime/);
   assert.match(recipe, /USER 10001:10001/);
@@ -119,7 +123,7 @@ test('Docker recipe preserves pins, explicit runtime selection, preflight and no
   assert.ok(entry.includes('mode="${1:-web}"'));
   assert.ok(entry.includes('exec node .stamp/terminal-service.mjs worker'));
   assert.ok(entry.includes('exec node .stamp/terminal-service.mjs publisher'));
-  assert.doesNotMatch(entry.split(/\r?\n/).filter((line) => !line.startsWith('#')).join('\n'), /npm run|cargo|bootstrap|seed-db|source\.entry/);
+  assert.doesNotMatch(entry.split(/\r?\n/).filter((line) => !line.startsWith('#')).join('\n'), /npm run|cargo|bootstrap|seed-db|source\.entry|coordination-admin|coordination:admin/);
 });
 
 test('base composition is single-writer, loopback-only, resource-bounded and read-only', () => {
@@ -127,6 +131,7 @@ test('base composition is single-writer, loopback-only, resource-bounded and rea
   for (const fragment of ['"127.0.0.1:3000:3000"', 'read_only: true', 'user: "10001:10001"',
     'cap_drop: [ALL]', 'no-new-privileges:true', 'pids_limit: 128', 'mem_limit: 2g', 'cpus: "2.0"',
     'PAYLOAD_SOURCE_COLLECTION: "0"', 'PAYLOAD_SAMSARA_COLLECTION: "0"', 'GAT_INTEGRATION: "0"',
+    'PAYLOAD_COORDINATION_LOCAL: "0"', 'PAYLOAD_COORDINATION_DURABLE: "${PAYLOAD_COORDINATION_DURABLE:-0}"',
     'PAYLOAD_DEPLOYMENT_MODE: internal', 'PAYLOAD_DB_TLS_MODE: verify-full',
     'PAYLOAD_EXECUTION_PROFILE: conserve', 'create_host_path: false', 'pull_policy: never']) assert.ok(compose.includes(fragment), fragment);
   assert.doesNotMatch(compose, /network_mode:\s*host|privileged:\s*true|docker\.sock|replicas:|build:/);
@@ -142,6 +147,51 @@ test('preflight reuses authoritative validators and never connects or starts wor
     'authenticateTerminal(new Request(']) assert.ok(preflight.includes(symbol), symbol);
   assert.doesNotMatch(preflight, /new Pool|fetch\(|writeFile|spawn\(|connect\(/);
   assert.ok(preflight.includes("environment.PAYLOAD_SOS_SECRET_ACCESS_KEY_FILE !== '/run/secrets/sos-secret-access-key'"));
+});
+
+test('preflight permits explicit durable coordination only with the local sandbox disabled', () => {
+  // Execute the real preflight with an isolated Linux/platform fixture. External
+  // validators and file metadata are stubbed; no secrets, sockets or files open.
+  const environment = {
+    NODE_ENV: 'production', PAYLOAD_DEPLOYMENT_MODE: 'internal',
+    PORT: '3000', HOSTNAME: '0.0.0.0', PAYLOAD_OPERATOR_PASSWORD_FILE: '/run/secrets/operator-password',
+    PAYLOAD_DB_TLS_MODE: 'verify-full', PAYLOAD_DB_CA_FILE: '/run/secrets/postgresql-ca.pem',
+    PAYLOAD_SOURCE_COLLECTION: '0', PAYLOAD_SAMSARA_COLLECTION: '0', GAT_INTEGRATION: '0', PAYLOAD_COORDINATION_LOCAL: '0',
+    PAYLOAD_PRODUCTION_DIR: '/app/.payload/evidence', PAYLOAD_NOTATION_STATE_DIR: '/app/.payload/notation-state',
+    PAYLOAD_SOURCE_QUALIFICATION_DIR: '/app/.payload/source-qualification',
+  };
+  class FixtureTerminalError extends Error { code = 'AUTHENTICATION_REQUIRED'; }
+  const dependencies = {
+    'node:fs': { accessSync() {}, constants: { R_OK: 4, W_OK: 2, X_OK: 1 },
+      lstatSync: () => ({ isDirectory: () => true, isFile: () => true, isSymbolicLink: () => false }) },
+    '../src/access/config': { readAccessConfiguration: () => ({ mode: 'internal', origin: 'http://127.0.0.1:3000' }) },
+    '../src/db/config': { databaseConfig: () => ({}) },
+    '../src/runtime/policy': { executionPolicy() {} },
+    '../src/data-os/sos-config': { sosConfig: () => null },
+    '../src/terminal/auth': { authenticateTerminal() { throw new FixtureTerminalError(); } },
+    '../src/terminal/contracts': { TerminalError: FixtureTerminalError },
+    '../src/terminal/retention': { retentionPlan: () => null },
+  };
+  const loaded = {};
+  const fixtureProcess = { platform: 'linux', arch: 'x64', getuid: () => 10001, cwd: () => '/app',
+    env: environment, argv: ['node', 'preflight'] };
+  const compiled = ts.transpileModule(read('scripts/deployment-preflight.entry.ts'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  runInNewContext(compiled, { exports: loaded, process: fixtureProcess, Request,
+    require(name) { assert.ok(Object.hasOwn(dependencies, name), name); return dependencies[name]; },
+    console: { log() {}, error() {} } });
+  assert.equal(fixtureProcess.exitCode, undefined, 'baseline offline preflight succeeds');
+  for (const durable of [undefined, '0', '1']) {
+    assert.doesNotThrow(() => loaded.deploymentPreflight({ ...environment, PAYLOAD_COORDINATION_DURABLE: durable }));
+    for (const local of [undefined, '', '1', 'true']) {
+      assert.throws(() => loaded.deploymentPreflight({ ...environment,
+        PAYLOAD_COORDINATION_DURABLE: durable, PAYLOAD_COORDINATION_LOCAL: local }), /DEPLOYMENT_DISABLED_CAPABILITY/);
+    }
+  }
+  for (const durable of ['', 'true', 'false', '01', ' 1', '1 ', '2']) {
+    assert.throws(() => loaded.deploymentPreflight({ ...environment, PAYLOAD_COORDINATION_DURABLE: durable }), /DEPLOYMENT_COORDINATION_REFUSED/);
+  }
 });
 
 test('access smoke uses operating routes and assets present in this repository', () => {

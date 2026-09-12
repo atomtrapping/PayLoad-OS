@@ -1,3 +1,29 @@
+import { terminalCall } from './terminal.mjs';
+
+/** Production board client shares the terminal transport. Tokens stay in this instance's memory.
+ * No automatic retry: after uncertainty reuse the same exact message/requestId. */
+export class AuthenticatedCoordinationClient {
+  #origin; #token; #boardId;
+  constructor({ origin, token, boardId }) {
+    if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,256}$/.test(token)) throw new TypeError('Invalid Bearer token.');
+    if (typeof boardId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(boardId)) throw new TypeError('Invalid board id.');
+    this.#origin = origin; this.#token = token; this.#boardId = boardId;
+  }
+  command(operation, fields = {}, signal) {
+    if (!this.#token) throw new Error('AUTHENTICATION_REQUIRED');
+    return terminalCall({ origin: this.#origin, token: this.#token, signal,
+      command: { command: 'coordination', request: { ...fields, operation, boardId: this.#boardId } } });
+  }
+  identity(signal) { return this.command('identity', {}, signal); }
+  stable(signal) { return this.command('stable', {}, signal); }
+  register(definition, signal) { return this.command('register', { definition }, signal); }
+  post(message, signal) { return this.command('post', { message }, signal); }
+  message(messageId, signal) { return this.command('message', { messageId }, signal); }
+  inbox(options = {}, signal) { return this.command('inbox', options, signal); }
+  acknowledge(messageId, expectedDigest, signal) { return this.command('acknowledge', { messageId, expectedDigest }, signal); }
+  forget() { this.#token = ''; }
+}
+
 const RETRYABLE_STATUS = new Set([408, 429, 502, 503, 504]);
 const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 

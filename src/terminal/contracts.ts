@@ -36,6 +36,8 @@ export const terminalCommand = z.discriminatedUnion('command', [
   z.object({ command: z.literal('jobs'), after: id.optional(), limit: z.number().int().min(1).max(50).default(20) }).strict(),
   z.object({ command: z.literal('job'), jobId: id }).strict(),
   z.object({ command: z.literal('result'), jobId: id }).strict(),
+  // The coordination module validates its own strict operation vocabulary.
+  z.object({ command: z.literal('coordination'), request: z.unknown() }).strict(),
 ]);
 export function commitment(value: unknown): string { return `sha256:${createHash('sha256').update(canonicalJson(value)).digest('hex')}`; }
 export class TerminalError extends Error {

@@ -11,7 +11,7 @@ export default function ObservationsPage() {
   return (
     <>
       <FixtureBanner note="Synthetic observation replay computed in memory from an invented manifest: not field evidence, not retained, not admitted. The operator CLI replays retained manifests; see docs/RECORDED_OBSERVATION_REPLAY.md." />
-      <div className="p-3 sm:p-4 max-w-[1400px] mx-auto w-full"><ObservationReplay {...preview} /></div>
+      <div className="p-3 sm:p-4 max-w-[1400px] mx-auto w-full"><ObservationReplay mode={preview.mode} manifest={preview.manifest} computation={preview.computation} artifact={{ id: preview.artifact.id, contentDigest: preview.artifact.contentDigest }} /></div>
     </>
   );
 }

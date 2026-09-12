@@ -16,6 +16,18 @@ function serverComputation<T>(work: () => T): T {
   } finally { globalThis.Uint8Array = browserUint8Array; }
 }
 const buildPreview = () => serverComputation(buildClearancePreview);
+type Preview = ReturnType<typeof buildPreview>;
+/** The preview route, in a stub: answers each artifact's contents by identifier, as the route rebuilds them. */
+function serveArtifacts(preview: Preview, tamper?: (artifact: Preview['artifacts'][number]) => unknown) {
+  const fetch = vi.fn(async (input: string | URL | Request) => {
+    const id = decodeURIComponent(String(input).split('/').pop() ?? '');
+    const artifact = preview.artifacts.find((a) => a.id === id);
+    if (!artifact) return { ok: false, status: 404, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => ({ id, contentDigest: artifact.contentDigest, content: tamper ? tamper(artifact) : artifact.content }) };
+  });
+  vi.stubGlobal('fetch', fetch);
+  return fetch;
+}
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -76,6 +88,7 @@ describe('ClearanceInspector', () => {
   it('changes measurement, resets outcome selection and binds its exact evidence artifact', async () => {
     const user = userEvent.setup();
     const preview = buildPreview();
+    const fetch = serveArtifacts(preview);
     render(<ClearanceInspector {...preview} />);
     await user.selectOptions(screen.getByLabelText('Hypothetical outcome'), '1');
     const next = preview.manifest.model.actions.find((a) => a.id !== preview.result.recommendation.actionId)!;
@@ -90,10 +103,15 @@ describe('ClearanceInspector', () => {
     expect(region).toHaveTextContent(next.evidence.acquisitionDigest);
     expect(region).toHaveTextContent(next.evidence.contentDigest);
     const artifact = preview.artifacts.find((a) => a.id === next.evidence.acquisitionId)!;
-    expect(screen.getByTestId('clearance-artifact-detail')).not.toBeVisible();
+    // Nothing is read until the operator asks; the contents arrive from the preview route and are shown once they digest to the manifest's reference.
+    expect(screen.queryByTestId('clearance-artifact-detail')).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
     await user.click(screen.getByText('Inspect selected artifact contents', { selector: 'summary' }));
-    expect(screen.getByTestId('clearance-artifact-detail')).toBeVisible();
-    expect(screen.getByTestId('clearance-artifact-detail').textContent).toBe(JSON.stringify(artifact.content, null, 2));
+    const contents = await screen.findByTestId('clearance-artifact-detail');
+    expect(contents).toBeVisible();
+    expect(contents.textContent).toBe(JSON.stringify(artifact.content, null, 2));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(String(fetch.mock.calls[0][0])).toBe(`/api/compute/clearance/artifacts/${encodeURIComponent(artifact.id)}`);
   });
 
   it('shows all five strategy expectations separately from withheld empirical scoring', async () => {
@@ -132,6 +150,20 @@ describe('ClearanceInspector', () => {
     expect(joint).toHaveTextContent('rightClearanceM');
     expect(joint).toHaveTextContent(preview.manifest.model.evidence.contentDigest);
     expect(joint).toHaveTextContent(preview.manifest.model.jointOutcomes[0].id);
+  });
+
+  it('refuses served contents that do not digest to the manifest’s reference, and shows both digests', async () => {
+    const user = userEvent.setup();
+    const preview = buildPreview();
+    serveArtifacts(preview, () => ({ tampered: 'SERVED CONTENT THAT DOES NOT MATCH' }));
+    render(<ClearanceInspector {...preview} />);
+    await user.click(screen.getByText('Inspect selected artifact contents', { selector: 'summary' }));
+    const refused = await screen.findByTestId('clearance-artifact-detail-refused');
+    const reference = preview.manifest.model.evidence;
+    expect(refused).toHaveTextContent(reference.contentDigest);
+    expect(refused).toHaveTextContent('not substituted');
+    expect(screen.queryByTestId('clearance-artifact-detail')).not.toBeInTheDocument();
+    expect(screen.queryByText('SERVED CONTENT THAT DOES NOT MATCH', { exact: false })).not.toBeInTheDocument();
   });
 
   it('does not display contents with a matching identifier but the wrong content digest', async () => {

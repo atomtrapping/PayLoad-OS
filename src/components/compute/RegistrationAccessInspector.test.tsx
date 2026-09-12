@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildRegistrationAccessPreview } from '@/compute/registration-access-demo';
 import { evaluateRegistrationAccess } from '@/compute/registration-access';
 import { RegistrationAccessInspector } from './RegistrationAccessInspector';
@@ -18,6 +18,17 @@ function serverComputation<T>(work: () => T): T {
   } finally { globalThis.Uint8Array = browserUint8Array; }
 }
 const buildPreview = () => serverComputation(buildRegistrationAccessPreview);
+type Preview = ReturnType<typeof buildPreview>;
+/** The preview route, in a stub: answers each artifact's contents by identifier, as the route rebuilds them. */
+function serveArtifacts(preview: Preview) {
+  vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+    const id = decodeURIComponent(String(input).split('/').pop() ?? '');
+    const artifact = preview.artifacts.find((a) => a.id === id);
+    if (!artifact) return { ok: false, status: 404, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => ({ id, contentDigest: artifact.contentDigest, content: artifact.content }) };
+  }));
+}
+afterEach(() => vi.unstubAllGlobals());
 
 describe('RegistrationAccessInspector', () => {
   it('states its synthetic, non-retained boundary and separates fitting from withheld discrepancy', () => {
@@ -73,8 +84,10 @@ describe('RegistrationAccessInspector', () => {
     expect(JSON.stringify(preview)).toBe(original);
   });
 
-  it('exposes source, target, variance and fit residual with its exact synthetic descriptor and content', () => {
+  it('exposes source, target, variance and fit residual with its exact synthetic descriptor and content', async () => {
+    const user = userEvent.setup();
     const preview = buildPreview();
+    serveArtifacts(preview);
     render(<RegistrationAccessInspector {...preview} />);
     const control = preview.manifest.controls[0];
     const detail = screen.getByTestId('measurement-detail');
@@ -86,12 +99,16 @@ describe('RegistrationAccessInspector', () => {
     expect(detail).toHaveTextContent(control.evidence.acquisitionDigest);
     expect(detail).toHaveTextContent('Preview descriptor digest (not a receipt)');
     expect(screen.getByTestId('artifact-detail')).toHaveTextContent(control.evidence.contentDigest);
-    expect(screen.getByTestId('artifact-detail')).toHaveTextContent(control.measurementId);
+    // The contents are read from the preview route when asked for, and shown once they digest to the reference.
+    expect(screen.queryByTestId('artifact-contents')).not.toBeInTheDocument();
+    await user.click(screen.getByText('Inspect selected artifact contents', { selector: 'summary' }));
+    expect(await screen.findByTestId('artifact-contents')).toHaveTextContent(control.measurementId);
   });
 
   it('selects held-out evidence and reports conditional prediction covariance without promoting it to accuracy', async () => {
     const user = userEvent.setup();
     const preview = buildPreview();
+    serveArtifacts(preview);
     render(<RegistrationAccessInspector {...preview} />);
     await user.selectOptions(screen.getByLabelText('Control or check point'), String(preview.manifest.controls.length));
     const checkpoint = preview.manifest.checkPoints[0];
@@ -103,7 +120,8 @@ describe('RegistrationAccessInspector', () => {
     expect(detail).toHaveTextContent(comparison.uncertaintyState);
     expect(screen.getByLabelText('Synthetic artifact')).toHaveValue(checkpoint.evidence.acquisitionId);
     expect(screen.getByTestId('artifact-detail')).toHaveTextContent(checkpoint.evidence.contentDigest);
-    expect(screen.getByTestId('artifact-detail')).toHaveTextContent('Invented 0.1 metre check-point bias');
+    await user.click(screen.getByText('Inspect selected artifact contents', { selector: 'summary' }));
+    expect(await screen.findByTestId('artifact-contents')).toHaveTextContent('Invented 0.1 metre check-point bias');
     await user.click(screen.getByText('Check-point prediction and residual uncertainty', { selector: 'summary' }));
     expect(detail).toHaveTextContent('Marginal standardized residuals are not independent unit-normal guarantees');
     expect(detail).toHaveTextContent('predictiveResidualCovariance');
@@ -140,12 +158,15 @@ describe('RegistrationAccessInspector', () => {
   it('lets operators inspect the graph artifact and complete manifest without any write action', async () => {
     const user = userEvent.setup();
     const preview = buildPreview();
+    serveArtifacts(preview);
     render(<RegistrationAccessInspector {...preview} />);
     await user.selectOptions(screen.getByLabelText('Synthetic artifact'), preview.manifest.access.evidence.acquisitionId);
     const artifact = screen.getByTestId('artifact-detail');
     expect(artifact).toHaveTextContent(preview.manifest.access.evidence.contentDigest);
-    expect(artifact).toHaveTextContent('unknown-shortcut');
-    expect(artifact).toHaveTextContent('locked-door');
+    await user.click(screen.getByText('Inspect selected artifact contents', { selector: 'summary' }));
+    const contents = await screen.findByTestId('artifact-contents');
+    expect(contents).toHaveTextContent('unknown-shortcut');
+    expect(contents).toHaveTextContent('locked-door');
     await user.click(screen.getByText('Complete input manifest and method contract', { selector: 'summary' }));
     const method = screen.getByRole('region', { name: 'Method, assumptions and source snapshot' });
     expect(within(method).getByRole('list', { name: 'Declared assumptions' })).toHaveTextContent('not independently verified');

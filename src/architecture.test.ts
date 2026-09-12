@@ -74,7 +74,11 @@ function moduleEdges(file: string, text = readFileSync(join(ROOT, file), 'utf8')
  * the rights matrix computes cell by cell. Capture, parsing, normalization,
  * building and every file operation stay out.
  */
-const PURE_RAIL_MODULES = new Set(['src/data-os/contracts', 'src/data-os/source-policy']);
+const PURE_RAIL_MODULES = new Set(['src/data-os/contracts', 'src/data-os/source-policy',
+  // The local record encoding and its digest, with no I/O, no store and no Buffer: the browser
+  // holds a served artifact to the manifest's digest with it before drawing it (2026-09-12).
+  'src/data-os/local-json',
+]);
 
 describe('layer boundaries', () => {
   it('recognizes relative, re-exported, dynamic and type-only module edges', () => {

@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { artifactReference, type ArtifactReference } from '../observation/contract';
 import { encodeLocalRecord, localRecordDigest } from '../data-os/local-record';
 
-export const MAX_CLEARANCE_MANIFEST_BYTES = 256 * 1024;
+import { MAX_CLEARANCE_MANIFEST_BYTES } from './limits';
+export { MAX_CLEARANCE_MANIFEST_BYTES };
 export const MAX_CLEARANCE_RESULT_BYTES = 1024 * 1024;
 export const CLEARANCE_PURPOSE = 'clearance-measurement-design';
 export const CLEARANCE_PROBABILITY_TOLERANCE = 1e-12;

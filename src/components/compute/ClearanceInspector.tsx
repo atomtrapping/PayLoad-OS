@@ -5,12 +5,16 @@ import { useState, type ReactNode } from 'react';
 import type { ClearanceExperiment } from '@/compute/clearance-contract';
 import type { ClearanceDecisionResult } from '@/compute/clearance-voi';
 import type { ArtifactReference } from '@/observation/contract';
+import { MAX_CLEARANCE_MANIFEST_BYTES } from '@/compute/limits';
+import { ClientJson } from '@/components/primitives/ClientJson';
+import { ArtifactContents } from './ArtifactContents';
 
 export interface ClearanceInspectorProps {
   mode: 'IN_MEMORY_SYNTHETIC_PREVIEW_NOT_RETAINED';
   manifest: ClearanceExperiment;
   result: ClearanceDecisionResult;
-  artifacts: Array<{ id: string; content: unknown; contentDigest: string }>;
+  /** Identifiers and digests only: the contents are read from the preview route when asked for, and held to the digest before they are drawn. */
+  artifacts: Array<{ id: string; contentDigest: string }>;
 }
 
 const secondary = { color: 'var(--text-secondary)' };
@@ -31,8 +35,9 @@ function Panel({ id, title, children }: { id: string; title: string; children: R
 function Value({ label, children }: { label: string; children: ReactNode }) {
   return <div className="min-w-0"><dt className="text-[12px]" style={secondary}>{label}</dt><dd className="m-0 mono text-[12px] break-words [overflow-wrap:anywhere]">{children}</dd></div>;
 }
+/** Drawn in the browser from the props, not in the server render: see ClientJson. */
 function Json({ value }: { value: unknown }) {
-  return <pre className="m-0 p-3 text-[11px] whitespace-pre-wrap break-words [overflow-wrap:anywhere] min-w-0 rounded" style={{ background: 'var(--bg-inset)' }}>{JSON.stringify(value, null, 2)}</pre>;
+  return <ClientJson value={value} />;
 }
 function Evidence({ reference }: { reference: ArtifactReference }) {
   return <dl className="m-0 grid gap-2">
@@ -47,6 +52,7 @@ export function ClearanceInspector({ mode, manifest, result, artifacts }: Cleara
   const [actionId, setActionId] = useState(result.recommendation.actionId ?? manifest.model.actions[0].id);
   const [branchIndex, setBranchIndex] = useState(0);
   const [artifactId, setArtifactId] = useState(manifest.model.evidence.acquisitionId);
+  const [inspecting, setInspecting] = useState(false);
   const action = manifest.model.actions.find((a) => a.id === actionId) ?? manifest.model.actions[0];
   const actionResult = result.actions.find((a) => a.actionId === action.id);
   const evaluation = actionResult?.evaluation;
@@ -218,9 +224,9 @@ export function ClearanceInspector({ mode, manifest, result, artifacts }: Cleara
           {evidenceChoices.map((reference) => <option key={reference.acquisitionId} value={reference.acquisitionId}>{reference.acquisitionId}</option>)}
         </select>
         {selectedReference && <Evidence reference={selectedReference} />}
-        {artifact ? <details>
+        {artifact ? <details onToggle={(event) => setInspecting(event.currentTarget.open)}>
           <summary className="cursor-pointer">Inspect selected artifact contents</summary>
-          <div data-testid="clearance-artifact-detail" className="mt-3 min-w-0"><Json value={artifact.content} /></div>
+          <div className="mt-3 min-w-0"><ArtifactContents route={`/api/compute/clearance/artifacts/${encodeURIComponent(artifact.id)}`} expectedDigest={artifact.contentDigest} wanted={inspecting} maxBytes={MAX_CLEARANCE_MANIFEST_BYTES} testId="clearance-artifact-detail" /></div>
         </details> : <p data-testid="clearance-artifact-unavailable" className="m-0">No content-matching artifact is available. Unrelated preview contents are not substituted.</p>}
       </Panel>
     </div>

@@ -10,7 +10,8 @@ export interface ObservationReplayProps {
   mode: 'IN_MEMORY_SYNTHETIC_PREVIEW_NOT_RETAINED';
   manifest: Manifest;
   computation: Computation;
-  artifact: { id: string; content: unknown; contentDigest: string };
+  /** Identifier and digest only; the replay names the artifact and never prints its contents. */
+  artifact: { id: string; contentDigest: string };
 }
 
 const muted = { color: 'var(--text-secondary)' };

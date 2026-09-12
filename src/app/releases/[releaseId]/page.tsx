@@ -70,8 +70,8 @@ export default async function ReleasePage({ params }: { params: Promise<{ releas
             </dl>
             <details>
               <summary className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Certified release manifest ({manifest.schema})</summary>
-              <div className="mt-2 flex items-center justify-end"><CopyButton value={manifestText} label="Copy JSON" /></div>
-              <pre tabIndex={0} className="m-0 mt-1 surface-inset p-2 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)', maxHeight: 360 }}>{manifestText}</pre>
+              <div className="mt-2 flex items-center justify-end"><CopyButton target="release-manifest-json" label="Copy JSON" /></div>
+              <pre id="release-manifest-json" tabIndex={0} className="m-0 mt-1 surface-inset p-2 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)', maxHeight: 360 }}>{manifestText}</pre>
               <p className="m-0 mt-1 text-[11.5px]" style={{ color: 'var(--text-muted)' }}>The commitment above is the sha256 of this manifest in canonical JSON. A release manifest contract does not yet exist upstream; the schema id says so.</p>
             </details>
           </div>

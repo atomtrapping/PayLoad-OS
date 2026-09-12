@@ -45,11 +45,13 @@ const CASE_CONTRACT = `interface CaseSource {            // application layer
 
 function Example({ title, url, body }: { title: string; url: string; body: unknown }) {
   const text = JSON.stringify(body, null, 2);
+  // The button copies the printed example by id rather than carrying its own copy.
+  const preId = `api-example-${url.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()}`;
   return (
     <details className="surface-inset p-3">
       <summary className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>{title} — <Link href={url} className="id" style={{ color: 'var(--info)' }}>GET {url}</Link></summary>
-      <div className="mt-2 flex items-center justify-end"><CopyButton value={text} label="Copy JSON" /></div>
-      <pre tabIndex={0} className="m-0 mt-1 surface-inset p-2 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)', maxHeight: 360 }}>{text}</pre>
+      <div className="mt-2 flex items-center justify-end"><CopyButton target={preId} label="Copy JSON" /></div>
+      <pre id={preId} tabIndex={0} className="m-0 mt-1 surface-inset p-2 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)', maxHeight: 360 }}>{text}</pre>
     </details>
   );
 }
@@ -263,8 +265,8 @@ export default async function ApiPage() {
           </div>
         </Section>
 
-        <Section title="Adapter contracts" id="api-contract" aside={<CopyButton value={`${CORPUS_CONTRACT}\n\n${CASE_CONTRACT}`} />}>
-          <pre tabIndex={0} className="m-0 surface-inset p-3 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)' }}>{CORPUS_CONTRACT}{'\n\n'}{CASE_CONTRACT}</pre>
+        <Section title="Adapter contracts" id="api-contract" aside={<CopyButton target="api-contracts-text" />}>
+          <pre id="api-contracts-text" tabIndex={0} className="m-0 surface-inset p-3 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)' }}>{CORPUS_CONTRACT}{'\n\n'}{CASE_CONTRACT}</pre>
           <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>src/adapter/corpusSource.ts and src/adapter/caseSource.ts. The only implementations read committed fixtures. A live corpus source sits on the release store and the retraction log; a live case source maps the workbench&apos;s objects. Neither re-implements a gate; the browser computes no fact and adjudicates nothing.</p>
         </Section>
 

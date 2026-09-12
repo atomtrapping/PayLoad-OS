@@ -3,7 +3,8 @@ import { artifactReference, type ArtifactReference } from '../observation/contra
 import { encodeLocalRecord, localRecordDigest } from '../data-os/local-record';
 import { evaluateAccessGeometry } from './access-geometry';
 
-export const MAX_REGISTRATION_MANIFEST_BYTES = 256 * 1024;
+import { MAX_REGISTRATION_MANIFEST_BYTES } from './limits';
+export { MAX_REGISTRATION_MANIFEST_BYTES };
 export const MAX_REGISTRATION_RUN_BYTES = 512 * 1024;
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,80}$/);
 const text = z.string().min(1).max(512).refine((s) => !!s.trim() && !/[\u0000-\u001f\u007f]/.test(s));

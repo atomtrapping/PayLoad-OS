@@ -5,12 +5,16 @@ import { useState, type ReactNode } from 'react';
 import type { RegistrationAccessExperiment } from '@/compute/registration-access-contract';
 import type { RegistrationAccessResult } from '@/compute/registration-access';
 import type { ArtifactReference } from '@/observation/contract';
+import { MAX_REGISTRATION_MANIFEST_BYTES } from '@/compute/limits';
+import { ClientJson } from '@/components/primitives/ClientJson';
+import { ArtifactContents } from './ArtifactContents';
 
 export interface RegistrationAccessInspectorProps {
   mode: 'IN_MEMORY_SYNTHETIC_PREVIEW_NOT_RETAINED';
   manifest: RegistrationAccessExperiment;
   result: RegistrationAccessResult;
-  artifacts: Array<{ id: string; content: unknown; contentDigest: string }>;
+  /** Identifiers and digests only: the contents are read from the preview route when asked for, and held to the digest before they are drawn. */
+  artifacts: Array<{ id: string; contentDigest: string }>;
 }
 
 const secondary = { color: 'var(--text-secondary)' };
@@ -38,8 +42,9 @@ function Evidence({ reference }: { reference: ArtifactReference }) {
   </dl>;
 }
 
+/** Drawn in the browser from the props, not in the server render: see ClientJson. */
 function Json({ value }: { value: unknown }) {
-  return <pre className="m-0 p-3 text-[11px] whitespace-pre-wrap break-words [overflow-wrap:anywhere] min-w-0 rounded" style={{ background: 'var(--bg-inset)' }}>{JSON.stringify(value, null, 2)}</pre>;
+  return <ClientJson value={value} />;
 }
 
 /** Inspection only: inputs and computed scenarios arrive from the pure server preview. */
@@ -47,6 +52,7 @@ export function RegistrationAccessInspector({ mode, manifest, result, artifacts 
   const [scenarioIndex, setScenarioIndex] = useState(0);
   const [measurementIndex, setMeasurementIndex] = useState(0);
   const [artifactId, setArtifactId] = useState(manifest.controls[0]?.evidence.acquisitionId ?? artifacts[0]?.id ?? '');
+  const [inspecting, setInspecting] = useState(false);
   const scenarios = [{ id: 'Base graph', result: result.access.base }, ...result.access.scenarios];
   const scenario = scenarios[scenarioIndex] ?? scenarios[0];
   const measurements = [
@@ -182,7 +188,10 @@ export function RegistrationAccessInspector({ mode, manifest, result, artifacts 
             <Value label="Artifact identifier">{selectedArtifact.id}</Value>
             <Value label="Exact content digest">{selectedArtifact.contentDigest}</Value>
           </dl>
-          <Json value={selectedArtifact.content} />
+          <details onToggle={(event) => setInspecting(event.currentTarget.open)}>
+            <summary className="cursor-pointer">Inspect selected artifact contents</summary>
+            <div className="mt-3 min-w-0"><ArtifactContents route={`/api/compute/registration/artifacts/${encodeURIComponent(selectedArtifact.id)}`} expectedDigest={selectedArtifact.contentDigest} wanted={inspecting} maxBytes={MAX_REGISTRATION_MANIFEST_BYTES} testId="artifact-contents" /></div>
+          </details>
         </div>}
       </Panel>
     </div>

@@ -31,8 +31,10 @@ test('spatial inspector separates fit/check evidence and base/detour/unreachable
   await page.getByLabel('Control or check point').selectOption({ label: 'Withheld check point: check-0' });
   await expect(page.getByTestId('measurement-detail')).toContainText('EXCLUDED_FROM_FIT');
   await expect(page.getByTestId('measurement-detail')).toContainText('LOCAL_APPROXIMATION_UNDER_DECLARED_INDEPENDENCE');
-  await expect(page.getByTestId('artifact-detail')).toContainText('Invented 0.1 metre check-point bias');
   await expect(page.getByTestId('artifact-detail')).toContainText('sha256:');
+  // The contents come from the preview route when asked for, and are shown once they digest to the manifest's reference.
+  await page.getByText('Inspect selected artifact contents', { exact: true }).click();
+  await expect(page.getByTestId('artifact-contents')).toContainText('Invented 0.1 metre check-point bias');
   await page.getByRole('region', { name: 'Measurement inspector', exact: true }).screenshot({ path: test.info().outputPath('registration-check-point.png') });
   await page.getByText('Check-point prediction and residual uncertainty', { exact: true }).click();
   await expect(page.getByTestId('measurement-detail')).toContainText('predictiveResidualCovariance');

@@ -13,6 +13,8 @@ export const miningRequest = z.object({
   releaseId: id,
   snapshotDigest: digest,
   methodDigest: digest,
+  // Discovered operator-owned internal storage destination, never a caller URL.
+  retentionDestination: digest.optional(),
   parameters: z.object({ minRecords: z.number().int().min(1).max(limits.rows) }).strict(),
   budget: z.object({
     maxRows: z.number().int().min(1).max(limits.rows),

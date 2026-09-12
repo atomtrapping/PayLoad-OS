@@ -180,14 +180,17 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-derivation]')).toHaveCount(5);
   await expect(page.locator('[data-derivation="FLOW_GEOMETRY"]')).toContainText('loosest uncertainty in the chain');
   await expect(page.locator('#pm-spatial')).toContainText('not a spatial database');
-  await expect(page.locator('[data-storage]')).toHaveCount(6);
-  // Exactly one class is a running service: PostgreSQL holds the corpus tables.
-  // The invariant is that a SERVICE class has a dependency behind it, not that none exists.
-  await expect(page.locator('[data-storage][data-state="SERVICE"]')).toHaveCount(1);
-  await expect(page.locator('[data-storage="records"][data-state="SERVICE"]')).toContainText('PostgreSQL, selected and wired');
+  await expect(page.locator('[data-storage]')).toHaveCount(7);
+  // Installed adapters are not evidence of running cloud services.
+  await expect(page.locator('[data-storage][data-state="SERVICE"]')).toHaveCount(0);
+  await expect(page.locator('[data-storage][data-state="ADAPTER_READY"]')).toHaveCount(2);
+  await expect(page.locator('[data-storage="records"][data-state="ADAPTER_READY"]')).toContainText('Transactional relational storage');
+  await expect(page.locator('[data-storage="artifacts"][data-state="ADAPTER_READY"]')).toContainText('Exoscale SOS');
+  await expect(page.locator('[data-storage="analytics"][data-state="LOCAL_PILOT"]')).toContainText('Apache Iceberg');
+  await expect(page.locator('[data-storage="entities"][data-state="FIXTURE"]')).toHaveCount(1);
   await expect(page.locator('[data-storage="embeddings"][data-state="ABSENT"]')).toContainText('Qdrant, Milvus, pgvector');
   await expect(page.getByRole('heading', { name: 'Where the corpus is stored' })).toBeVisible();
-  await expect(page.locator('#pm-storage')).toContainText('candidates, not selections');
+  await expect(page.locator('#pm-storage')).toContainText('does not report live deployment health');
   await expect(page.locator('#pm-storage')).toContainText('not a canonical relation');
   await page.goto('/model/estimation');
   // Estimation: a constraint is a measurement, clipping is malpractice, and a solver never decides identity.

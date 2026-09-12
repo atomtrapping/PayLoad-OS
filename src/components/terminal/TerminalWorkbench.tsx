@@ -13,6 +13,7 @@ const discoverySchema = z.object({
   reads: z.array(z.string()),
   mining: z.object({
     capability: z.literal('discovery.run-workload'), methodDigest: hash,
+    retentionDestination: hash.optional(),
     limits: z.object({ rows: positive, inputBytes: positive, outputBytes: positive, timeoutMs: positive }),
   }).nullable(),
 });
@@ -127,6 +128,7 @@ export function TerminalWorkbench() {
     && ((!predecessorJobId.trim() && !correctionReason.trim()) || (!!predecessorJobId.trim() && !!correctionReason.trim()));
   const request: MiningRequest | null = pin && mining && validInputs && idempotencyKey ? {
     capability: mining.capability, releaseId: pin.releaseId, snapshotDigest: pin.snapshotDigest, methodDigest: mining.methodDigest,
+    ...(mining.retentionDestination ? { retentionDestination: mining.retentionDestination } : {}),
     parameters: { minRecords: Number(minRecords) },
     budget: { maxRows: Number(budget.maxRows), maxInputBytes: Number(budget.maxInputBytes), maxOutputBytes: Number(budget.maxOutputBytes), timeoutMs: Number(budget.timeoutMs) },
     idempotencyKey, ...(predecessorJobId.trim() ? { correction: { jobId: predecessorJobId.trim(), reason: correctionReason.trim() } } : {}),
@@ -182,7 +184,7 @@ export function TerminalWorkbench() {
     {discovery && <div className="grid lg:grid-cols-2 gap-3 min-w-0">
       {mining && <div className="surface p-3 flex flex-col gap-3 min-w-0">
         <h3 className="m-0 text-[14px]" style={{ color: 'var(--text-heading)' }}>Pin and propose research</h3>
-        <p className="m-0 mono text-[11px] break-words [overflow-wrap:anywhere]">{mining.capability}<br />Method: {mining.methodDigest}</p>
+        <p className="m-0 mono text-[11px] break-words [overflow-wrap:anywhere]">{mining.capability}<br />Method: {mining.methodDigest}{mining.retentionDestination && <><br />Internal retention: {mining.retentionDestination}</>}</p>
         <fieldset disabled={!!busy} className="m-0 p-0 border-0 grid sm:grid-cols-2 gap-2 min-w-0">
           <Field label="Release ID"><input value={releaseId} maxLength={128} onChange={(event) => { setReleaseId(event.target.value); resetPin(); }} className={fieldClass} style={fieldStyle} /></Field>
           <Field label="Minimum records"><input type="number" min={1} max={mining.limits.rows} step={1} value={minRecords} onChange={(event) => { setMinRecords(event.target.value); resetPin(); }} className={fieldClass} style={fieldStyle} /></Field>

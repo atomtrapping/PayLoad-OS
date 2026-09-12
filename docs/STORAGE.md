@@ -1,89 +1,79 @@
 # Storage: polyglot persistence
 
-Six classes of information in a provenance-bearing corpus have different access
-patterns, so they ask for different stores. This document records the plan as a
-plan. **Nothing here is installed.** `src/domain/storage.ts` carries the same
-content as data, `/model` renders it, and `src/domain/storage.test.ts` fails
-if this repository ever gains a store dependency while the data still says
-nothing is installed.
+Repository state, 2026-09-12. Seven information classes have distinct access
+patterns and authority boundaries. [The storage model](../src/domain/storage.ts)
+supplies `/model`; its tests check the class/state vocabulary and dependency
+backing. Installed packages and implemented adapters do not prove running
+services, production deployment or provider qualification.
 
-## What holds the corpus today
+## The seven classes
 
-**One store is selected.** PostgreSQL holds the corpus tables:
-`src/db/schema.ts` declares corpora, releases, records and retractions among
-fifteen tables, and the corpus adapter reads them through drizzle when a
-database is configured. Where none is configured the committed demonstration
-answers instead, and `source.origin` says which, so a reader is never told a
-demonstration is a live corpus.
+| Information | Store kind | Implementation here | State |
+| --- | --- | --- | --- |
+| Raw artifacts and retained result bytes; separate capture/custody receipts | Immutable object storage | Opt-in terminal publication through local or Exoscale SOS adapters; legacy synchronous evidence remains on local files | `ADAPTER_READY` |
+| Admission rulings, served records, releases and transactional control history | Relational | PostgreSQL through `pg` and `drizzle-orm`, when configured | `ADAPTER_READY` |
+| Derived terminal-result indexes and analytical snapshots | Lakehouse | Real Iceberg v2/Parquet with a local SQLite catalog and explicit fixture-only bridge | `LOCAL_PILOT` |
+| Full text and facets | Search index | Pages filter fixtures in memory; no search index | `ABSENT` |
+| Entities and explicit relationships | Graph | Declared record-to-subject incidence and authored notation relations; no graph database | `FIXTURE` |
+| Embeddings | Vector store | No embedding computation or vector database | `ABSENT` |
+| Geodetic positions, footprints and frames | Geospatial | Declared corpus geometry and Earth projections; no PostGIS adapter | `FIXTURE` |
 
-The other five classes are still held by local content-addressed files under
-roots the operator selects per command (`.payload/*`, never a deployment path)
-and by committed demonstration fixtures. `package.json` declares `pg` and
-`drizzle-orm`; it declares no object store, search index, graph, vector store
-or geospatial dependency.
+`ADAPTER_READY` means wired when explicitly configured, with deployment
+unverified. `LOCAL_PILOT` means local qualification, not a production service.
+There is no GraphRAG or graph-assisted retrieval pilot port in this increment.
 
-### The precondition that is now owed
+## What is connected
 
-This document previously said the lakehouse should follow the admission
-authority, because without one there is no canonical version to store. The
-tables arrived first. That is a live risk rather than a settled sequence: rows
-in `releases` and `records` are canonical-shaped, so until admission exists
-something must keep an unadmitted candidate from being written there as though
-it were a version. The gate is what the store still needs.
+PostgreSQL is the relational authority, not the lakehouse. Configured corpus
+adapters read its tables; without a configured corpus database, surfaces declare
+their demonstration source. Admission exists: `src/db/admitRecords.ts` requires
+supplied authority, complete declared serving projections, transactional ruling
+and ancestry binding, and validated readback. Incomplete or mismatched history
+refuses; moving storage does not promote a candidate or demonstration row.
 
-## The six classes
+Schema v3 adds a terminal-result outbox and immutable custody/projection receipts
+without adding another authorization or execution system. An opted-in reviewed
+action pins its storage destination. Result insertion, execution completion and
+the required outbox event commit together. A separate publisher performs
+conditional content-addressed creation and verifies actual exact-version bytes
+before acknowledging custody. Current source permissions and the active,
+unrevoked exact execution grant are required for new custody/index work.
 
-| Information | Store kind | Candidates | Fabric | Here |
-|---|---|---|---|---|
-| Raw artifacts: source bytes, documents, media, capture receipts | Immutable object storage | S3, MinIO, WARC for captured web material | Acquisition | Local content-addressed files |
-| Structured records, normalized candidates and observations, with both clocks | Relational store, selected; lakehouse still a candidate | **PostgreSQL, wired**; Iceberg or Delta for columnar scans a relational store answers slowly | Corpus | PostgreSQL when configured, the committed demonstration otherwise |
-| Full text and facets | Search index | OpenSearch, Elasticsearch | Projection | Nothing; pages filter fixtures in memory |
-| Entities and explicit relationships | Graph database | Neo4j, Memgraph, ArangoDB | Corpus | The projection compiler's incidence graph; authored notation relations |
-| Embeddings | Vector store | Qdrant, Milvus, pgvector | Compute | Nothing; no embedding is computed here |
-| Geodetic positions, footprints and their frames | Geospatial database | PostGIS on PostgreSQL | Projection | Positions declared as corpus records, drawn by the Earth Twin |
+The object SDK is present: `package.json` includes `@aws-sdk/client-s3`.
+Exoscale SOS remains provider-unqualified. Selecting terminal retention neither
+redirects the legacy synchronous evidence rail nor migrates existing `.payload/*`
+histories. Local retention uses an explicit dedicated root; it is not accepted
+as production remote custody.
 
-A candidate is not a selection. A selection would appear as a dependency and a
-running service, not as prose.
+`tools/terminal_lake` is a separate optional Python runtime, pinned in its
+`requirements.lock.txt`. Its bridge accepts only published fixture results,
+verifies artifact bytes and permissions, and requires a second Python process
+to read the exact snapshot before PostgreSQL records a derived projection
+acknowledgement. A `PUBLISHED` object alone is not an Iceberg commit. The index
+is not canonical admission, a remote cloud catalog or customer delivery.
 
-## The invariant each store must not break
+See [Data infrastructure increment](DATA_INFRASTRUCTURE_INCREMENT.md) for
+activation, exact limits, recovery and follow-on verification, and the
+[terminal operating contract](TERMINAL_OPERATING_CONTRACT.md) for the reviewed
+workflow. No command automatically installs or deploys the optional lake runtime.
 
-A store choice is where the doctrine is easiest to lose, so each class carries
-the rule it is bound by:
+## Invariants and remaining qualification
 
-- **Object storage** — evidence is not state. Bytes stay append-only and
-  content-addressed: a record of what a source said, never an assertion about
-  the world.
-- **Lakehouse** — canonical state is not the entire corpus, and valid time is
-  not knowledge time. A table snapshot is a version; it must never be confused
-  with the record's own two clocks.
-- **Search index** — projection never mutates its source, and identity survives
-  representation. An index is a derived view, rebuildable from the corpus, and
-  never the place a fact lives.
-- **Graph** — an edge requires evidence. Visual adjacency is not a semantic
-  edge and geographic proximity is not a causal relationship; a store that
-  makes edges cheap to create must not make them cheap to assert.
-- **Vector store** — computation produces derived objects, not truth. Embedding
-  similarity is not a canonical relation: a neighbour is a candidate for a
-  human or a validation boundary to judge. Customers apply their own inference
-  to the corpus; this store would serve retrieval, not sell a model.
-- **Geospatial** — a projection changes representation, not identity or
-  authority. A coordinate is only as good as the frame and the transform that
-  produced it, and no graph layout or model geometry becomes a geographic
-  position without an explicit transform and evidence for that interpretation.
+- Object bytes remain immutable and content-addressed. Evidence and derived
+  results are not canonical state; capture, retrieval, custody and lake receipts
+  have different meanings.
+- Relational transactions preserve authority, ancestry and both record clocks.
+  Iceberg commit time is neither valid time nor knowledge time. Corrections keep
+  earlier result bytes, identities and snapshots rather than rewriting them.
+- Search and geospatial are derived projections, never new sources of identity
+  or authority. A coordinate requires its declared frame and evidence.
+- Graph edges require evidence; adjacency is not an edge. Vector similarity
+  would be candidate generation, never an admitted relationship.
 
-## Sequence
-
-1. **Object storage first.** It is the only class whose information already
-   exists in volume and whose invariant is already enforced by the evidence
-   rail.
-2. **The records store arrived before the admission authority.** The intended
-   order was the reverse, because a store holding candidates implies they were
-   admitted. Since it did not happen that way, the admission gate is owed
-   before anything writes a candidate into a canonical-shaped row.
-3. **Search and geospatial are projections** of an admitted corpus and are
-   rebuildable from it, so they can arrive late.
-4. **The graph waits on one identity authority**, and the vector store on
-   declared models with recomputable inputs.
-
-Each class also records what has to be true before choosing one at all; the
-data in `src/domain/storage.ts` is the authority for that list.
+Next gates are managed PostgreSQL migration/restricted-role recovery, real SOS
+versioning and conditional-write conformance, bucket/IAM policy, backup restore,
+retention/recall obligations and production catalog custody. Real-data authority
+must be established before widening the fixture-only lake bridge. Graph and
+vector expansion still require explicit identity authority and declared models
+with permitted, recomputable inputs. None of these gaps is closed by a dependency
+or connection string alone.

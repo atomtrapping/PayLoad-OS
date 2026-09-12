@@ -1,0 +1,4 @@
+# Optional local qualification only. Python 3.12; no network install at runtime.
+pyiceberg[pyarrow,sql-sqlite]==0.11.1
+pyarrow==21.0.0
+SQLAlchemy==2.0.43

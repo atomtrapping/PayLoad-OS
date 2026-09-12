@@ -1,12 +1,11 @@
 /**
- * Polyglot persistence for the corpus, as data. Six classes of information
+ * Polyglot persistence for the corpus, as data. Seven classes of information
  * with different access patterns need different stores; naming a technology
  * here is a candidate until it is selected, and the state below says which.
- * One is now selected: PostgreSQL holds the corpus tables and the corpus
- * adapter reads them when a database is configured, falling back to the
- * committed demonstration when none is. The other five classes are still held
- * by local content-addressed files under operator-selected `.payload/` roots
- * and by committed fixtures.
+ * PostgreSQL is the configured transactional adapter. Immutable object adapters
+ * are wired to opt-in terminal result retention; existing local evidence stays
+ * on its own rail. A separate fixture-only Iceberg projection is a local pilot.
+ * None of these implementations proves a running production deployment.
  *
  * The reason to write it down is that a store choice is where the doctrine is
  * easiest to lose. Each class therefore carries the invariant its store must
@@ -17,10 +16,11 @@
 import type { Fabric } from './doctrine';
 
 /** What kind of store the access pattern asks for. Closed. */
-export type StoreKind = 'OBJECT_STORE' | 'LAKEHOUSE' | 'SEARCH_INDEX' | 'GRAPH' | 'VECTOR' | 'GEOSPATIAL';
+export type StoreKind = 'OBJECT_STORE' | 'RELATIONAL' | 'LAKEHOUSE' | 'SEARCH_INDEX' | 'GRAPH' | 'VECTOR' | 'GEOSPATIAL';
 
 export const STORE_KIND_LABEL: Record<StoreKind, string> = {
   OBJECT_STORE: 'Immutable object storage',
+  RELATIONAL: 'Transactional relational storage',
   LAKEHOUSE: 'Lakehouse over object storage',
   SEARCH_INDEX: 'Search index',
   GRAPH: 'Graph database',
@@ -29,21 +29,21 @@ export const STORE_KIND_LABEL: Record<StoreKind, string> = {
 };
 
 /**
- * What holds this class of information here, now. `LOCAL_FILES` is the honest
- * answer everywhere today: content-addressed files an operator selects a root
- * for. `FIXTURE` means the committed demonstration stands in its place.
+ * Implementation and configuration are not proof of a running deployment.
+ * A local pilot may have an explicit bridge without being a production service.
  */
-export type StorageState = 'SERVICE' | 'LOCAL_FILES' | 'FIXTURE' | 'ABSENT';
+export type StorageState = 'ADAPTER_READY' | 'LOCAL_PILOT' | 'LOCAL_FILES' | 'FIXTURE' | 'ABSENT';
 
 export const STORAGE_STATE_LABEL: Record<StorageState, string> = {
-  SERVICE: 'A running service holds it',
+  ADAPTER_READY: 'Adapter wired when configured; deployment unverified',
+  LOCAL_PILOT: 'Fixture-only local pilot; not a production service',
   LOCAL_FILES: 'Local content-addressed files hold it',
   FIXTURE: 'The committed demonstration stands in its place',
   ABSENT: 'Nothing holds it',
 };
 
 export interface StorageClass {
-  id: 'artifacts' | 'records' | 'text' | 'entities' | 'embeddings' | 'geospatial';
+  id: 'artifacts' | 'records' | 'analytics' | 'text' | 'entities' | 'embeddings' | 'geospatial';
   /** The information, named the way the corpus names it. */
   dataClass: string;
   kind: StoreKind;
@@ -63,25 +63,36 @@ export interface StorageClass {
 export const STORAGE_CLASSES: readonly StorageClass[] = [
   {
     id: 'artifacts',
-    dataClass: 'Raw artifacts: source bytes, documents, media and their capture receipts',
+    dataClass: 'Raw artifacts and retained result bytes, with their distinct capture or custody receipts',
     kind: 'OBJECT_STORE',
-    why: 'Written once, never edited, addressed by content, read rarely and whole. Size grows without bound and retention is per source.',
-    candidates: ['S3', 'MinIO', 'WARC for captured web material'],
+    why: 'Written once, addressed by content and read with explicit byte limits. Retention and permitted use belong to each source, not to the storage adapter.',
+    candidates: ['Exoscale SOS, selected remote adapter target', 'Local immutable files for qualification', 'WARC for captured web material'],
     fabric: 'acquisition',
-    here: { state: 'LOCAL_FILES', what: 'The local evidence rail writes immutable files under an operator-selected root, keyed by content digest, with an acquisition receipt beside each.', where: '/evidence' },
+    here: { state: 'ADAPTER_READY', what: 'Opt-in terminal artifact publication connects a durable PostgreSQL outbox to conditional immutable object writes and verified exact-version readback. Local and Exoscale SOS adapters are available; SOS remains unqualified against the provider. The legacy synchronous evidence rail still writes local immutable files with acquisition receipts: selecting terminal retention does not redirect or migrate that history.', where: '/control' },
     invariant: 'Evidence is not state. Bytes stay append-only and content-addressed, a record of what a source said, never an assertion about the world.',
-    before: 'A retention and recall policy per source, because an object store makes deletion a deliberate operation rather than an accident of a build.',
+    before: 'Current source-use and reviewed-action authority are required before storage calls. Provider conformance, authentic TLS, interruption recovery and a retention and recall policy per source remain necessary before production remote custody is accepted.',
   },
   {
     id: 'records',
-    dataClass: 'Structured records, normalized candidates and observations, with both clocks',
-    kind: 'LAKEHOUSE',
-    why: 'Columnar scans over versions and time ranges, with schema evolution and snapshot isolation, so that an as-of answer is a query rather than a rebuild.',
-    candidates: ['PostgreSQL, selected and wired', 'Apache Iceberg or Delta Lake on object storage, for the columnar scans a relational store answers slowly', 'queried through Trino, Spark or DuckDB'],
+    dataClass: 'Admission rulings, served records, releases and transactional control history',
+    kind: 'RELATIONAL',
+    why: 'Transactions bind records to their rulings, ancestry and serving projections; bounded consistent reads preserve temporal and permission semantics.',
+    candidates: ['PostgreSQL, selected and wired through pg and drizzle-orm'],
     fabric: 'corpus',
-    here: { state: 'SERVICE', what: 'PostgreSQL is selected: src/db/schema.ts declares corpora, releases, records and retractions, and the corpus adapter reads them through drizzle when a database is configured. Where none is configured the committed demonstration answers instead, and the surface says which. A lakehouse remains a candidate for the columnar scans this does not serve.', where: '/stream' },
+    here: { state: 'ADAPTER_READY', what: 'Configured PostgreSQL adapters hold corpus tables, admission history and terminal control state. Successful opted-in results and their publication outbox entries commit together; object custody and verified lake projection acknowledgements remain separate derived receipts. Without a configured corpus database, the surface declares its demonstration source. Implementation and connection settings do not establish deployment, backups or managed-database recovery.', where: '/stream' },
     invariant: 'Canonical state is not the entire corpus, and valid time is not knowledge time. A snapshot is a version, so table time travel must never be confused with the record\'s own two clocks.',
-    before: 'An admission authority, which now exists and is installed. src/domain/admission.ts is the gate and src/db/admitRecords.ts is the one door: it writes an admitted row, its ruling and its ancestry in one transaction, records refusals as well as admissions, and never supplies its own authority. A structural test holds it to being the only writer of that table apart from the seeder, whose rows are stamped DEMONSTRATION and are refused by the response pipeline rather than served as corpus state. What remains is the act: nothing has been admitted, so the store is behind a gate no candidate has yet passed.'
+    before: 'An admission authority is required. src/db/admitRecords.ts remains the one door and never supplies its own authority. Complete declared serving projections, transactional ruling and ancestry binding, and validated readback are required for admitted rows. Incomplete or mismatched history refuses rather than gaining invented metadata. Production migration, restricted-role operation and recovery still need qualification.'
+  },
+  {
+    id: 'analytics',
+    dataClass: 'Versioned derived terminal-result indexes and analytical snapshots',
+    kind: 'LAKEHOUSE',
+    why: 'Columnar snapshot reads preserve analytical versions separately from operational transactions and original evidence or result bytes.',
+    candidates: ['Apache Iceberg v2 with Parquet', 'PyIceberg local SQLite catalog for qualification', 'A production catalog remains unselected'],
+    fabric: 'projection',
+    here: { state: 'LOCAL_PILOT', what: 'tools/terminal_lake writes real Iceberg and Parquet through a local SQLite catalog. The explicit terminal lake bridge accepts only fixture-only published results after current permission and exact artifact-byte verification, then requires fresh-process snapshot readback before a PostgreSQL derived projection acknowledgement. This is connected local qualification, not real-data admission, a production cloud catalog or customer delivery.' },
+    invariant: 'Evidence is not state, and valid time is not knowledge time. Iceberg commit time is neither clock. A derived snapshot acknowledgement preserves exact membership and earlier correction history without becoming canonical authority.',
+    before: 'Real-data source-use authority, production object and catalog custody, retained snapshot policy and independently qualified recovery are required before expanding this explicit fixture-only projection.',
   },
   {
     id: 'text',
@@ -129,19 +140,20 @@ export const STORAGE_CLASSES: readonly StorageClass[] = [
   },
 ];
 
-/** Nothing above is installed. Stated once, so no surface has to imply it separately. */
+/** Repository implementation state, not an assertion about externally running services. */
 export const STORAGE_PRESENT_STATE = {
-  summary: 'One store is selected and wired: PostgreSQL holds the corpus tables, and the corpus adapter reads them when a database is configured. The other five classes are still held by local content-addressed files under operator-selected roots and by committed fixtures.',
-  roots: '.payload/*, selected per command by the operator; never a deployment path',
-  dependencies: 'package.json declares pg and drizzle-orm for the corpus tables. It declares no object store, search index, graph, vector or geospatial dependency.',
-  /** Which store kinds a dependency exists for. The test below holds this true. */
-  wired: ['LAKEHOUSE'] as const,
+  summary: 'PostgreSQL is the configured relational adapter, not the lakehouse. Object adapters are wired to opt-in terminal result publication; legacy local evidence is unchanged and Exoscale SOS remains provider-unqualified. A separate fixture-only Iceberg local pilot has an explicit verified bridge and PostgreSQL acknowledgements. Graphs remain fixture-based and vectors absent. Installed dependencies do not prove running services or production deployment.',
+  roots: 'Legacy evidence uses operator-selected .payload/* roots; local object retention and tools/terminal_lake require explicit dedicated roots, not implicit deployment paths',
+  dependencies: 'package.json declares pg and drizzle-orm for PostgreSQL and @aws-sdk/client-s3 for the SOS adapter. tools/terminal_lake/requirements.lock.txt separately pins optional Python Iceberg, Arrow and SQL catalog dependencies. No graph, vector, search-index or geospatial database dependency is declared.',
+  /** Application adapters wired when explicitly configured, not observed deployed services. */
+  wired: ['OBJECT_STORE', 'RELATIONAL'] as const,
 } as const;
 
 /** The order a store earns its place, from the sequencing the classes state. */
 export const STORAGE_SEQUENCE: readonly string[] = [
-  'Object storage first: it is the only class whose information already exists in volume and whose invariant is already enforced.',
-  'The records store arrived before the admission authority, not after. That was a live risk while it lasted: rows in the releases and records tables are canonical-shaped, so an unadmitted candidate written there would be indistinguishable from a version. Writes now route through one door, a structural test holds it to being the only one, and the records table carries the entry stamp \u2014 source time, acquisition time and declared provenance \u2014 that tells an admitted row from a demonstration one. The ordering is still what it was; what changed is that it no longer leaves a hole.',
+  'Qualify remote object custody before production use. The connected terminal outbox requires verified readback; it neither migrates legacy evidence nor turns an installed SDK into provider qualification.',
+  'Admission precedes canonical serving: one door binds authority, complete declared serving projections, rulings and ancestry transactionally, with validated readback. Demonstration and refused histories are not promoted by moving storage.',
+  'The fixture-only Iceberg bridge is a derived projection of retained terminal results. Preserve earlier snapshots and verify fresh-process readback; qualify real-data authority and production catalog custody before widening it.',
   'Search and geospatial are projections of an admitted corpus and are rebuildable from it; they can arrive late and be rebuilt.',
   'The graph waits on one identity authority, and the vector store on declared models with recomputable inputs.',
 ];

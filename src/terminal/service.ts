@@ -9,6 +9,7 @@ import { canonicalJson } from '@/fixtures/digest';
 import type { AuthenticatedTerminal } from './auth';
 import { assertAuthenticated } from './auth';
 import { recordTerminalRead } from './readLedger';
+import { enqueuePublication, publicationHasCapacity } from './publication';
 import { commitment, id, limits, MINING_CAPABILITY, miningRequest, refuse, reviewRequest, terminalCommand, TERMINAL_PROTOCOL, type MiningRequest } from './contracts';
 import type { TerminalDatabase, TerminalSql } from './database';
 import { pinRelease, recheckPermission, recheckSnapshotSources, snapshotDigest, validateMiningResult, type MiningExecutor, type MiningSnapshot, type MiningWork } from './mining';
@@ -36,7 +37,8 @@ const summary = (job: JobSummary) => ({
  * The worker only computes a fixed pure method; it cannot perform acquisition, delivery or admission. */
 export class TerminalService {
   constructor(private readonly db: TerminalDatabase, private readonly source: CorpusSource,
-    private readonly methodDigest: () => string, private readonly executor: MiningExecutor) {}
+    private readonly methodDigest: () => string, private readonly executor: MiningExecutor,
+    private readonly retentionDestination?: string) {}
 
   private async principal(sql: TerminalSql, who: AuthenticatedTerminal) {
     assertAuthenticated(who);
@@ -59,7 +61,7 @@ export class TerminalService {
     switch (parsed.command) {
       case 'discover': return { protocol: TERMINAL_PROTOCOL, identity: { principalId: who.principalId, terminalId: who.terminalId, purpose: who.purpose, corpusScope: who.corpusScope, canReview: who.canReview },
         reads: MCP_TOOLS.filter(t => admitCall(who.session, t.name, new Date().toISOString()).admitted).map(t => t.name), mining: who.terminalClass === 'FIRM_INTERNAL' && who.purpose === 'internal_research'
-          ? { capability: MINING_CAPABILITY, methodDigest: this.methodDigest(), limits, reviewRequired: true, output: 'NOT_VALIDATED', sideEffects: ['retain exact request', 'retain computed candidate and receipt'] } : null,
+          ? { capability: MINING_CAPABILITY, methodDigest: this.methodDigest(), retentionDestination: this.retentionDestination, limits, reviewRequired: true, output: 'NOT_VALIDATED', sideEffects: ['retain exact request', 'retain computed candidate and receipt'] } : null,
         operating: who.terminalClass === 'FIRM_INTERNAL' ? operatingSnapshot() : undefined };
       case 'read': {
         const served = await serveToolCall(who.session, parsed.tool, parsed.args, new Date().toISOString());
@@ -94,6 +96,7 @@ export class TerminalService {
     const prior = await this.db.transaction(async sql => (await sql.query<{ job_id: string; request_digest: string }>('SELECT job_id,request_digest FROM payload_terminal_job WHERE owner_id=$1 AND idempotency_key=$2', [who.principalId, request.idempotencyKey])).rows[0]);
     if (prior) { if (prior.request_digest !== requestDigest) refuse('IDEMPOTENCY_CONFLICT'); return this.getJob(who, prior.job_id); }
     if (request.methodDigest !== this.methodDigest()) refuse('MINING_METHOD_CHANGED');
+    if (request.retentionDestination !== this.retentionDestination) refuse('RETENTION_DESTINATION_CHANGED');
     const snapshot = await pinRelease(this.source, who, request.releaseId), retainedDigest = snapshotDigest(snapshot);
     if (admitCapability(who.session, capabilityById(MINING_CAPABILITY), new Date().toISOString(), snapshot.corpusId).outcome !== 'PROPOSAL_REQUIRED') refuse('MINING_CAPABILITY_REFUSED', 403);
     if (retainedDigest !== request.snapshotDigest) refuse('SNAPSHOT_CHANGED');
@@ -134,6 +137,7 @@ export class TerminalService {
       await lock(sql); await this.principal(sql, who);
       const job = await this.visibleJob(sql, who, review.jobId);
       if (job.state !== 'PROPOSED') refuse('PROPOSAL_ALREADY_REVIEWED');
+      if (review.response === 'APPROVE' && job.request.retentionDestination && job.request.retentionDestination !== this.retentionDestination) refuse('RETENTION_DESTINATION_CHANGED');
       if (review.actionDigest !== job.action_digest || (review.response === 'APPROVE' && job.method_digest !== this.methodDigest())) refuse('REVIEW_DIGEST_MISMATCH');
       await sql.query(`INSERT INTO proposal_review(review_id,proposal_id,reviewed_action_digest,response,reviewer_kind,reviewer,reasoning,reviewed_at) VALUES($1,$2,$3,$4,$5,$6,$7,clock_timestamp())`,
         [`REVIEW-${job.job_id}`, job.job_id, review.actionDigest, review.response, who.kind, who.principalId, review.reason]);
@@ -151,7 +155,8 @@ export class TerminalService {
     return this.db.transaction(async sql => {
       const job = await this.visibleJob(sql, who, jobId);
       const corrections = await sql.query<{ job_id: string; state: string }>('SELECT job_id,state FROM payload_terminal_job WHERE corrects_job_id=$1 AND owner_id=$2 ORDER BY created_at,job_id LIMIT 100', [job.job_id, job.owner_id]);
-      return { ...summary(job), corrections: corrections.rows.map(r => ({ jobId: r.job_id, state: r.state })) };
+      const retention = await sql.query('SELECT publication_id,destination,state,receipt_digest,failure_code FROM payload_terminal_publication WHERE job_id=$1 ORDER BY publication_id LIMIT 10', [job.job_id]);
+      return { ...summary(job), corrections: corrections.rows.map(r => ({ jobId: r.job_id, state: r.state })), retention: retention.rows };
     });
   }
   async result(who: AuthenticatedTerminal, jobId: string) {
@@ -187,7 +192,16 @@ export class TerminalService {
       const cap = operatingSnapshot().limits?.productionWorkers;
       if (!cap) refuse('EXECUTION_POLICY_INVALID', 503);
       if ((await sql.query("SELECT job_id FROM payload_terminal_job WHERE state='RUNNING' LIMIT $1", [cap])).rows.length >= cap) return undefined;
-      const job = (await sql.query<Job>("SELECT * FROM payload_terminal_job WHERE state='QUEUED' ORDER BY created_at,job_id LIMIT 1 FOR UPDATE")).rows[0];
+      // Old jobs without retention remain SQL-only. A changed configured target
+      // cannot silently move an already reviewed request to another destination.
+      let retentionCapacity = false;
+      if (this.retentionDestination) {
+        const reservations = (await sql.query<{ total: number }>("SELECT count(*)::int total FROM payload_terminal_job WHERE state='RUNNING' AND request ? 'retentionDestination'")).rows[0].total;
+        retentionCapacity = await publicationHasCapacity(sql, reservations);
+      }
+      const job = (await sql.query<Job>(`SELECT * FROM payload_terminal_job WHERE state='QUEUED'
+        AND (NOT (request ? 'retentionDestination') OR ($2::boolean AND request->>'retentionDestination'=$1))
+        ORDER BY created_at,job_id LIMIT 1 FOR UPDATE`, [this.retentionDestination ?? null, retentionCapacity])).rows[0];
       if (!job) return undefined;
       const authority = (await sql.query<{ granted_at: string; expires_at: string; action_digest: string }>(`SELECT granted_at,expires_at,action_digest FROM execution_authorization a WHERE authorization_id=$1 AND expires_at>clock_timestamp() AND NOT EXISTS(SELECT 1 FROM authorization_revocation r WHERE r.authorization_id=a.authorization_id AND r.revoked_at<=clock_timestamp())`, [job.authorization_id])).rows[0];
       if (!authority || authority.action_digest !== job.action_digest || job.method_digest !== this.methodDigest()) {
@@ -222,6 +236,9 @@ export class TerminalService {
         if (!authorized.rows.length) refuse('AUTHORITY_UNAVAILABLE');
         const receipt = commitment(result);
         await sql.query('INSERT INTO payload_terminal_result(job_id,result_digest,result) VALUES($1,$2,$3::jsonb)', [claim.job_id, receipt, JSON.stringify(result)]);
+        if (claim.request.retentionDestination) await enqueuePublication(sql, {
+          jobId: claim.job_id, resultDigest: receipt, bytes: Buffer.from(canonicalJson(result), 'utf8'), destination: claim.request.retentionDestination,
+        });
         await sql.query(`INSERT INTO attempt_reconciliation(reconciliation_id,attempt_id,reconciled_at,found,basis) VALUES($1,$2,clock_timestamp(),'DID_HAPPEN',$3)`, [`RECON-${claim.job_id}-${claim.attempts}`, `TRY-${claim.job_id}-${claim.attempts}`, `Atomic result committed: ${receipt}`]);
         await sql.query("UPDATE payload_terminal_job SET state='SUCCEEDED',claim_token=NULL,lease_until=NULL WHERE job_id=$1", [claim.job_id]);
       });

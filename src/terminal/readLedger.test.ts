@@ -5,12 +5,13 @@ import { join, relative, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CAPABILITIES } from '@/domain/capabilityRegistry';
 import { EXECUTION_LEDGER_DDL, EXECUTION_LEDGER_GUARDS } from '@/db/executionLedger';
+import { TERMINAL_LEDGER_DDL, TERMINAL_LEDGER_GUARDS, terminalCapabilitySeed } from '@/db/terminalLedger';
 import { FIXTURE_CORPORA } from '@/fixtures';
 import { serveCapabilityCall, serveToolCall } from '@/mcp/serve';
 import { authenticateTerminal, tokenDigest, type AuthenticatedTerminal, type TerminalRegistration } from './auth';
 import type { TerminalDatabase } from './database';
 import { recordTerminalRead } from './readLedger';
-import { installTerminalSchema, TERMINAL_JOB_DDL, TERMINAL_SCHEMA_VERSION } from './schema';
+import { installTerminalSchema, TERMINAL_JOB_DDL, TERMINAL_READ_IDENTITY_DDL, TERMINAL_SCHEMA_VERSION } from './schema';
 
 vi.mock('@/adapter/corpusSource', async importOriginal => {
   const actual = await importOriginal<typeof import('@/adapter/corpusSource')>();
@@ -75,7 +76,18 @@ afterEach(async () => {
 });
 
 describe('versioned durable read ledger migration', () => {
-  it('installs and verifies version 2 repeatedly without duplicating the registry', async () => {
+  it('upgrades the released version 2 without replacing its read or execution tables', async () => {
+    await client.exec(EXECUTION_LEDGER_DDL + EXECUTION_LEDGER_GUARDS + TERMINAL_JOB_DDL
+      + TERMINAL_LEDGER_DDL + TERMINAL_LEDGER_GUARDS + terminalCapabilitySeed() + TERMINAL_READ_IDENTITY_DDL);
+    await client.exec('UPDATE payload_terminal_control SET schema_version=2');
+    const before = (await client.query('SELECT * FROM terminal_capability ORDER BY capability_id')).rows;
+    await installTerminalSchema(db); await installTerminalSchema(db);
+    expect((await client.query('SELECT * FROM terminal_capability ORDER BY capability_id')).rows).toEqual(before);
+    expect((await client.query('SELECT * FROM payload_terminal_publication')).rows).toEqual([]);
+    expect((await client.query('SELECT * FROM payload_terminal_lake_receipt')).rows).toEqual([]);
+    expect((await client.query('SELECT schema_version FROM payload_terminal_control')).rows).toEqual([{ schema_version: TERMINAL_SCHEMA_VERSION }]);
+  });
+  it('installs and verifies the current version repeatedly without duplicating the registry', async () => {
     await installTerminalSchema(db); await installTerminalSchema(db);
     expect((await client.query('SELECT schema_version FROM payload_terminal_control')).rows).toEqual([{ schema_version: TERMINAL_SCHEMA_VERSION }]);
     expect((await client.query('SELECT capability_id FROM terminal_capability')).rows).toHaveLength(CAPABILITIES.length);
@@ -92,7 +104,7 @@ describe('versioned durable read ledger migration', () => {
     await installTerminalSchema(db); await installTerminalSchema(db);
     expect((await client.query('SELECT * FROM operation_proposal')).rows).toEqual(prior);
     expect((await client.query('SELECT * FROM releases ORDER BY release_id')).rows).toEqual(releases);
-    expect((await client.query('SELECT schema_version FROM payload_terminal_control')).rows).toEqual([{ schema_version: 2 }]);
+    expect((await client.query('SELECT schema_version FROM payload_terminal_control')).rows).toEqual([{ schema_version: TERMINAL_SCHEMA_VERSION }]);
   });
 
   it('refuses registry drift instead of treating a stale capability row as verified', async () => {

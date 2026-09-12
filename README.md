@@ -13,6 +13,12 @@ customer workloads and principal trading are outside the active offering.
 
 ## What is actually here
 
+The authenticated terminal-neutral operating path and its optional durable object
+retention/local Iceberg qualification are documented in
+[`docs/DATA_INFRASTRUCTURE_INCREMENT.md`](docs/DATA_INFRASTRUCTURE_INCREMENT.md).
+PostgreSQL remains authoritative; these additions are not a cloud deployment or
+a permitted real-data delivery claim.
+
 Read this before anything else, because the rest of the repository is careful
 about it and a reader should be too.
 

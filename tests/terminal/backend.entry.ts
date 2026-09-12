@@ -12,11 +12,18 @@ import { terminalHttp } from '../../src/terminal/http';
 import { executeMining, workerArtifact, type MiningExecutor } from '../../src/terminal/mining';
 import { installTerminalSchema } from '../../src/terminal/schema';
 import { TerminalService } from '../../src/terminal/service';
+import { LocalImmutableObjectStore } from '../../src/data-os/local-immutable-object-store';
+import { PublicationWorker } from '../../src/terminal/publication';
+import { publicationPermission } from '../../src/terminal/retention';
+import { publishTerminalLake } from '../../src/terminal/lake';
+import { localLakeConfig, lakeDestination, runLocalLake } from '../../src/terminal/lakeRuntime';
 
-type Init = { kind: 'initialize'; dataDir: string; principals: string; holdFirstClaim: boolean; browserUi?: boolean };
+type Init = { kind: 'initialize'; dataDir: string; principals: string; holdFirstClaim: boolean; browserUi?: boolean; storage?: boolean; holdPublication?: boolean; lake?: { python: string; packages: string } };
 let client: PGlite;
 let server: Server;
 let service: TerminalService;
+let publisher: PublicationWorker | undefined;
+let lakePublish: ((publicationId: string) => Promise<unknown>) | undefined;
 let stopping = false;
 let running = false;
 let loop: Promise<void> | undefined;
@@ -59,7 +66,33 @@ async function initialize(value: Init) {
     }
     return executeMining(work);
   };
-  service = new TerminalService(database, new FixtureCorpusSource(), () => workerArtifact().digest, executor);
+  const source = new FixtureCorpusSource();
+  const store = value.storage ? new LocalImmutableObjectStore(resolve(dirname(value.dataDir), 'objects')) : undefined;
+  service = new TerminalService(database, source, () => workerArtifact().digest, executor, store?.destination);
+  if (store) {
+    let holdPublication = value.holdPublication;
+    publisher = new PublicationWorker(database, {
+      destination: store.destination,
+      ensure: async (key, bytes, signal) => {
+        const receipt = await store.ensure(key, bytes, signal);
+        if (holdPublication) {
+          holdPublication = false;
+          send({ kind: 'publication-held', receipt });
+          await new Promise<void>(() => {}); // Actual bytes exist, but SQL acknowledgement has not happened.
+        }
+        return receipt;
+      },
+      get: (key, max, signal) => store.get(key, max, signal),
+      readReceipt: (receipt, signal) => store.readReceipt(receipt, signal),
+    }, { permit: publicationPermission(database, source, store.destination) });
+    if (value.lake) {
+      const config = localLakeConfig({ PAYLOAD_LAKE_PYTHON: value.lake.python, PAYLOAD_LAKE_PYTHON_PACKAGES: value.lake.packages,
+        PAYLOAD_LAKE_ROOT: resolve(dirname(value.dataDir), 'lake') });
+      await runLocalLake(config, 'init');
+      lakePublish = (publicationId: string) => publishTerminalLake(database, source, store, publicationId,
+        lakeDestination(config), (mode, input) => runLocalLake(config, mode, input));
+    }
+  }
   // Fixed test artifact only; never expose arbitrary paths or embed a credential.
   const browserBundle = value.browserUi ? readFileSync(resolve('.stamp/terminal-qualification-browser.js')) : null;
   const browserPage = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Fixture TerminalWorkbench qualification</title></head><body><main id="qualification-root"></main><script src="/qualification/terminal-workbench.js"></script></body></html>';
@@ -101,7 +134,11 @@ function startWorkers() {
   running = true;
   loop = (async () => {
     while (!stopping) {
-      try { if (await service.runNext()) continue; }
+      try {
+        const mined = await service.runNext();
+        const published = publisher ? await publisher.runNext() : false;
+        if (mined || published) continue;
+      }
       catch { send({ kind: 'worker-failed' }); return; }
       await delay(200);
     }
@@ -127,12 +164,14 @@ async function stats() {
 }
 let initialized = false;
 process.on('message', message => {
-  const value = message as { kind?: string };
+  const value = message as { kind?: string; publicationId?: string };
   if (!initialized && value?.kind === 'initialize') {
     initialized = true;
     void initialize(value as Init).catch(() => { send({ kind: 'failed', code: 'QUALIFICATION_START_FAILED' }); process.exitCode = 1; void shutdown(); });
   } else if (value?.kind === 'start-workers' && service) startWorkers();
   else if (value?.kind === 'stats' && service) void stats().catch(() => send({ kind: 'failed', code: 'QUALIFICATION_STATS_FAILED' }));
+  else if (value?.kind === 'lake' && lakePublish && value.publicationId) void lakePublish(value.publicationId)
+    .then(receipt => send({ kind: 'lake', receipt })).catch(() => send({ kind: 'failed', code: 'QUALIFICATION_LAKE_FAILED' }));
   else if (value?.kind === 'shutdown') void shutdown();
 });
 process.on('disconnect', () => { void shutdown(); });

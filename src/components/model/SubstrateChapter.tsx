@@ -213,10 +213,10 @@ export function SubstrateChapter() {
       </Section>
 
       <Section title="Where the corpus is stored" id="pm-storage">
-        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Six classes of information with different access patterns ask for different stores. The technologies below are candidates, not selections. {STORAGE_PRESENT_STATE.summary}</p>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{STORAGE_CLASSES.length} information classes have distinct storage responsibilities. The inventory distinguishes configured adapters, local qualification and future candidates; it does not report live deployment health. {STORAGE_PRESENT_STATE.summary}</p>
         <div className="surface overflow-x-auto" tabIndex={0}>
-          <table className="ledger-table text-[12px]" aria-label="Storage classes and their candidate stores">
-            <thead><tr><th scope="col">Information</th><th scope="col">Store kind</th><th scope="col">Candidates</th><th scope="col">Fabric</th><th scope="col">Here</th></tr></thead>
+          <table className="ledger-table text-[12px]" aria-label="Storage classes and implementation status">
+            <thead><tr><th scope="col">Information</th><th scope="col">Store kind</th><th scope="col">Technology / candidates</th><th scope="col">Fabric</th><th scope="col">Here</th></tr></thead>
             <tbody>
               {STORAGE_CLASSES.map((c) => (
                 <tr key={c.id} data-storage={c.id} data-state={c.here.state}>
@@ -237,7 +237,7 @@ export function SubstrateChapter() {
               <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>{c.why}</p>
               <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}><span className="label-sm">Must not break</span> {c.invariant}</p>
               <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}><span className="label-sm">Here</span> {c.here.what}{c.here.where ? <> <Link href={c.here.where} style={{ color: 'var(--info)' }}>{c.here.where}</Link></> : null}</p>
-              <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}><span className="label-sm">Before choosing one</span> {c.before}</p>
+              <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}><span className="label-sm">Adoption gate</span> {c.before}</p>
             </article>
           ))}
         </div>

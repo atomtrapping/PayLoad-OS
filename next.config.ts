@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       // spawns scripts/gat-audit-runner.py, and src/adapter/productionSource.ts reads
       // examples/ during the /candidates render.
       './**/*.test.ts', './**/*.test.tsx', './**/*.spec.ts',
-      './tests/**/*', './clients/**/*', './tsconfig.tsbuildinfo', './package-lock.json',
+      './tests/**/*', './clients/**/*', './tools/terminal_lake/**/*', './tsconfig.tsbuildinfo', './package-lock.json',
     ],
   },
   // The /candidates server render reads these committed bytes and recomputes their

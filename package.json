@@ -7,6 +7,7 @@
     "terminal:build": "esbuild scripts/terminal-mining-worker.entry.ts --bundle --platform=node --format=cjs --alias:@=./src --outfile=.stamp/terminal-mining-worker.cjs --log-level=warning",
     "terminal:service": "esbuild scripts/terminal-service.entry.ts --bundle --platform=node --format=esm --packages=external --alias:@=./src --outfile=.stamp/terminal-service.mjs --log-level=warning && node .stamp/terminal-service.mjs",
     "terminal:cli": "node clients/javascript/terminal-cli.mjs",
+    "terminal:lake": "esbuild scripts/terminal-lake.entry.ts --bundle --platform=node --format=esm --packages=external --alias:@=./src --outfile=.stamp/terminal-lake.mjs --log-level=warning && node .stamp/terminal-lake.mjs",
     "terminal:qualify": "npm run terminal:build && node tests/terminal/qualification.mjs",
     "predev": "node scripts/earth-assets.mjs",
     "dev": "next dev -p 3000 -H 127.0.0.1",
@@ -47,7 +48,9 @@
     "mutate:dossier": "node scripts/mutate-ledger.mjs src/db/dossierLedger.mutations.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1128.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "@smithy/node-http-handler": "4.12.1",
     "cesium": "1.124.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.6",

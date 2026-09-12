@@ -11,12 +11,18 @@ export interface TerminalDatabase {
 export function postgresTerminalDatabase(pool: Pool): TerminalDatabase {
   return { async transaction(work) {
     const client = await pool.connect();
+    let discard = false;
     try {
       await client.query('BEGIN');
       await client.query("SET LOCAL search_path TO public; SET LOCAL statement_timeout TO '10s'; SET LOCAL lock_timeout TO '3s'");
       const result = await work({ query: async <T>(sql: string, values?: unknown[]) => ({ rows: (await client.query(sql, values)).rows as T[] }) });
       await client.query('COMMIT'); return result;
-    } catch (error) { await client.query('ROLLBACK').catch(() => {}); throw error; }
-    finally { client.release(); }
+    } catch (error) {
+      try { await client.query('ROLLBACK'); } catch { discard = true; }
+      // A failed COMMIT response is ambiguous. Callers must inspect durable
+      // identity on retry; this adapter never repeats work or infers rollback.
+      throw error;
+    }
+    finally { client.release(discard); }
   } };
 }

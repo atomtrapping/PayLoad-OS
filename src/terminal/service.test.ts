@@ -11,6 +11,8 @@ import type { TerminalDatabase } from './database';
 import { computeMining, type MiningExecutor, type MiningSnapshot } from './mining';
 import { installTerminalSchema } from './schema';
 import { TerminalService } from './service';
+import { LocalImmutableObjectStore } from '@/data-os/local-immutable-object-store';
+import { createPublicationWorker } from './retention';
 
 const METHOD = `sha256:${'a'.repeat(64)}`;
 const CORPUS = 'landshark.terminal-parcels';
@@ -291,4 +293,161 @@ describe('file-backed terminal service qualification, not production admission',
     await expect(client.query("UPDATE payload_terminal_job SET state='QUEUED' WHERE job_id=$1", [job.jobId])).rejects.toThrow('terminal_job_terminal');
     expect(await service.result(first, job.jobId)).toEqual(result);
   });
+});
+
+describe('internal retention attaches to the reviewed terminal action', () => {
+  it('keeps an incompatible queued destination intact without blocking later eligible work', async () => {
+    const a = `sha256:${'a'.repeat(64)}`, b = `sha256:${'b'.repeat(64)}`;
+    service = new TerminalService(database, source, () => METHOD, execute, a);
+    const prepared = await prepare('old-destination');
+    const old = await service.submit(first, { ...prepared.request, retentionDestination: a }); await approve(old);
+    service = new TerminalService(database, source, () => METHOD, execute, b);
+    const next = await service.submit(first, { ...prepared.request, idempotencyKey: 'current-destination', retentionDestination: b }); await approve(next);
+    await service.runNext();
+    expect((await service.getJob(first, old.jobId)).state).toBe('QUEUED');
+    expect((await service.getJob(first, next.jobId)).state).toBe('SUCCEEDED');
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('withholds object IO when current source permission cannot be established after computation', async () => {
+    const store = new LocalImmutableObjectStore(join(directory, 'objects'));
+    service = new TerminalService(database, source, () => METHOD, execute, store.destination);
+    const prepared = await prepare();
+    const job = await service.submit(first, { ...prepared.request, retentionDestination: store.destination }); await approve(job); await service.runNext();
+    const ensure = vi.spyOn(store, 'ensure'), readback = vi.spyOn(store, 'readReceipt');
+    vi.spyOn(source, 'getRelease').mockResolvedValue(undefined);
+    const publisher = createPublicationWorker(database, source, store); await publisher.runNext();
+    expect(ensure).not.toHaveBeenCalled(); expect(readback).not.toHaveBeenCalled();
+    expect((await publisher.list()).publications[0]).toMatchObject({ state: 'RECONCILE', failureCode: 'PUBLICATION_PERMISSION_UNAVAILABLE' });
+  });
+
+  it('atomically enqueues a successful result, pins its destination and preserves it through correction', async () => {
+    const store = new LocalImmutableObjectStore(join(directory, 'objects'));
+    service = new TerminalService(database, source, () => METHOD, execute, store.destination);
+    const { request } = await prepare();
+    await expect(service.submit(first, request)).rejects.toMatchObject({ code: 'RETENTION_DESTINATION_CHANGED' });
+    const reviewed = { ...request, retentionDestination: store.destination };
+    const job = await service.submit(first, reviewed); await approve(job); await service.runNext();
+    const result = await service.result(first, job.jobId);
+    const publisher = createPublicationWorker(database, source, store);
+    const pending = (await publisher.list()).publications;
+    expect(pending).toHaveLength(1); expect(pending[0]).toMatchObject({ state: 'PENDING', resultDigest: result.resultDigest });
+    await publisher.runNext();
+    const old = await publisher.read(pending[0].publicationId);
+    expect(old?.state).toBe('PUBLISHED');
+    expect(await publisher.runNext()).toBe(false);
+    const bytes = await store.readReceipt(old!.receipt!, AbortSignal.timeout(1000));
+    expect(commitment(JSON.parse(Buffer.from(bytes).toString('utf8')))).toBe(result.resultDigest);
+    const secondRequest = await prepare('correction-retained', NEXT_RELEASE, { jobId: job.jobId, reason: 'Declared fixture correction.' });
+    const correction = await service.submit(first, { ...secondRequest.request, retentionDestination: store.destination });
+    await approve(correction); await service.runNext(); await publisher.runNext();
+    expect((await publisher.list()).publications).toHaveLength(2);
+    expect(await publisher.read(old!.publicationId)).toEqual(old);
+    expect(await service.result(first, job.jobId)).toEqual(result);
+    expect(await store.readReceipt(old!.receipt!, AbortSignal.timeout(1000))).toEqual(bytes);
+    await restart();
+    expect((await service.getJob(first, job.jobId)).retention).toMatchObject([{ state: 'PUBLISHED' }]);
+  }, 30_000);
+
+  it('refuses destination drift at approval but permits denial and exact submit replay', async () => {
+    const destination = `sha256:${'c'.repeat(64)}`;
+    service = new TerminalService(database, source, () => METHOD, execute, destination);
+    const { request } = await prepare();
+    const pinned = { ...request, retentionDestination: destination };
+    const job = await service.submit(first, pinned);
+    service = new TerminalService(database, source, () => METHOD, execute, `sha256:${'d'.repeat(64)}`);
+    expect(await service.submit(first, pinned)).toEqual(job);
+    await expect(approve(job)).rejects.toMatchObject({ code: 'RETENTION_DESTINATION_CHANGED' });
+    expect((await service.review(reviewer, { jobId: job.jobId, actionDigest: job.actionDigest, response: 'DENY', reason: 'Destination changed.' })).state).toBe('DENIED');
+  });
+
+  it('does not backfill old SQL-only actions when retention is enabled', async () => {
+    const { job } = await proposal(); await approve(job);
+    service = new TerminalService(database, source, () => METHOD, execute, `sha256:${'c'.repeat(64)}`);
+    await service.runNext();
+    expect((await service.getJob(first, job.jobId)).state).toBe('SUCCEEDED');
+    expect((await client.query('SELECT * FROM payload_terminal_publication')).rows).toHaveLength(0);
+  });
+});
+
+describe('retention honors the lifetime of its exact reviewed action', () => {
+  async function retainedJob(key: string) {
+    const store = new LocalImmutableObjectStore(join(directory, 'authority-objects'));
+    service = new TerminalService(database, source, () => METHOD, execute, store.destination);
+    const { request } = await prepare(key);
+    const job = await service.submit(first, { ...request, retentionDestination: store.destination });
+    await approve(job); await service.runNext();
+    expect((await service.getJob(first, job.jobId)).state).toBe('SUCCEEDED');
+    return { job, store, publisher: createPublicationWorker(database, source, store) };
+  }
+
+  it('allows an active grant, then refuses publication after revocation without hiding historical SQL results', async () => {
+    const { publicationPermission } = await import('./retention');
+    const { job, store, publisher } = await retainedJob('retention-revoked');
+    const permitted = publicationPermission(database, source, store.destination);
+    await expect(permitted(job.jobId)).resolves.toBeUndefined();
+    const historical = await service.result(first, job.jobId);
+    const ensure = vi.spyOn(store, 'ensure'), read = vi.spyOn(store, 'readReceipt');
+    await client.query(`INSERT INTO authorization_revocation(revocation_id,authorization_id,authorization_granted_at,
+      authorization_expires_at,revoked_by_kind,revoked_by,reason,revoked_at)
+      SELECT $1,authorization_id,granted_at,expires_at,'HUMAN',$2,'Stop the uncompleted retained-object effect',clock_timestamp()
+      FROM execution_authorization WHERE proposal_id=$3`, [`REVOKE-${job.jobId}`, reviewer.principalId, job.jobId]);
+    await expect(permitted(job.jobId)).rejects.toMatchObject({ code: 'PUBLICATION_AUTHORITY_UNAVAILABLE' });
+    expect(await publisher.runNext()).toBe(true);
+    expect(ensure).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled();
+    expect((await publisher.list()).publications).toMatchObject([{ state: 'RECONCILE', failureCode: 'PUBLICATION_PERMISSION_UNAVAILABLE' }]);
+    expect(await service.result(first, job.jobId)).toEqual(historical);
+  }, 30_000);
+
+  it('refuses an expired grant before any object IO while preserving already-computed SQL results', async () => {
+    const { publicationPermission } = await import('./retention');
+    const { session: _session, ...identity } = reviewer; void _session;
+    const token = 'expiry-fixture-token-'.repeat(3);
+    reviewer = authenticateTerminal(new Request('http://localhost/api/terminal', { headers: { authorization: `Bearer ${token}` } }),
+      JSON.stringify([{ ...identity, tokenSha256: tokenDigest(token), expiresAt: new Date(Date.now() + 2500).toISOString() }]));
+    const { job, store, publisher } = await retainedJob('retention-expired');
+    const permitted = publicationPermission(database, source, store.destination);
+    await expect(permitted(job.jobId)).resolves.toBeUndefined();
+    const historical = await service.result(first, job.jobId);
+    const ensure = vi.spyOn(store, 'ensure'), read = vi.spyOn(store, 'readReceipt');
+    const expires = (await client.query<{ expires_at: Date }>('SELECT expires_at FROM execution_authorization WHERE proposal_id=$1', [job.jobId])).rows[0].expires_at;
+    // Let the real short grant expire; do not rewrite its immutable history.
+    await new Promise(resolvePause => setTimeout(resolvePause, Math.max(0, new Date(expires).getTime() - Date.now() + 100)));
+    await expect(permitted(job.jobId)).rejects.toMatchObject({ code: 'PUBLICATION_AUTHORITY_UNAVAILABLE' });
+    await publisher.runNext(); expect(ensure).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled();
+    expect(await service.result(first, job.jobId)).toEqual(historical);
+  }, 30_000);
+
+  it('rechecks action and grant digests before using source permissions or storage', async () => {
+    const { publicationPermission } = await import('./retention');
+    const { job, store } = await retainedJob('retention-action-binding');
+    const currentSource = vi.spyOn(source, 'getRelease');
+    for (const field of ['authorization_action_digest', 'action_digest']) {
+      const corruptedResponse: TerminalDatabase = { transaction: work => database.transaction(sql => work({
+        query: async <T>(query: string, values?: unknown[]) => {
+          const result = await sql.query<T>(query, values);
+          return { rows: result.rows.map(row => ({ ...row, [field]: `sha256:${'f'.repeat(64)}` })) };
+        },
+      })) };
+      await expect(publicationPermission(corruptedResponse, source, store.destination)(job.jobId)).rejects.toMatchObject({ code: 'PUBLICATION_BINDING_INVALID' });
+    }
+    expect(currentSource).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it('refuses a grant revoked while asynchronous source permission lookup is in progress', async () => {
+    const { job, store, publisher } = await retainedJob('retention-revoked-during-rights');
+    const ensure = vi.spyOn(store, 'ensure'), read = vi.spyOn(store, 'readReceipt');
+    const actualGet = source.getRelease.bind(source);
+    vi.spyOn(source, 'getRelease').mockImplementationOnce(async releaseId => {
+      const release = await actualGet(releaseId);
+      await client.query(`INSERT INTO authorization_revocation(revocation_id,authorization_id,authorization_granted_at,
+        authorization_expires_at,revoked_by_kind,revoked_by,reason,revoked_at)
+        SELECT $1,authorization_id,granted_at,expires_at,'HUMAN',$2,'Revoked during source permission lookup',clock_timestamp()
+        FROM execution_authorization WHERE proposal_id=$3`, [`REVOKE-${job.jobId}`, reviewer.principalId, job.jobId]);
+      return release;
+    });
+    expect(await publisher.runNext()).toBe(true);
+    expect(ensure).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled();
+    expect((await publisher.list()).publications).toMatchObject([{ state: 'RECONCILE', failureCode: 'PUBLICATION_PERMISSION_UNAVAILABLE' }]);
+  }, 30_000);
 });

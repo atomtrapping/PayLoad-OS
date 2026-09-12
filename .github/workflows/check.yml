@@ -6,10 +6,8 @@
 # served at /api/v1/status reports rungs 0 through 3 as VERIFIED and names CI as
 # what asserts them; this file is that party.
 #
-# Two jobs rather than one: `check` is the fast gate (Rust, types, lint, unit
-# tests, build) and `browser` is the slow one (Playwright at desktop and Pixel
-# 7, which needs the production build the config serves). Splitting them means a
-# type error is reported in two minutes instead of eight.
+# Separate gates for the application, desktop/mobile browsers, and optional
+# local Iceberg publication. Python dependencies stay out of the web runtime.
 name: check
 
 on:
@@ -112,7 +110,7 @@ jobs:
 
       # The built-in workbench and standalone CLI share real HTTP/database
       # state across backend restarts and a killed mining claim. Fixture-only.
-      - run: npm run terminal:qualify
+      - run: npm run terminal:qualify -- --storage
 
       - if: failure()
         uses: actions/upload-artifact@v4
@@ -122,3 +120,23 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
+
+  lake:
+    name: local Iceberg publication and recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: python -m pip install --target .stamp/lakehouse-python -r tools/terminal_lake/requirements.lock.txt
+      - name: Real Iceberg unit and crash tests
+        run: PYTHONPATH="$PWD/.stamp/lakehouse-python:$PWD" python -B -m unittest tools.terminal_lake.test_writer -v
+      - name: Terminal to object to Iceberg to SQL acknowledgement
+        run: PAYLOAD_LAKE_PYTHON="$(readlink -f "$(command -v python)")" PAYLOAD_LAKE_PYTHON_PACKAGES="$PWD/.stamp/lakehouse-python" npm run terminal:qualify -- --lake --no-browser

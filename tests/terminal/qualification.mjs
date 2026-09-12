@@ -6,7 +6,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { fork, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,10 +15,14 @@ import { chromium } from '@playwright/test';
 import { terminalCall } from '../../clients/javascript/terminal.mjs';
 
 const options = new Set(process.argv.slice(2));
-if ([...options].some(option => !['--browser', '--no-browser'].includes(option)) || (options.has('--browser') && options.has('--no-browser'))) {
+if ([...options].some(option => !['--browser', '--no-browser', '--storage', '--lake'].includes(option)) || (options.has('--browser') && options.has('--no-browser'))) {
   throw new Error('QUALIFICATION_ARGUMENT_INVALID: use no arguments, --browser, or --no-browser');
 }
 const browserRequested = !options.has('--no-browser');
+const lakeRequested = options.has('--lake');
+const storageRequested = options.has('--storage') || lakeRequested;
+const lake = lakeRequested ? { python: process.env.PAYLOAD_LAKE_PYTHON, packages: process.env.PAYLOAD_LAKE_PYTHON_PACKAGES } : undefined;
+if (lakeRequested && (!lake.python || !lake.packages)) throw new Error('QUALIFICATION_LAKE_RUNTIME_REQUIRED');
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const directory = await mkdtemp(join(tmpdir(), 'payload-terminal-process-test-'));
 const dataDir = join(directory, 'postgres');
@@ -65,11 +69,11 @@ function mailbox(child) {
     assert.equal(value.kind, kind, 'Qualification child reported a bounded failure'); return value;
   };
 }
-async function launch(holdFirstClaim = false) {
+async function launch(holdFirstClaim = false, holdPublication = false) {
   const child = fork(entry, [], { cwd: repository, env: environment(), windowsHide: true, silent: true, serialization: 'json' });
   const wait = mailbox(child); child.stdout.resume(); child.stderr.resume();
   active = { child, wait };
-  child.send({ kind: 'initialize', dataDir, principals, holdFirstClaim, browserUi: browserRequested });
+  child.send({ kind: 'initialize', dataDir, principals, holdFirstClaim, browserUi: browserRequested, storage: storageRequested, holdPublication, lake });
   const ready = await wait('ready');
   assert.equal(ready.fixture_only, true); assert.match(ready.methodDigest, /^sha256:[a-f0-9]{64}$/);
   assert(!pids.has(ready.pid), 'Restart requires an actual new backend process');
@@ -114,6 +118,7 @@ async function submit(key, releaseId, correction) {
   assert.equal(pinned.snapshot.selection, 'PERMITTED_STANDING_RECORDS');
   assert(pinned.snapshot.coverage.withheldByPermission > 0);
   const request = { capability: discovery.mining.capability, releaseId, snapshotDigest: pinned.snapshotDigest, methodDigest: discovery.mining.methodDigest,
+    ...(discovery.mining.retentionDestination ? { retentionDestination: discovery.mining.retentionDestination } : {}),
     parameters: { minRecords: 1 }, budget: { maxRows: 1000, maxInputBytes: 1048576, maxOutputBytes: 1048576, timeoutMs: 5000 },
     idempotencyKey: key, ...(correction ? { correction } : {}) };
   const job = await call({ command: 'submit', request }); assert.equal(job.state, 'PROPOSED');
@@ -129,6 +134,22 @@ async function finished(jobId, timeout = 45000) {
     await delay(400);
   }
   throw new Error('QUALIFICATION_JOB_TIMEOUT');
+}
+
+async function published(jobId) {
+  const deadline = Date.now() + 45000;
+  while (Date.now() < deadline) {
+    const job = await call({ command: 'job', jobId });
+    assert.equal(job.retention.length, 1);
+    if (job.retention[0].state === 'PUBLISHED') return job.retention[0];
+    assert.notEqual(job.retention[0].state, 'BLOCKED');
+    await delay(400);
+  }
+  throw new Error('QUALIFICATION_PUBLICATION_TIMEOUT');
+}
+async function indexPublication(publicationId) {
+  active.child.send({ kind: 'lake', publicationId });
+  return (await active.wait('lake', 45000)).receipt;
 }
 
 async function launchBrowser() {
@@ -232,12 +253,31 @@ try {
   active.child.send({ kind: 'start-workers' });
   const held = await active.wait('claim-held');
   assert.equal(held.jobId, original.job.jobId); assert.equal(held.state, 'RUNNING'); assert.equal(held.attempts, 1);
-  await stop(true); await launch(); // Hard kill after committed claim, before any result or subprocess.
+  await stop(true); await launch(false, storageRequested); // Kill after claim; optional next stop is after object write.
   const retained = await call({ command: 'job', jobId: original.job.jobId });
   assert.equal(retained.state, 'RUNNING'); assert.equal(retained.attempts, 1);
   active.child.send({ kind: 'start-workers' });
   assert.equal((await finished(original.job.jobId)).attempts, 2); // Real 30-second lease, no SQL edits.
+  let originalPublication;
+  let originalArtifact;
+  let heldCustody;
+  let originalLake;
+  if (storageRequested) {
+    heldCustody = (await active.wait('publication-held')).receipt;
+    assert.equal(heldCustody.provider, 'local');
+    originalArtifact = await readFile(join(directory, 'objects', heldCustody.key));
+    assert.equal('sha256:' + createHash('sha256').update(originalArtifact).digest('hex'), heldCustody.contentDigest);
+    await stop(true); await launch();
+    active.child.send({ kind: 'start-workers' });
+    originalPublication = await published(original.job.jobId);
+    if (lakeRequested) originalLake = await indexPublication(originalPublication.publication_id);
+  }
   const a = await call({ command: 'result', jobId: original.job.jobId });
+  if (storageRequested) {
+    assert.deepEqual(JSON.parse(originalArtifact.toString('utf8')), a.result);
+    assert.equal(heldCustody.contentDigest, a.resultDigest);
+    assert.equal(heldCustody.byteLength, originalArtifact.length);
+  }
   const b = browserRequested ? await uiResult(original.job.jobId) : await browserStyle({ command: 'result', jobId: original.job.jobId });
   assert.deepEqual(await browserStyle({ command: 'result', jobId: original.job.jobId }), b);
   assert.equal(a.resultDigest, b.resultDigest); assert.deepEqual(a.result, b.result); assert.notEqual(a.receiptDigest, b.receiptDigest);
@@ -259,6 +299,20 @@ try {
   const corrected = browserRequested ? await uiResult(correction.job.jobId) : await browserStyle({ command: 'result', jobId: correction.job.jobId });
   assert.deepEqual(await browserStyle({ command: 'result', jobId: correction.job.jobId }), corrected);
   assert.notEqual(corrected.resultDigest, a.resultDigest);
+  if (storageRequested) {
+    const correctedPublication = await published(correction.job.jobId);
+    assert.notEqual(correctedPublication.publication_id, originalPublication.publication_id);
+    assert.deepEqual(await published(original.job.jobId), originalPublication);
+    assert.deepEqual(await readFile(join(directory, 'objects', heldCustody.key)), originalArtifact);
+    if (lakeRequested) {
+      const correctedLake = await indexPublication(correctedPublication.publication_id);
+      assert.equal(correctedLake.receipt.snapshot_record_count, 2);
+      assert.notEqual(correctedLake.receipt.snapshot_id, originalLake.receipt.snapshot_id);
+      assert.equal(typeof correctedLake.receipt.snapshot_id, 'string');
+      assert.equal(originalLake.receipt.snapshot_record_count, 1);
+      assert.deepEqual(await indexPublication(originalPublication.publication_id), originalLake);
+    }
+  }
   assert.deepEqual(await call({ command: 'result', jobId: original.job.jobId }), a);
   assert.deepEqual(await browserStyle({ command: 'result', jobId: original.job.jobId }), b);
   assert.deepEqual((await call({ command: 'job', jobId: original.job.jobId })).corrections, [{ jobId: correction.job.jobId, state: 'SUCCEEDED' }]);
@@ -272,7 +326,9 @@ try {
   }
   await stop();
   process.stdout.write(JSON.stringify({ qualification: 'payload.terminal.process-http.v1', passed: true, fixture_only: true,
-    backendProcesses: pids.size, cleanClosures, abruptKillAfterCommittedClaim: abruptKills === 1,
+    backendProcesses: pids.size, cleanClosures, abruptKillAfterCommittedClaim: abruptKills >= 1,
+    storage: { tested: storageRequested, abruptKillAfterObjectBeforeAck: storageRequested && abruptKills === 2, earlierBytesPreserved: storageRequested, provider: storageRequested ? 'LOCAL_QUALIFICATION' : null },
+    iceberg: { tested: lakeRequested, freshProcessReadback: lakeRequested, sqlAcknowledgement: lakeRequested, earlierSnapshotPreserved: lakeRequested, catalog: lakeRequested ? 'LOCAL_SQLITE_QUALIFICATION' : null },
     realLeaseRecovery: true, realBoundedMiningSubprocess: true, independentClients: ['javascript', 'native-fetch-same-origin', 'standalone-cli', ...(browserRequested ? ['builtin-TerminalWorkbench-Chromium'] : [])],
     browserUiTested: browserRequested, browserEngine, browserPhase, correctionPreservesOriginal: true, statistics }) + '\n');
 } catch (failure) {

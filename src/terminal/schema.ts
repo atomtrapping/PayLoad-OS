@@ -3,11 +3,13 @@ import { TERMINAL_LEDGER_DDL, TERMINAL_LEDGER_GUARDS, terminalCapabilitySeed } f
 import { CAPABILITIES } from '@/domain/capabilityRegistry';
 import { canonicalJson } from '@/fixtures/digest';
 import type { TerminalDatabase } from './database';
+import { PUBLICATION_DDL, PUBLICATION_GUARDS } from './publication';
+import { LAKE_RECEIPT_DDL, LAKE_RECEIPT_GUARDS } from './lakeSchema';
 
-export const TERMINAL_SCHEMA_VERSION = 2;
+export const TERMINAL_SCHEMA_VERSION = 3;
 
 /** Authenticated ownership of a read session; separate from mining delivery receipts. */
-const TERMINAL_READ_IDENTITY_DDL = `
+export const TERMINAL_READ_IDENTITY_DDL = `
 CREATE TABLE payload_terminal_session_identity (
   session_id text PRIMARY KEY REFERENCES terminal_session(session_id),
   principal_id text NOT NULL REFERENCES principal(principal_id),
@@ -70,16 +72,21 @@ export async function installTerminalSchema(db: TerminalDatabase): Promise<void>
     if (!state.corpus || !state.releases) throw new Error('TERMINAL_CORPUS_SCHEMA_REQUIRED');
     if (state.installed) {
       const check = await sql.query<{ schema_version: number }>('SELECT schema_version FROM payload_terminal_control WHERE singleton=true FOR UPDATE');
-      if (![1, TERMINAL_SCHEMA_VERSION].includes(check.rows[0]?.schema_version)) throw new Error('TERMINAL_SCHEMA_VERSION_UNSUPPORTED');
+      if (![1, 2, TERMINAL_SCHEMA_VERSION].includes(check.rows[0]?.schema_version)) throw new Error('TERMINAL_SCHEMA_VERSION_UNSUPPORTED');
       if (check.rows[0].schema_version === 1) {
         await sql.query(TERMINAL_LEDGER_DDL + TERMINAL_LEDGER_GUARDS + terminalCapabilitySeed() + TERMINAL_READ_IDENTITY_DDL);
         await sql.query('UPDATE payload_terminal_control SET schema_version=2 WHERE singleton=true');
+      }
+      if (check.rows[0].schema_version < 3) {
+        await sql.query(PUBLICATION_DDL + PUBLICATION_GUARDS + LAKE_RECEIPT_DDL + LAKE_RECEIPT_GUARDS);
+        await sql.query('UPDATE payload_terminal_control SET schema_version=3 WHERE singleton=true');
       }
     } else {
       if (state.execution) throw new Error('TERMINAL_EXISTING_LEDGER_REQUIRES_MIGRATION');
       await sql.query(EXECUTION_LEDGER_DDL + EXECUTION_LEDGER_GUARDS + TERMINAL_JOB_DDL
         + TERMINAL_LEDGER_DDL + TERMINAL_LEDGER_GUARDS + terminalCapabilitySeed() + TERMINAL_READ_IDENTITY_DDL);
-      await sql.query('UPDATE payload_terminal_control SET schema_version=2 WHERE singleton=true');
+      await sql.query(PUBLICATION_DDL + PUBLICATION_GUARDS + LAKE_RECEIPT_DDL + LAKE_RECEIPT_GUARDS);
+      await sql.query('UPDATE payload_terminal_control SET schema_version=3 WHERE singleton=true');
     }
     // An existing installation must still describe the exact registry its
     // callers use. A changed registry requires an explicit schema migration.
@@ -90,5 +97,7 @@ export async function installTerminalSchema(db: TerminalDatabase): Promise<void>
     if (canonicalJson(ordered(registry.rows as typeof expected)) !== canonicalJson(ordered(expected))) throw new Error('TERMINAL_CAPABILITY_REGISTRY_MISMATCH');
     const binding = await sql.query<{ present: string | null }>("SELECT to_regclass('public.payload_terminal_session_identity')::text present");
     if (!binding.rows[0]?.present) throw new Error('TERMINAL_READ_SCHEMA_INCOMPLETE');
+    const custody = await sql.query<{ objects: string | null; lake: string | null }>("SELECT to_regclass('public.payload_terminal_publication')::text objects,to_regclass('public.payload_terminal_lake_receipt')::text lake");
+    if (!custody.rows[0]?.objects || !custody.rows[0]?.lake) throw new Error('TERMINAL_STORAGE_SCHEMA_INCOMPLETE');
   });
 }

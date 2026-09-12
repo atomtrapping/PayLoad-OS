@@ -169,6 +169,22 @@ describe('layer boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
+  /*
+   * The governed surface is the only door. `runMcpTool` answers anybody, which
+   * is why it is not the surface: a module that reached it directly would
+   * serve a tool without a session, a declared purpose or a receipt, and the
+   * control plane would be advisory. Only `src/mcp/serve.ts` dispatches, and
+   * only tests call the dispatcher to exercise a tool's own logic.
+   */
+  it('nothing but the governed surface dispatches a tool', () => {
+    const offenders: string[] = [];
+    for (const file of walk(join(ROOT, 'src'))) {
+      if (file === 'src/mcp/serve.ts' || file === 'src/mcp/tools.ts') continue;
+      if (/\brunMcpTool\b/.test(readFileSync(join(ROOT, file), 'utf8'))) offenders.push(file);
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('libraries and other CLIs do not import command entrypoints for shared utilities', () => {
     const offenders: string[] = [];
     for (const file of walk(join(ROOT, 'src'))) {

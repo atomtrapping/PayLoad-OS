@@ -7,6 +7,7 @@ import {
   ATTESTATION_COSTS, ATTESTATION_PRECONDITIONS, CALLER_IS_A_SOURCE, POLICY_ATTESTATION, INTENT_IS_THE_UPGRADE, PURPOSE_SHAPING, TRANSPORT_AXES,
   TWO_PART_RULE, servingStanding,
 } from './servingBoundary';
+import { DECLARABLE_PURPOSES } from './terminalPlane';
 
 describe('two transports, compared on five axes', () => {
   it('gives each axis a question and both answers', () => {
@@ -59,14 +60,26 @@ describe('the rule transport does not change', () => {
 });
 
 describe('what exists', () => {
-  it('says the argument is about what could be enforced, and that none of it is', () => {
+  /*
+   * The two surfaces are reported apart because they differ. The tool surface
+   * enforces the argument this module makes; the HTTP feed does not, and a
+   * single number over both would read as though it did.
+   */
+  it('reports the governed tool surface and the unauthenticated feed separately', () => {
     const standing = servingStanding();
     expect(standing.tools).toBe(MCP_TOOLS.length);
-    expect(standing.callersIdentified).toBe(0);
-    expect(standing.purposesDeclarable).toBe(0);
-    expect(standing.rightsEvaluatedPerCaller).toBe(false);
+    expect(standing.purposesDeclarable).toBe(DECLARABLE_PURPOSES.length);
+    expect(standing.toolSurface).toEqual({ callerIdentified: true, purposeDeclared: true, rightsEvaluatedPerCaller: true });
+    expect(standing.httpFeed).toEqual({ callerIdentified: false, purposeDeclared: false, rightsEvaluatedPerCaller: false });
     expect(standing.statement).toMatch(/against a declared viewer class rather than against a party/);
-    expect(standing.statement).toMatch(/none of it is enforced yet/);
+  });
+
+  /* And it does not overclaim: a declaration is not proof of itself. */
+  it('says what is still not enforced, rather than reading as though everything is', () => {
+    const { statement } = servingStanding();
+    expect(statement).toMatch(/asserted rather than authenticated/);
+    expect(statement).toMatch(/nothing is metered/);
+    expect(statement).toMatch(/answerable as evidence against a party rather than stopped at the boundary/);
   });
 });
 

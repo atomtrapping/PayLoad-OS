@@ -23,11 +23,17 @@
  *
  * Serve the corpus under a purpose. Serve the estates never.
  *
- * Nothing here identifies a caller, declares a purpose, or evaluates a right at
- * query time. The rights machinery exists and answers about a viewer class, not
- * about a party.
+ * When this module was written nothing here identified a caller, declared a
+ * purpose, or evaluated a right at query time, and it said so. That is no
+ * longer the whole truth: `./terminalPlane.ts` makes those three the
+ * conditions of being answered on the tool surface, and `servingStanding()`
+ * below now reports the two surfaces separately, because the HTTP feed is
+ * unchanged and one number over both would hide which is which. The argument
+ * in this module stands as the argument; what follows it is now partly
+ * enforced rather than wholly prospective.
  */
 import { PERMITTED_USES } from './corpus';
+import { DECLARABLE_PURPOSES } from './terminalPlane';
 import { MCP_TOOLS } from '@/mcp/tools';
 
 /* ── The two transports ── */
@@ -124,22 +130,42 @@ export const CALLER_IS_A_SOURCE = {
 
 /* ── What exists ── */
 
+export interface SurfaceStanding {
+  /** Whether the surface knows which party is calling. */
+  callerIdentified: boolean;
+  /** Whether a call carries a declared purpose from the corpus's own uses. */
+  purposeDeclared: boolean;
+  /** Whether a right is evaluated for that party, per call, rather than for a viewer class. */
+  rightsEvaluatedPerCaller: boolean;
+}
+
 export interface ServingStanding {
   tools: number;
-  callersIdentified: number;
   purposesDeclarable: number;
-  rightsEvaluatedPerCaller: boolean;
+  /** The governed tool surface: a session, a declared purpose, an admission per call. */
+  toolSurface: SurfaceStanding;
+  /** The HTTP feed, unchanged: a viewer-class parameter and no party at all. */
+  httpFeed: SurfaceStanding;
   statement: string;
 }
 
-/** Pure: the surface as it is, not as the argument would like it. */
+/**
+ * Pure: the surfaces as they are, not as the argument would like them.
+ *
+ * This function used to report zeros across the board and say so. The tool
+ * surface has since become governed — `@/domain/terminalPlane` makes a
+ * session, a declared purpose and a per-call admission the conditions of being
+ * answered — so the zeros would now be the dishonest reading. The HTTP feed is
+ * unchanged, and the split is the point: one surface enforces the argument and
+ * the other still does not, and a single number over both would hide which.
+ */
 export function servingStanding(): ServingStanding {
   return {
     tools: MCP_TOOLS.length,
-    callersIdentified: 0,
-    purposesDeclarable: 0,
-    rightsEvaluatedPerCaller: false,
-    statement: `${MCP_TOOLS.length} tools and an unauthenticated feed. Rights are evaluated against a declared viewer class rather than against a party, no caller is identified, no call declares a purpose, and nothing is metered — so the argument for this transport is an argument about what it could enforce, and none of it is enforced yet.`,
+    purposesDeclarable: DECLARABLE_PURPOSES.length,
+    toolSurface: { callerIdentified: true, purposeDeclared: true, rightsEvaluatedPerCaller: true },
+    httpFeed: { callerIdentified: false, purposeDeclared: false, rightsEvaluatedPerCaller: false },
+    statement: `${MCP_TOOLS.length} tools behind a session that names a party, declares one of ${DECLARABLE_PURPOSES.length} purposes from the corpus's own permitted uses, and is admitted or refused per call with a receipt — and, beside it, the same unauthenticated HTTP feed, where rights are still evaluated against a declared viewer class rather than against a party. What is enforced is the shape of the ask: a declared identity, a declared purpose, a scope, and an answer or a refusal with its reason. What is not enforced is that the declaration is true — the identity is asserted rather than authenticated, and nothing is metered — so a false declaration is answerable as evidence against a party rather than stopped at the boundary.`,
   };
 }
 

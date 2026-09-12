@@ -397,7 +397,10 @@ test('a retraction names what it reaches and what it cannot reach, and the recal
 
 test('the serving boundary states what a transport can enforce, and the reasoner is a witness with no authority', async ({ page }) => {
   await page.goto('/api');
-  await expect(page.getByTestId('serving-standing')).toContainText('none of it is enforced yet');
+  /* The tool surface enforces the ask; the feed beside it does not, and neither claim swallows the other. */
+  await expect(page.getByTestId('serving-standing')).toContainText('admitted or refused per call with a receipt');
+  await expect(page.getByTestId('serving-standing')).toContainText('the same unauthenticated HTTP feed');
+  await expect(page.getByTestId('serving-standing')).toContainText('asserted rather than authenticated');
   await expect(page.locator('[data-transport-axis]')).toHaveCount(5);
   // Four axes favour the tool surface; retention favours neither, and the page says so.
   await expect(page.locator('[data-transport-axis="RETENTION"][data-stronger="NEITHER"]')).toHaveCount(1);

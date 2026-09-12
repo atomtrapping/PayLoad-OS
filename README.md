@@ -373,6 +373,7 @@ Typecheck also rejects unused locals and parameters. [Codebase consolidation](do
 - `docs/CORRECTION_AND_IDENTITY.md` — downstream invalidation per class of derived artifact, the delivery ledger, as-of as a contract feature, and the identity core with the still-absent cross-line join.
 - `docs/CROSS_LINE_JOIN.md` — the two present join keys run across all three corpora: the three lines and what each carries, the precision rule, the two clocks kept apart, 11 pairs with their outcomes, and why `resolved` is the literal 0.
 - `docs/METERING.md` — the lap, the two halves of a response receipt, the metering boundary, and the federation risk stated as work to do.
+- `docs/TERMINAL_PLANE.md` — the control plane another terminal plugs into: a session that names a party, a purpose declared from the corpus's own permitted uses, a scope, an admission or a refusal per call, and a receipt either way.
 - `docs/SPATIAL_DERIVATION.md` — space as resolver, join key, validity clock and inference engine; the cell key bounded by stated uncertainty; the three sensor families and the semantic convergence that is the actual gap.
 - `docs/ESTIMATION.md` — constraints as observations with provenance, the factor graph they live in, the two disciplines written before the first solve, and the four tiers of invariant scoring with the reference channel they must never feed.
 - `docs/MARITIME.md` — the vessel as state rather than feed, dispatch as a prior, the port as a time-indexed set, and the closure residual that a single-channel holder cannot produce.
@@ -396,7 +397,8 @@ clients         dependency-free JavaScript and Python coordination clients
 scripts         local server launcher, contract-review and candidate-build-review workers; evidence intake/normalization/candidate-build entry points
 examples/evidence synthetic notice and operator-declared intake manifest
 examples/carrier synthetic Carrier JSON, acquisition declaration and normalization request
-src/mcp         MCP tools over the same feed payloads, and the stdio server
+src/mcp         MCP tools over the same feed payloads; serve.ts is the governed door every
+                call goes through, and the stdio server opens a declared session (docs/TERMINAL_PLANE.md)
 src/domain/informationProduct.ts  the first information product as data, held to the corpus by its test: every field exists, every released record meets the stated evidence requirement, the customer question is answerable through the feed at two knowledge times
 src/domain/deliveredRecord.ts     the ten questions a delivered record answers, mapped to payload fields; its test holds every record the feed delivers to all ten
 src/domain/doctrine.ts   the architecture carried forward as data: five fabrics, three states of information, seven rules with where each is enforced and which tests prove it, verification tiers (docs/ARCHITECTURE.md is the prose; /model renders it)

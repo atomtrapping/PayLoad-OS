@@ -31,7 +31,7 @@ export const NAV_AREAS: readonly NavArea[] = [
     { href: '/stream', label: 'Stream', match: /^\/stream/ },
     { href: '/releases', label: 'Releases', match: /^\/releases/ },
     { href: '/retractions', label: 'Retractions', match: /^\/retractions/ },
-    { href: '/model', label: 'Operating model', match: /^\/(model|product)$/ },
+    { href: '/model', label: 'Operating model', match: /^\/(model(\/[a-z-]+)?|product)$/ },
   ] },
   { id: 'acquisition', label: 'Acquisition', activity: 'Coverage, sources, collection attempts and failures', items: [
     { href: '/corpora', label: 'Evidence Corpora', match: /^\/corpora/ },

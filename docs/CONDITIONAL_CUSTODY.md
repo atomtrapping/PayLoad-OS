@@ -1,6 +1,6 @@
 # Conditional custody: hold, monitor, adjudicate, release
 
-`src/domain/collateralVehicle.ts`, rendered at [`/model#pm-custody`](../src/app/model/page.tsx).
+`src/domain/collateralVehicle.ts`, rendered at [`/model/obligations#pm-custody`](../src/components/model/ObligationsChapter.tsx).
 
 A deposit is placed against conditions, held while they are unmet, and released
 when an adjudicated fact says they are met. This is the documentary credit — a

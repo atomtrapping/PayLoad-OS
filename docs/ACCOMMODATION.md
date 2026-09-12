@@ -1,6 +1,6 @@
 # What the additions cost, and what one acquisition would move
 
-`src/domain/accommodation.ts`, rendered at [`/model#pm-accommodation`](../src/app/model/page.tsx).
+`src/domain/accommodation.ts`, rendered at [`/model/standing#pm-accommodation`](../src/components/model/StandingChapter.tsx).
 
 Roughly twenty modules landed in a short stretch: the spatial derivations, the
 sensor families, the constraint and factor-graph estimation layer, the invariant

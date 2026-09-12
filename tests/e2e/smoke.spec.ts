@@ -4,7 +4,7 @@ import { LOCAL_RAILS } from '../../src/domain/console';
 import { DOMAINS } from '../../src/domain/domains';
 import { CUSTOMER_CATEGORIES, ECONOMIC_ARCHITECTURE, PRODUCTION_SYSTEM, THESIS } from '../../src/domain/product';
 
-const ROUTES = ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
+const ROUTES = ['/model', '/model/substrate', '/model/estimation', '/model/obligations', '/model/standing', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/stream?subject=LOT-5B-221&predicate=quantity.gross&validAt=2026-08-17T16:00:00Z&knownAt=2026-08-20T00:00:00Z', '/retractions', '/cases', '/cases/CASE-CAR-7C104', '/cases/CASE-CAR-5B221', '/cases/new', '/rulings', '/rulings/RUL-7C104-r2', '/rulings/RUL-5B221-r1', '/replay/CASE-CAR-7C104', '/profiles/caravan.brokerage.specialty-cargo', '/evidence', '/api'];
 
 for (const route of ROUTES) {
   test(`renders ${route} without console errors`, async ({ page }) => {
@@ -20,7 +20,7 @@ for (const route of ROUTES) {
 }
 
 test('axe: releases, stream, case workspace and ruling viewer have no serious or critical violations', async ({ page }) => {
-  for (const route of ['/model', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/cases/CASE-CAR-7C104', '/rulings/RUL-7C104-r2', '/cases']) {
+  for (const route of ['/model', '/model/substrate', '/model/obligations', '/releases', '/releases/REL-CAR-2026.09.01', '/stream', '/cases/CASE-CAR-7C104', '/rulings/RUL-7C104-r2', '/cases']) {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
     const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
@@ -81,6 +81,9 @@ test('the feed serves fixture-only JSON with release, bounds, refusals and retra
 });
 
 test('the product page states the firm, the twelve stages, the three customer categories and the four-step economic architecture', async ({ page }) => {
+  // The operating model is five chapter routes over one registry (src/components/model/chapters.ts):
+  // the firm and its doctrine on /model, then substrate, estimation, obligations and standing beneath it.
+  // Each block below reads one chapter; the assertions are the ones the single document carried.
   await page.goto('/model');
   // Read from the thesis rather than from a copy of it. The firm's positioning
   // was rewritten and the unit test moved with it while this one kept asserting
@@ -110,6 +113,15 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.locator('[data-information-state]')).toHaveCount(3);
   await expect(page.locator('[data-doctrine-rule]')).toHaveCount(7);
   await expect(page.getByTestId('operational-rule')).toContainText('shared information');
+  await expect(page.getByRole('cell', { name: /^Samsara single-vehicle GPS-history adapter/ })).toContainText('offline-tested; live fleet qualification, continuous sync and inferred visits remain absent');
+  await page.getByRole('link', { name: /^Local weighted rigid registration/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Registration and access' })).toBeVisible();
+  await expect(page.getByTestId('registration-boundary')).toContainText('not a surveyed building');
+  await page.goto('/model');
+  await page.getByRole('link', { name: /^Local clearance value-of-information/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Clearance measurement design' })).toBeVisible();
+  await expect(page.getByTestId('clearance-boundary')).toContainText('Synthetic demonstration');
+  await page.goto('/model/substrate');
   await expect(page.locator('[data-engine="kepler.gl"][data-presence="ABSENT"]')).toHaveCount(1);
   // OpenUSD is a projection target with no library installed, so it is routed to and absent.
   await expect(page.locator('[data-engine="OpenUSD"][data-presence="ABSENT"]')).toHaveCount(1);
@@ -120,18 +132,6 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.getByTestId('manifold-tier')).toContainText('corpus → learned manifold → render');
   await expect(page.locator('[data-complex]')).toHaveCount(4);
   await expect(page.locator('[data-manifold-trap="CONTINUOUS_FABRICATION"]')).toContainText('Void renders void');
-  // Estimation: a constraint is a measurement, clipping is malpractice, and a solver never decides identity.
-  await expect(page.getByTestId('constraint-identity')).toContainText('H = C, R = 0 and z = c');
-  await expect(page.locator('[data-enforcement="CLIPPING"][data-verdict="FORBIDDEN"]')).toContainText('corrupts the posterior silently');
-  await expect(page.locator('[data-enforcement="PROJECTION"][data-verdict="RECOMMENDED"]')).toHaveCount(1);
-  await expect(page.getByTestId('harvest-rule')).toContainText('rank(C) for free');
-  await expect(page.locator('[data-factor]')).toHaveCount(5);
-  await expect(page.getByTestId('solver-boundary')).toContainText('never delegates authority to the solver');
-  // Scoring: four tiers, three frame risks, and a reference channel the filters cannot feed.
-  await expect(page.locator('[data-filter-tier]')).toHaveCount(4);
-  await expect(page.locator('[data-filter-tier="RELIABILITY"][data-filter-state="ABSENT"]')).toHaveCount(1);
-  await expect(page.locator('[data-frame-risk="CORRELATED_FAILURE"]')).toContainText('never by the count of agreeing sources');
-  await expect(page.getByTestId('reference-firewall')).toContainText('benchmark that trains the test');
   // Three sensor families: two observe structure, one forces the state and gates the sensors.
   await expect(page.locator('[data-sensor-family]')).toHaveCount(3);
   await expect(page.locator('[data-sensor-family="METEOROLOGY"][data-sensor-role="FORCES_AND_GATES"]')).toHaveCount(1);
@@ -139,22 +139,6 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.getByTestId('weather-role')).toContainText('gates the sensors');
   await expect(page.getByTestId('vertical-datum')).toContainText('not yet reachable');
   await expect(page.locator('[data-mapping-stage]')).toHaveCount(4);
-  // Caravan: five channels, and the one that is a prior rather than an observation.
-  await expect(page.locator('[data-vessel-channel]')).toHaveCount(5);
-  await expect(page.locator('[data-vessel-channel="DISPATCH"][data-channel-kind="PRIOR"]')).toContainText('most common error in this domain');
-  await expect(page.getByTestId('closure-measurement')).toContainText('aggregators already sell');
-  await expect(page.getByTestId('membership-ruling')).toContainText('An unknown set is not an empty set');
-  await expect(page.locator('[data-set-object]')).toHaveCount(6);
-  // The carrier: two of four card properties, general proving refused, the model mirrored and not the world.
-  await expect(page.getByTestId('not-credibility')).toContainText('estate');
-  await expect(page.locator('[data-card-property][data-card-present="false"]')).toHaveCount(2);
-  await expect(page.getByTestId('mirrors-the-model')).toContainText('Two congruences, two guardians');
-  await expect(page.getByTestId('authority-direction')).toContainText('Never a silent overwrite');
-  await expect(page.getByTestId('composition-adjudication')).toContainText('many claims, one addressable state');
-  await expect(page.locator('[data-vocabulary-pair="Adjudication policy"]')).toHaveCount(1);
-  // The actuarial mapping: three correspondences are the same object under two names.
-  await expect(page.locator('[data-correspondence="IDENTICAL"]')).toHaveCount(3);
-  await expect(page.getByTestId('mandate-inversion')).toContainText('inventing a professional duty');
   await expect(page.locator('[data-engine="records"][data-presence="FIXTURE"]')).toHaveCount(1);
   // The routing table decided what the fabric serves and no surface had ever
   // shown it. Thirteen routes, five READY, and the seat the pinned engine
@@ -165,7 +149,6 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(routing).toContainText('5 READY · 8 UNAVAILABLE');
   await expect(page.getByTestId('structure-seat')).toContainText('BIM State Transformer Engine');
   await expect(page.getByTestId('structure-seat')).toContainText('Naming the engine is not routing to it');
-  await expect(page.locator('[data-tier][data-reached="true"]')).toHaveCount(2);
   // Storage is declared as candidates with an honest present state: six classes, none held by a running service.
   // Identity: one core, three families, one absent join with its hazards named.
   await expect(page.locator('[data-core]')).toHaveCount(4);
@@ -206,18 +189,42 @@ test('the product page states the firm, the twelve stages, the three customer ca
   await expect(page.getByRole('heading', { name: 'Where the corpus is stored' })).toBeVisible();
   await expect(page.locator('#pm-storage')).toContainText('candidates, not selections');
   await expect(page.locator('#pm-storage')).toContainText('not a canonical relation');
-  await expect(page.getByRole('cell', { name: /^Samsara single-vehicle GPS-history adapter/ })).toContainText('offline-tested; live fleet qualification, continuous sync and inferred visits remain absent');
-  await page.getByRole('link', { name: /^Local weighted rigid registration/ }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Registration and access' })).toBeVisible();
-  await expect(page.getByTestId('registration-boundary')).toContainText('not a surveyed building');
-  await page.goto('/model');
-  await page.getByRole('link', { name: /^Local clearance value-of-information/ }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Clearance measurement design' })).toBeVisible();
-  await expect(page.getByTestId('clearance-boundary')).toContainText('Synthetic demonstration');
+  await page.goto('/model/estimation');
+  // Estimation: a constraint is a measurement, clipping is malpractice, and a solver never decides identity.
+  await expect(page.getByTestId('constraint-identity')).toContainText('H = C, R = 0 and z = c');
+  await expect(page.locator('[data-enforcement="CLIPPING"][data-verdict="FORBIDDEN"]')).toContainText('corrupts the posterior silently');
+  await expect(page.locator('[data-enforcement="PROJECTION"][data-verdict="RECOMMENDED"]')).toHaveCount(1);
+  await expect(page.getByTestId('harvest-rule')).toContainText('rank(C) for free');
+  await expect(page.locator('[data-factor]')).toHaveCount(5);
+  await expect(page.getByTestId('solver-boundary')).toContainText('never delegates authority to the solver');
+  // Scoring: four tiers, three frame risks, and a reference channel the filters cannot feed.
+  await expect(page.locator('[data-filter-tier]')).toHaveCount(4);
+  await expect(page.locator('[data-filter-tier="RELIABILITY"][data-filter-state="ABSENT"]')).toHaveCount(1);
+  await expect(page.locator('[data-frame-risk="CORRELATED_FAILURE"]')).toContainText('never by the count of agreeing sources');
+  await expect(page.getByTestId('reference-firewall')).toContainText('benchmark that trains the test');
+  // Caravan: five channels, and the one that is a prior rather than an observation.
+  await expect(page.locator('[data-vessel-channel]')).toHaveCount(5);
+  await expect(page.locator('[data-vessel-channel="DISPATCH"][data-channel-kind="PRIOR"]')).toContainText('most common error in this domain');
+  await expect(page.getByTestId('closure-measurement')).toContainText('aggregators already sell');
+  await expect(page.getByTestId('membership-ruling')).toContainText('An unknown set is not an empty set');
+  await expect(page.locator('[data-set-object]')).toHaveCount(6);
+  // The carrier: two of four card properties, general proving refused, the model mirrored and not the world.
+  await expect(page.getByTestId('not-credibility')).toContainText('estate');
+  await expect(page.locator('[data-card-property][data-card-present="false"]')).toHaveCount(2);
+  await expect(page.getByTestId('mirrors-the-model')).toContainText('Two congruences, two guardians');
+  await expect(page.getByTestId('authority-direction')).toContainText('Never a silent overwrite');
+  await expect(page.getByTestId('composition-adjudication')).toContainText('many claims, one addressable state');
+  await expect(page.locator('[data-vocabulary-pair="Adjudication policy"]')).toHaveCount(1);
+  await page.goto('/model/obligations');
+  // The actuarial mapping: three correspondences are the same object under two names.
+  await expect(page.locator('[data-correspondence="IDENTICAL"]')).toHaveCount(3);
+  await expect(page.getByTestId('mandate-inversion')).toContainText('inventing a professional duty');
+  await page.goto('/model/standing');
+  await expect(page.locator('[data-tier][data-reached="true"]')).toHaveCount(2);
 });
 
 test('the model page derives what each capability waits on, and separates absorbed pressure from owed', async ({ page }) => {
-  await page.goto('/model');
+  await page.goto('/model/standing');
   const section = page.locator('#pm-accommodation');
   // The seed the probes found: one independently corroborated quantity that cannot be adjudicated.
   await expect(section).toContainText('lot 5B-221’s gross weight');
@@ -253,7 +260,7 @@ test('the stream names which as-of question it asks, and refuses the one this co
 });
 
 test('the model page works a release through a correction, and never un-fires it', async ({ page }) => {
-  await page.goto('/model');
+  await page.goto('/model/obligations');
   const section = page.locator('#pm-custody');
   const worked = page.getByTestId('custody-worked');
   // Granted on what was held, withheld on what is held, and the decision untouched.
@@ -286,7 +293,7 @@ test('the model page works a release through a correction, and never un-fires it
 });
 
 test('the model page separates translation from judgment, and counts what actually collapses', async ({ page }) => {
-  await page.goto('/model');
+  await page.goto('/model/obligations');
   const section = page.locator('#pm-compression');
   expect(await section.locator('[data-layer="TRANSLATION"]').count()).toBe(5);
   expect(await section.locator('[data-layer="JUDGMENT"]').count()).toBe(3);
@@ -301,7 +308,7 @@ test('the model page separates translation from judgment, and counts what actual
 });
 
 test('the model page keeps the kinds of no apart, each with the mechanism that enforces it', async ({ page }) => {
-  await page.goto('/model');
+  await page.goto('/model/obligations');
   const section = page.locator('#pm-negative');
   const rules = section.locator('[data-negative-rule]');
   expect(await rules.count()).toBeGreaterThanOrEqual(7);

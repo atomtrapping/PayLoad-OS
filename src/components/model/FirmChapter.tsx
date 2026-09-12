@@ -1,0 +1,152 @@
+import Link from 'next/link';
+import { CUSTOMER_CATEGORIES, DISTRIBUTION_MECHANISMS, ECONOMIC_ARCHITECTURE, ENGINES, MATERIAL_CLASSES_IN_CORPUS, PRESENCE_LABEL, PRODUCTION_SYSTEM, PRODUCT_ARCHITECTURE, REFERENCE_IMPLEMENTATION, THESIS } from '@/domain/product';
+import { DOCTRINE, FABRICS, IDENTITY_CHAIN, INFORMATION_STATES, OPERATIONAL_RULE } from '@/domain/doctrine';
+import { Section } from '@/components/primitives/Section';
+
+/**
+ * Chapter one of the operating model: the firm, what it makes and for whom, the seven rules, and what of it exists here. The text is the founder's; the presence flags are facts about this repository.
+ */
+export function FirmChapter() {
+  return (
+    <>
+      <Section title="Source material" id="pm-material">
+        <ul className="m-0 p-0 list-none flex flex-wrap gap-2" aria-label="Classes of authorized source material">
+          {MATERIAL_CLASSES_IN_CORPUS.map((m) => (
+            <li key={m.materialClass} className="surface-inset px-3 py-2 text-[12.5px]" data-material={m.materialClass} data-present={m.presentInDemo}>
+              <span style={{ color: 'var(--text-heading)' }}>{m.label}</span>
+              <div className="text-[11.5px]" style={{ color: m.presentInDemo ? 'var(--status-conditional)' : 'var(--text-muted)' }}>{m.presentInDemo ? 'In the demonstration corpus' : 'Not represented in the demonstration corpus'}</div>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section title="The production system" id="pm-production">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Twelve stages. Each release page shows this record as it ran for that build, and says which stages did not run.</p>
+        <ol className="m-0 p-0 list-none grid gap-1 sm:grid-cols-2">
+          {PRODUCTION_SYSTEM.map((s, i) => (
+            <li key={s.stage} className="surface-inset p-2 text-[12.5px]" data-stage={s.stage}><span className="mono" style={{ color: 'var(--text-muted)' }}>{String(i + 1).padStart(2, '0')}</span> <span style={{ color: 'var(--text-heading)' }}>{s.label}</span><div style={{ color: 'var(--text-secondary)' }}>{s.meaning}</div></li>
+          ))}
+        </ol>
+      </Section>
+
+      <Section title="The five fabrics" id="pm-fabrics">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>The production system, arranged as the architecture the firm carries forward: five fabrics, each a transformation, feedback returning to the first. The presence flag is a fact about this repository.</p>
+        <ol className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Fabrics">
+          {FABRICS.map((f) => (
+            <li key={f.id} className="surface-inset p-2 text-[12.5px] grid gap-x-3 gap-y-1 sm:grid-cols-[auto_minmax(0,1fr)_auto]" data-fabric={f.id} data-presence={f.presence}>
+              <span className="mono" style={{ color: 'var(--text-muted)' }}>{f.order}</span>
+              <span><span style={{ color: 'var(--text-heading)' }}>{f.title}</span> <span className="mono text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{f.transforms}</span><div style={{ color: 'var(--text-secondary)' }}>{f.inThisRepository}</div></span>
+              <span className="text-[11.5px] whitespace-nowrap" style={{ color: f.presence === 'ABSENT' ? 'var(--status-refused)' : f.presence === 'FIXTURE' ? 'var(--status-conditional)' : 'var(--check-passed)' }}>{f.where ? <Link href={f.where} style={{ color: 'inherit' }}>{PRESENCE_LABEL[f.presence]}</Link> : PRESENCE_LABEL[f.presence]}</span>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      <Section title="Inventory and distribution" id="pm-distribution">
+        <table className="ledger-table text-[13px]">
+          <thead><tr><th scope="col">Layer</th><th scope="col">Role</th></tr></thead>
+          <tbody>{THESIS.layers.map((l) => <tr key={l.layer}><td style={{ color: 'var(--text-heading)' }}>{l.layer}</td><td>{l.role}</td></tr>)}</tbody>
+        </table>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Distribution mechanisms: {DISTRIBUTION_MECHANISMS.join(' · ')}. In this repository: the <Link href="/api" style={{ color: 'var(--info)' }}>feed API</Link>, the <Link href="/stream" style={{ color: 'var(--info)' }}>stream</Link>, <Link href="/api#api-mcp" style={{ color: 'var(--info)' }}>MCP tools</Link> and the <Link href="/cases" style={{ color: 'var(--info)' }}>Caravan workbench</Link>; reports are absent.</p>
+      </Section>
+
+      <Section title="Customer categories" id="pm-customers">
+        <ul className="m-0 p-0 list-none grid gap-2 sm:grid-cols-3" aria-label="Customer categories">
+          {CUSTOMER_CATEGORIES.map((c) => (
+            <li key={c.id} className="surface p-3 text-[12.5px]" data-customer={c.id}>
+              <div className="font-medium" style={{ color: 'var(--text-heading)' }}>{c.title}</div>
+              <div style={{ color: 'var(--text-secondary)' }}>{c.need}</div>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section title="Economic architecture" id="pm-economics">
+        <ol className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Economic architecture">
+          {ECONOMIC_ARCHITECTURE.map((e) => (
+            <li key={e.step} className="surface p-3 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 text-[13px]" data-step={e.step}>
+              <span className="mono shrink-0" style={{ color: 'var(--text-muted)' }}>{e.step}</span>
+              <span className="sm:w-[340px] shrink-0" style={{ color: 'var(--text-heading)' }}>{e.statement}</span>
+              <span className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{e.inThisRepository}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="m-0 text-[13px]" style={{ color: 'var(--text-primary)' }}>{THESIS.separation}</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>Separation is recorded as governance on the corpus and as prohibited uses in every rights schedule; see the rights matrix on any <Link href="/releases" style={{ color: 'var(--info)' }}>release</Link>.</p>
+      </Section>
+
+      <Section title="Product architecture" id="pm-architecture">
+        <pre className="m-0 surface-inset p-3 text-[12.5px] mono overflow-x-auto" aria-label="Product architecture tree" tabIndex={0}>{`${PRODUCT_ARCHITECTURE.company}
+    ${PRODUCT_ARCHITECTURE.domains.map((d, i, a) => `${i === a.length - 1 ? '└─' : '├─'} ${d.label} — ${d.delivery} — ${d.scope.toLowerCase()}`).join('\n')}
+
+     ${PRODUCT_ARCHITECTURE.terminal} — ${PRODUCT_ARCHITECTURE.terminalRole.toLowerCase()}`}</pre>
+        <ul className="m-0 p-0 list-none grid gap-2 sm:grid-cols-3">
+          {PRODUCT_ARCHITECTURE.domains.map((d) => (
+            <li key={d.id} className="surface-inset p-3 text-[12.5px]" style={{ borderStyle: d.enabled ? 'solid' : 'dashed' }}>
+              <div className="font-medium" style={{ color: d.enabled ? 'var(--text-heading)' : 'var(--text-muted)' }}>{d.label} <span className="label-sm">{d.delivery}</span> {!d.enabled && <span className="label-sm">declared</span>}</div>
+              <div style={{ color: 'var(--text-secondary)' }}>{d.scope}</div>
+              {d.note && <div className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{d.note}</div>}
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{THESIS.platform}</p>
+      </Section>
+
+      <Section title="Three states of information" id="pm-states">
+        <ul className="m-0 p-0 list-none grid gap-2 sm:grid-cols-3" aria-label="States of information">
+          {INFORMATION_STATES.map((st) => (
+            <li key={st.id} className="surface p-3 text-[12.5px] flex flex-col gap-1" data-information-state={st.id}>
+              <div className="flex items-baseline gap-2"><span className="mono" style={{ color: 'var(--status-conditional)' }}>{st.symbol}</span><span className="font-medium" style={{ color: 'var(--text-heading)' }}>{st.title}</span></div>
+              <div style={{ color: 'var(--text-secondary)' }}>{st.meaning}</div>
+              <div className="text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{st.invariants.join(' · ')}</div>
+              <div className="text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>Here: {st.inThisRepository} <Link href={st.where} style={{ color: 'var(--info)' }}>{st.where}</Link></div>
+            </li>
+          ))}
+        </ul>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>Distinct identities, with the morphisms between them preserved rather than collapsed: {IDENTITY_CHAIN.join(' ≠ ')}.</p>
+      </Section>
+
+      <Section title="Doctrine" id="pm-doctrine">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>Seven rules strong enough to be doctrine, each with where this repository enforces it and which tests prove it. <span className="mono">src/domain/doctrine.test.ts</span> fails if a named test disappears.</p>
+        <ol className="m-0 p-0 list-none flex flex-col gap-1" aria-label="Doctrine">
+          {DOCTRINE.map((r) => (
+            <li key={r.n} className="surface-inset p-2 text-[12.5px] flex flex-col gap-0.5" data-doctrine-rule={r.n}>
+              <div><span className="mono" style={{ color: 'var(--text-muted)' }}>{r.n}</span> <span style={{ color: 'var(--text-heading)' }}>{r.rule}</span> <span style={{ color: 'var(--text-secondary)' }}>{r.meaning}</span></div>
+              <div className="text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>Here: {r.enforcedHere}{r.where ? <> <Link href={r.where} style={{ color: 'var(--info)' }}>{r.where}</Link></> : null}</div>
+              <div className="text-[11px] mono" style={{ color: 'var(--text-muted)' }}>{r.tests.join(' · ')}</div>
+            </li>
+          ))}
+        </ol>
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-heading)' }} data-testid="operational-rule">{OPERATIONAL_RULE}</p>
+      </Section>
+
+      <Section title="What exists in this repository" id="pm-presence">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}><span style={{ color: 'var(--text-heading)' }}>{REFERENCE_IMPLEMENTATION.name}</span> — {REFERENCE_IMPLEMENTATION.role} {REFERENCE_IMPLEMENTATION.inThisRepository}</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {ENGINES.map((e) => (
+            <article key={e.id} className="surface p-3 flex flex-col gap-2" aria-labelledby={`engine-${e.id}`}>
+              <h3 id={`engine-${e.id}`} className="m-0 text-[14px] font-semibold" style={{ color: 'var(--text-heading)' }}>{e.title}</h3>
+              <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{e.description}</p>
+              <table className="ledger-table text-[12px]" aria-label={`${e.title}: presence`}>
+                <thead><tr><th scope="col">Item</th><th scope="col">Presence</th></tr></thead>
+                <tbody>
+                  {e.inThisRepository.map((x) => (
+                    <tr key={x.item} data-presence={x.presence}>
+                      <td>{x.where ? <Link href={x.where} style={{ color: 'var(--text-primary)' }}>{x.item}</Link> : x.item}</td>
+                      <td style={{ color: x.presence === 'ABSENT' ? 'var(--status-refused)' : x.presence === 'FIXTURE' ? 'var(--status-conditional)' : 'var(--text-secondary)' }}>{PRESENCE_LABEL[x.presence]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </article>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Shared OS coordination" id="pm-coordination">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>The <Link href="/agents" style={{ color: 'var(--info)' }}>agent and apparatus stable</Link> records definitions, capabilities, and compatible input/output contracts. The <Link href="/board" style={{ color: 'var(--info)' }}>message board</Link> records requests, handoffs, blockers, results, and acknowledgements with corpus release context.</p>
+        <p className="m-0 text-[12px]" style={{ color: 'var(--text-muted)' }}>Present as a local coordination prototype with a demonstration registry, participant inboxes, and JavaScript/Python clients. A manually started local worker reviews declared contracts and records results and receipts. The board does not launch workers, authenticate customers, or execute models.</p>
+      </Section>
+    </>
+  );
+}

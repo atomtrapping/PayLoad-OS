@@ -1,6 +1,6 @@
 # What compresses, and what must not
 
-`src/domain/compression.ts`, rendered at [`/model#pm-compression`](../src/app/model/page.tsx).
+`src/domain/compression.ts`, rendered at [`/model/obligations#pm-compression`](../src/components/model/ObligationsChapter.tsx).
 
 The distrust stack between two counterparties is mostly **translation**: the same
 facts re-keyed into each party's system, the same cargo re-examined by each side,
@@ -71,7 +71,7 @@ a claim about the world. Both block the same steps, and the blocked reasons say
 which is which — `no record has been admitted` versus `the admitted count is not
 readable from here, and an unreadable count is not a zero`.
 
-`/model` is a server component over the committed fixtures with no store access,
+`/model/obligations` is a server component over the committed fixtures with no store access,
 so it passes `'UNKNOWN'` and renders that. Removing the default is what stops the
 number rotting: a call site that acquires store access has to change the argument
 to compile, rather than silently continuing to report a stale zero.

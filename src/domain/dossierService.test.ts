@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
-  COVERAGE_ASSESSMENTS, DELIVERY_RIGHT, USABLE_ASSESSMENTS, assessEvidence, coverageLevel, estimateUnits, rollupAssessment,
+  COVERAGE_ASSESSMENTS, DELIVERY_RIGHT, USABLE_ASSESSMENTS, assessEvidence, coverageLevel, estimateUnits, rollupAssessment, standingValidation,
   type AssessmentContext, type EvidenceUnderAssessment,
 } from './dossierService';
 import { PERMITTED_USES } from './corpus';
 
 const AT = '2026-09-06T09:10:00.000Z';
 const BEFORE = '2026-09-01T00:00:00.000Z';
+const refutedAt = (validatedAt: string) => ({ outcome: 'FALSIFIED', validatedAt });
 const LATER = '2026-09-07T00:00:00.000Z';
 const context = (over: Partial<AssessmentContext> = {}): AssessmentContext => ({
   assessedAt: AT, requiredRight: DELIVERY_RIGHT, takenBack: [], alongside: [], ...over,
 });
 const evidence = (over: Partial<EvidenceUnderAssessment> = {}): EvidenceUnderAssessment => ({
-  artifactId: 'A1', subject: 'LOT-1', claim: '4 claims rest on 3 sources.', validation: 'NOT_VALIDATED', validatedAt: null, horizonEndsAt: null,
+  artifactId: 'A1', subject: 'LOT-1', claim: '4 claims rest on 3 sources.', validations: [], horizonEndsAt: null,
   rights: ['acquisition', 'customer_delivery', 'normalization'], inputRecordIds: ['REC-1', 'REC-2'], ...over,
 });
 
@@ -47,19 +48,46 @@ describe('the five assessments, one artifact at a time', () => {
   });
 
   it('is conflicting when the claim was refuted by the assessment instant', () => {
-    expect(assessEvidence(evidence({ validation: 'FALSIFIED', validatedAt: BEFORE }), context()).assessment).toBe('CONFLICTING');
-    expect(assessEvidence(evidence({ validation: 'FALSIFIED', validatedAt: AT }), context()).assessment).toBe('CONFLICTING');
-    expect(assessEvidence(evidence({ validation: 'BACKTESTED', validatedAt: BEFORE }), context()).assessment).toBe('PRESENT');
+    expect(assessEvidence(evidence({ validations: [refutedAt(BEFORE)] }), context()).assessment).toBe('CONFLICTING');
+    expect(assessEvidence(evidence({ validations: [refutedAt(AT)] }), context()).assessment).toBe('CONFLICTING');
+    expect(assessEvidence(evidence({ validations: [{ outcome: 'BACKTESTED', validatedAt: BEFORE }] }), context()).assessment).toBe('PRESENT');
   });
 
   /* A refutation is dated like a retraction: one after the instant is not yet known to the assessment. */
   it('does not know a refutation dated after the instant', () => {
-    const refutedLater = evidence({ validation: 'FALSIFIED', validatedAt: LATER });
+    const refutedLater = evidence({ validations: [refutedAt(LATER)] });
     expect(assessEvidence(refutedLater, context()).assessment).toBe('PRESENT');
     expect(assessEvidence(refutedLater, context()).because).toContain('not refuted');
     expect(assessEvidence(refutedLater, context({ assessedAt: LATER })).assessment).toBe('CONFLICTING');
     /* The same instant under another spelling is the same instant. */
-    expect(assessEvidence(evidence({ validation: 'FALSIFIED', validatedAt: '2026-09-06T11:10:00+02:00' }), context()).assessment).toBe('CONFLICTING');
+    expect(assessEvidence(evidence({ validations: [refutedAt('2026-09-06T11:10:00+02:00')] }), context()).assessment).toBe('CONFLICTING');
+  });
+
+  /*
+   * The state at an instant is the record standing then, not the artifact's
+   * latest: a later check that passed does not un-refute what stood, and a
+   * refutation that came after does not reach back. This is the case the
+   * ledger's `dossier_expected_assessment` reads with its own ORDER BY, and
+   * the two answers have to be the same one.
+   */
+  it('reads the validation standing at the instant, not the latest record', () => {
+    const rehabilitated = evidence({ validations: [refutedAt(BEFORE), { outcome: 'HELD_OUT', validatedAt: LATER }] });
+    expect(assessEvidence(rehabilitated, context()).assessment).toBe('CONFLICTING');
+    expect(assessEvidence(rehabilitated, context({ assessedAt: LATER })).assessment).toBe('PRESENT');
+    const refutedTwice = evidence({ validations: [refutedAt(BEFORE), refutedAt(LATER)] });
+    expect(assessEvidence(refutedTwice, context()).assessment).toBe('CONFLICTING');
+    const passedThenRefuted = evidence({ validations: [{ outcome: 'HELD_OUT', validatedAt: BEFORE }, refutedAt(LATER)] });
+    expect(assessEvidence(passedThenRefuted, context()).assessment).toBe('PRESENT');
+    expect(assessEvidence(passedThenRefuted, context({ assessedAt: LATER })).assessment).toBe('CONFLICTING');
+  });
+
+  it('resolves the standing record the way the ledger selects it', () => {
+    expect(standingValidation([], AT)).toBeNull();
+    expect(standingValidation([refutedAt(LATER)], AT)).toBeNull();
+    expect(standingValidation([refutedAt(BEFORE), { outcome: 'HELD_OUT', validatedAt: LATER }], AT)).toEqual(refutedAt(BEFORE));
+    /* Latest by instant, not by position. */
+    expect(standingValidation([{ outcome: 'HELD_OUT', validatedAt: BEFORE }, refutedAt(AT)], AT)).toEqual(refutedAt(AT));
+    expect(standingValidation([refutedAt(AT), { outcome: 'HELD_OUT', validatedAt: BEFORE }], AT)).toEqual(refutedAt(AT));
   });
 
   it('is disallowed when its rights do not carry the right the delivery exercises', () => {
@@ -94,10 +122,10 @@ describe('the five assessments, one artifact at a time', () => {
 
   /* The order is the argument: rights gate the view; then conflict; then staleness. */
   it('keeps the precedence: disallowed over conflicting over stale', () => {
-    const everything = evidence({ validation: 'FALSIFIED', validatedAt: BEFORE, rights: [], horizonEndsAt: '2026-01-01T00:00:00.000Z' });
+    const everything = evidence({ validations: [refutedAt(BEFORE)], rights: [], horizonEndsAt: '2026-01-01T00:00:00.000Z' });
     expect(assessEvidence(everything, context()).assessment).toBe('DISALLOWED');
     expect(assessEvidence({ ...everything, rights: [DELIVERY_RIGHT] }, context()).assessment).toBe('CONFLICTING');
-    expect(assessEvidence({ ...everything, rights: [DELIVERY_RIGHT], validation: 'NOT_VALIDATED' }, context()).assessment).toBe('STALE');
+    expect(assessEvidence({ ...everything, rights: [DELIVERY_RIGHT], validations: [] }, context()).assessment).toBe('STALE');
   });
 });
 

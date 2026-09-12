@@ -836,6 +836,14 @@ describe('re-assessment is a new row, and a release names what it was built over
     await expect(release()).rejects.toThrow(/then A1 refuted at/);
   });
 
+  /* Only a present artifact's refutation moves the row: the release names what it counted, and a refuted artifact it did not count changes nothing. */
+  it('lets a release be built after an artifact its named assessment did not count as present was refuted', async () => {
+    await assessedBoth(); await quotedAndReviewed();
+    await refuted('A3', T_ACCEPT); // A3 is DISALLOWED in C1, not present
+    await release();
+    expect(await rows(`SELECT count(*)::int AS n FROM dossier_release`)).toEqual([{ n: 1 }]);
+  });
+
   /* A refutation dated after the build, and a validation that passed between the assessment and the build, move nothing under the row. */
   it('lets a release be built under a refutation dated after its build, and over a validation that passed', async () => {
     await assessedBoth(); await quotedAndReviewed();

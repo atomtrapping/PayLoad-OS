@@ -154,8 +154,8 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
 
   /* ── coverage: every artifact bearing on a facet, assessed; the row is the sum ── */
   type Bearing = EvidenceUnderAssessment & { runId: string };
-  const bearing = (a: { artifactId: string; subject: string; claim: string; validation: string; validatedAt?: string | null; horizonEndsAt: string | null; rights: readonly string[]; inputs: ReadonlyArray<{ recordId: string }> }, runId: string): Bearing =>
-    ({ artifactId: a.artifactId, subject: a.subject, claim: a.claim, validation: a.validation, validatedAt: a.validatedAt ?? null, horizonEndsAt: a.horizonEndsAt, rights: a.rights, inputRecordIds: a.inputs.map((i) => i.recordId), runId });
+  const bearing = (a: { artifactId: string; subject: string; claim: string; horizonEndsAt: string | null; rights: readonly string[]; inputs: ReadonlyArray<{ recordId: string }> }, runId: string): Bearing =>
+    ({ artifactId: a.artifactId, subject: a.subject, claim: a.claim, validations: [], horizonEndsAt: a.horizonEndsAt, rights: a.rights, inputRecordIds: a.inputs.map((i) => i.recordId), runId });
   const lotArtifacts = seeded.caravan.run.result.artifacts.filter((a) => a.subject.startsWith('LOT-')).map((a) => bearing(a, seeded.caravan.run.result.runId));
   const spatialArtifact = bearing(seeded.spatial.artifact, seeded.spatial.run.runId);
   const terms = seeded.spatial.registrationTerms;
@@ -164,9 +164,28 @@ export async function runDossierLifecycle(ledger: GovernanceLedger, seeded: Seed
   const assessAll = async (at: string, series: number): Promise<CoverageRow[]> => {
     const takenBack = (await ledger.rows<{ record_id: string; kind: 'CORRECTION' | 'WITHDRAWAL' }>(
       `SELECT record_id, kind FROM retracted_record WHERE issued_at <= '${at}' ORDER BY record_id, kind`)).map((r) => ({ recordId: r.record_id, kind: r.kind }));
+    /*
+     * The validation records the ledger holds, dated, read from the table
+     * rather than from the artifact's current state: the assessment is the
+     * record standing at its own instant, and a later record must not decide
+     * what an earlier assessment saw. The demonstration's artifacts carry
+     * none — a run produces a result, not a checked one — so this is empty
+     * today and correct when it is not.
+     */
+    const validationsByArtifact = new Map<string, { outcome: string; validatedAt: string }[]>();
+    for (const row of await ledger.rows<{ artifact_id: string; outcome: string; validated_at: string }>(
+      `SELECT artifact_id, outcome, to_json(validated_at) #>> '{}' AS validated_at FROM artifact_validation ORDER BY artifact_id, validated_at`)) {
+      const held = validationsByArtifact.get(row.artifact_id) ?? [];
+      held.push({ outcome: row.outcome, validatedAt: row.validated_at });
+      validationsByArtifact.set(row.artifact_id, held);
+    }
     const assess = (facet: DossierFacet, list: readonly Bearing[], basis: (rollup: ReturnType<typeof rollupAssessment>) => string): CoverageRow => {
       const alongside = list.map(({ artifactId, subject, claim }) => ({ artifactId, subject, claim }));
-      const evidence: EvidenceRow[] = list.map((e) => ({ artifactId: e.artifactId, runId: e.runId, ...assessEvidence(e, { assessedAt: at, requiredRight: DELIVERY_RIGHT, takenBack, alongside }) }));
+      const evidence: EvidenceRow[] = list.map((e) => ({
+        artifactId: e.artifactId,
+        runId: e.runId,
+        ...assessEvidence({ ...e, validations: validationsByArtifact.get(e.artifactId) ?? [] }, { assessedAt: at, requiredRight: DELIVERY_RIGHT, takenBack, alongside }),
+      }));
       const rollup = rollupAssessment(evidence.map((e) => e.assessment));
       const runsRepresented = new Set(evidence.map((e) => e.runId)).size;
       const runsUsable = new Set(evidence.filter((e) => e.assessment === 'PRESENT').map((e) => e.runId)).size;

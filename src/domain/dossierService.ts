@@ -228,13 +228,21 @@ export const USABLE_ASSESSMENTS: readonly CoverageAssessment[] = ['PRESENT'];
 /** The right a dossier delivery exercises: an export to the customer audience. */
 export const DELIVERY_RIGHT = 'customer_delivery';
 
+/** One validation record: the outcome it left the artifact in, and when. */
+export interface ValidationUnderAssessment { outcome: string; validatedAt: string }
+
 export interface EvidenceUnderAssessment {
   artifactId: string;
   subject: string;
   claim: string;
-  /** The artifact's validation state: the outcome of its latest validation record, and that record's instant. */
-  validation: string;
-  validatedAt: string | null;
+  /**
+   * Every validation record the artifact carries, each dated. The state at an
+   * instant is the latest record at or before it, which is what the ledger
+   * reads; the artifact's current state is not passed, because a later record
+   * must not decide what an earlier assessment saw. Unvalidated is the empty
+   * list, so an outcome without an instant cannot be expressed.
+   */
+  validations: readonly ValidationUnderAssessment[];
   horizonEndsAt: string | null;
   /** In the corpus's rights vocabulary. The discovery ledger refuses any other. */
   rights: readonly string[];
@@ -269,9 +277,27 @@ export interface AssessmentContext {
  * `inputRecordIds` is every source record the artifact rests on, through
  * any derived artifacts it read; the ledger's guard follows the inputs down
  * the same way. A refutation is read as of the assessment instant, like a
- * retraction and a horizon: one dated after it is not yet known to it.
+ * retraction and a horizon: the validation standing then is the latest
+ * record at or before it, one dated after it is not yet known, and a later
+ * record that passed does not un-refute what stood at the instant.
  * Instants are compared as instants, not as spellings.
  */
+
+/**
+ * The validation standing at an instant: the latest record at or before it,
+ * or none. The ledger's `dossier_expected_assessment` selects the same row
+ * the same way, so the two answers cannot differ.
+ */
+export function standingValidation(
+  validations: readonly ValidationUnderAssessment[],
+  at: string,
+): ValidationUnderAssessment | null {
+  return validations.reduce<ValidationUnderAssessment | null>((latest, record) => {
+    if (compareInstants(record.validatedAt, at) > 0) return latest;
+    return latest === null || compareInstants(record.validatedAt, latest.validatedAt) > 0 ? record : latest;
+  }, null);
+}
+
 export function assessEvidence(evidence: EvidenceUnderAssessment, context: AssessmentContext): { assessment: CoverageAssessment; because: string } {
   if (!evidence.rights.includes(context.requiredRight)) {
     return { assessment: 'DISALLOWED', because: `Its rights are ${evidence.rights.length ? evidence.rights.join(', ') : 'none'}; ${context.requiredRight} is not among them, and a dossier delivery exercises it.` };
@@ -285,8 +311,9 @@ export function assessEvidence(evidence: EvidenceUnderAssessment, context: Asses
   if (disagreeing.length > 0) {
     return { assessment: 'CONFLICTING', because: `${disagreeing.map((other) => other.artifactId).join(', ')} bears on the same facet and says something else about ${evidence.subject}.` };
   }
-  if (evidence.validation === 'FALSIFIED' && evidence.validatedAt !== null && compareInstants(evidence.validatedAt, context.assessedAt) <= 0) {
-    return { assessment: 'CONFLICTING', because: `The claim was checked against held-out or observed evidence and refuted at ${evidence.validatedAt}.` };
+  const standing = standingValidation(evidence.validations, context.assessedAt);
+  if (standing !== null && standing.outcome === 'FALSIFIED') {
+    return { assessment: 'CONFLICTING', because: `The claim was checked against held-out or observed evidence and refuted at ${standing.validatedAt}.` };
   }
   if (evidence.horizonEndsAt !== null && compareInstants(evidence.horizonEndsAt, context.assessedAt) < 0) {
     return { assessment: 'STALE', because: `Its horizon ended at ${evidence.horizonEndsAt}, before ${context.assessedAt}.` };

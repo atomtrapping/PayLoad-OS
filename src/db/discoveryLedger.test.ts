@@ -548,7 +548,19 @@ describe('a validation is dated, and the state is its latest record', () => {
     await expect(tx(`${record('V1', { outcome: 'NOT_VALIDATED' })}; ${state('NOT_VALIDATED', null)}`)).rejects.toThrow(/outcome/);
   });
 
-  /* Held from both sides, at commit. */
+  /*
+   * Held from both sides, at commit, and at insert as well as update: an
+   * artifact written with a validated state and no record behind it is the
+   * same free column, arriving one statement earlier.
+   */
+  it('refuses an artifact inserted already carrying a state no record supports', async () => {
+    await expect(tx(`INSERT INTO derived_artifact (artifact_id, run_id, run_status, claim_class, subject, claim, computed_at, rights, validation, validated_at)
+      VALUES ('A-BORN-REFUTED', 'R1', 'SUCCEEDED', 'COMPUTED_RESULT', 'facility:1', 'supplies facility:2', '${T_DONE}', '{acquisition,normalization}', 'FALSIFIED', '${T_DONE}');
+      ${inputRow('I-A-BORN-REFUTED', { artifact: 'A-BORN-REFUTED' })}`))
+      .rejects.toThrow(/artifact_validation_is_not_its_latest_record:A-BORN-REFUTED:FALSIFIED at .* recorded, no validation record/);
+    expect(await rows(`SELECT artifact_id FROM derived_artifact WHERE artifact_id = 'A-BORN-REFUTED'`)).toEqual([]);
+  });
+
   it('refuses moving the state with no record behind it, and a record the state does not carry', async () => {
     await expect(tx(state('HELD_OUT', T_LATER)))
       .rejects.toThrow(/artifact_validation_is_not_its_latest_record:A1:HELD_OUT at .* recorded, no validation record/);

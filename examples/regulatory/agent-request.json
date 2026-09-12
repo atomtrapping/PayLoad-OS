@@ -1,0 +1,18 @@
+{
+  "schema": "payload.regulatory-agent-request.v1",
+  "captureId": "federal-register-2026-09-12",
+  "expectedContentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "runId": "regulatory-review-2026-09-12",
+  "knownThrough": "2026-09-12T23:59:59.000Z",
+  "watches": [
+    {
+      "watchId": "us-federal-industrial-policy",
+      "jurisdictions": ["US_FEDERAL"],
+      "authorities": [],
+      "entities": [],
+      "topics": [],
+      "instrumentKinds": ["RULE", "PROPOSED_RULE", "NOTICE", "EXECUTIVE_ACTION"],
+      "targets": ["PAYLOAD_CAPABILITY_GRAPH", "COMMERCIAL_AGENT", "NOTATIONS_TERMINAL", "ENTERPRISE_APPARATUS"]
+    }
+  ]
+}

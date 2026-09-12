@@ -23,6 +23,7 @@ about it and a reader should be too.
 | The Caravan corpus | 3 releases, 21 records, 2 retractions, 7 sources — committed, synthetic, `fixture_only: true` on every response |
 | Admission and retained inventory | Admission, identity/time rules and a guarded PostgreSQL writer exist. The supplied-byte statutory rail can evaluate admission in memory. A retained real customer inventory is not established by that demonstration |
 | Source operation | Two bounded FMCSA observations and their immutable internal qualification packages are retained locally; the second source response was unchanged. Samsara is offline-tested. Recurring collection and live customer feeds are not established. Capture requires the operator's explicit flag and source-use basis |
+| Regulatory Manager | A bounded FederalRegister.gov change-feed adapter, source-neutral event clustering and a local review-proposal agent are implemented. The source is classified as an informational government mirror; no automatic acceptance, legal-effect finding or OS state update is claimed. See [`docs/REGULATORY_MANAGER.md`](docs/REGULATORY_MANAGER.md) |
 | Boutique package path | `npm run boutique` reopens exact evidence, packages JSONL/CSV with dictionary, quality, terms and digests, and compares vintages. Customer export is refused under the qualification-only policy. See [`docs/BOUTIQUE_PRODUCT_MILESTONE.md`](docs/BOUTIQUE_PRODUCT_MILESTONE.md) |
 | Independent verification | None. Verification here is internal recompute, stated on every release. V0 and V1 of six tiers are reached |
 | Customers, bills, deliveries | No completed licensed customer delivery or pilot is established. The delivery ledger is specified and empty; internal outputs do not establish a billable customer product |
@@ -354,6 +355,7 @@ Typecheck also rejects unused locals and parameters. [Codebase consolidation](do
 - `docs/UX_ARCHITECTURE.md` — object model, navigation, projections, component boundaries, the authority boundary.
 - `docs/WORKSPACE_DESIGN.md` — the design language, the one shell, the inspector pattern, the notation and candidate-production slices built on it, and the verification receipt.
 - `docs/STATUTORY_HARVESTER.md` — the insurance-regulator rail: the declared per-jurisdiction header grammar and its four presence states, why a filing supplies the two stages the census rail is missing, what is a claim and what is a coordinate, the two as-of questions, and the two boundaries the payload states rather than implies — nothing collected, nothing written.
+- `docs/REGULATORY_MANAGER.md` — the Federal Register capture adapter, regulatory observation contract, common-origin grouping, conflict states, watch matching and the local agent that proposes review without changing canonical state.
 - `docs/PRODUCTION_PATH.md` — the production path: seven stages with states derived from the rail's receipts, identities and recovery, the real source readback, the notation and release blockers, and the receipt.
 - `docs/EARTH_TWIN.md` — the NotationsOS Earth Twin: the projection fabric's CesiumJS instrument built on God's Eye View's globe stack, keyless and offline, with every layer's source and state, the corpus asked for honestly, the signal-source registry, the staged plan and the receipt.
 - `docs/AGENT_COORDINATION.md` — the shared agent/apparatus stable, scoped board and inbox, contract synastry, JavaScript/Python clients, local worker and Bench references.
@@ -391,8 +393,9 @@ src/projection  closed ProjectionSpec, full fixture-source snapshot descriptor a
 native/state-kernel small Rust notation command/replay kernel; stable IDs, explicit relations and inverse history, no renderer or filesystem
 src/state-kernel fixed native-process adapter, loopback contract and immutable local saved versions; not domain canonical state
 src/data-os     Bench-derived source policy/capture, local evidence store, fixed Carrier parser, candidate builds and read-only reference comparison; no canonical corpus admission
-src/acquisition operator-only source requests, fixed FMCSA and Samsara HTTPS transports, source parsers, immutable capture history and CLIs; no customer API
-src/coordination agent/apparatus definitions, scope and message rules, contract matching, participant inbox, deterministic contract/build-inspection workers and opt-in local event log
+src/acquisition operator-only source requests, fixed FMCSA, statutory, Federal Register and Samsara HTTPS transports, source parsers, immutable capture history and CLIs; no customer API
+src/regulatory  source-neutral regulatory observations, event clustering, declared-origin support states, conflicts and review-only impact proposals
+src/coordination agent/apparatus definitions, scope and message rules, contract matching, participant inbox, deterministic contract/build/regulatory workers and opt-in local event log
 clients         dependency-free JavaScript and Python coordination clients
 scripts         local server launcher, contract-review and candidate-build-review workers; evidence intake/normalization/candidate-build entry points
 examples/evidence synthetic notice and operator-declared intake manifest

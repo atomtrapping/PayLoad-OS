@@ -28,6 +28,8 @@ const QUERY_LIMITS = { '$select': 1024, '$where': 1024, '$order': 256, '$limit':
 export type QueryGrammar =
   /** Socrata's four bounded parameters, all four required, `$limit` at most 25. */
   | 'SOCRATA_BOUNDED'
+  /** FederalRegister.gov: one bounded publication-date window, newest first. */
+  | 'FEDERAL_REGISTER_BOUNDED'
   /** No query string at all. A document is addressed by path or it is not addressed. */
   | 'NONE';
 
@@ -84,6 +86,27 @@ function validateUrl(input: URL, endpoint: SourceEndpoint): URL {
     // A path and nothing else. A document endpoint that accepted parameters
     // would be an open proxy wearing a regulator's hostname.
     if (url.search !== '') throw fault('SOURCE_URL_DISALLOWED', 'The source query is not permitted.', 400);
+    return url;
+  }
+  if (endpoint.query === 'FEDERAL_REGISTER_BOUNDED') {
+    const expected = ['conditions[publication_date][gte]', 'conditions[publication_date][lte]', 'order', 'per_page'];
+    const entries = [...url.searchParams];
+    if (entries.length !== expected.length || new Set(entries.map(([key]) => key)).size !== expected.length
+      || expected.some((key) => !url.searchParams.has(key)) || entries.some(([key]) => !expected.includes(key))) {
+      throw fault('SOURCE_URL_DISALLOWED', 'The source query is not permitted.', 400);
+    }
+    const perPage = url.searchParams.get('per_page')!;
+    const from = url.searchParams.get('conditions[publication_date][gte]')!;
+    const through = url.searchParams.get('conditions[publication_date][lte]')!;
+    const date = /^\d{4}-\d{2}-\d{2}$/;
+    const fromTime = Date.parse(`${from}T00:00:00.000Z`);
+    const throughTime = Date.parse(`${through}T00:00:00.000Z`);
+    if (url.searchParams.get('order') !== 'newest' || !/^[1-9]\d{0,2}$/.test(perPage) || Number(perPage) > 100
+      || !date.test(from) || !date.test(through) || !Number.isFinite(fromTime) || !Number.isFinite(throughTime)
+      || new Date(fromTime).toISOString().slice(0, 10) !== from || new Date(throughTime).toISOString().slice(0, 10) !== through
+      || throughTime < fromTime || throughTime - fromTime > 31 * 86_400_000) {
+      throw fault('SOURCE_URL_DISALLOWED', 'The source query is not permitted.', 400);
+    }
     return url;
   }
   const entries = [...url.searchParams];

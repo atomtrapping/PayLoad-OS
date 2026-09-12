@@ -1,0 +1,7 @@
+{
+  "schema": "payload.federal-register-capture-request.v1",
+  "requestId": "federal-register-2026-09-12",
+  "publishedFrom": "2026-09-12",
+  "publishedThrough": "2026-09-12",
+  "perPage": 25
+}

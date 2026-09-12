@@ -11,6 +11,11 @@ import { SourceConnectorError } from './errors';
 import { buildCensusUrl, parseCensusBytes, parseSourceCaptureRequest, type CensusObservations, type SourceCaptureRequest } from './fmcsa';
 import { fetchEndpointBytes, FMCSA_CENSUS_ENDPOINT, type SourceBytes, type SourceEndpoint } from './http';
 import {
+  buildFederalRegisterUrl, federalRegisterQualificationPolicy, FEDERAL_REGISTER_ENDPOINT,
+  FEDERAL_REGISTER_SOURCE_ID, parseFederalRegisterBytes, parseFederalRegisterCaptureRequest,
+  type FederalRegisterCaptureRequest, type FederalRegisterFeedObservation,
+} from './federalRegister';
+import {
   buildStatutoryUrl, observeStatutoryDocument, parseStatutoryCaptureRequest, statutoryEndpoint,
   statutoryQualificationPolicy, STATUTORY_SOURCES,
   type StatutoryCaptureRequest, type StatutoryDocumentObservation,
@@ -120,6 +125,31 @@ export const STATUTORY_ADAPTER: CaptureAdapter<StatutoryCaptureRequest, Statutor
   acceptsMediaType: (value) => value === 'text/plain' || value === 'text/html',
 });
 
+function federalRegisterBasis() {
+  return {
+    reviewedOn: '2026-09-12', authority: 'OPERATOR_DECLARATION',
+    scope: 'INTERNAL_PUBLIC_SOURCE_QUALIFICATION', providerLicense: 'PUBLIC_KEYLESS_API_REPUBLICATION_REVIEW_OPEN',
+    retentionBasis: 'OPERATOR_LOCAL_EVIDENCE_HISTORY', independentRightsVerification: false,
+    hostPinnedBy: 'CODE', queryWindowDeclaredBy: 'OPERATOR',
+    legalStatus: 'INFORMATIONAL_MIRROR_NOT_OFFICIAL_LEGAL_EDITION',
+    references: ['https://www.federalregister.gov/developers/documentation/api/v1', 'https://www.federalregister.gov/reader-aids/government-policy-and-ofr-procedures/about-this-site'],
+  } as const;
+}
+
+export const FEDERAL_REGISTER_ADAPTER: CaptureAdapter<FederalRegisterCaptureRequest, FederalRegisterFeedObservation> = Object.freeze<CaptureAdapter<FederalRegisterCaptureRequest, FederalRegisterFeedObservation>>({
+  adapter: 'federal-register-document-feed.v1',
+  sourceId: FEDERAL_REGISTER_SOURCE_ID,
+  captureRoot: ['federal-register-captures'],
+  parseRequest: parseFederalRegisterCaptureRequest,
+  requestId: (request) => request.requestId,
+  buildUrl: buildFederalRegisterUrl,
+  endpointFor: () => FEDERAL_REGISTER_ENDPOINT,
+  registration: federalRegisterQualificationPolicy,
+  qualificationBasis: federalRegisterBasis,
+  observe: (bytes, request) => parseFederalRegisterBytes(bytes, request),
+  acceptsMediaType: (value) => value === 'application/json',
+});
+
 interface Intent<Request> {
   schema: 'payload.source-capture-intent.v1';
   request: Request;
@@ -162,6 +192,7 @@ export interface CaptureInspection<Request, Observations> {
 /** The census binding, so every existing caller keeps the type it already reads. */
 export type SourceCaptureInspection = CaptureInspection<SourceCaptureRequest, CensusObservations>;
 export type StatutoryCaptureInspection = CaptureInspection<StatutoryCaptureRequest, StatutoryDocumentObservation>;
+export type FederalRegisterCaptureInspection = CaptureInspection<FederalRegisterCaptureRequest, FederalRegisterFeedObservation>;
 
 function error(code: string, message: string, status = 409): SourceConnectorError {
   return new SourceConnectorError(code, message, status);
@@ -433,5 +464,12 @@ export class SourceCaptureStore extends CaptureStore<SourceCaptureRequest, Censu
 export class StatutoryCaptureStore extends CaptureStore<StatutoryCaptureRequest, StatutoryDocumentObservation> {
   constructor(root: string, dependencies: { fetch?: typeof fetchEndpointBytes; now?: () => string } = {}) {
     super(root, STATUTORY_ADAPTER, dependencies);
+  }
+}
+
+/** The Federal Register change feed, bound to the shared immutable capture and budget discipline. */
+export class FederalRegisterCaptureStore extends CaptureStore<FederalRegisterCaptureRequest, FederalRegisterFeedObservation> {
+  constructor(root: string, dependencies: { fetch?: typeof fetchEndpointBytes; now?: () => string } = {}) {
+    super(root, FEDERAL_REGISTER_ADAPTER, dependencies);
   }
 }

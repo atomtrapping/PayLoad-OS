@@ -188,6 +188,25 @@ test('the API page states the questions the endpoints do not yet ask', async ({ 
 });
 
 /**
+ * This is the page an outside integrator reads to learn what the surface
+ * offers, and it had no accessibility check, which is how eight
+ * nested-interactive violations stood on it: every endpoint example put its
+ * link inside the `<summary>` that opens the example, so each address was a
+ * control inside a control. Axe found those with the examples shut, so this
+ * opens them for the wider reason — the copy button, the printed JSON and the
+ * link now in the body are only audited once something has expanded them.
+ */
+test('the API page passes the audit with every example open', async ({ page }) => {
+  await page.goto('/api');
+  await page.waitForLoadState('load');
+  const examples = page.locator('details');
+  await expect(examples.first()).toBeAttached();
+  for (const example of await examples.all()) await example.evaluate((node: HTMLDetailsElement) => { node.open = true; });
+  const accessibility = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+  expect(accessibility.violations).toEqual([]);
+});
+
+/**
  * The hints name the keyboard in front of the reader.
  *
  * Every hint used to read `⌘K` and `Alt` on every machine, so a reader on

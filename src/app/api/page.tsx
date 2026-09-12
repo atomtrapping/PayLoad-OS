@@ -47,10 +47,21 @@ function Example({ title, url, body }: { title: string; url: string; body: unkno
   const text = JSON.stringify(body, null, 2);
   // The button copies the printed example by id rather than carrying its own copy.
   const preId = `api-example-${url.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()}`;
+  /*
+   * The endpoint is text in the summary and a link in the body. A summary is
+   * itself the control that opens the details, so an anchor inside one is a
+   * control inside a control: the reader tabs to a link that is also half of
+   * a disclosure, and a screen reader announces one interactive thing wearing
+   * another. Keeping the address visible while the block is shut, and
+   * reachable once it is open, costs nothing and is the honest markup.
+   */
   return (
     <details className="surface-inset p-3">
-      <summary className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>{title} — <Link href={url} className="id" style={{ color: 'var(--info)' }}>GET {url}</Link></summary>
-      <div className="mt-2 flex items-center justify-end"><CopyButton target={preId} label="Copy JSON" /></div>
+      <summary className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>{title} — <span className="id" style={{ color: 'var(--info)' }}>GET {url}</span></summary>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <Link href={url} className="id text-[12px] inline-flex items-center min-h-6" style={{ color: 'var(--info)' }}>Open GET {url}</Link>
+        <CopyButton target={preId} label="Copy JSON" />
+      </div>
       <pre id={preId} tabIndex={0} className="m-0 mt-1 surface-inset p-2 overflow-x-auto text-[11.5px] mono" style={{ color: 'var(--text-secondary)', maxHeight: 360 }}>{text}</pre>
     </details>
   );

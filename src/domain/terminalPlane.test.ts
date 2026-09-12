@@ -86,6 +86,7 @@ const capability = (over: Partial<Capability> = {}): Capability => ({
   title: 'A capability under test',
   kind: 'READ',
   subsystem: 'Test',
+  module: 'src/domain/capabilityRegistry.ts',
   entryPoint: 'nowhere',
   reachableToday: 'not reachable',
   gatedBy: 'nothing',

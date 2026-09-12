@@ -191,15 +191,44 @@ declared viewer class rather than a party. `servingStanding()` reports the two
 surfaces separately for exactly that reason: one number over both would read as
 though the feed were governed too.
 
-## What is in the registry today
+## What is in the registry
 
-The twelve corpus reads, which are the tools on the surface. The operate and
-admit capabilities of the substrate — the mining engine, the dossier
-lifecycle, the production rail, the notation kernel, the spatial comparison,
-the product desks — are being surveyed and added; the plane routes them
-already, and the registry is where each will say what it changes. Until a
-capability is described there, no terminal reaches it, which is the intended
-default.
+161 capabilities, from a subsystem-by-subsystem reading of the code.
+
+| | Count |
+| --- | --- |
+| Reads | 62 |
+| Operates | 91 |
+| Admissions | 8 |
+| Reaching an estate | 24 |
+| Reachable by a terminal today | 12 |
+
+The twelve are the corpus reads, which are the tools on the surface. Everything
+else is the substrate a terminal cannot yet operate: the mining engine, the
+whole dossier lifecycle from the ask to the correction, the production and
+evidence rails, the notation kernel, spatial inquiry and the Earth twin, the
+projection fabric, the governed editorial, commercial, treasury, capacity,
+warrant and state planes, the product desks, and the governance kernel's own
+acts. 39 entries are reachable by nothing at all; 63 are reachable only from
+inside the application.
+
+Listing what is not wired is the point. A registry of only what is plumbed
+would be a list of twelve tools; the map of the substrate is what shows where
+the work is. And nothing is reachable by being absent from the registry: what
+is not described is refused, which is the intended default.
+
+Two honesties about the surveyed entries. Their served kinds, where they are
+reads, are the registry's reading of what each would hand back rather than a
+fact a caller has exercised, because nothing reaches them. And their side
+effects are what the code was read to write; they are a reviewer's warning, so
+they are stated broadly rather than narrowly, and a capability that changes
+more than it says is a defect in that file.
+
+`src/domain/capabilityRegistry.test.ts` holds the registry to the code: every
+entry names a module that exists on disk, under the repository, and a broken
+path fails the suite. Kinds, identifiers, served kinds and side effects are
+checked for shape, no capability serves an estate, and the only capabilities
+any transport reaches are the twelve corpus reads.
 
 ## Verified
 

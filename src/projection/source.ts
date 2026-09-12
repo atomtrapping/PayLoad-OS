@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { sha256Hex } from '../lib/sha256';
 import type { Corpus, CorpusRecord, CorpusRelease, RecordStatus } from '../domain/corpus';
 import { legacyFixtureReleaseRecords } from '../fixtures/legacyReleaseMembership';
 import { recordPayload } from '../adapter/feedShapes';
@@ -11,7 +11,7 @@ import { ProjectionError, type ProjectionSpec } from './spec';
 
 type CorrectionPointer = 'supersedesRecordId' | 'supersededByRecordId' | 'retractedByRetractionId';
 export type ProjectionRecord = Omit<ReturnType<typeof recordPayload>, CorrectionPointer> & { statusAtKnownAt: RecordStatus };
-export const projectionHash = (value: unknown) => createHash('sha256').update(canonicalJson(value)).digest('hex');
+export const projectionHash = (value: unknown) => sha256Hex(canonicalJson(value));
 export const projectionDigest = (value: unknown) => `sha256:${projectionHash(value)}`;
 export const sourceTime = (value: string) => parseISOInstant(value, 'source time');
 const SNAPSHOT_CODEC = 'payload.fixture-projection-source.v1';

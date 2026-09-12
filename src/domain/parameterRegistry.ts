@@ -1,5 +1,5 @@
 import type { Hash, ISODateTime } from './types';
-import { createHash } from 'node:crypto';
+import { sha256Hex } from '@/lib/sha256';
 import { canonicalJson } from '@/fixtures/digest';
 
 /**
@@ -174,7 +174,7 @@ function computeParameterSetDigest(params: Record<string, ModelParameterRow>): H
         c: params[k].citation.documentRef,
       }))
   );
-  return 'sha256:' + createHash('sha256').update(serialized).digest('hex');
+  return 'sha256:' + sha256Hex(serialized);
 }
 
 export const PARAMETER_SET_v2026_09: ParameterSet = {

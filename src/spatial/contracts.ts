@@ -1,4 +1,4 @@
-import { encodeLocalRecord, exactFields, localRecordDigest } from '../data-os/local-record';
+import { exactFields, localRecordBytes, localRecordDigest } from '../data-os/local-json';
 import { ProductionError } from '../production/errors';
 
 export const MAX_SPATIAL_BYTES = 512 * 1024;
@@ -34,7 +34,7 @@ function provenance(value: unknown, kind: Provenance['kind'], sources?: Set<stri
   if (sources && value.sourceIds.some(s => !sources.has(s as string))) throw new Error('Unknown provenance source.');
   (value.sourceIds as string[]).sort();
 }
-function clone(value: unknown): unknown { return JSON.parse(encodeLocalRecord(value, MAX_SPATIAL_BYTES).toString('utf8')); }
+function clone(value: unknown): unknown { return JSON.parse(new TextDecoder().decode(localRecordBytes(value, MAX_SPATIAL_BYTES))); }
 export function parseLayout(input: unknown): SpatialLayout {
   const v = clone(input); exactFields(v, ['schema', 'id', 'label', 'floorId', 'sourceArtifacts', 'frame', 'provenance', 'spaces', 'passages']);
   if (v.schema !== 'payload.spatial-layout.v1') throw new Error('Unsupported spatial layout.'); id(v.id); id(v.floorId); label(v.label);

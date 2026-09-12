@@ -1,5 +1,5 @@
 import type { Hash, ISODateTime } from './types';
-import { createHash } from 'node:crypto';
+import { sha256Hex, utf8Bytes } from '@/lib/sha256';
 import type { ParameterSet } from './parameterRegistry';
 import { getActiveParameterSet } from './parameterRegistry';
 import type { MeasurementInstrumentId } from './n11MeasurementEconomy';
@@ -268,11 +268,11 @@ export function generateComputationReceipt(
   const inputStr = typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput);
   const outputStr = typeof rawOutput === 'string' ? rawOutput : JSON.stringify(rawOutput);
 
-  const inputsDigest = 'sha256:' + createHash('sha256').update(inputStr).digest('hex');
-  const outputDigest = 'sha256:' + createHash('sha256').update(outputStr).digest('hex');
+  const inputsDigest = 'sha256:' + sha256Hex(inputStr);
+  const outputDigest = 'sha256:' + sha256Hex(outputStr);
 
   const receiptSeed = `${engine}:${engineVersion}:${inputsDigest}:${paramSet.parameterSetDigest}:${outputDigest}`;
-  const receiptId = 'rcpt_comp_' + createHash('sha256').update(receiptSeed).digest('hex').slice(0, 16);
+  const receiptId = 'rcpt_comp_' + sha256Hex(receiptSeed).slice(0, 16);
 
   return {
     receiptId,
@@ -372,8 +372,7 @@ export function calibrateInstrumentFromHistory(
  * Computes deterministic sha256 digest from byte buffer or utf-8 string.
  */
 export function calculateBytesDigest(content: string | Uint8Array): Hash {
-  const buf = typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
-  return `sha256:${createHash('sha256').update(buf).digest('hex')}` as Hash;
+  return `sha256:${sha256Hex(content)}` as Hash;
 }
 
 /**
@@ -387,7 +386,7 @@ export function verifyArtifactIntegrity(artifact: SourceArtifact): {
 } {
   const calculatedDigest = calculateBytesDigest(artifact.textPayload);
   const matches = calculatedDigest === artifact.artifactDigest && artifact.retainedPayloadChecksum === artifact.artifactDigest;
-  const byteLength = Buffer.from(artifact.textPayload, 'utf-8').byteLength;
+  const byteLength = utf8Bytes(artifact.textPayload).byteLength;
   return {
     matches,
     calculatedDigest,

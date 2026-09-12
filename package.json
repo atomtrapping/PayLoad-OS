@@ -22,6 +22,7 @@
     "agent:contract-review": "esbuild scripts/contract-review.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/contract-review-agent.mjs --log-level=warning && node .stamp/contract-review-agent.mjs",
     "agent:candidate-build-review": "esbuild scripts/candidate-build-review.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/candidate-build-review-agent.mjs --log-level=warning && node .stamp/candidate-build-review-agent.mjs",
     "agent:commercial": "esbuild scripts/commercial.entry.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/commercial.mjs --log-level=warning && node .stamp/commercial.mjs",
+    "agent:regulatory": "esbuild scripts/regulatory-agent.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/regulatory-agent.mjs --log-level=warning && node .stamp/regulatory-agent.mjs",
     "reasoning": "esbuild scripts/reasoning.entry.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/reasoning.mjs --log-level=warning && node .stamp/reasoning.mjs",
     "sakana:tools": "esbuild scripts/sakana-tools.entry.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=.stamp/sakana-tools.mjs --log-level=warning && node .stamp/sakana-tools.mjs",
     "evidence": "esbuild scripts/evidence.entry.ts --bundle --platform=node --format=esm --outfile=.stamp/evidence.mjs --log-level=warning && node .stamp/evidence.mjs",

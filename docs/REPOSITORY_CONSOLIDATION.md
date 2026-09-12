@@ -24,6 +24,7 @@ permitted, version-pinned mining workflow.
 | Local Iceberg publication qualification | `tools/terminal_lake` through `src/terminal/lake.ts`; fixture-only, separate Python environment |
 | Replay and interdisciplinary analytical instruments | `src/state-kernel`, `src/observation`, `src/compute`; shared bounded process policy |
 | Optional commercial/reasoning assistance | `src/commercial`, `src/reasoning`, `tools/sakana`; local operator tools, disabled hosted processing by default |
+| Agent stable and noticeboard | `src/coordination`, `/agents`, `/board`; current local development board, not a second execution scheduler |
 | Internal image and access boundary | `Dockerfile`, `deploy`, `src/access`, `src/proxy.ts` |
 | Shared verification | Root package/lockfile and `.github/workflows/check.yml` |
 
@@ -89,6 +90,14 @@ loopback. `terminal:qualify` is a synthetic, isolated local test, not a command 
 qualify a configured production database. See
 [the terminal contract](TERMINAL_OPERATING_CONTRACT.md) for credential registration,
 schema migration, worker operation and the independent CLI.
+
+The [agent coordination contract](AGENT_COORDINATION.md) describes the existing
+stable, inboxes, handoffs and acknowledgements, and the server-bound identity and
+PostgreSQL message persistence still required for multi-terminal deployment.
+Board acknowledgements are not execution claims or authorization. Existing seed
+identities are preserved so old local board logs are not invalidated by a catalog edit.
+The [regulatory manager](REGULATORY_MANAGER.md) is a review-only participant; it
+does not establish legal effect or execute the changes it proposes.
 
 Optional operator tools:
 

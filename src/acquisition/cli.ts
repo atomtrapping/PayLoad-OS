@@ -2,8 +2,12 @@ import { SourceConnectorError } from './errors';
 import { readBoundedSourceRequest as readRequest, CENSUS_BUILD_REQUEST_MAX_BYTES, SOURCE_REQUEST_FILE_ERRORS } from './request-file';
 export { readBoundedSourceRequest, SOURCE_REQUEST_MAX_BYTES, CENSUS_BUILD_REQUEST_MAX_BYTES } from './request-file';
 import { parseSourceCaptureRequest } from './fmcsa';
-import { SourceCaptureStore, StatutoryCaptureStore, type SourceCaptureInspection, type StatutoryCaptureInspection } from './store';
+import {
+  FederalRegisterCaptureStore, SourceCaptureStore, StatutoryCaptureStore,
+  type FederalRegisterCaptureInspection, type SourceCaptureInspection, type StatutoryCaptureInspection,
+} from './store';
 import { parseStatutoryCaptureRequest } from './statutory';
+import { parseFederalRegisterCaptureRequest } from './federalRegister';
 import { runScheduledCapture, type StatutoryRunOutcome, type StatutoryRunStore } from './statutoryRun';
 import { CensusNormalizationStore, parseCensusNormalizationRequest, type CensusNormalizationRun } from './census-normalization';
 import { CensusCandidateBuildStore, parseCensusCandidateBuildRequest, type LocalCensusCandidateBuild } from '../data-os/local-census-candidate-build';
@@ -19,6 +23,8 @@ export const SOURCE_CLI_USAGE = [
   'npm run source -- statutory-capture --request <request.json> [--root <directory>]',
   'npm run source -- statutory-inspect --request-id <id> [--root <directory>]',
   'npm run source -- statutory-run --plan <plan.json> [--root <directory>]',
+  'npm run source -- federal-register-capture --request <request.json> [--root <directory>]',
+  'npm run source -- federal-register-inspect --request-id <id> [--root <directory>]',
   'statutory-run decides from the declared schedule and the captures on disk, then collects at most once.',
   'New captures require PAYLOAD_SOURCE_COLLECTION=1. Historical inspection never collects.',
   'Normalization/build read retained captures only; no source collection, admission or release activation.',
@@ -31,6 +37,8 @@ const SAFE_ERRORS = {
   SOURCE_CAPTURE_NOT_FOUND: 'No stored source capture has this request ID.',
   INVALID_STATUTORY_REQUEST: 'Provide an exact statutory capture request naming a declared jurisdiction and one document path on that regulator’s host.',
   INVALID_STATUTORY_CAPTURE_PLAN: 'Provide an exact statutory capture plan: schema, schedule and target, with the request ID derived per run.',
+  INVALID_FEDERAL_REGISTER_REQUEST: 'Provide an exact Federal Register capture request with a request ID, a publication-date window of at most 31 days and perPage from 1 to 100.',
+  FEDERAL_REGISTER_CAPTURE_NOT_FOUND: 'No stored Federal Register capture has this request ID.',
   INVALID_CAPTURE_SCHEDULE: 'The declared capture schedule is not a bounded schedule: check the window, the whole-hour floor and the total run budget.',
   STATUTORY_CAPTURE_NOT_FOUND: 'No stored statutory capture has this request ID.',
   SOURCE_COLLECTION_DISABLED: 'Set PAYLOAD_SOURCE_COLLECTION=1 explicitly to collect a new source response.',
@@ -77,6 +85,7 @@ export interface SourceCliDependencies {
   /** Tests can replace transport/storage without adding any operator-facing execution knobs. */
   storeFactory?: (root: string) => SourceCliStore;
   statutoryFactory?: (root: string) => StatutoryRunStore;
+  federalRegisterFactory?: (root: string) => Pick<FederalRegisterCaptureStore, 'capture' | 'inspect'>;
   /** The invocation clock. Supplied so a plan is decided against one instant a receipt can be read against. */
   now?: () => string;
   normalizationFactory?: (root: string) => Pick<CensusNormalizationStore, 'normalize' | 'inspect'>;
@@ -84,6 +93,7 @@ export interface SourceCliDependencies {
 }
 type SourceCliResult = { help: string } | (SourceCaptureInspection & { rawBytesIncluded: false })
   | (StatutoryCaptureInspection & { rawBytesIncluded: false })
+  | (FederalRegisterCaptureInspection & { rawBytesIncluded: false })
   | (StatutoryRunOutcome & { rawBytesIncluded: false })
   | { status: 'CREATED' | 'EXISTING' | 'INSPECTED'; run: CensusNormalizationRun; rawBytesIncluded: false }
   | { status: 'CREATED' | 'EXISTING' | 'INSPECTED'; build: LocalCensusCandidateBuild; rawBytesIncluded: false };
@@ -94,7 +104,8 @@ export async function executeSourceCli(args: readonly string[], dependencies: So
   const [command, ...flags] = args;
   const commands: Record<string, string> = { capture: '--request', inspect: '--request-id', normalize: '--request',
     'inspect-normalization': '--normalization-id', build: '--request', 'inspect-build': '--build-id',
-    'statutory-capture': '--request', 'statutory-inspect': '--request-id', 'statutory-run': '--plan' };
+    'statutory-capture': '--request', 'statutory-inspect': '--request-id', 'statutory-run': '--plan',
+    'federal-register-capture': '--request', 'federal-register-inspect': '--request-id' };
   if (!Object.hasOwn(commands, command) || flags.length % 2 !== 0) throw fault('INVALID_SOURCE_CLI_ARGUMENTS');
   const required = commands[command];
   const allowed = [required, '--root'];
@@ -139,6 +150,16 @@ export async function executeSourceCli(args: readonly string[], dependencies: So
     if (!/^[A-Za-z0-9_-]{1,80}$/.test(input)) throw fault('INVALID_SOURCE_CLI_ARGUMENTS');
     const inspected = statutory.inspect(input);
     if (!inspected) throw fault('STATUTORY_CAPTURE_NOT_FOUND');
+    return { ...inspected, rawBytesIncluded: false };
+  }
+  if (command.startsWith('federal-register-')) {
+    const federalRegister = (dependencies.federalRegisterFactory ?? ((directory) => new FederalRegisterCaptureStore(directory)))(root);
+    if (command === 'federal-register-capture') {
+      return { ...await federalRegister.capture(parseFederalRegisterCaptureRequest(readRequest(input)), process.env.PAYLOAD_SOURCE_COLLECTION === '1'), rawBytesIncluded: false };
+    }
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(input)) throw fault('INVALID_SOURCE_CLI_ARGUMENTS');
+    const inspected = federalRegister.inspect(input);
+    if (!inspected) throw fault('FEDERAL_REGISTER_CAPTURE_NOT_FOUND');
     return { ...inspected, rawBytesIncluded: false };
   }
   const request = command === 'capture' ? parseSourceCaptureRequest(readRequest(input)) : undefined;

@@ -21,7 +21,9 @@ const nextConfig: NextConfig = {
       // listed. scripts/ and examples/ are deliberately NOT excluded: src/gat/runtime.ts
       // spawns scripts/gat-audit-runner.py, and src/adapter/productionSource.ts reads
       // examples/ during the /candidates render.
-      './**/*.test.ts', './**/*.test.tsx', './**/*.spec.ts',
+      // Keep this aligned with the audit's test-source extensions. Node's .test.mjs
+      // packaging checks must not ride in routes that inspect local file trees.
+      './**/*.{test,spec}.{js,jsx,ts,tsx,mjs,mjsx,cjs,cjsx,mts,mtsx,cts,ctsx,py}',
       './tests/**/*', './clients/**/*', './tools/terminal_lake/**/*', './tsconfig.tsbuildinfo', './package-lock.json',
     ],
   },

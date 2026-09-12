@@ -1,9 +1,21 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import ts from 'typescript';
 import { auditBuildTraces, forbiddenTracePath } from './check-state-kernel-traces.mjs';
+
+const picomatch = createRequire(import.meta.url)('next/dist/compiled/picomatch');
+const repository = fileURLToPath(new URL('../', import.meta.url));
+// Read the real configuration using the installed compiler, not Node's
+// version-dependent native TypeScript loader. Its only import is type-only.
+const configJavaScript = ts.transpileModule(readFileSync(join(repository, 'next.config.ts'), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
+}).outputText;
+const nextConfig = (await import(`data:text/javascript;base64,${Buffer.from(configJavaScript).toString('base64')}`)).default;
 
 const critical = [
   ...['state-kernel/route', 'state-kernel/preview/route', 'state-kernel/save/route',
@@ -55,6 +67,32 @@ test('required runtime scripts and evidence examples must remain traced', () => 
   try {
     scenario.trace('api/gat/audits/route');
     assert.throws(() => auditBuildTraces(scenario.root), /does not trace scripts\/gat-audit-runner.py/);
+  } finally { scenario.cleanup(); }
+});
+
+test('Next excludes every audited test-source extension without excluding runtime scripts or evidence', () => {
+  const route = '/api/compute/clearance/artifacts/[id]';
+  // Same matcher and options as Next's collect-build-traces implementation,
+  // using portable forward-slash paths as recorded in the trace inventory.
+  const patterns = Object.entries(nextConfig.outputFileTracingExcludes)
+    .filter(([routePattern]) => picomatch(routePattern, { dot: true, contains: true })(route))
+    .flatMap(([, exclusions]) => exclusions.map(pattern => join(repository, pattern).replaceAll('\\', '/')));
+  const excludes = picomatch(patterns, { dot: true, contains: true });
+  for (const suffix of ['test', 'spec']) {
+    for (const extension of ['js', 'jsx', 'ts', 'tsx', 'mjs', 'mjsx', 'cjs', 'cjsx', 'mts', 'mtsx', 'cts', 'ctsx', 'py']) {
+      const path = `scripts/build-traces.${suffix}.${extension}`;
+      assert.equal(forbiddenTracePath(path), true, path);
+      assert.equal(excludes(resolve(repository, path).replaceAll('\\', '/')), true, path);
+    }
+  }
+  for (const path of ['scripts/gat-audit-runner.py', 'scripts/gat-source.mjs', 'examples/evidence/notice.txt',
+    'src/domain/corpus.ts', 'node_modules/pg/lib/index.js']) {
+    assert.equal(excludes(resolve(repository, path).replaceAll('\\', '/')), false, path);
+  }
+  const scenario = fixture();
+  try {
+    scenario.trace('api/compute/clearance/artifacts/[id]/route', ['scripts/build-traces.test.mjs']);
+    assert.throws(() => auditBuildTraces(scenario.root), /traced unrelated/);
   } finally { scenario.cleanup(); }
 });
 

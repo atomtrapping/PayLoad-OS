@@ -10,6 +10,7 @@ Operating contract — 2026-09-12. PayLoad-OS already has a shared stable and bo
 | Threads, directed handoffs, broadcasts and inbox | Implemented in fixture/local scope | `ledger.ts`, `inbox.ts`, `/board` |
 | Message and ACK persistence | Opt-in, seed-pinned local file; no PostgreSQL board adapter | `src/coordination/store.ts` |
 | Contract/build-inspection workers | Manually started deterministic local workers; no model or fleet manager | `contract-review.ts`, `candidate-build-review.ts` |
+| Regulatory review worker | Reads a digest-pinned retained capture; posts and reads back its result before ACK; no source collection or state mutation | `regulatory-agent.ts`, `npm run agent:regulatory -- --once` |
 | Authenticated board participants and memberships | Not implemented; ingress authentication does not bind message authors | `src/coordination/http.ts` |
 | Reviewed mining jobs, leases and retained results | Implemented separately; not linked to board messages | `src/terminal/service.ts` and existing execution ledger |
 | PostgreSQL board and typed job/result links | Next increment; no inactive scaffold or automatic migration added | Plan below |

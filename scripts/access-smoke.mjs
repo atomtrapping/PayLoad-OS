@@ -18,6 +18,9 @@ import { fileURLToPath } from 'node:url';
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 assert(process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === '--container-metadata'), 'Unknown smoke argument.');
 const containerMetadata = process.argv[2] === '--container-metadata';
+const operatingPage = '/control';
+const operatingApi = '/api/production';
+const iconPath = '/icon.svg';
 const buildIdPath = join(repository, '.next', 'BUILD_ID');
 assert(existsSync(buildIdPath), 'A completed production Next build is required before access smoke.');
 const buildId = readFileSync(buildIdPath, 'utf8').trim();
@@ -198,36 +201,41 @@ syncBuiltinESMExports();
   const startupDeadline = Date.now() + 30_000;
   while (Date.now() < startupDeadline) {
     assert(child.exitCode === null && child.signalCode === null, 'Production Next child exited before becoming ready.');
-    try { if ((await exchange(port, '/operations')).status === 401) { ready = true; break; } }
+    try { if ((await exchange(port, operatingPage)).status === 401) { ready = true; break; } }
     catch { /* The owned child has not started listening yet. */ }
     await delay(200);
   }
   assert(ready, 'Production Next did not expose the expected authentication boundary.');
 
-  const page = await exchange(port, '/operations', { authorization });
-  status(page, 200, 'Authenticated operations page');
-  noStore(page, 'Authenticated operations page');
+  const page = await exchange(port, operatingPage, { authorization });
+  status(page, 200, 'Authenticated control plane');
+  noStore(page, 'Authenticated control plane');
   assert.match(page.body, /NotationsOS/, 'Expected the actual rendered application.');
+  assert.match(page.body, /Control plane/, 'Expected the operating surface, not a generic shell or missing page.');
   const staticPath = /(?:src|href)="(\/_next\/static\/[^"?]+\.(?:css|js))(?:\?[^"<>]*)?"/.exec(page.body)?.[1];
   assert(staticPath, 'Rendered page did not reference a compiled static asset.');
   for (const path of [
-    '/operations', '/model', '/api/runtime', staticPath, '/favicon.ico',
-    `/_next/data/${buildId}/operations.json`, '/_next/image?url=%2Ffavicon.ico&w=64&q=75',
-    '/%6fperations', '/api/%72untime', '/_next/static/%2e%2e/%2e%2e/api/runtime',
+    operatingPage, '/model', operatingApi, staticPath, iconPath,
+    // Synthetic internal/data/encoded-path probes test ingress denial, not route existence.
+    `/_next/data/${buildId}${operatingPage}.json`, `/_next/image?url=${encodeURIComponent(iconPath)}&w=64&q=75`,
+    '/%63ontrol', '/api/%70roduction', '/_next/static/%2e%2e/%2e%2e/api/production',
   ]) {
     const denied = await exchange(port, path);
     status(denied, 401, `Unauthenticated ${path}`);
     noStore(denied, `Unauthenticated ${path}`);
     assert.match(String(denied.headers['www-authenticate']), /^Basic /);
   }
-  status(await exchange(port, '/operations?_rsc=synthetic', { rsc: '1' }), 401, 'Unauthenticated RSC request');
+  status(await exchange(port, `${operatingPage}?_rsc=synthetic`, { rsc: '1' }), 401, 'Unauthenticated RSC request');
   const asset = await exchange(port, staticPath, { authorization });
   status(asset, 200, 'Authenticated static asset');
   noStore(asset, 'Authenticated static asset');
-  const metrics = await exchange(port, '/api/runtime', { authorization, origin, 'sec-fetch-site': 'same-origin' });
-  status(metrics, 200, 'Authenticated process metrics');
-  noStore(metrics, 'Authenticated process metrics');
-  assert.equal(JSON.parse(metrics.body).scope, 'process');
+  const availability = await exchange(port, operatingApi, { authorization, origin, 'sec-fetch-site': 'same-origin' });
+  status(availability, 200, 'Authenticated production availability');
+  noStore(availability, 'Authenticated production availability');
+  assert.deepEqual(JSON.parse(availability.body), {
+    schema: 'payload.production-availability.v1', mode: 'LOCAL_DEVELOPMENT', enabled: false,
+    operations: [], canonicalAdmission: false, liveConnectors: false,
+  });
   for (const headers of [
     { authorization: 'Basic ZmFrZTpmYWtl' },
     { authorization, host: `localhost:${port}` },
@@ -236,16 +244,16 @@ syncBuiltinESMExports();
     { authorization, 'x-forwarded-host': 'different.invalid' },
     { authorization, 'x-forwarded-proto': 'https' },
   ]) {
-    const denied = await exchange(port, '/api/runtime', headers);
+    const denied = await exchange(port, operatingApi, headers);
     status(denied, headers.authorization === authorization ? 403 : 401, 'Invalid credential/origin/forwarding context');
     noStore(denied, 'Invalid credential/origin/forwarding context');
   }
   for (const candidateOrigin of [undefined, 'http://different.invalid']) {
-    const response = await exchange(port, '/api/production', { authorization, ...(candidateOrigin ? { origin: candidateOrigin } : {}), 'content-type': 'application/json' }, 'POST', '{}');
+    const response = await exchange(port, operatingApi, { authorization, ...(candidateOrigin ? { origin: candidateOrigin } : {}), 'content-type': 'application/json' }, 'POST', '{}');
     status(response, 403, 'Unsafe command without exact same-origin context');
     assert.equal(JSON.parse(response.body).error.code, 'REQUEST_ORIGIN_REFUSED');
   }
-  const disabled = await exchange(port, '/api/production', { authorization, origin, 'content-type': 'application/json' }, 'POST', '{}');
+  const disabled = await exchange(port, operatingApi, { authorization, origin, 'content-type': 'application/json' }, 'POST', '{}');
   status(disabled, 403, 'Authenticated same-origin command reaches disabled rail');
   noStore(disabled, 'Disabled production rail');
   assert.equal(JSON.parse(disabled.body).error.code, 'LOCAL_MODE_DISABLED');
@@ -265,7 +273,7 @@ syncBuiltinESMExports();
       principalId: 'ACCESS-SMOKE-AGENT', terminalId: 'ACCESS-SMOKE-TERMINAL', purpose: 'internal_research', corpusScope: ['landshark'], canReview: false,
     });
   }
-  status(await exchange(port, '/api/runtime', { authorization: bearer, origin }), 401, 'Terminal token is not shell ingress authority');
+  status(await exchange(port, operatingApi, { authorization: bearer, origin }), 401, 'Terminal token is not shell ingress authority');
   const forgedReview = await exchange(port, terminalPath, { authorization: bearer, origin, 'content-type': 'application/json', 'x-payload-can-review': 'true' }, 'POST', JSON.stringify({
     command: 'review', review: { jobId: 'JOB-synthetic', actionDigest: `sha256:${'a'.repeat(64)}`, response: 'APPROVE', reason: 'Synthetic test' },
   }));

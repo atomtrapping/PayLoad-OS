@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import example from '../../examples/commercial-reasoning-synthetic.json';
 import { digest, parseReasoningRequest } from '../reasoning/contracts';
+import { canonicalJson } from '../fixtures/digest';
 import { evaluateCommercialRequest } from './agent';
 import { requestSchema, type CommercialRequest } from './contracts';
 import { prepareCommercialReasoning } from './reasoning';
@@ -69,7 +70,7 @@ describe('synthetic commercial reasoning handoff', () => {
     expect(first.request.question).toContain(NOW);
     expect(first.request.sources[0]).toMatchObject({ id: 'commercial-report-001', knownAt: NOW, standing: 'SYNTHETIC' });
     expect(firstReference).toContain(`synthetic:commercial-report:${input.requestId}`);
-    expect(firstReference).toContain(`input=${digest(JSON.stringify(input))}`);
+    expect(firstReference).toContain(`input=${digest(canonicalJson(input))}`);
     expect(firstReference).toContain(`report=${digest(reconstruct(first))}`);
     expect(firstReference).toContain('part=1/1');
     input.policy.version = 'synthetic-policy-v2';

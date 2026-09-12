@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { canonicalJson } from '../fixtures/digest';
 import { requestSchema, type BuyerIntent, type CommercialOffer, type CommercialRequest } from './contracts';
 
 /** Local decision support only. Operator declarations never become delivery authority. */
@@ -87,7 +88,7 @@ export function evaluateCommercialRequest(input: unknown, evaluatedAt = new Date
     || a.intentId.localeCompare(b.intentId) || a.offerId.localeCompare(b.offerId));
   return {
     schema: 'notation.commercial-report.v1', requestId: request.requestId, evaluatedAt,
-    inputDigest: `sha256:${createHash('sha256').update(JSON.stringify(request)).digest('hex')}`,
+    inputDigest: `sha256:${createHash('sha256').update(canonicalJson(request)).digest('hex')}`,
     policyVersion: request.policy.version, mode: 'LOCAL_DECISION_SUPPORT',
     authority: { canContact: false, canSign: false, canSpend: false, canDeliver: false },
     summary: { assessed: assessments.length, humanReview: assessments.filter((a) => a.status === 'HUMAN_REVIEW').length,

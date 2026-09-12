@@ -52,6 +52,13 @@ PostgreSQL execution grants or fleet-wide budgets.
   consistent, bounded file snapshots while its author continues elsewhere.
   Subsequent O edits are not implicitly part of this integration. The original
   checkout is not edited, reset or redirected to a different remote.
+  Newly evaluated commercial reports hash shared canonical JSON; previously
+  retained reports and their reasoning packets are not rewritten or relabelled.
+- The regulatory-manager handoff `365aa29` is ported and its ancestry retained.
+  Its Federal Register capture adapter and local review agent share the existing
+  acquisition and noticeboard contracts. The integration additionally rejects
+  malformed non-null PDF links, verifies posted result readback before ACK, and
+  preserves every agency name within one explicit parser/manager size boundary.
 - Access is adapted: Basic authenticates the legacy internal shell; the exact
   terminal API continues to authenticate its existing Bearer principal. Basic
   credentials never grant terminal review or execution authority. Browser origin

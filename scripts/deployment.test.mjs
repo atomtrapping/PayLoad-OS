@@ -143,3 +143,21 @@ test('preflight reuses authoritative validators and never connects or starts wor
   assert.doesNotMatch(preflight, /new Pool|fetch\(|writeFile|spawn\(|connect\(/);
   assert.ok(preflight.includes("environment.PAYLOAD_SOS_SECRET_ACCESS_KEY_FILE !== '/run/secrets/sos-secret-access-key'"));
 });
+
+test('access smoke uses operating routes and assets present in this repository', () => {
+  const smoke = read('scripts/access-smoke.mjs');
+  const targets = source => [...source.matchAll(/^const (operatingPage|operatingApi|iconPath) = '([^']+)';\r?$/gm)]
+    .map(([, name, route]) => [name, route]);
+  const routes = targets(smoke);
+  assert.deepEqual(targets(smoke.replace(/\r?\n/g, '\r\n')), routes, 'CRLF checkout preserves the same route inventory');
+  assert.equal(routes.length, 3);
+  for (const [name, route] of routes) {
+    assert.match(route, /^\/[A-Za-z0-9/.-]+$/);
+    const source = name === 'iconPath' ? `src/app${route}` : `src/app${route}/${name === 'operatingApi' ? 'route.ts' : 'page.tsx'}`;
+    assert.ok(read(source).length > 0, `${name}: ${source}`);
+  }
+  assert.ok(smoke.includes('payload.production-availability.v1'));
+  assert.ok(!smoke.includes('/api/runtime'));
+  assert.ok(!smoke.includes('/operations'));
+  assert.ok(smoke.includes('net.Socket.prototype.connect = refuse'));
+});

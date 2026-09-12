@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+import { canonicalJson } from '../fixtures/digest';
 import { evaluateCommercialRequest } from './agent';
 import { commercialExample } from './catalog';
 import { requestSchema, type CommercialRequest } from './contracts';
@@ -21,6 +23,24 @@ function feasible(): CommercialRequest {
 const assessment = (request: CommercialRequest) => evaluateCommercialRequest(request, NOW).assessments[0];
 
 describe('commercial opportunity decisions', () => {
+  it('commits to shared canonical input content rather than object insertion order', () => {
+    const request = feasible();
+    const parsed = requestSchema.parse(request);
+    const hash = (text: string) => `sha256:${createHash('sha256').update(text).digest('hex')}`;
+    const expected = hash(canonicalJson(parsed));
+    expect(expected).not.toBe(hash(JSON.stringify(parsed)));
+    expect(evaluateCommercialRequest(request, NOW).inputDigest).toBe(expected);
+    const reverseKeys = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(reverseKeys);
+      if (value && typeof value === 'object') return Object.fromEntries(
+        Object.entries(value).reverse().map(([key, child]) => [key, reverseKeys(child)]),
+      );
+      return value;
+    };
+    expect(evaluateCommercialRequest(reverseKeys(request), NOW).inputDigest).toBe(expected);
+    request.intents[0].fields.push('additional declared field');
+    expect(evaluateCommercialRequest(request, NOW).inputDigest).not.toBe(expected);
+  });
   it('uses the shared domain registry for both supply and demand', () => {
     for (const domain of DOMAIN_IDS) {
       const request = feasible();

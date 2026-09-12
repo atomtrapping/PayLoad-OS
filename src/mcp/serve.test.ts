@@ -6,7 +6,7 @@
  * resolved from what the call names, and both outcomes carry a receipt.
  */
 import { describe, expect, it } from 'vitest';
-import { corpusOfCall, serveCapabilityCall, serveToolCall } from './serve';
+import { corporaOfCall, corpusOfCall, serveCapabilityCall, serveToolCall } from './serve';
 import { admitCapability, type TerminalSession } from '@/domain/terminalPlane';
 
 const AT = '2026-09-12T10:00:00.000Z';
@@ -143,5 +143,60 @@ describe('a terminal asks for a capability, and an operate comes back as a propo
     expect(asked.proposal?.counterparty).toBe('terminal:acme-risk');
     expect(asked.proposal?.underPurpose).toBe('customer_delivery');
     expect(asked.proposal?.blockedBy).toContain('no release has been admitted');
+  });
+});
+
+/**
+ * Two authorization bypasses, found by an independent review of this surface
+ * and reproduced before they were closed. Both were reachable in one argument,
+ * which is why they are regression tests and not comments.
+ */
+describe('a caller cannot argue its way past the boundary', () => {
+  const landshark = session({ terminalId: 'terminal:landshark-only', corpusScope: ['landshark.parcels'] });
+  const anonymous = session({ terminalId: 'terminal:anon', terminalClass: 'PUBLIC', purpose: 'redistribution' });
+
+  /*
+   * The scope check read the caller's `corpus` argument in preference to the
+   * corpus of the release it also named, so a session could be judged against
+   * one corpus and served another. `list_records` does not even declare a
+   * `corpus` parameter; the extra key rode through because the check read the
+   * raw arguments rather than the parsed ones.
+   */
+  it('refuses an out-of-scope release named beside an in-scope corpus', async () => {
+    const honest = await serveToolCall(landshark, 'list_records', { releaseId: 'REL-CAR-2026.09.01' }, AT);
+    expect(honest.refusal?.code).toBe('CORPUS_OUTSIDE_SCOPE');
+
+    const masked = await serveToolCall(landshark, 'list_records', { releaseId: 'REL-CAR-2026.09.01', corpus: 'landshark.parcels' }, AT);
+    expect(masked.refusal?.code).toBe('CORPUS_OUTSIDE_SCOPE');
+    expect(masked.result).toBeUndefined();
+    expect(masked.admission.because).toContain('caravan.specialty-cargo');
+  });
+
+  it('names every corpus a call names, with the release’s own first', async () => {
+    expect(await corporaOfCall({ releaseId: 'REL-CAR-2026.09.01', corpus: 'landshark.parcels' }))
+      .toEqual(['caravan.specialty-cargo', 'landshark.parcels']);
+    expect(await corpusOfCall({ releaseId: 'REL-CAR-2026.09.01', corpus: 'landshark.parcels' })).toBe('caravan.specialty-cargo');
+    /* A release that resolves to nothing contributes nothing rather than a guess. */
+    expect(await corporaOfCall({ releaseId: 'nope' })).toEqual([]);
+  });
+
+  /*
+   * The projection was the caller's to choose, so a public terminal could ask
+   * for the counterparty view of a ruling and be given it — private detail and
+   * all. Omitting the argument was the same bypass by another route, because
+   * the surface's own default was the wider one.
+   */
+  it('serves a public terminal the public projection, asked for or not', async () => {
+    for (const args of [{ rulingId: 'RUL-7C104-r2', projection: 'COUNTERPARTY_SHARED' }, { rulingId: 'RUL-7C104-r2' }]) {
+      const served = await serveToolCall(anonymous, 'get_ruling', args, AT);
+      expect(JSON.stringify(served.result), JSON.stringify(args)).toContain('not_visible');
+      expect(JSON.stringify(served.result)).not.toContain('COUNTERPARTY_SHARED');
+    }
+  });
+
+  /* And a customer still receives the counterparty projection its class may have. */
+  it('leaves the counterparty projection to the classes that may receive it', async () => {
+    const served = await serveToolCall(session(), 'get_ruling', { rulingId: 'RUL-7C104-r2' }, AT);
+    expect(JSON.stringify(served.result)).toContain('COUNTERPARTY_SHARED');
   });
 });

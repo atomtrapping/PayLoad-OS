@@ -201,3 +201,41 @@ export type CallOutcome = (typeof CALL_OUTCOMES)[number];
  * proposal, a packet naming the action by digest, a review by a registered
  * human or policy principal, and an authorization of that same digest.
  */
+
+/* ── What a class may be shown ── */
+
+/**
+ * The most a terminal class may receive of a projected answer.
+ *
+ * A tool that takes a `projection` argument was, until this existed, letting
+ * the caller pick: a PUBLIC session could ask for `COUNTERPARTY_SHARED` and be
+ * given the counterparty view of a ruling, private detail and all. That is a
+ * caller choosing its own audience, which is the failure this whole plane is
+ * built to refuse, and it was reachable in one argument.
+ *
+ * The class decides now. A public terminal receives the public projection and
+ * cannot ask above it; a customer's receives the counterparty one; the firm's
+ * own console the same. The caller's argument may narrow this and never widen
+ * it, and the default is the class's own rather than the surface's.
+ */
+export const CLASS_PROJECTION: Record<TerminalClass, 'COUNTERPARTY_SHARED' | 'PUBLIC_RULING'> = {
+  FIRM_INTERNAL: 'COUNTERPARTY_SHARED',
+  CUSTOMER: 'COUNTERPARTY_SHARED',
+  PUBLIC: 'PUBLIC_RULING',
+};
+
+/** The projections a class may receive, widest first. */
+export function projectionsFor(terminalClass: TerminalClass): readonly string[] {
+  return CLASS_PROJECTION[terminalClass] === 'PUBLIC_RULING'
+    ? ['PUBLIC_RULING']
+    : ['COUNTERPARTY_SHARED', 'PUBLIC_RULING'];
+}
+
+/**
+ * The projection a call is served at: what the caller asked for when its class
+ * may receive it, and the class's own otherwise. Never above the class.
+ */
+export function projectionFor(terminalClass: TerminalClass, asked: string | undefined): string {
+  if (asked !== undefined && projectionsFor(terminalClass).includes(asked)) return asked;
+  return CLASS_PROJECTION[terminalClass];
+}

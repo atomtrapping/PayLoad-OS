@@ -152,6 +152,32 @@ not admit the tool. And a capability that is admitted but that nothing plumbs
 answers `unreachable` rather than a refusal, because "you may, and it is not
 wired" and "you may not" are different answers.
 
+## Two bypasses that were reachable in one argument
+
+An independent review of this surface found both; both were reproduced before
+they were closed, and both are regression tests in `src/mcp/serve.test.ts`.
+
+**A corpus argument masking an out-of-scope release.** The scope check read the
+caller's `corpus` argument in preference to the corpus of the release it also
+named, so a session scoped to one corpus could pass its own beside another's
+`releaseId`, be judged against the first and served the second — 18 records of
+a corpus it had no standing in. That a tool does not declare a `corpus`
+parameter was no defence, because the check read the raw arguments rather than
+the parsed ones. A call is now about **every** corpus it names, all of them are
+checked, and the release's own is authoritative for the receipt.
+
+**A projection the caller chose.** The `projection` argument was the caller's,
+so a public terminal could ask for `COUNTERPARTY_SHARED` and be handed the
+counterparty view of a ruling, private detail and all. Omitting the argument
+was the same bypass by another route, because the surface's own default was the
+wider one. The class decides now (`CLASS_PROJECTION`): the argument may narrow
+it and never widen it, it is set whether or not the caller supplied one, and
+the tool reads the bounded value rather than what arrived.
+
+The shape of both is the same and worth naming: a check that trusts an input
+the caller controls, when an authoritative source for the same fact was already
+at hand.
+
 ## What the scope check reaches
 
 A call naming a corpus is checked directly. A call naming a release has its

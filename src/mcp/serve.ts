@@ -27,6 +27,7 @@
 import { z } from 'zod';
 import { admitCall, admitCapability, servedCallReceipt, type CallAdmission, type ProposedOperation, type ServedCallReceipt, type TerminalSession } from '@/domain/terminalPlane';
 import { TOOL_CAPABILITY, capabilityById } from '@/domain/capabilityRegistry';
+import { projectionFor } from '@/domain/terminalVocabulary';
 import { getCorpusSource } from '@/adapter/corpusSource';
 import type { RecordingFailure, ServedCallSink } from './record';
 import { MCP_TOOLS, runMcpTool } from './tools';
@@ -56,19 +57,36 @@ export interface ServedCall {
 }
 
 /**
- * The corpus a call is about, where the call says so.
+ * Every corpus a call names.
  *
- * `corpus` when the tool takes one; otherwise the corpus of the named release,
- * resolved from the source. Undefined when the call names neither, which the
- * scope check reads as "not narrowed by scope" rather than as "any corpus".
+ * This returned one, and preferred the caller's `corpus` argument to the
+ * corpus of the release it also named. That was an authorization bypass in a
+ * single extra key: a session scoped to one corpus could pass its own
+ * `corpus` beside another corpus's `releaseId`, be scope-checked against the
+ * first and served the second. A tool that does not declare a `corpus`
+ * parameter was no defence, because the check read the raw arguments rather
+ * than the parsed ones, so the extra key rode straight through.
+ *
+ * A call is about every corpus it names, and all of them are checked. The
+ * release's own corpus is resolved from the source and is authoritative for
+ * the receipt; a `corpus` argument is an additional claim to be checked, never
+ * a substitute for the release's.
  */
-export async function corpusOfCall(args: unknown): Promise<string | undefined> {
+export async function corporaOfCall(args: unknown): Promise<readonly string[]> {
   const shape = z.object({ corpus: z.string().optional(), releaseId: z.string().optional() }).safeParse(args ?? {});
-  if (!shape.success) return undefined;
-  if (shape.data.corpus !== undefined) return shape.data.corpus;
-  if (shape.data.releaseId === undefined) return undefined;
-  const hit = await getCorpusSource().getRelease(shape.data.releaseId);
-  return hit?.corpus.corpusId;
+  if (!shape.success) return [];
+  const named: string[] = [];
+  if (shape.data.releaseId !== undefined) {
+    const hit = await getCorpusSource().getRelease(shape.data.releaseId);
+    if (hit !== undefined) named.push(hit.corpus.corpusId);
+  }
+  if (shape.data.corpus !== undefined && !named.includes(shape.data.corpus)) named.push(shape.data.corpus);
+  return named;
+}
+
+/** The one a receipt records: the release's corpus where there is one. */
+export async function corpusOfCall(args: unknown): Promise<string | undefined> {
+  return (await corporaOfCall(args))[0];
 }
 
 /**
@@ -90,11 +108,37 @@ export async function serveToolCall(
   const tool = MCP_TOOLS.find((candidate) => candidate.name === toolName);
   if (tool !== undefined) z.object(tool.shape).parse(args ?? {});
 
-  const corpus = tool === undefined ? undefined : await corpusOfCall(args);
-  const admission = admitCall(session, toolName, at, corpus);
-  const receipt = servedCallReceipt(session, toolName, at, admission, corpus);
-  const served = await outcomeOf(receipt, admission, () => runMcpTool(toolName, args));
+  const bounded = boundProjection(session, toolName, args);
+  const named = tool === undefined ? [] : await corporaOfCall(bounded);
+  const admission = admitCall(session, toolName, at, named);
+  const receipt = servedCallReceipt(session, toolName, at, admission, named[0]);
+  const served = await outcomeOf(receipt, admission, () => runMcpTool(toolName, bounded));
   return record(served, session, sink);
+}
+
+/**
+ * The arguments as they will be served, with the projection the class may
+ * receive rather than the one the caller asked for.
+ *
+ * Forced rather than refused: a public terminal asking for the counterparty
+ * view of a ruling is asking for something it may not have, and the useful
+ * answer is the public view rather than an error. What it may never get is the
+ * wider one, and it no longer can, because the argument the tool reads is this
+ * one and not the caller's.
+ */
+function boundProjection(session: TerminalSession, toolName: string, args: unknown): unknown {
+  const tool = MCP_TOOLS.find((candidate) => candidate.name === toolName);
+  if (tool === undefined || !('projection' in tool.shape)) return args;
+  const asked = args !== null && typeof args === 'object' ? (args as { projection?: unknown }).projection : undefined;
+  /*
+   * Set whether or not the caller supplied one. Reading the argument only when
+   * it was present left the wider default in place for a caller who simply
+   * omitted it, which is the same bypass reached by asking for less.
+   */
+  return {
+    ...(args !== null && typeof args === 'object' ? args : {}),
+    projection: projectionFor(session.terminalClass, typeof asked === 'string' ? asked : undefined),
+  };
 }
 
 /**
@@ -118,9 +162,12 @@ export async function serveCapabilityCall(
   sink?: ServedCallSink,
 ): Promise<ServedCall> {
   const capability = capabilityById(capabilityId);
-  const corpus = capability === undefined ? undefined : await corpusOfCall(args);
-  const admission = admitCapability(session, capability, at, corpus);
-  const toolName = Object.keys(TOOL_CAPABILITY).find((name) => TOOL_CAPABILITY[name] === capabilityId);
+  const reachedBy = Object.keys(TOOL_CAPABILITY).find((name) => TOOL_CAPABILITY[name] === capabilityId);
+  const bounded = reachedBy === undefined ? args : boundProjection(session, reachedBy, args);
+  const named = capability === undefined ? [] : await corporaOfCall(bounded);
+  const corpus = named[0];
+  const admission = admitCapability(session, capability, at, named);
+  const toolName = reachedBy;
   const receipt = { ...servedCallReceipt(session, toolName ?? capabilityId, at, admission, corpus), capability: capability?.id ?? null };
   if (admission.outcome === 'ADMITTED' && toolName === undefined) {
     return record({
@@ -133,9 +180,9 @@ export async function serveCapabilityCall(
     }, session, sink);
   }
   if (toolName !== undefined && admission.outcome === 'ADMITTED') {
-    z.object(MCP_TOOLS.find((candidate) => candidate.name === toolName)!.shape).parse(args ?? {});
+    z.object(MCP_TOOLS.find((candidate) => candidate.name === toolName)!.shape).parse(bounded ?? {});
   }
-  const served = await outcomeOf(receipt, admission, toolName === undefined ? undefined : () => runMcpTool(toolName, args));
+  const served = await outcomeOf(receipt, admission, toolName === undefined ? undefined : () => runMcpTool(toolName, bounded));
   return record(served, session, sink);
 }
 

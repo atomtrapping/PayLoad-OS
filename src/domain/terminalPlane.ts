@@ -188,8 +188,10 @@ export function admitCapability(
   session: TerminalSession,
   capability: Capability | undefined,
   at: string,
-  corpus?: string,
+  /** Every corpus the call named. All are checked; naming one in scope does not license another. */
+  corpora?: string | readonly string[],
 ): CallAdmission {
+  const named = corpora === undefined ? [] : (typeof corpora === 'string' ? [corpora] : corpora);
   const standing = openable(session);
   if (!standing.open) {
     return refuse(standing.refusal as CallRefusal, standing.because, 'Open a session this terminal may hold, and declare a purpose its class calls at.');
@@ -210,11 +212,12 @@ export function admitCapability(
   if (capability.serves === 'ESTATE') {
     return refuse('ESTATE_NEVER_SERVED', 'The corpus is served under a purpose; the estates are served to nobody, on any transport, for any purpose.', 'Ask the corpus. The calibration, reliability, disagreement and identity-decision estates do not leave the wall.');
   }
-  if (corpus !== undefined && !session.corpusScope.includes(corpus)) {
+  const outside = named.filter((corpus) => !session.corpusScope.includes(corpus));
+  if (outside.length > 0) {
     return refuse(
       'CORPUS_OUTSIDE_SCOPE',
-      `The session named ${session.corpusScope.join(', ')} and this call asks about ${corpus}.`,
-      'Open a session naming that corpus. A scope is not widened by asking outside it.',
+      `The session named ${session.corpusScope.join(', ')} and this call asks about ${outside.join(', ')}.`,
+      'Open a session naming that corpus. A scope is not widened by asking outside it, nor by naming one in scope beside one that is not.',
     );
   }
 
@@ -291,13 +294,13 @@ export function admitCall(
   session: TerminalSession,
   toolName: string,
   at: string,
-  corpus?: string,
+  corpora?: string | readonly string[],
 ): CallAdmission {
   const standing = openable(session);
   if (standing.open && !MCP_TOOLS.some((tool) => tool.name === toolName)) {
     return refuse('TOOL_UNKNOWN', `No tool ${toolName} on this surface.`, `Tools: ${MCP_TOOLS.map((tool) => tool.name).join(', ')}.`);
   }
-  return admitCapability(session, capabilityOfTool(toolName), at, corpus);
+  return admitCapability(session, capabilityOfTool(toolName), at, corpora);
 }
 
 /* ── The receipt ── */

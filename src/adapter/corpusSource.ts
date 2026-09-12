@@ -6,9 +6,12 @@ import type { AdmittedCount } from '@/domain/compression';
 import type { AsOfAnswer, AsOfQuery, Corpus, CorpusRecord, CorpusRelease, Retraction } from '@/domain/corpus';
 import { currentRelease, deliverableRecords, queryAsOf, releaseById, retractionsSince } from '@/domain/corpus';
 import { FIXTURE_CORPORA } from '@/fixtures';
-import { count, eq } from 'drizzle-orm';
+import { and, asc, count, eq, gt } from 'drizzle-orm';
 import { databaseConfigured } from '@/db/config';
-import { hydrateCorpusRecord, type StoredRecord } from '@/db/recordStorage';
+import { hydrateCorpusRecord, storageJson, timestamp, type StoredRecord } from '@/db/recordStorage';
+import type { corpora as storedCorpora, releases as storedReleases, retractions as storedRetractions } from '@/db/schema';
+import { assertReadScope, assertViewer, boundedRows, catalogPage, CONSISTENT_CORPUS_READ, CORPUS_READ_LIMITS, parseCatalogQuery, parseRecordQuery, releaseRecordPage,
+  type CorpusCatalogPage, type CorpusCatalogQuery, type CorpusRecordPage, type CorpusRecordQuery } from './corpusQuery';
 
 /**
  * How many records have crossed the admission gate, and how that was learned.
@@ -69,6 +72,9 @@ export interface CorpusSource {
   admittedRecords(): Promise<AdmittedReading>;
   /** The gate's own record of every ruling it made, admitted and refused alike. */
   admissionLedger(): Promise<LedgerReading>;
+  /** Optional for third-party adapters; concrete built-in adapters implement both. */
+  catalog?(query?: CorpusCatalogQuery): Promise<CorpusCatalogPage>;
+  recordPage?(releaseId: string, viewer: VisibilityClass, query?: CorpusRecordQuery): Promise<CorpusRecordPage | undefined>;
 }
 
 function groupCorpusRows<T extends { corpusId: string }>(rows: readonly T[]): Map<string, T[]> {
@@ -81,18 +87,51 @@ function groupCorpusRows<T extends { corpusId: string }>(rows: readonly T[]): Ma
   return groups;
 }
 
-/** Individual and batch reads use the same admission-aware record hydration. */
-function storedCorpus(data: unknown, releases: readonly { data: unknown }[], records: readonly StoredRecord[], retractions: readonly { data: unknown }[]): Corpus {
+type StoredCorpus = typeof storedCorpora.$inferSelect;
+type StoredRelease = typeof storedReleases.$inferSelect;
+type StoredRetraction = typeof storedRetractions.$inferSelect;
+
+function boundFields(data: unknown, expected: Record<string, unknown>, clocks: readonly string[] = []): Record<string, unknown> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('CORPUS_METADATA_BINDING_MISMATCH');
+  const document = data as Record<string, unknown>;
+  const normalize = (fields: Record<string, unknown>) => Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, clocks.includes(key) ? timestamp(value as string) : value]));
+  if (storageJson(normalize(Object.fromEntries(Object.keys(expected).map(key => [key, document[key]])))) !== storageJson(normalize(expected))) throw new Error('CORPUS_METADATA_BINDING_MISMATCH');
+  return document;
+}
+
+function storedRelease(row: StoredRelease): CorpusRelease {
+  return boundFields(row.data, { releaseId: row.releaseId, corpusId: row.corpusId, status: row.status, knownAt: row.knownAt }, ['knownAt']) as unknown as CorpusRelease;
+}
+
+/** Individual and batch reads use the same column/document binding and record hydration. */
+function storedCorpus(row: StoredCorpus, releases: readonly StoredRelease[], records: readonly StoredRecord[], retractions: readonly StoredRetraction[]): Corpus {
+  const data = boundFields(row.data, { corpusId: row.corpusId, domain: row.domain, title: row.title, description: row.description });
+  const rels = releases.map(storedRelease);
+  if (rels.some(release => release.corpusId !== row.corpusId || release.domain !== row.domain)) throw new Error('CORPUS_METADATA_BINDING_MISMATCH');
   return {
-    ...(data as Record<string, unknown>),
-    releases: releases.map((row) => row.data as CorpusRelease).sort((a, b) => (a.knownAt < b.knownAt ? -1 : 1)),
+    ...data,
+    releases: rels.sort((a, b) => Date.parse(a.knownAt) - Date.parse(b.knownAt) || a.releaseId.localeCompare(b.releaseId)),
     records: records.map(hydrateCorpusRecord),
-    retractions: retractions.map((row) => row.data),
-  } as Corpus;
+    retractions: retractions.map(row => boundFields(row.data, { retractionId: row.retractionId, issuedAt: row.issuedAt }, ['issuedAt'])),
+  } as unknown as Corpus;
 }
 
 export class FixtureCorpusSource implements CorpusSource {
   readonly origin = { kind: 'FIXTURE', label: 'Demonstration corpus (fixture_only: true)' } as const;
+
+  async catalog(input: CorpusCatalogQuery = {}): Promise<CorpusCatalogPage> {
+    const query = parseCatalogQuery(input);
+    const entries = FIXTURE_CORPORA.filter(corpus => (!query.domain || corpus.domain === query.domain) && (!query.afterCorpusId || corpus.corpusId > query.afterCorpusId))
+      .sort((a, b) => a.corpusId < b.corpusId ? -1 : 1)
+      .map(({ corpusId, title, description, domain }) => ({ corpusId, title, description, domain }));
+    return catalogPage(entries, query.limit);
+  }
+
+  async recordPage(releaseId: string, viewer: VisibilityClass, query: CorpusRecordQuery = {}): Promise<CorpusRecordPage | undefined> {
+    assertReadScope(releaseId); assertViewer(viewer); parseRecordQuery(query);
+    const hit = await this.getRelease(releaseId);
+    return hit ? releaseRecordPage(hit.corpus, hit.release, viewer, query) : undefined;
+  }
 
   /**
    * UNKNOWN, for exactly the reason the admitted count is.
@@ -164,7 +203,7 @@ export class FixtureCorpusSource implements CorpusSource {
 }
 
 export class LiveCorpusSource implements CorpusSource {
-  readonly origin = { kind: 'LIVE', label: 'Live Cloud SQL Corpus' } as const;
+  readonly origin = { kind: 'LIVE', label: 'Configured PostgreSQL corpus' } as const;
 
   /** Loaded on demand: the fixture path must not pull the driver into a bundle. */
   private async database() {
@@ -172,45 +211,69 @@ export class LiveCorpusSource implements CorpusSource {
     return { db, ...schema };
   }
 
-  private async fetchFullCorpus(corpusId: string): Promise<Corpus | undefined> {
+  private async fetchFullCorpus(scope: { corpusId: string } | { releaseId: string }): Promise<Corpus | undefined> {
+    assertReadScope('corpusId' in scope ? scope.corpusId : scope.releaseId);
     const { db, corpora, releases, records, retractions } = await this.database();
-    const corpusRes = await db.select().from(corpora).where(eq(corpora.corpusId, corpusId));
-    if (corpusRes.length === 0) return undefined;
-    const rels = await db.select().from(releases).where(eq(releases.corpusId, corpusId));
-    const recs = await db.select().from(records).where(eq(records.corpusId, corpusId));
-    const rets = await db.select().from(retractions).where(eq(retractions.corpusId, corpusId));
-    return storedCorpus(corpusRes[0].data, rels, recs, rets);
+    return db.transaction(async tx => {
+      // Resolve release ownership inside the same snapshot as its history.
+      const corpusId = 'corpusId' in scope ? scope.corpusId
+        : (await tx.select({ corpusId: releases.corpusId }).from(releases).where(eq(releases.releaseId, scope.releaseId)))[0]?.corpusId;
+      if (!corpusId) return undefined;
+      const corpusRes = await tx.select().from(corpora).where(eq(corpora.corpusId, corpusId));
+      if (corpusRes.length === 0) return undefined;
+      const rels = boundedRows(await tx.select().from(releases).where(eq(releases.corpusId, corpusId)).limit(CORPUS_READ_LIMITS.releases + 1), CORPUS_READ_LIMITS.releases);
+      const recs = boundedRows(await tx.select().from(records).where(eq(records.corpusId, corpusId)).limit(CORPUS_READ_LIMITS.records + 1), CORPUS_READ_LIMITS.records);
+      const rets = boundedRows(await tx.select().from(retractions).where(eq(retractions.corpusId, corpusId)).limit(CORPUS_READ_LIMITS.retractions + 1), CORPUS_READ_LIMITS.retractions);
+      return storedCorpus(corpusRes[0], rels, recs, rets);
+    }, CONSISTENT_CORPUS_READ);
+  }
+
+  /** Lightweight single-statement catalog: never selects corpus JSON or record history. */
+  async catalog(input: CorpusCatalogQuery = {}): Promise<CorpusCatalogPage> {
+    const query = parseCatalogQuery(input);
+    const { db, corpora } = await this.database();
+    const entries = await db.select({ corpusId: corpora.corpusId, title: corpora.title, description: corpora.description, domain: corpora.domain }).from(corpora)
+      .where(and(query.domain ? eq(corpora.domain, query.domain) : undefined, query.afterCorpusId ? gt(corpora.corpusId, query.afterCorpusId) : undefined))
+      .orderBy(asc(corpora.corpusId)).limit(query.limit + 1);
+    if (entries.some(entry => !['CARAVAN', 'LANDSHARK', 'TRADEWIND'].includes(entry.domain))) throw new Error('CORPUS_CATALOG_INVALID_DOMAIN');
+    return catalogPage(entries as CorpusCatalogPage['entries'], query.limit);
+  }
+
+  async recordPage(releaseId: string, viewer: VisibilityClass, query: CorpusRecordQuery = {}): Promise<CorpusRecordPage | undefined> {
+    assertReadScope(releaseId); assertViewer(viewer); parseRecordQuery(query);
+    const hit = await this.getRelease(releaseId);
+    return hit ? releaseRecordPage(hit.corpus, hit.release, viewer, query) : undefined;
   }
 
   async listCorpora(): Promise<Corpus[]> {
     const { db, corpora, releases, records, retractions } = await this.database();
-    const allCorpora = await db.select().from(corpora);
-    if (!allCorpora.length) return [];
-    const rels = groupCorpusRows(await db.select().from(releases));
-    const recs = groupCorpusRows(await db.select().from(records));
-    const rets = groupCorpusRows(await db.select().from(retractions));
-    return allCorpora.map((entry) => storedCorpus(entry.data, rels.get(entry.corpusId) ?? [], recs.get(entry.corpusId) ?? [], rets.get(entry.corpusId) ?? []));
+    // Compatibility reads fail at the cap instead of silently losing history.
+    return db.transaction(async tx => {
+      const allCorpora = boundedRows(await tx.select().from(corpora).limit(CORPUS_READ_LIMITS.catalog + 1), CORPUS_READ_LIMITS.catalog);
+      if (!allCorpora.length) return [];
+      const rels = groupCorpusRows(boundedRows(await tx.select().from(releases).limit(CORPUS_READ_LIMITS.releases + 1), CORPUS_READ_LIMITS.releases));
+      const recs = groupCorpusRows(boundedRows(await tx.select().from(records).limit(CORPUS_READ_LIMITS.records + 1), CORPUS_READ_LIMITS.records));
+      const rets = groupCorpusRows(boundedRows(await tx.select().from(retractions).limit(CORPUS_READ_LIMITS.retractions + 1), CORPUS_READ_LIMITS.retractions));
+      return allCorpora.map((entry) => storedCorpus(entry, rels.get(entry.corpusId) ?? [], recs.get(entry.corpusId) ?? [], rets.get(entry.corpusId) ?? []));
+    }, CONSISTENT_CORPUS_READ);
   }
 
   async getCorpus(corpusId: string): Promise<Corpus | undefined> {
-    return this.fetchFullCorpus(corpusId);
+    return this.fetchFullCorpus({ corpusId });
   }
 
   async listReleases(corpusId?: string): Promise<CorpusRelease[]> {
+    if (corpusId !== undefined) assertReadScope(corpusId);
     const { db, releases } = await this.database();
     const rels = corpusId
-      ? await db.select().from(releases).where(eq(releases.corpusId, corpusId))
-      : await db.select().from(releases);
-    return rels.map((r) => r.data as unknown as CorpusRelease).sort((a, b) => (a.knownAt < b.knownAt ? 1 : -1));
+      ? await db.select().from(releases).where(eq(releases.corpusId, corpusId)).limit(CORPUS_READ_LIMITS.releases + 1)
+      : await db.select().from(releases).limit(CORPUS_READ_LIMITS.releases + 1);
+    boundedRows(rels, CORPUS_READ_LIMITS.releases);
+    return rels.map(storedRelease).sort((a, b) => Date.parse(b.knownAt) - Date.parse(a.knownAt) || a.releaseId.localeCompare(b.releaseId));
   }
 
   async getRelease(releaseId: string): Promise<{ corpus: Corpus; release: CorpusRelease } | undefined> {
-    const { db, releases } = await this.database();
-    const rels = await db.select().from(releases).where(eq(releases.releaseId, releaseId));
-    if (rels.length === 0) return undefined;
-    
-    const release = rels[0];
-    const corpus = await this.fetchFullCorpus(release.corpusId);
+    const corpus = await this.fetchFullCorpus({ releaseId });
     if (!corpus) return undefined;
     
     const releaseData = corpus.releases.find((r) => r.releaseId === releaseId);

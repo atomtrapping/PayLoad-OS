@@ -13,7 +13,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { FIXTURE_CORPORA } from '@/fixtures';
 import type { Corpus, CorpusRecord } from '@/domain/corpus';
 import { DISCOVERY_LEDGER_DDL, DISCOVERY_LEDGER_GUARDS } from '@/db/discoveryLedger';
-import { inputFingerprint, outputFingerprint, runWorkload, specFingerprint } from './engine';
+import { inputFingerprint, outputFingerprint, runWorkload, specFingerprint, type ComputedClaim } from './engine';
 import { evidenceConcentrationWorkload, concentrationOf, gapsFrom, type ConcentrationDetail } from './evidenceConcentration';
 import { sqlArray, sqlText } from '@/db/ddl';
 
@@ -43,6 +43,11 @@ const rightsOf = (record: CorpusRecord): readonly string[] => {
 const run = (parameters = { minRecords: 1 }, records: readonly CorpusRecord[] = RECORDS) =>
   runWorkload(evidenceConcentrationWorkload(parameters), records, {
     runId: 'RUN-1', startedAt: T_START, completedAt: T_DONE, rightsOf,
+  });
+
+const runClaims = (claims: readonly ComputedClaim[], records: readonly CorpusRecord[] = RECORDS) =>
+  runWorkload({ ...evidenceConcentrationWorkload(), compute: () => claims }, records, {
+    runId: 'RUN-CLAIMS', startedAt: T_START, completedAt: T_DONE, rightsOf,
   });
 
 describe('the computation, over the corpus that exists', () => {
@@ -94,6 +99,34 @@ describe('a deterministic workload produces a deterministic fingerprint', () => 
     expect(inputFingerprint([...RECORDS].reverse())).toBe(inputFingerprint(RECORDS));
   });
 
+  it.each<{ field: string; change: Partial<CorpusRecord> }>([
+    { field: 'value', change: { value: 'changed-value' } },
+    { field: 'subject', change: { subjectCanonicalId: 'notation://subject/changed' } },
+    { field: 'predicate', change: { predicate: 'changed.predicate' } },
+    { field: 'unit', change: { unit: 'changed-unit' } },
+    { field: 'basis', change: { basis: 'changed-basis' } },
+    { field: 'world time', change: { validFrom: '2001-01-01T00:00:00.000Z' } },
+    { field: 'observation time', change: { observedAt: '2001-01-02T00:00:00.000Z' } },
+    { field: 'evidence', change: { evidenceClass: { claimStrength: 'estimated', productionClass: 'unclassified', interest: 'unknown' } } },
+    { field: 'provenance', change: { provenance: { ...RECORDS[0].provenance, contentDigest: 'sha256:changed' } } },
+    { field: 'geometry', change: { geometry: { kind: 'POINT', datum: 'WGS84', longitude: 0, latitude: 0 } } },
+    { field: 'uncertainty', change: { uncertainty: { low: 0, high: 1, semantics: 'test interval' } } },
+    { field: 'visibility', change: { visibility: 'INTERNAL_ONLY' } },
+    { field: 'supersession', change: { supersededByRecordId: 'replacement' } },
+    { field: 'retraction', change: { retractedByRetractionId: 'withdrawal' } },
+    { field: 'admission conditions', change: { admission: { authority: 'test:steward', ruledAt: T_DONE, outcome: 'ADMITTED_WITH_CONDITIONS', conditions: ['Internal review only.'], sourceTime: T_START, acquisitionTime: T_START, provenance: 'LIVE_CAPTURE' } } },
+  ])('binds changed $field even with the same record identity and knowledge time', ({ change }) => {
+    const changed = { ...RECORDS[0], ...change };
+    expect(changed.recordId).toBe(RECORDS[0].recordId);
+    expect(changed.knownAt).toBe(RECORDS[0].knownAt);
+    expect(inputFingerprint([changed])).not.toBe(inputFingerprint([RECORDS[0]]));
+  });
+
+  it('canonicalizes object keys without losing any record values', () => {
+    const reordered = Object.fromEntries(Object.entries(RECORDS[0]).reverse()) as unknown as CorpusRecord;
+    expect(inputFingerprint([reordered])).toBe(inputFingerprint([RECORDS[0]]));
+  });
+
   it('changes when an input changes', () => {
     const fewer = RECORDS.slice(0, RECORDS.length - 1);
     expect(inputFingerprint(fewer)).not.toBe(inputFingerprint(RECORDS));
@@ -118,6 +151,22 @@ describe('a deterministic workload produces a deterministic fingerprint', () => 
 
   it('is order-independent in the output too', () => {
     const claims = [{ subject: 'b', claim: 'x', readRecordIds: ['1'], detail: {} }, { subject: 'a', claim: 'y', readRecordIds: ['2'], detail: {} }];
+    expect(outputFingerprint(claims)).toBe(outputFingerprint([...claims].reverse()));
+  });
+
+  it('binds the model, prediction horizon and exact input lineage to the output', () => {
+    const claim: ComputedClaim = { subject: 's', claim: 'c', confidence: 0.5, modelId: 'model-v1', horizonEndsAt: T_DONE, readRecordIds: ['one', 'two'], detail: {} };
+    for (const change of [{ modelId: 'model-v2' }, { horizonEndsAt: T_START }, { readRecordIds: ['one', 'three'] }, { readRecordIds: ['one'] }]) {
+      expect(outputFingerprint([{ ...claim, ...change }])).not.toBe(outputFingerprint([claim]));
+    }
+    expect(outputFingerprint([{ ...claim, readRecordIds: ['two', 'one'] }])).toBe(outputFingerprint([claim]));
+  });
+
+  it('orders distinct claims deterministically when their subjects are identical', () => {
+    const claims: ComputedClaim[] = [
+      { subject: 's', claim: 'c', modelId: 'model-v1', readRecordIds: ['one'], detail: {} },
+      { subject: 's', claim: 'c', modelId: 'model-v2', readRecordIds: ['two'], detail: {} },
+    ];
     expect(outputFingerprint(claims)).toBe(outputFingerprint([...claims].reverse()));
   });
 });
@@ -154,6 +203,28 @@ describe('a failure keeps its identity', () => {
     const rigged = { ...definition, compute: () => [{ subject: 's', claim: 'c', readRecordIds: [], detail: {} }] };
     const result = runWorkload(rigged, RECORDS, { runId: 'R', startedAt: T_START, completedAt: T_DONE, rightsOf });
     expect(result.failureIdentity).toBe('MINING_CLAIM_READ_NOTHING');
+  });
+
+  it.each([['missing'], [RECORDS[0].recordId, 'missing']])('refuses any unresolved lineage identifier: %s', (...readRecordIds) => {
+    const result = runClaims([{ subject: 's', claim: 'c', readRecordIds, detail: {} }]);
+    expect(result).toMatchObject({ status: 'FAILED', failureIdentity: 'MINING_CLAIM_READ_UNRESOLVED', outputFingerprint: null, artifacts: [] });
+  });
+
+  it('does not resolve an input that the workload did not select', () => {
+    const result = runClaims([{ subject: 's', claim: 'c', readRecordIds: [RECORDS[1].recordId], detail: {} }], [RECORDS[0]]);
+    expect(result.failureIdentity).toBe('MINING_CLAIM_READ_UNRESOLVED');
+  });
+
+  it('refuses duplicate identifiers in a claim without leaving earlier artifacts behind', () => {
+    const first = { subject: 's', claim: 'c', readRecordIds: [RECORDS[0].recordId], detail: {} };
+    const result = runClaims([first, { ...first, readRecordIds: [RECORDS[0].recordId, RECORDS[0].recordId] }]);
+    expect(result).toMatchObject({ status: 'FAILED', failureIdentity: 'MINING_CLAIM_READ_DUPLICATE', outputFingerprint: null, artifacts: [] });
+  });
+
+  it.each([false, true])('refuses ambiguous selected record identities even if their values differ: %s', (changed) => {
+    const duplicate = { ...RECORDS[0], ...(changed ? { value: 'changed-value' } : {}) };
+    const result = run({ minRecords: 1 }, [RECORDS[0], duplicate]);
+    expect(result).toMatchObject({ status: 'FAILED', failureIdentity: 'MINING_INPUT_RECORD_ID_DUPLICATE', outputFingerprint: null, artifacts: [] });
   });
 
   it('turns a throwing computation into a named failure rather than a crash', () => {

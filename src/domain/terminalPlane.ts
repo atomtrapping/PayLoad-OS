@@ -61,45 +61,15 @@
  * session asserts; the identity is taken as given by whatever opened the
  * session, and binding it to a credential is a separate, later thing.
  */
-import { PERMITTED_USES, USE_LABEL, type PermittedUse } from './corpus';
-import { capabilityOfTool, type Capability } from './capabilityRegistry';
-import { MCP_TOOLS } from '@/mcp/tools';
+import { USE_LABEL, type PermittedUse } from './corpus';
+import { TOOL_CAPABILITY, capabilityOfTool, type Capability } from './capabilityRegistry';
+import { z } from 'zod';
+import {
+  CLASS_AUDIENCE, NEVER_DECLARABLE, PURPOSE_ADMITS, USE_AUDIENCE, declarablePurposes,
+  type CallOutcome, type CallRefusal, type ServedKind, type SessionRefusal, type TerminalClass, type TerminalSession,
+} from './terminalVocabulary';
+export * from './terminalVocabulary';
 
-/* ── The parties ── */
-
-/**
- * A caller's class, which is the rights model's audience seen from outside.
- * The names are the audiences themselves so the two cannot drift.
- */
-export const TERMINAL_CLASSES = ['FIRM_INTERNAL', 'CUSTOMER', 'PUBLIC'] as const;
-export type TerminalClass = (typeof TERMINAL_CLASSES)[number];
-
-/** The audience each class calls at. */
-export const CLASS_AUDIENCE: Record<TerminalClass, 'INTERNAL' | 'CUSTOMER' | 'PUBLIC'> = {
-  FIRM_INTERNAL: 'INTERNAL',
-  CUSTOMER: 'CUSTOMER',
-  PUBLIC: 'PUBLIC',
-};
-
-/**
- * The uses no terminal may declare, whatever its class, and why. Stated rather
- * than omitted: a purpose that is refused for a reason is a different thing
- * from a purpose nobody thought of.
- */
-export const NEVER_DECLARABLE: Record<string, string> = {
-  model_training: 'Training is not a use of an answer. It is a copy of the corpus into a form that no longer carries its receipts, so it is refused at the type level rather than rate-limited.',
-  trading: 'The rights matrix prohibits trading on this corpus outright. No terminal declares it and no session carries it.',
-};
-
-/* ── What a tool serves ── */
-
-/**
- * The kind of thing a tool hands back. A purpose admits kinds, not tool names,
- * so a tool added to the surface is admitted by what it serves rather than by
- * being added to a permission list somewhere else.
- */
-export const SERVED_KINDS = ['RELEASE_METADATA', 'RECORDS', 'AGGREGATE', 'MANIFEST', 'RULING', 'RECEIPT', 'ESTATE'] as const;
-export type ServedKind = (typeof SERVED_KINDS)[number];
 
 /**
  * What a tool serves, read from the capability it reaches rather than from a
@@ -116,119 +86,7 @@ export function toolServes(toolName: string): ServedKind | undefined {
   return capability?.kind === 'READ' ? capability.serves : undefined;
 }
 
-/**
- * What each declarable purpose admits, and the shape it admits it in.
- *
- * `./servingBoundary.ts` names the shaping rule — research gets aggregates and
- * their refusals rather than the rows behind them, counterparty diligence gets
- * entity-level rows — and this is that rule as a decision the boundary makes.
- * An estate kind appears in no purpose's list, which is how the two-part rule
- * is enforced rather than described.
- */
-export interface PurposeAdmission {
-  use: PermittedUse;
-  admits: readonly ServedKind[];
-  shape: string;
-}
-
-export const PURPOSE_ADMITS: readonly PurposeAdmission[] = [
-  {
-    use: 'customer_delivery',
-    admits: ['RELEASE_METADATA', 'RECORDS', 'MANIFEST', 'RULING', 'RECEIPT'],
-    shape: 'Entity-level records with their evidence classes and both clocks, under the customer projection.',
-  },
-  {
-    use: 'redistribution',
-    admits: ['RELEASE_METADATA', 'MANIFEST', 'RULING'],
-    shape: 'What the public projection already carries: rulings and release metadata, never the records behind them.',
-  },
-  {
-    use: 'aggregation',
-    admits: ['RELEASE_METADATA', 'AGGREGATE', 'MANIFEST'],
-    shape: 'Aggregates and their refusals, not the rows behind them.',
-  },
-  {
-    use: 'internal_research',
-    admits: ['RELEASE_METADATA', 'RECORDS', 'AGGREGATE', 'MANIFEST', 'RULING', 'RECEIPT'],
-    shape: 'The corpus as the firm holds it. Still not the estates.',
-  },
-  {
-    use: 'acquisition',
-    admits: ['RELEASE_METADATA', 'MANIFEST'],
-    shape: 'What a production rail needs to know a release exists and what it commits to.',
-  },
-  {
-    use: 'normalization',
-    admits: ['RELEASE_METADATA', 'RECORDS', 'MANIFEST'],
-    shape: 'The records a normalization reads, and the release they belong to.',
-  },
-  {
-    use: 'proprietary_strategy',
-    admits: ['RELEASE_METADATA', 'RECORDS', 'AGGREGATE', 'MANIFEST', 'RULING', 'RECEIPT'],
-    shape: 'The corpus as the firm holds it, for the firm’s own account.',
-  },
-];
-
-/** The purposes with an admission entry, which is the set a session may name. */
-export const DECLARABLE_PURPOSES: readonly PermittedUse[] = PURPOSE_ADMITS.map((entry) => entry.use);
-
-/**
- * Which purposes a class may declare, derived from the audience each use is
- * evaluated at rather than listed per class.
- *
- * The derivation is the point: `sourceUseRequests` already says that
- * `customer_delivery` is an EXPORT to CUSTOMER and `redistribution` a PUBLISH
- * to PUBLIC, so a customer terminal gets exactly the first and a public one
- * exactly the second, without a second table to keep in agreement. The
- * audiences are taken from that function's shape, restated here as data so
- * this module stays pure of a domain import cycle; a test holds the two equal.
- */
-export const USE_AUDIENCE: Record<PermittedUse, 'INTERNAL' | 'CUSTOMER' | 'PUBLIC'> = {
-  acquisition: 'INTERNAL',
-  normalization: 'INTERNAL',
-  customer_delivery: 'CUSTOMER',
-  aggregation: 'INTERNAL',
-  model_training: 'INTERNAL',
-  internal_research: 'INTERNAL',
-  redistribution: 'PUBLIC',
-  proprietary_strategy: 'INTERNAL',
-  trading: 'INTERNAL',
-};
-
-/** The purposes a class may declare: its own audience's, minus the two nobody may. */
-export function declarablePurposes(terminalClass: TerminalClass): readonly PermittedUse[] {
-  return PERMITTED_USES.filter((use) =>
-    USE_AUDIENCE[use] === CLASS_AUDIENCE[terminalClass]
-    && DECLARABLE_PURPOSES.includes(use)
-    && NEVER_DECLARABLE[use] === undefined);
-}
-
-/* ── The session ── */
-
-/**
- * A terminal's session: who is calling, at what class, for what, over which
- * corpora, from when. Every field is declared at the open and none is
- * writable afterwards, which is why a widening is a new session rather than a
- * mutation of this one.
- */
-export interface TerminalSession {
-  sessionId: string;
-  terminalId: string;
-  terminalClass: TerminalClass;
-  /** One purpose, from the corpus's own permitted uses. */
-  purpose: PermittedUse;
-  /** The corpora this session may ask about. Empty means none, never all. */
-  corpusScope: readonly string[];
-  openedAt: string;
-  /** When the declaration stops standing. A session is not open forever. */
-  expiresAt: string;
-}
-
-export type SessionRefusal =
-  | 'PURPOSE_NOT_DECLARABLE_AT_ALL'
-  | 'PURPOSE_NOT_DECLARABLE_BY_THIS_CLASS'
-  | 'SCOPE_IS_EMPTY'
-  | 'EXPIRES_BEFORE_IT_OPENS';
+const sessionInstant = z.iso.datetime({ offset: true }).refine((value) => Number.isFinite(Date.parse(value)));
 
 /**
  * Whether a session may be opened as declared. A session that cannot be opened
@@ -250,6 +108,9 @@ export function openable(session: TerminalSession): { open: boolean; refusal: Se
   if (session.corpusScope.length === 0) {
     return { open: false, refusal: 'SCOPE_IS_EMPTY', because: 'A session names the corpora it may ask about. An empty scope is none of them, and a session that may ask nothing is not opened rather than opened and refused at every call.' };
   }
+  if (!sessionInstant.safeParse(session.openedAt).success || !sessionInstant.safeParse(session.expiresAt).success) {
+    return { open: false, refusal: 'INVALID_SESSION_TIME', because: 'A session must open and expire at valid ISO 8601 instants with an explicit timezone.' };
+  }
   if (Date.parse(session.expiresAt) <= Date.parse(session.openedAt)) {
     return { open: false, refusal: 'EXPIRES_BEFORE_IT_OPENS', because: 'A session expires after it opens. One that does not is a declaration with no window, and a declaration with no window is not a declaration.' };
   }
@@ -257,28 +118,6 @@ export function openable(session: TerminalSession): { open: boolean; refusal: Se
 }
 
 /* ── The call ── */
-
-export type CallRefusal =
-  | SessionRefusal
-  | 'SESSION_EXPIRED'
-  | 'TOOL_UNKNOWN'
-  | 'CAPABILITY_UNKNOWN'
-  | 'ESTATE_NEVER_SERVED'
-  | 'PURPOSE_DOES_NOT_ADMIT_THIS'
-  | 'ADMISSION_IS_THE_FIRMS_OWN_ACT'
-  | 'CORPUS_OUTSIDE_SCOPE';
-
-/**
- * What the plane did with the ask.
- *
- * `PROPOSAL_REQUIRED` is not a refusal wearing a softer word. The terminal
- * asked for something that changes the world, the plane recorded the ask as a
- * governed proposal, and what happens next is a human decision. Reporting that
- * as REFUSED would tell the caller to go away; reporting it as ADMITTED would
- * say something ran. Neither is true, so it is its own outcome.
- */
-export const CALL_OUTCOMES = ['ADMITTED', 'PROPOSAL_REQUIRED', 'REFUSED'] as const;
-export type CallOutcome = (typeof CALL_OUTCOMES)[number];
 
 /**
  * What an operate ask is waiting on, in the order the kernel requires it.
@@ -292,17 +131,9 @@ export const OPERATE_WAITS_ON: readonly string[] = [
   'An execution authorization of the reviewed digest, granted by a HUMAN or POLICY principal, bounded by an expiry (execution_authorization).',
 ];
 
-/**
- * And the fact that makes all of the above moot today, stated rather than
- * discovered by a caller who waits.
- *
- * `execution_authorization.corpus_release_id` is a NOT NULL foreign key into
- * `releases`. No release has been admitted, so the row cannot be written and
- * no authorization can be granted at all. Every operate ask is therefore
- * recordable and unauthorizable, and the plane says so at the moment of asking.
- */
-export const NO_AUTHORITY_CAN_BE_GRANTED_YET =
-  'No execution authorization can be granted at all today: the row names a corpus release by foreign key and no release has been admitted. The proposal stands, and nothing can act on it until the corpus has a release.';
+/** The generic proposal surface is not the durable, exact-input job service. */
+export const GENERIC_OPERATION_BLOCKER =
+  'The generic capability surface does not persist an executable request or grant execution authority. Use the authenticated terminal submit/review contract for the one supported bounded mining method; other operations remain unwired.';
 
 /**
  * The proposal an operate ask becomes. The plane fills this from the session
@@ -365,6 +196,12 @@ export function admitCapability(
   const standing = openable(session);
   if (!standing.open) {
     return refuse(standing.refusal as CallRefusal, standing.because, 'Open a session this terminal may hold, and declare a purpose its class calls at.');
+  }
+  if (!sessionInstant.safeParse(at).success) {
+    return refuse('INVALID_CALL_TIME', 'A call must name a valid ISO 8601 instant with an explicit timezone.', 'Use the trusted transport clock for the call instant.');
+  }
+  if (Date.parse(at) < Date.parse(session.openedAt)) {
+    return refuse('SESSION_NOT_OPEN', `The session opens at ${session.openedAt} and this call is at ${at}.`, 'Call within the declared session window.');
   }
   if (Date.parse(at) > Date.parse(session.expiresAt)) {
     return refuse('SESSION_EXPIRED', `The session was declared until ${session.expiresAt} and this call is at ${at}.`, 'Open a new session. A declaration is not extended by calling after it.');
@@ -449,7 +286,7 @@ function proposalFor(session: TerminalSession, capability: Capability): CallAdmi
       declaredSideEffects: capability.sideEffects ?? [],
       underPurpose: session.purpose,
       waitsOn: OPERATE_WAITS_ON,
-      blockedBy: NO_AUTHORITY_CAN_BE_GRANTED_YET,
+      blockedBy: GENERIC_OPERATION_BLOCKER,
     },
   };
 }
@@ -466,8 +303,8 @@ export function admitCall(
   corpus?: string,
 ): CallAdmission {
   const standing = openable(session);
-  if (standing.open && !MCP_TOOLS.some((tool) => tool.name === toolName)) {
-    return refuse('TOOL_UNKNOWN', `No tool ${toolName} on this surface.`, `Tools: ${MCP_TOOLS.map((tool) => tool.name).join(', ')}.`);
+  if (standing.open && !Object.hasOwn(TOOL_CAPABILITY, toolName)) {
+    return refuse('TOOL_UNKNOWN', `No tool ${toolName} on this surface.`, `Tools: ${Object.keys(TOOL_CAPABILITY).join(', ')}.`);
   }
   return admitCapability(session, capabilityOfTool(toolName), at, corpus);
 }

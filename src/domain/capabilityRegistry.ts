@@ -55,7 +55,7 @@
  * the substrate, including the parts no terminal can operate yet, because that
  * map is what says where the work is.
  */
-import type { ServedKind } from './terminalPlane';
+import type { ServedKind } from './terminalVocabulary';
 
 /**
  * What invoking a capability does to the world.
@@ -160,6 +160,9 @@ export const CORPUS_CAPABILITIES: readonly Capability[] = [
  * what a tool serves from the capability rather than from a second table that
  * would drift from this one.
  */
+/** Implemented HTTP operations; credentials, schema, worker and source still gate availability. */
+export const TERMINAL_OPERATIONS = ['discovery.run-workload'] as const;
+
 export const TOOL_CAPABILITY: Record<string, string> = {
   list_releases: 'corpus.list-releases',
   get_release: 'corpus.get-release',
@@ -490,10 +493,10 @@ export const SUBSTRATE_CAPABILITIES: readonly Capability[] = [
     subsystem: 'Discovery and mining',
     module: 'src/discovery/engine.ts',
     entryPoint: 'src/discovery/engine.ts — `runWorkload(definition, records, { runId, startedAt, completedAt, rightsOf })` returning `WorkloadRunResult`',
-    reachableToday: 'internal only (module import and test) — the only production caller is src/discovery/demonstrationRun.ts',
-    gatedBy: 'nothing. The engine is a pure function: no env flag, no database, no network, no clock (the caller supplies runId, startedAt, completedAt). The only constraints it enforces are its own four failure identities. `rightsOf` is injected rather than derived, so the engine holds no opinion about rights a…',
+    reachableToday: 'POST /api/v1/terminal for one fixed evidence-concentration method; the built-in Control Plane and independent CLI share this contract. Other workload definitions remain internal module imports.',
+    gatedBy: 'The terminal service authenticates server-registered principals, pins permitted inputs and executable digest, retains an exact proposal, requires HUMAN/POLICY review and authorization, and executes a bounded worker under durable SQL leases. The pure engine itself remains a library.',
     sideEffects: ['Run one workload over one set of corpus records and return a run with its artifacts', 'Two things a control-plane designer must know. Every artifact is born `validation: \'NOT_VALIDATED\'` and the engine can never move it — that is a field, not an omission, and it is the state that makes an artifact unservable. The rights floor is computed per claim from the records that claim actually…'],
-    authorityNeeded: 'none today. Nothing in src/governance/ requires a proposal, decision packet, proposal_review or execution_authorization before a run. `recordWorkload()` writes the run row with no reference to an authorization; the discovery ledger\'s `workload_run` table has no authorization column and no FK into e…',
+    authorityNeeded: 'Terminal runs require exact-digest proposal review and execution_authorization in the existing execution ledger. Demonstration module callers remain demonstrations, not authorized production jobs.',
     touchesEstates: false,
   },
   {
@@ -1832,7 +1835,7 @@ export const SUBSTRATE_CAPABILITIES: readonly Capability[] = [
     reachableToday: 'HTTP POST /api/v1/measurement-economy/tasking/observe with { orderId, instrumentId, defectActuallyExisted, instrumentDetectedDefect, ... }. Not on the MCP surface. The UI does not call it: N11VoiTask…',
     gatedBy: 'readBoundedJson at MAX_FEED_BODY_BYTES; orderId and instrumentId required. Nothing else. instrumentId is cast to MeasurementInstrumentId with no membership check.',
     sideEffects: ['Preview what one instrument\'s calibration would become if a supplied observation outcome were added to the committed tasking history', 'Structurally blocked from being the thing its name suggests, and the route says so in its own docblock and payload: status \'CALIBRATION_PREVIEWED_NOT_PERSISTED\', writes \'NONE\', doctrine.state \'The loop is not closed. This route has no store\', doctrine.blocker \'nothing in this repository is the plac…'],
-    authorityNeeded: 'Same OPERATE ladder as above, and the same NO_AUTHORITY_CAN_BE_GRANTED_YET blocker. Today: none.',
+    authorityNeeded: 'The OPERATE review ladder is required; this preview is not wired into the durable terminal job service.',
     touchesEstates: true,
   },
   {
@@ -1858,7 +1861,7 @@ export const SUBSTRATE_CAPABILITIES: readonly Capability[] = [
     reachableToday: 'HTTP GET /api/v1/insurability/harvester[?asOf=&inForceAt=]. Not on the MCP surface. Rendered internally at src/app/harvester/page.tsx.',
     gatedBy: 'Instant validation only: an unreadable asOf or inForceAt is refused rather than replaced by now. Persistence is refused structurally, not declined: every specimen declares beganAs \'DRAFTED_SPECIMEN\', which persistenceVerdict (src/adapter/statutoryPersistence.ts) refuses on the capture as REFUSED_DR…',
     sideEffects: ['Run the statutory pipeline end to end over the drafted specimens and serve what crossed the gate, bounded by knowledge time and optionally by in-forc…', 'I classify this OPERATE rather than READ even though it is idempotent and retains nothing, because each call executes capture → extract → candidate_build → ADMIT → serve and produces a StatutoryAdmissionReceipt with a receiptId and receiptDigest and a set of admission rulings. The run is determinis…'],
-    authorityNeeded: 'The OPERATE ladder in principle, and the same NO_AUTHORITY_CAN_BE_GRANTED_YET blocker. Today none — and note the run signs its rulings with SPECIMEN_AUTHORITY = \'authority:notations-corpus-board\' and a fixed SPECIMEN_RULED_AT, so a foreign terminal\'s GET mints admission rulings under the firm\'s nam…',
+    authorityNeeded: 'The OPERATE ladder would be required for execution. This specimen demonstration is not wired into the durable terminal job service and its specimen authority is not production admission.',
     touchesEstates: true,
   },
   {
@@ -2123,13 +2126,13 @@ export const SUBSTRATE_CAPABILITIES: readonly Capability[] = [
   },
   {
     id: 'kernel.proposal-shape-from-the-plane',
-    title: 'Be told, per call, what a governed act would require and why none can be authorized yet',
+    title: 'Be told what a governed act requires and distinguish a generic proposal from an executable job',
     kind: 'READ',
     subsystem: 'Governance kernel',
     module: 'src/domain/terminalPlane.ts',
-    entryPoint: 'src/domain/terminalPlane.ts proposalFor() → ProposedOperation, with OPERATE_WAITS_ON (:289) and NO_AUTHORITY_CAN_BE_GRANTED_YET (:304); returned through src/mcp/serve.ts serveCapabilityCall as `propo…',
+    entryPoint: 'src/domain/terminalPlane.ts proposalFor() returns ProposedOperation with OPERATE_WAITS_ON and GENERIC_OPERATION_BLOCKER through serveCapabilityCall.',
     reachableToday: 'not reachable. serveCapabilityCall is called only from src/mcp/serve.test.ts. src/mcp/server.ts registers only the 12 READ tools from src/mcp/tools.ts and never calls it; none of the 52 route handler…',
-    gatedBy: 'admitCapability\'s ordered decision (session standing → expiresAt → capability described → estates → corpus scope → kind), and above that the fact that no capability of kind OPERATE or ADMIT exists yet: CAPABILITIES = [...CORPUS_CAPABILITIES] and all twelve are READ. So today no input can even reach…',
+    gatedBy: 'Ordered session, time, capability, estate, corpus and kind checks. The generic surface does not authorize execution; the authenticated terminal service implements one exact, reviewed mining method.',
     serves: 'RECEIPT',
     authorityNeeded: 'None, because nothing is authorized: it is a description of what would be required.',
     touchesEstates: false,

@@ -46,9 +46,9 @@ function declaresDemonstration(src: { readonly origin: { readonly kind: string }
   return src.origin.kind !== 'LIVE';
 }
 
-export async function releasesPayload(corpusId?: string) {
+export async function releasesPayload(corpusId?: string, corpusScope?: readonly string[]) {
   const src = getCorpusSource();
-  const releases = await src.listReleases(corpusId);
+  const releases = (await src.listReleases(corpusId)).filter((release) => corpusScope === undefined || corpusScope.includes(release.corpusId));
   return envelope({ releases: releases.map(releaseSummary), count: releases.length }, undefined,
     { demonstration: carriesDemonstrationMaterial(releases, declaresDemonstration(src)) });
 }
@@ -113,9 +113,13 @@ export async function asOfPayload(releaseId: string, q: AsOfQuery) {
     { demonstration: carriesDemonstrationMaterial([hit.corpus, hit.release], declaresDemonstration(src)) });
 }
 
-export async function retractionsPayload(since: string | undefined, viewer: VisibilityClass) {
+export async function retractionsPayload(since: string | undefined, viewer: VisibilityClass, corpusScope?: readonly string[]) {
   const src = getCorpusSource();
-  const list = await src.retractions(since, viewer);
+  const retractions = await src.retractions(since, viewer);
+  const allowedReleases = corpusScope === undefined ? undefined : new Set(
+    (await src.listReleases()).filter((release) => corpusScope.includes(release.corpusId)).map((release) => release.releaseId),
+  );
+  const list = retractions.filter((retraction) => allowedReleases === undefined || allowedReleases.has(retraction.releaseId));
   return envelope({ projection: viewer, since: since ?? null, count: list.length, retractions: list.map(retractionPayload) }, undefined,
     { demonstration: carriesDemonstrationMaterial([], declaresDemonstration(src)) });
 }

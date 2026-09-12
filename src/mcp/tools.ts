@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { asOfPayload, recordsPayload, releaseManifestPayload, releasePayload, releasesPayload, retractionsPayload, rulingManifestPayload, rulingPayload, viewerFromParam } from '@/adapter/feed';
 import { getCorpusSource } from '@/adapter/corpusSource';
+import { getCaseSource } from '@/adapter/caseSource';
 import { FIXTURE_FACTORING_RECEIPTS } from '@/fixtures/caravan/factoring';
 import { verifyFactoringReceiptIntegrity } from '@/domain/factoring';
 import { FIXTURE_DISPATCH_STREAM, DEFENSE_RECONSTRUCTION_CASE_0803 } from '@/fixtures/caravan/dispatchLiability';
@@ -20,7 +21,12 @@ export interface McpToolDef<S extends z.ZodRawShape = z.ZodRawShape> {
   name: string;
   description: string;
   shape: S;
-  run: (args: z.infer<z.ZodObject<S>>) => Promise<unknown>;
+  run: (args: z.infer<z.ZodObject<S>>, context?: McpReadContext) => Promise<unknown>;
+}
+
+/** Supplied only by the governed boundary, never parsed from tool arguments. */
+export interface McpReadContext {
+  corpusScope: readonly string[];
 }
 
 const notFound = (what: string, id: string, remedy: string) => {
@@ -37,7 +43,7 @@ export const MCP_TOOLS = [
     name: 'list_releases',
     description: 'Release history of every corpus: id, status, knowledge cutoff, build, methodology, certification, digest, supersession.',
     shape: { corpus: z.string().optional().describe('Corpus id to filter by, e.g. caravan.specialty-cargo') },
-    run: async ({ corpus }) => releasesPayload(corpus),
+    run: async ({ corpus }, context) => releasesPayload(corpus, context?.corpusScope),
   }),
   def({
     name: 'get_release',
@@ -67,7 +73,7 @@ export const MCP_TOOLS = [
     name: 'list_retractions',
     description: 'Push retractions (corrections and recalls) issued after a cursor, oldest first, with affected and replacement records and the rulings they touched.',
     shape: { since: iso('since').optional().describe('Return retractions issued after this instant; typically the knownAt of the release you hold'), projection },
-    run: async ({ since, projection: p }) => retractionsPayload(since, viewerFromParam(p)),
+    run: async ({ since, projection: p }, context) => retractionsPayload(since, viewerFromParam(p), context?.corpusScope),
   }),
   def({
     name: 'get_ruling',
@@ -148,6 +154,43 @@ export const MCP_TOOLS = [
 ] as const;
 
 export type McpToolName = (typeof MCP_TOOLS)[number]['name'];
+
+export type ToolResource =
+  | { kind: 'CORPUS'; corpus: string }
+  | { kind: 'NOT_FOUND'; result: ReturnType<typeof notFound> }
+  | { kind: 'COLLECTION' | 'UNRESOLVED' };
+
+/** Resolve the actual object the tool reads; caller-supplied hints have no authority. */
+export async function resourceOfTool(name: string, args: Readonly<Record<string, unknown>>): Promise<ToolResource> {
+  if (name === 'list_releases') return typeof args.corpus === 'string' ? { kind: 'CORPUS', corpus: args.corpus } : { kind: 'COLLECTION' };
+  if (name === 'list_retractions') return { kind: 'COLLECTION' };
+  let releaseId: string;
+  let existingObject = false;
+  if (['get_release', 'get_release_manifest', 'list_records', 'query_as_of'].includes(name)) {
+    releaseId = args.releaseId as string;
+  } else if (name === 'get_ruling' || name === 'get_ruling_manifest') {
+    const hit = await getCaseSource().getRuling(args.rulingId as string);
+    if (!hit) return { kind: 'NOT_FOUND', result: notFound('ruling', args.rulingId as string, 'Rulings are listed at /rulings.') };
+    releaseId = hit.ruling.corpus.releaseId;
+    existingObject = true;
+  } else if (name === 'get_factoring_receipt' || name === 'verify_factoring_receipt') {
+    const hit = FIXTURE_FACTORING_RECEIPTS.find((receipt) => receipt.receiptId === args.receiptId || receipt.shipmentId === args.receiptId);
+    if (!hit) return { kind: 'NOT_FOUND', result: notFound('factoring_receipt', args.receiptId as string, 'Factoring receipts are available at /factoring.') };
+    releaseId = hit.notary.corpusReleaseId;
+    existingObject = true;
+  } else if (name === 'get_dispatch_event' || name === 'replay_dispatch_liability') {
+    const hit = FIXTURE_DISPATCH_STREAM.find((event) => event.decisionId === args.decisionId
+      || (event.load.loadId === args.decisionId && (name === 'get_dispatch_event' || args.decisionId === 'LOD-99203')));
+    if (!hit) return { kind: 'NOT_FOUND', result: notFound('dispatch_event', args.decisionId as string, 'Dispatch events are available at /dispatch-liability.') };
+    releaseId = hit.rollingAttestation.corpusReleaseId;
+    existingObject = true;
+  } else {
+    return { kind: 'UNRESOLVED' };
+  }
+  const hit = await getCorpusSource().getRelease(releaseId);
+  if (!hit) return existingObject ? { kind: 'UNRESOLVED' } : { kind: 'NOT_FOUND', result: notFound('release', releaseId, 'Call list_releases.') };
+  return { kind: 'CORPUS', corpus: hit.corpus.corpusId };
+}
 
 /** Validate arguments against the tool's schema and run it. Throws on malformed arguments only. */
 export async function runMcpTool(name: string, args: unknown): Promise<unknown> {

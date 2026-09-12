@@ -38,38 +38,97 @@
  * part; what the bytes mean is the transport's.
  */
 
+export const DEFAULT_BODY_TIMEOUT_MS = 10_000;
+export type BodyReadFailure = 'BODY_READ_TIMEOUT' | 'BODY_READ_ABORTED';
+export class BodyReadError extends Error {
+  constructor(readonly code: BodyReadFailure) {
+    super(code);
+    this.name = 'BodyReadError';
+  }
+}
+export interface BodyReadOptions {
+  /** One total deadline; incoming chunks do not extend it. */
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
 /**
- * `refuse` returns `never` — it throws, or the transport's own refusal does.
- * That is what lets each caller keep its own error type and status without this
- * module knowing any of them.
+ * `refuse` keeps each transport's own size error and status. Timeouts and aborts
+ * have stable, sanitized errors; neither includes caller-controlled reasons.
  */
 export async function readBoundedBody(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
   refuse: () => never,
+  options: BodyReadOptions = {},
 ): Promise<Uint8Array> {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new RangeError('BODY_READ_LIMIT_INVALID');
+  const timeoutMs = options.timeoutMs ?? DEFAULT_BODY_TIMEOUT_MS;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0 || timeoutMs > 2_147_483_647) throw new RangeError('BODY_READ_TIMEOUT_INVALID');
   const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
+  // One growing buffer bounds bookkeeping as well as payload bytes. Empty or
+  // one-byte chunks cannot accumulate an unbounded array of retained objects.
+  let bytes = new Uint8Array(0);
   let length = 0;
-  try {
-    for (;;) {
+  let stopped = false;
+  let cancelled = false;
+  const cancelReader = () => {
+    if (cancelled) return;
+    cancelled = true;
+    // Cancellation is caller-controlled; never await it or replace the error.
+    try { void reader.cancel().catch(() => {}); } catch { /* Best effort. */ }
+  };
+  const deadline = performance.now() + timeoutMs;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const interrupted = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new BodyReadError('BODY_READ_TIMEOUT')), timeoutMs);
+    onAbort = () => reject(new BodyReadError('BODY_READ_ABORTED'));
+    if (options.signal?.aborted) onAbort();
+    else options.signal?.addEventListener('abort', onAbort, { once: true });
+  });
+  const checkDeadline = () => {
+    if (options.signal?.aborted) throw new BodyReadError('BODY_READ_ABORTED');
+    if (performance.now() >= deadline) throw new BodyReadError('BODY_READ_TIMEOUT');
+  };
+  const consume = async () => {
+    let reads = 0;
+    while (!stopped) {
+      checkDeadline();
       const chunk = await reader.read();
-      if (chunk.done) break;
-      length += chunk.value.byteLength;
-      if (length > maxBytes) {
-        // Best effort, and deliberately swallowed: the measured limit is the
-        // decision, and a stream that fails to cancel does not overturn it.
-        try { await reader.cancel(); } catch { /* see above */ }
+      if (stopped) return;
+      checkDeadline();
+      if (chunk.done) return;
+      const nextLength = length + chunk.value.byteLength;
+      if (nextLength > maxBytes) {
+        cancelReader();
         refuse();
       }
-      chunks.push(chunk.value);
+      if (nextLength > bytes.length) {
+        const grown = new Uint8Array(Math.min(maxBytes, Math.max(nextLength, bytes.length * 2, 4096)));
+        grown.set(bytes.subarray(0, length));
+        bytes = grown;
+      }
+      bytes.set(chunk.value, length);
+      length = nextLength;
+      // Eager empty/tiny chunks otherwise monopolize microtasks, preventing
+      // external aborts and the total-deadline timer from running.
+      if (++reads % 128 === 0) await new Promise<void>((resolve) => setImmediate(resolve));
     }
+  };
+  try {
+    await Promise.race([consume(), interrupted]);
+  } catch (error) {
+    stopped = true;
+    // Cancellation is caller-controlled. Neither rejection nor a promise that
+    // never settles may replace the original refusal or extend its deadline.
+    cancelReader();
+    throw error;
   } finally {
+    stopped = true;
+    clearTimeout(timer);
+    if (onAbort) options.signal?.removeEventListener('abort', onAbort);
     reader.releaseLock();
   }
-
-  const joined = new Uint8Array(length);
-  let at = 0;
-  for (const chunk of chunks) { joined.set(chunk, at); at += chunk.byteLength; }
-  return joined;
+  return bytes.slice(0, length);
 }

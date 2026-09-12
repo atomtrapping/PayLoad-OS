@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { readBoundedBody } from '@/http/boundedBody';
 
+// The authenticated operating protocol has its own versioned envelope. Its
+// evidence class and release are result-bound, not the fixed synthetic feed
+// below. Keep the approved response boundary here without mislabelling jobs
+// and database results as the demo corpus.
+export { terminalHttp } from '@/terminal/http';
+
 export const SYSTEM_DATA_CLASS = 'synthetic' as const;
 export const SYSTEM_CORPUS_RELEASE = 'osiris-insurability@2026.09.30.1-synthetic' as const;
 export const SYSTEM_PARAMETER_SET_VERSION = 'PARAM-2026-Q3-V1' as const;

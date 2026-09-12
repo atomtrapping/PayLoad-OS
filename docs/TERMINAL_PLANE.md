@@ -1,5 +1,11 @@
 # The control plane a terminal plugs into
 
+Integration update (2026-09-12): the authenticated HTTP contract now persists
+read events and one reviewed, bounded mining workflow in the shared database.
+See [Terminal operating contract](TERMINAL_OPERATING_CONTRACT.md) for the current
+boundary, migration, qualification and remaining deployment limitations. The
+generic MCP proposal surface described below does not execute those jobs.
+
 Payload OS is a data control and mining substrate. NotationsOS is one terminal
 over it — the firm's own — and it is not the only one there should be. A second
 terminal, belonging to a customer or to another system, should be able to plug
@@ -19,7 +25,7 @@ is that argument made executable.
 | Piece | Where | What it holds |
 | --- | --- | --- |
 | What the substrate can do | `src/domain/capabilityRegistry.ts` | Every capability: its kind, what it would change, what gates it, whether it reaches an estate, and how a caller reaches it today |
-| The vocabulary and the decision | `src/domain/terminalPlane.ts` | Terminal classes, declarable purposes, what each purpose admits, the session, `admitCapability`, `admitCall`, the receipt |
+| The vocabulary and the decision | `src/domain/terminalVocabulary.ts`, `src/domain/terminalPlane.ts` | Shared terminal classes, purposes and sessions; `admitCapability`, `admitCall`, the receipt |
 | The only door | `src/mcp/serve.ts` | `serveToolCall` and `serveCapabilityCall`: validate, resolve the corpus, admit, refuse or propose, dispatch only on an admitted read, receipt every time |
 | The operator's own terminal | `src/mcp/server.ts` | Opens one declared `FIRM_INTERNAL` session and routes its own calls through the same door |
 | The standing | `src/domain/servingBoundary.ts` | `servingStanding()`, reporting the governed tool surface and the unauthenticated feed apart |
@@ -75,18 +81,14 @@ act would change before it changes anything; a caller supplying that list would
 be a caller describing its own act. The plane copies the registry's list, so a
 terminal cannot understate what it asked for.
 
-An operate ask comes back saying what it now waits on, in the kernel's order: a
+An operate ask comes back saying what it waits on, in the kernel's order: a
 decision packet naming the action by digest, a review of that digest by a
 registered human or policy principal (an agent cannot be the reviewer), and an
-execution authorization of the same digest. And it says the thing a caller
-would otherwise learn by waiting:
-
-> No execution authorization can be granted at all today: the row names a
-> corpus release by foreign key and no release has been admitted.
-
-Every operate ask is therefore recordable and unauthorizable. That is the
-honest state of the substrate, and the plane states it at the moment of asking
-rather than leaving a proposal to sit.
+execution authorization of the same digest. The generic MCP surface does not
+persist an executable request or grant that authorization. The authenticated
+HTTP `submit`/`review` path now implements this sequence for one fixed mining
+method, with a real release foreign key and exact retained inputs. Qualification
+uses explicitly synthetic releases, not proof of real-data admission.
 
 ## The estates are a property of the capability
 

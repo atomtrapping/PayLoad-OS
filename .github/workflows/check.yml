@@ -28,6 +28,7 @@ permissions:
   contents: read
 
 env:
+  TZ: UTC
   # The screenshot and asset steps must never reach a font or tile host.
   NEXT_TELEMETRY_DISABLED: '1'
 
@@ -108,6 +109,10 @@ jobs:
       - run: npm run build
 
       - run: npx playwright test --project=desktop --project=mobile
+
+      # The built-in workbench and standalone CLI share real HTTP/database
+      # state across backend restarts and a killed mining claim. Fixture-only.
+      - run: npm run terminal:qualify
 
       - if: failure()
         uses: actions/upload-artifact@v4

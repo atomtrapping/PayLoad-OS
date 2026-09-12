@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { Section } from '@/components/primitives/Section';
 import {
   CAPABILITIES, CAPABILITY_KINDS, CAPABILITY_KIND_MEANING, CAPABILITY_RULE, CAPABILITY_SUBSYSTEMS,
-  TOOL_CAPABILITY, capabilitiesOf, type Capability, type CapabilityKind,
+  TOOL_CAPABILITY, TERMINAL_OPERATIONS, capabilitiesOf, type Capability, type CapabilityKind,
 } from '@/domain/capabilityRegistry';
-import { NO_AUTHORITY_CAN_BE_GRANTED_YET, OPERATE_WAITS_ON, PLUG_IN_RULE } from '@/domain/terminalPlane';
+import { GENERIC_OPERATION_BLOCKER, OPERATE_WAITS_ON, PLUG_IN_RULE } from '@/domain/terminalPlane';
 
 export const metadata: Metadata = { title: 'Capabilities' };
 
@@ -14,7 +14,7 @@ const KIND_COLOUR: Record<CapabilityKind, string> = {
   ADMIT: 'var(--status-refused)',
 };
 
-const WIRED = new Set(Object.values(TOOL_CAPABILITY));
+const WIRED = new Set([...Object.values(TOOL_CAPABILITY), ...TERMINAL_OPERATIONS]);
 
 /**
  * The registry drawn, from the same data the plane enforces.
@@ -25,9 +25,8 @@ const WIRED = new Set(Object.values(TOOL_CAPABILITY));
  * terminal may ask for and what an operator can see here are the same rows,
  * and the plane refuses anything absent from them.
  *
- * The count that matters is on the header: twelve of a hundred and sixty-one
- * are reachable by a terminal. The page leads with that rather than burying
- * it, because the gap is the state of the work.
+ * Count implemented transports separately from live availability, which requires
+ * authentication, configured storage, a fixed worker and permitted source data.
  */
 export default function CapabilitiesPage() {
   const kinds = CAPABILITY_KINDS.map((kind) => ({ kind, count: CAPABILITIES.filter((c) => c.kind === kind).length }));
@@ -46,7 +45,7 @@ export default function CapabilitiesPage() {
       <div className="surface px-3 py-2 text-[12.5px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: 'var(--text-secondary)' }}>
         <span className="pill" style={{ color: 'var(--text-muted)' }}>REGISTRY</span>
         <span style={{ color: 'var(--accent)' }} data-testid="capability-standing">
-          {CAPABILITIES.length} capabilities. {reachable} reachable by a terminal.
+          {CAPABILITIES.length} capabilities. {reachable} implemented terminal interfaces.
         </span>
         {kinds.map(({ kind, count }) => (
           <span key={kind} data-testid={`kind-count-${kind}`}>{count} {kind.toLowerCase()}</span>
@@ -55,6 +54,9 @@ export default function CapabilitiesPage() {
       </div>
 
       <div className="surface p-3 flex flex-col gap-2">
+        <p className="m-0 text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
+          {Object.keys(TOOL_CAPABILITY).length} governed reads and {TERMINAL_OPERATIONS.length} bounded HTTP mining method. Runtime availability is returned by authenticated discovery; implementation is not deployment or admission.
+        </p>
         <p className="m-0 text-[13px]" data-testid="capability-rule" style={{ color: 'var(--text-primary)' }}>{CAPABILITY_RULE}</p>
         <p className="m-0 text-[12.5px]" data-testid="plug-in-rule" style={{ color: 'var(--text-secondary)' }}>{PLUG_IN_RULE}</p>
       </div>
@@ -82,7 +84,7 @@ export default function CapabilitiesPage() {
           <ol className="m-0 pl-5 flex flex-col gap-1" style={{ listStyle: 'decimal outside' }}>
             {OPERATE_WAITS_ON.map((step) => <li key={step}>{step}</li>)}
           </ol>
-          <p className="m-0" data-testid="no-authority-yet" style={{ color: 'var(--status-conditional)' }}>{NO_AUTHORITY_CAN_BE_GRANTED_YET}</p>
+          <p className="m-0" data-testid="generic-operation-boundary" style={{ color: 'var(--status-conditional)' }}>{GENERIC_OPERATION_BLOCKER}</p>
         </div>
       </Section>
 

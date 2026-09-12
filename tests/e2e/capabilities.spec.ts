@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { CAPABILITIES, TOOL_CAPABILITY } from '../../src/domain/capabilityRegistry';
+import { CAPABILITIES, TOOL_CAPABILITY, TERMINAL_OPERATIONS } from '../../src/domain/capabilityRegistry';
 
 /**
  * The navigator over the registry the plane enforces.
@@ -32,20 +32,21 @@ test('draws every capability the registry declares, by kind and by area', async 
 test('says how few of them a terminal can reach, and marks which', async ({ page }) => {
   await page.goto('/capabilities');
   await page.waitForLoadState('load');
-  const wired = Object.values(TOOL_CAPABILITY).length;
-  await expect(page.getByTestId('capability-standing')).toContainText(`${wired} reachable by a terminal`);
+  const wired = new Set([...Object.values(TOOL_CAPABILITY), ...TERMINAL_OPERATIONS]).size;
+  await expect(page.getByTestId('capability-standing')).toContainText(`${wired} implemented terminal interfaces`);
+  await expect(page.getByTestId('capability-discovery.run-workload')).toHaveAttribute('data-wired', 'true');
   await expect(page.locator('[data-wired="true"]')).toHaveCount(wired);
   await expect(page.locator('[data-wired="false"]')).toHaveCount(CAPABILITIES.length - wired);
 });
 
 /* An operate says what it waits on, including the thing that cannot happen yet. */
-test('states what an operate waits on and that no authority can be granted', async ({ page }) => {
+test('states what an operate waits on and distinguishes the generic proposal boundary', async ({ page }) => {
   await page.goto('/capabilities');
   await page.waitForLoadState('load');
   const waits = page.locator('#waits-on');
   await expect(waits).toContainText('decision_packet');
   await expect(waits).toContainText('an agent cannot be the reviewer');
-  await expect(page.getByTestId('no-authority-yet')).toContainText('no release has been admitted');
+  await expect(page.getByTestId('generic-operation-boundary')).toContainText('does not persist an executable request');
   await expect(page.getByTestId('capability-rule')).toContainText('never executed on a terminal’s say-so');
 });
 

@@ -3,6 +3,7 @@ import { ChainFigure } from '@/components/primitives/ChainFigure';
 import { Section } from '@/components/primitives/Section';
 import { GovernedActs } from '@/components/governance/GovernedActs';
 import { RefusalRegister } from '@/components/governance/RefusalRegister';
+import { TerminalWorkbench } from '@/components/terminal/TerminalWorkbench';
 import { allActs } from '@/components/governance/acts';
 import { GOVERNANCE_DEMONSTRATION } from '@/fixtures/governance/committed';
 import { APPROVAL_IS_OF_A_DIGEST, REVOCATION_RULE } from '@/domain/executionEnvelope';
@@ -32,6 +33,8 @@ export default function ControlPage() {
           The substrate, the authority and the surface, kept apart — and the planes each one covers.
         </p>
       </header>
+
+      <TerminalWorkbench />
 
       <div className="surface px-3 py-2 text-[12.5px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: 'var(--text-secondary)' }}>
         <span className="pill" style={{ color: 'var(--text-muted)' }}>ARCHITECTURE</span>

@@ -18,8 +18,9 @@
  * changes the identity, which is the property that makes a result comparable
  * to the one before it rather than silently replacing it.
  *
- * The input fingerprint is what it read: record identities with their
- * knowledge times. A record arriving, changing or being retracted changes it.
+ * The input fingerprint is what it read: complete canonical record values,
+ * including their evidence and lineage. A record arriving, changing or being
+ * retracted changes it even when its identity and knowledge time stay fixed.
  *
  * The output fingerprint is what came out. Same spec and same inputs give the
  * same output fingerprint, on this machine, today — and `arithmetic` says
@@ -88,17 +89,28 @@ export function specFingerprint(definition: WorkloadDefinition): string {
   });
 }
 
-/** What it read: identities with their knowledge times, order-independent. */
+/** Canonical values in a total order, including ties on subject or identity. */
+function canonicalOrder<T>(values: readonly T[]): T[] {
+  return values.map((value) => ({ value, key: canonicalJson(value) }))
+    .sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+    .map(({ value }) => value);
+}
+
+/** What it read: every meaningful record value, order-independent. */
 export function inputFingerprint(records: readonly CorpusRecord[]): string {
-  return sha256([...records]
-    .map((record) => [record.recordId, record.knownAt])
-    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)));
+  return sha256(canonicalOrder(records));
 }
 
 export function outputFingerprint(claims: readonly ComputedClaim[]): string {
-  return sha256([...claims]
-    .map((claim) => ({ subject: claim.subject, claim: claim.claim, detail: claim.detail, confidence: claim.confidence ?? null }))
-    .sort((a, b) => (a.subject < b.subject ? -1 : a.subject > b.subject ? 1 : 0)));
+  return sha256(canonicalOrder(claims.map((claim) => ({
+    subject: claim.subject,
+    claim: claim.claim,
+    detail: claim.detail,
+    confidence: claim.confidence ?? null,
+    modelId: claim.modelId ?? null,
+    horizonEndsAt: claim.horizonEndsAt ?? null,
+    readRecordIds: [...claim.readRecordIds].sort(),
+  }))));
 }
 
 export interface ArtifactInput {
@@ -147,8 +159,11 @@ export interface WorkloadRunResult {
 /** What may go wrong, named so that failures can be grouped rather than read. */
 export const FAILURE_IDENTITIES = [
   'MINING_NO_INPUT_SELECTED',
+  'MINING_INPUT_RECORD_ID_DUPLICATE',
   'MINING_COMPUTE_THREW',
   'MINING_CLAIM_READ_NOTHING',
+  'MINING_CLAIM_READ_UNRESOLVED',
+  'MINING_CLAIM_READ_DUPLICATE',
   'MINING_CONFIDENCE_ON_DETERMINISTIC_RESULT',
 ] as const;
 export type FailureIdentity = typeof FAILURE_IDENTITIES[number];
@@ -191,6 +206,8 @@ export function runWorkload(
   });
 
   if (selected.length === 0) return failed('MINING_NO_INPUT_SELECTED');
+  const byId = new Map(selected.map((record) => [record.recordId, record]));
+  if (byId.size !== selected.length) return failed('MINING_INPUT_RECORD_ID_DUPLICATE');
 
   let claims: readonly ComputedClaim[];
   try {
@@ -199,12 +216,19 @@ export function runWorkload(
     return failed(error instanceof MiningFailure ? error.identity : 'MINING_COMPUTE_THREW');
   }
 
-  const byId = new Map(selected.map((record) => [record.recordId, record]));
   const artifacts: ProducedArtifact[] = [];
   for (const [index, claim] of claims.entries()) {
-    const read = claim.readRecordIds.map((id) => byId.get(id)).filter((r): r is CorpusRecord => r !== undefined);
     /* A claim that read nothing is not a finding about the corpus. */
-    if (read.length === 0) return failed('MINING_CLAIM_READ_NOTHING');
+    if (claim.readRecordIds.length === 0) return failed('MINING_CLAIM_READ_NOTHING');
+    if (new Set(claim.readRecordIds).size !== claim.readRecordIds.length) return failed('MINING_CLAIM_READ_DUPLICATE');
+    // Every declared ancestor must resolve exactly once. Dropping even one
+    // unknown input would falsely narrow the claim's lineage and rights floor.
+    const read: CorpusRecord[] = [];
+    for (const id of claim.readRecordIds) {
+      const record = byId.get(id);
+      if (!record) return failed('MINING_CLAIM_READ_UNRESOLVED');
+      read.push(record);
+    }
     /* And a deterministic result does not get to carry a confidence. */
     if (claim.confidence !== undefined && definition.producesClass === 'COMPUTED_RESULT') {
       return failed('MINING_CONFIDENCE_ON_DETERMINISTIC_RESULT');

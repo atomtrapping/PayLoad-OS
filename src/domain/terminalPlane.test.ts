@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  CLASS_AUDIENCE, DECLARABLE_PURPOSES, NEVER_DECLARABLE, NO_AUTHORITY_CAN_BE_GRANTED_YET, OPERATE_WAITS_ON,
+  CLASS_AUDIENCE, DECLARABLE_PURPOSES, NEVER_DECLARABLE, GENERIC_OPERATION_BLOCKER, OPERATE_WAITS_ON,
   PLUG_IN_RULE, PURPOSE_ADMITS, SERVED_KINDS, TERMINAL_CLASSES, USE_AUDIENCE, admitCall, admitCapability,
   declarablePurposes, openable, servedCallReceipt, toolServes, type TerminalSession,
 } from './terminalPlane';
@@ -78,6 +78,11 @@ describe('a purpose is declared from the corpus’s own vocabulary, not a second
     expect(openable(session({ corpusScope: [] })).refusal).toBe('SCOPE_IS_EMPTY');
     expect(openable(session({ expiresAt: OPENED })).refusal).toBe('EXPIRES_BEFORE_IT_OPENS');
     expect(openable(session()).open).toBe(true);
+  });
+
+  it.each(['not-a-date', '', '2026-02-30T09:00:00Z', '2026-09-12T25:00:00Z', '2026-09-12'])('refuses malformed session timestamps: %s', (invalid) => {
+    expect(openable(session({ openedAt: invalid })).refusal).toBe('INVALID_SESSION_TIME');
+    expect(openable(session({ expiresAt: invalid })).refusal).toBe('INVALID_SESSION_TIME');
   });
 });
 
@@ -163,7 +168,7 @@ describe('an operate is never run on a terminal’s say-so', () => {
       declaredSideEffects: ['Writes a workload run and its derived artifacts with their lineage.'],
       underPurpose: 'customer_delivery',
       waitsOn: OPERATE_WAITS_ON,
-      blockedBy: NO_AUTHORITY_CAN_BE_GRANTED_YET,
+      blockedBy: GENERIC_OPERATION_BLOCKER,
     });
     expect(asked.because).toContain('has not run');
   });
@@ -174,11 +179,11 @@ describe('an operate is never run on a terminal’s say-so', () => {
     expect(asked.proposal?.declaredSideEffects).toEqual(operate.sideEffects);
   });
 
-  it('says what the ask waits on, and that one of those things cannot happen yet', () => {
+  it('distinguishes an unwired generic proposal from the bounded operating contract', () => {
     const asked = admitCapability(session(), operate, AT);
     expect(asked.proposal?.waitsOn).toHaveLength(3);
     expect(asked.proposal?.waitsOn.join(' ')).toContain('an agent cannot be the reviewer');
-    expect(asked.proposal?.blockedBy).toContain('no release has been admitted');
+    expect(asked.proposal?.blockedBy).toContain('does not persist an executable request');
   });
 
   /* Standing comes first: a corpus the session never named is not answered with a proposal. */
@@ -234,6 +239,21 @@ describe('every call is admitted or refused, and the order is the argument', () 
     expect(refused.remedy).toContain('not extended by calling after it');
     /* At the instant it expires it still stands; after it, it does not. */
     expect(admitCall(session(), 'list_records', EXPIRES, 'caravan.specialty-cargo').admitted).toBe(true);
+  });
+
+  it('rejects invalid and pre-opening call times through either admission entrypoint', () => {
+    for (const decide of [
+      (at: string) => admitCall(session(), 'list_records', at, 'caravan.specialty-cargo'),
+      (at: string) => admitCapability(session(), capabilityById('corpus.list-records'), at, 'caravan.specialty-cargo'),
+    ]) {
+      for (const invalid of ['not-a-date', '2026-02-30T10:00:00Z', '2026-09-12T10:99:00Z', '2026-09-12T10:00:00']) {
+        expect(decide(invalid).refusal, invalid).toBe('INVALID_CALL_TIME');
+      }
+      expect(decide('2026-09-12T08:59:59.999Z').refusal).toBe('SESSION_NOT_OPEN');
+      expect(decide(OPENED).admitted).toBe(true);
+      expect(decide(EXPIRES).admitted).toBe(true);
+      expect(decide('2026-09-12T06:00:00-04:00').admitted).toBe(true);
+    }
   });
 
   /* A session that could not be opened answers nothing, whatever it asks. */

@@ -125,12 +125,28 @@ describe('admission persistence through real SQL and the live corpus adapter', (
     expect(await db.select().from(schema.admissionRulings)).toHaveLength(1);
   });
 
-  it('keeps admission evidence when projection metadata is absent and refuses to fabricate a feed record', async () => {
-    const result = await admitRecords({ ...request(), releaseRecords: undefined });
-    expect(result.inserted).toHaveLength(1);
-    const [stored] = await db.select().from(schema.records);
-    expect(stored.data).toMatchObject({ schema: 'notations.admission-storage.v1', candidate: { recordId: 'record-one' }, releaseRecord: null });
-    await expect(new LiveCorpusSource().getCorpus(corpus.corpusId)).rejects.toThrow('CORPUS_ADMISSION_PROJECTION_UNAVAILABLE');
+  it('refuses missing serving projections without writing an unreadable canonical row', async () => {
+    await expect(admitRecords({ ...request(), releaseRecords: undefined })).rejects.toThrow('ADMISSION_RELEASE_PROJECTION_REQUIRED');
+    expect(await db.select().from(schema.records)).toEqual([]);
+    expect(await db.select().from(schema.admissionRulings)).toEqual([]);
+    expect(await db.select().from(schema.recordAncestry)).toEqual([]);
+    expect((await new LiveCorpusSource().getCorpus(corpus.corpusId))?.records).toEqual([]);
+  });
+
+  it('refuses the whole mixed batch when one admitted member lacks a serving projection', async () => {
+    await expect(admitRecords(request([candidate(), candidate(projection('record-two'))], [projection()])))
+      .rejects.toThrow('ADMISSION_RELEASE_PROJECTION_REQUIRED');
+    expect(await db.select().from(schema.records)).toEqual([]);
+    expect(await db.select().from(schema.admissionRulings)).toEqual([]);
+    expect(await db.select().from(schema.recordAncestry)).toEqual([]);
+  });
+
+  it('refuses an unreadable supplied projection before any canonical write', async () => {
+    await expect(admitRecords(request([candidate()], [{ ...projection(), title: '' }])))
+      .rejects.toThrow('ADMISSION_RELEASE_RECORD_INVALID');
+    expect(await db.select().from(schema.records)).toEqual([]);
+    expect(await db.select().from(schema.admissionRulings)).toEqual([]);
+    expect(await db.select().from(schema.recordAncestry)).toEqual([]);
   });
 
   it('refuses unrelated or changed release projection values before inserting anything', async () => {

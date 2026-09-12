@@ -37,6 +37,7 @@
  * whether to open.
  */
 import type { AdmissionCandidate } from '@/domain/admission';
+import type { CorpusRecord } from '@/domain/corpus';
 import { databaseConfigured } from '@/db/config';
 export { databaseConfigured } from '@/db/config';
 import type { HarvestRun } from './statutoryHarvester';
@@ -52,6 +53,8 @@ export type PersistenceOutcome =
   | 'REFUSED_DRAFTED_SPECIMEN'
   /** Asked for, and impossible: no database is configured in this environment. */
   | 'NO_DATABASE'
+  /** Retain the assertion upstream; a missing serving record is not invented. */
+  | 'PROJECTION_REQUIRED'
   /** Asked for, and refused: nothing was admitted, so there is nothing to write. */
   | 'NOTHING_ADMITTED';
 
@@ -68,6 +71,8 @@ export interface PersistenceTarget {
   releaseId: string;
   authority: string;
   ruledAt: string;
+  /** Supplied by the caller, never inferred from a partial harvested assertion. */
+  releaseRecords?: readonly CorpusRecord[];
 }
 
 const state = (outcome: PersistenceOutcome, because: string, written = 0): PersistenceState => ({
@@ -111,6 +116,9 @@ export async function persistHarvest(run: HarvestRun, target: PersistenceTarget)
   if (refused) return refused;
 
   const candidates: AdmissionCandidate[] = run.build.members.flatMap((member) => member.candidates);
+  if (!target.releaseRecords?.length) {
+    return state('PROJECTION_REQUIRED', 'The admitted assertions remain unwritten. Supply complete, evidence-bound release records before canonical insertion; the harvester does not invent presentation, identity, rights, geometry or temporal metadata.');
+  }
   const { admitRecords } = await import('@/db/admitRecords');
   // The door rules again on its own account. It is not told the outcome, and
   // it supplies no authority: a caller with none cannot write.
@@ -120,6 +128,7 @@ export async function persistHarvest(run: HarvestRun, target: PersistenceTarget)
     authority: target.authority,
     ruledAt: target.ruledAt,
     candidates,
+    releaseRecords: target.releaseRecords,
   });
   return state(result.inserted.length > 0 ? 'WRITTEN' : result.existing.length > 0 ? 'EXISTING' : 'NOTHING_ADMITTED', `${result.inserted.length} rows inserted and ${result.existing.length} identical rows verified through src/db/admitRecords.ts. ${result.because}`, result.inserted.length);
 }

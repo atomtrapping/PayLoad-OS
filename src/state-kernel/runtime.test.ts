@@ -19,7 +19,7 @@ describe('fixed native state-kernel bridge', () => {
   it('runs the fixed binary without a shell and sends only the typed replay envelope on stdin', async () => {
     const work = evaluateKernel([]);
     expect(native.spawn).toHaveBeenCalledWith(expect.stringMatching(/native[\\/]state-kernel[\\/]target[\\/]debug[\\/]notations-state-kernel(?:\.exe)?$/), [],
-      { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+      { windowsHide: true, shell: false, stdio: ['pipe', 'pipe', 'pipe'] });
     expect(JSON.parse(child.stdin.end.mock.calls[0][0])).toEqual({ schema: 'notations.state-kernel-request.v1', commands: [] });
     child.stdout.emit('data', Buffer.from(JSON.stringify({ ok: true, state: emptyNotationState() })));
     child.emit('close', 0);
@@ -48,7 +48,9 @@ describe('fixed native state-kernel bridge', () => {
     child.stderr.emit('data', Buffer.from('/private/native/path and source content'));
     child.emit('close', code);
     await checked;
-    expect(child.kill).toHaveBeenCalled();
+    // The shared runner has already observed process close; reject malformed
+    // output without attempting to kill an exited process.
+    expect(child.kill).not.toHaveBeenCalled();
   });
 
   it('bounds request bytes before starting a child', () => {

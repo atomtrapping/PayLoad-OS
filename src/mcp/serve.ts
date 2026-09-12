@@ -14,21 +14,16 @@
  *
  * WHAT THE SCOPE CHECK REACHES
  *
- * A call that names a corpus is checked against the session's scope directly.
- * A call that names a release has its corpus resolved from the source first —
- * a lookup the boundary makes about its own inventory, not an answer served to
- * the caller — and is checked the same way. A call that names neither, which
- * today is the rulings, the factoring receipts and the dispatch events, is not
- * scope-checked, because those identifiers do not carry a corpus and inventing
- * a mapping from their prefixes would be a guess enforcing a policy. Those
- * tools are still admitted or refused by purpose; they are simply not narrowed
- * by scope, and that is the honest state of it.
+ * Resource ownership comes from the actual release, ruling, receipt or event.
+ * Collection reads are filtered to the session's corpora. The same parsed
+ * arguments and owned session snapshot are used from admission to dispatch.
  */
 import { z } from 'zod';
 import { admitCall, admitCapability, servedCallReceipt, type CallAdmission, type ProposedOperation, type ServedCallReceipt, type TerminalSession } from '@/domain/terminalPlane';
 import { TOOL_CAPABILITY, capabilityById } from '@/domain/capabilityRegistry';
+import { PERMITTED_USES } from '@/domain/corpus';
 import { getCorpusSource } from '@/adapter/corpusSource';
-import { MCP_TOOLS, runMcpTool } from './tools';
+import { MCP_TOOLS, resourceOfTool, type McpReadContext } from './tools';
 
 export interface ServedCall {
   receipt: ServedCallReceipt;
@@ -50,15 +45,13 @@ export interface ServedCall {
 /**
  * The corpus a call is about, where the call says so.
  *
- * `corpus` when the tool takes one; otherwise the corpus of the named release,
- * resolved from the source. Undefined when the call names neither, which the
- * scope check reads as "not narrowed by scope" rather than as "any corpus".
+ * A release always resolves through the source; an accompanying corpus hint
+ * cannot override it. Governed tools use their own resource resolver below.
  */
 export async function corpusOfCall(args: unknown): Promise<string | undefined> {
   const shape = z.object({ corpus: z.string().optional(), releaseId: z.string().optional() }).safeParse(args ?? {});
   if (!shape.success) return undefined;
-  if (shape.data.corpus !== undefined) return shape.data.corpus;
-  if (shape.data.releaseId === undefined) return undefined;
+  if (shape.data.releaseId === undefined) return shape.data.corpus;
   const hit = await getCorpusSource().getRelease(shape.data.releaseId);
   return hit?.corpus.corpusId;
 }
@@ -79,12 +72,55 @@ export async function serveToolCall(
   at: string,
 ): Promise<ServedCall> {
   const tool = MCP_TOOLS.find((candidate) => candidate.name === toolName);
-  if (tool !== undefined) z.object(tool.shape).parse(args ?? {});
+  if (tool !== undefined) return serveKnownTool(session, tool, args, at);
+  const heldSession = snapshotSession(session);
+  const admission = admitCall(heldSession, toolName, at);
+  return outcomeOf(servedCallReceipt(heldSession, toolName, at, admission), admission, undefined);
+}
 
-  const corpus = tool === undefined ? undefined : await corpusOfCall(args);
-  const admission = admitCall(session, toolName, at, corpus);
-  const receipt = servedCallReceipt(session, toolName, at, admission, corpus);
-  return outcomeOf(receipt, admission, () => runMcpTool(toolName, args));
+const sessionSchema = z.object({
+  sessionId: z.string().min(1), terminalId: z.string().min(1),
+  terminalClass: z.enum(['FIRM_INTERNAL', 'CUSTOMER', 'PUBLIC']),
+  purpose: z.enum(PERMITTED_USES), corpusScope: z.array(z.string().min(1)),
+  openedAt: z.string(), expiresAt: z.string(),
+});
+
+/** Copy before the first await: a caller cannot widen a pending declaration. */
+function snapshotSession(session: TerminalSession): TerminalSession {
+  const parsed = sessionSchema.parse(session);
+  return Object.freeze({ ...parsed, corpusScope: Object.freeze(parsed.corpusScope) });
+}
+
+function boundaryRefusal(code: 'CORPUS_UNRESOLVED' | 'PROJECTION_OUTSIDE_AUTHORITY', because: string, remedy: string): CallAdmission {
+  return { outcome: 'REFUSED', admitted: false, refusal: code, because, remedy, shape: null, served: null, proposal: null };
+}
+
+async function serveKnownTool(
+  session: TerminalSession,
+  tool: (typeof MCP_TOOLS)[number],
+  args: unknown,
+  at: string,
+): Promise<ServedCall> {
+  const parsed: Record<string, unknown> = z.object(tool.shape).strict().parse(args ?? {});
+  const heldSession = snapshotSession(session);
+  const widerProjection = heldSession.terminalClass === 'PUBLIC' && parsed.projection === 'COUNTERPARTY_SHARED';
+  if ('projection' in tool.shape && parsed.projection === undefined) {
+    parsed.projection = heldSession.terminalClass === 'PUBLIC' ? 'PUBLIC_RULING' : 'COUNTERPARTY_SHARED';
+  }
+  const heldArgs = Object.freeze(parsed);
+  const run = tool.run as (input: Readonly<Record<string, unknown>>, context: McpReadContext) => Promise<unknown>;
+  const resource = await resourceOfTool(tool.name, heldArgs);
+  const corpus = resource.kind === 'CORPUS' ? resource.corpus : undefined;
+  let admission = admitCall(heldSession, tool.name, at, corpus);
+  if (admission.admitted && resource.kind === 'UNRESOLVED') {
+    admission = boundaryRefusal('CORPUS_UNRESOLVED', 'The requested object has no resolvable corpus ownership.', 'Bind the object to a release in the authoritative source before serving it.');
+  }
+  if (admission.admitted && widerProjection) {
+    admission = boundaryRefusal('PROJECTION_OUTSIDE_AUTHORITY', 'A public session may read only the public projection.', 'Request PUBLIC_RULING or omit the projection.');
+  }
+  const receipt = servedCallReceipt(heldSession, tool.name, at, admission, corpus);
+  const context = Object.freeze({ corpusScope: heldSession.corpusScope });
+  return outcomeOf(receipt, admission, () => resource.kind === 'NOT_FOUND' ? Promise.resolve(resource.result) : run(heldArgs, context));
 }
 
 /**
@@ -107,11 +143,18 @@ export async function serveCapabilityCall(
   at: string,
 ): Promise<ServedCall> {
   const capability = capabilityById(capabilityId);
-  const corpus = capability === undefined ? undefined : await corpusOfCall(args);
-  const admission = admitCapability(session, capability, at, corpus);
   const toolName = Object.keys(TOOL_CAPABILITY).find((name) => TOOL_CAPABILITY[name] === capabilityId);
-  const receipt = { ...servedCallReceipt(session, toolName ?? capabilityId, at, admission, corpus), capability: capability?.id ?? null };
-  if (admission.outcome === 'ADMITTED' && toolName === undefined) {
+  const tool = MCP_TOOLS.find((candidate) => candidate.name === toolName);
+  if (tool !== undefined) return serveKnownTool(session, tool, args, at);
+  const heldSession = snapshotSession(session);
+  const parsed = capability === undefined ? undefined : z.object({ corpus: z.string().optional(), releaseId: z.string().optional() }).strict().parse(args ?? {});
+  const corpus = parsed === undefined ? undefined : await corpusOfCall(parsed);
+  let admission = admitCapability(heldSession, capability, at, corpus);
+  if (admission.outcome !== 'REFUSED' && parsed?.releaseId !== undefined && corpus === undefined) {
+    admission = boundaryRefusal('CORPUS_UNRESOLVED', 'The named release has no resolvable corpus ownership.', 'Name a release in the authoritative source before asking for this capability.');
+  }
+  const receipt = { ...servedCallReceipt(heldSession, capabilityId, at, admission, corpus), capability: capability?.id ?? null };
+  if (admission.outcome === 'ADMITTED') {
     return {
       receipt,
       admission,
@@ -121,10 +164,7 @@ export async function serveCapabilityCall(
       },
     };
   }
-  if (toolName !== undefined && admission.outcome === 'ADMITTED') {
-    z.object(MCP_TOOLS.find((candidate) => candidate.name === toolName)!.shape).parse(args ?? {});
-  }
-  return outcomeOf(receipt, admission, toolName === undefined ? undefined : () => runMcpTool(toolName, args));
+  return outcomeOf(receipt, admission, undefined);
 }
 
 /** One place the three outcomes become one answer shape. */

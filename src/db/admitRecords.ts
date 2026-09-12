@@ -84,9 +84,13 @@ export async function admitRecords(
   for (const { candidate, ruling, row } of rows) {
     for (const instant of [row!.validFrom, row!.knownAt, row!.sourceTime, row!.acquisitionTime]) timestamp(instant);
     const projection = projections.get(row!.recordId);
+    // Keep incomplete assertions upstream: every canonical row must carry a
+    // complete, explicitly supplied record that the corpus reader can serve.
+    // Refused candidates still retain their rulings without a projection.
+    if (!projection) throw new Error('ADMISSION_RELEASE_PROJECTION_REQUIRED');
     documents.set(row!.recordId, {
       schema: ADMISSION_STORAGE_SCHEMA, corpusId: input.corpusId, releaseId: input.releaseId, candidate, ruling, row: row!,
-      releaseRecord: projection ? bindReleaseRecord(projection, candidate, row!, input.releaseId) : null,
+      releaseRecord: bindReleaseRecord(projection, candidate, row!, input.releaseId),
     });
   }
   const inserted: string[] = [];

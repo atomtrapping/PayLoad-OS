@@ -1,12 +1,21 @@
-# NotationsOS · Notation Systems
+# PayLoad OS · Notation Systems
+
+The canonical repository is [atomtrapping/PayLoad-OS](https://github.com/atomtrapping/PayLoad-OS).
+PayLoad OS is the shared data-control and evidence-production system. Its built-in
+NotationsOS navigator is one terminal over that system, alongside the independent
+JavaScript client. Product desks and specialist tools reuse the shared contracts;
+they do not define separate permission, job or publication authorities.
+
+Start with [the repository integration map](docs/REPOSITORY_CONSOLIDATION.md) for
+ownership, commands, baseline decisions and the boundaries of optional tooling.
 
 Notation Systems Inc. is an information technology company. We transform, organize, and license real-world data and analytics for business, risk, and market applications.
 
 The firm uses its systems internally to prepare boutique data and analytics
 packages from acquired information. **Caravan, Tradewind and Landshark are the
 data-product lines; HTTP feeds and MCP tools are existing delivery interfaces.**
-This repository holds **NotationsOS, the internal terminal** for preparation,
-quality review and operations. It is not sold. Positioning is set in
+This repository holds the shared backend and **NotationsOS, its built-in terminal**
+for preparation, quality review and operations. The terminal is not sold. Commercial positioning is set in
 [`docs/ECONOMIC_ARCHITECTURE.md`](docs/ECONOMIC_ARCHITECTURE.md), corrected by the
 founder on 2026-09-08. Internal compute supports package preparation; hosted
 customer workloads and principal trading are outside the active offering.
@@ -62,7 +71,7 @@ does not have.
 - **Doctrine** — five fabrics, three states of information, seven rules with
   where each is enforced and which test proves it, verification tiers.
   [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- **Storage** — six classes of information, the store each asks for, and the
+- **Storage** — seven classes of information, the store each asks for, and the
   invariant each store must not break. PostgreSQL is selected and wired for
   records; the rest are local files and fixtures.
   [`docs/STORAGE.md`](docs/STORAGE.md)

@@ -1,1 +1,3 @@
 # Byte-exact demonstration inputs are pinned beside the files they cover.
+deploy/*.sh text eol=lf
+Dockerfile text eol=lf

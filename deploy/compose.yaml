@@ -1,0 +1,71 @@
+# Single-host qualification only. One writer; no autoscaling or public ingress.
+# Supply an already-built local image. Compose does not build/pull/deploy cloud resources.
+name: payload-internal
+services:
+  operator:
+    image: ${PAYLOAD_IMAGE:?Set the qualified image reference}
+    pull_policy: never
+    platform: linux/amd64
+    init: true
+    user: "10001:10001"
+    read_only: true
+    restart: "no"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: "2.0"
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 128
+    stop_grace_period: 30s
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - ${PAYLOAD_RUNTIME_ENV_FILE:?Set an absolute protected runtime env file outside the repository}
+    environment:
+      PAYLOAD_DEPLOYMENT_MODE: internal
+      PAYLOAD_INTERNAL_ORIGIN: http://127.0.0.1:3000
+      PAYLOAD_OPERATOR_PASSWORD_FILE: /run/secrets/operator-password
+      PAYLOAD_DB_TLS_MODE: verify-full
+      PAYLOAD_DB_CA_FILE: /run/secrets/postgresql-ca.pem
+      PAYLOAD_EXECUTION_PROFILE: conserve
+      PAYLOAD_MAX_CHILD_PROCESSES: "1"
+      PAYLOAD_DB_POOL_MAX: "2"
+      PAYLOAD_PRODUCTION_LOCAL: "1"
+      PAYLOAD_STATE_KERNEL_LOCAL: "1"
+      PAYLOAD_OPERATIONS_LOCAL: "1"
+      PAYLOAD_COORDINATION_LOCAL: "0"
+      PAYLOAD_TERMINAL_RETENTION: disabled
+      PAYLOAD_PRODUCTION_DIR: /app/.payload/evidence
+      PAYLOAD_NOTATION_STATE_DIR: /app/.payload/notation-state
+      PAYLOAD_SOURCE_QUALIFICATION_DIR: /app/.payload/source-qualification
+      PAYLOAD_SOURCE_COLLECTION: "0"
+      PAYLOAD_SAMSARA_COLLECTION: "0"
+      GAT_INTEGRATION: "0"
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      NODE_OPTIONS: --max-old-space-size=1024
+    volumes:
+      - type: bind
+        source: ${PAYLOAD_STATE_ROOT:?Precreate a fresh isolated absolute state directory owned by uid 10001}
+        target: /app/.payload
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PAYLOAD_OPERATOR_PASSWORD_PATH:?Set the absolute protected operator password file}
+        target: /run/secrets/operator-password
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PAYLOAD_POSTGRES_CA_PATH:?Set the absolute provider CA bundle file}
+        target: /run/secrets/postgresql-ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

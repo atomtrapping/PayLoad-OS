@@ -1,0 +1,32 @@
+{
+  "schema": "notation.sakana-context-search.v1",
+  "requestId": "synthetic-product-context-001",
+  "classification": "SYNTHETIC",
+  "processingBasis": "Synthetic metadata only. Digest placeholders do not identify retained real-world evidence.",
+  "requirements": [
+    { "id": "identity", "weight": 3 },
+    { "id": "coverage", "weight": 2 },
+    { "id": "correction", "weight": 4 }
+  ],
+  "sources": [
+    {
+      "id": "identity-note", "reference": "fixture:identity-note",
+      "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "knownAt": "2026-09-08T12:00:00.000Z", "standing": "SYNTHETIC",
+      "tokens": 300, "coverage": ["identity"]
+    },
+    {
+      "id": "coverage-note", "reference": "fixture:coverage-note",
+      "contentDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "knownAt": "2026-09-08T12:00:00.000Z", "standing": "SYNTHETIC",
+      "tokens": 400, "coverage": ["coverage"]
+    },
+    {
+      "id": "correction-note", "reference": "fixture:correction-note",
+      "contentDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "knownAt": "2026-09-08T12:00:00.000Z", "standing": "SYNTHETIC",
+      "tokens": 500, "coverage": ["identity", "correction"]
+    }
+  ],
+  "budget": { "maxTokens": 1000, "maxSources": 2, "iterations": 24, "seed": 7 }
+}

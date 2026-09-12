@@ -1,11 +1,4 @@
-# Every check this repository already runs locally, run on every push.
-#
-# There was no CI. One hundred and eighty-five commits on one branch, 4,879
-# unit tests, 210 browser tests, a Rust kernel with 29 of its own, and nothing
-# that ran any of them except a person remembering to. The verification ladder
-# served at /api/v1/status reports rungs 0 through 3 as VERIFIED and names CI as
-# what asserts them; this file is that party.
-#
+# One shared application verification workflow, run on every push.
 # Separate gates for the application, desktop/mobile browsers, and optional
 # local Iceberg publication. Python dependencies stay out of the web runtime.
 name: check
@@ -20,7 +13,7 @@ concurrency:
   # A newer push to the same ref supersedes this run. The one exception is the
   # default branch, where every commit's result is worth keeping.
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref_name != github.event.repository.default_branch }}
 
 permissions:
   contents: read
@@ -73,6 +66,8 @@ jobs:
       - run: npm run check
 
       - run: npm run build
+
+      - run: npm run test:access-smoke
 
       # The digest fixtures are recomputed by src/fixtures/digest.test.ts, which
       # `npm test` already ran. This asserts the working tree is unchanged by

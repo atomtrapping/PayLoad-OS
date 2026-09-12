@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { CoordinationError } from './ledger';
 import { readBoundedBody } from '@/http/boundedBody';
+import { AccessError } from '../access/config';
+import { authenticateConfiguredRequest } from '../access/request';
 
 export function coordinationJson(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Payload-Fixture-Only': 'true', 'X-Payload-Coordination': 'sandbox-v1' } });
@@ -100,6 +102,12 @@ const RELAY_HEADERS: ReadonlyArray<readonly [string, (value: string, host: strin
 
 /** Applies to every local coordination route. Participant selection is still sandbox identity. */
 export function requireLocalRequest(request: Request) {
+  try {
+    if (authenticateConfiguredRequest(request)) return;
+  } catch (error) {
+    if (error instanceof AccessError) throw new CoordinationError(error.code, error.message, error.status);
+    throw new CoordinationError('ACCESS_CONFIGURATION_INVALID', 'Internal access is unavailable for this request.', 503);
+  }
   const host = request.headers.get('host');
   const relayed = RELAY_HEADERS
     .filter(([name, direct]) => { const value = request.headers.get(name); return value !== null && !direct(value, host); })

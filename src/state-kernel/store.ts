@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { encodeLocalRecord, exactFields, localJson, localRecordDigest } from '../data-os/local-record';
 import { publishImmutableFile, readImmutableFile } from '../data-os/local-files';
 import { StateKernelError } from './errors';
-import { evaluateKernel, MAX_KERNEL_INPUT_BYTES } from './runtime';
+import { evaluateKernel, kernelIdentity, MAX_KERNEL_INPUT_BYTES } from './runtime';
 import { emptyNotationState, MAX_NOTATION_COMMANDS, MAX_NOTATION_SAVED_VERSIONS, notationCapacity, type KernelCommand, type NotationState, type StateKernelRequest, type StateKernelSnapshot } from './types';
 
 const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024;
@@ -20,6 +20,25 @@ interface Loaded { version: number; digest: string | null; state: NotationState;
 const errorCode = (error: unknown) => (error as NodeJS.ErrnoException)?.code;
 const filename = (version: number) => `${String(version).padStart(6, '0')}.json`;
 const hash = (value: unknown) => localRecordDigest(value, MAX_SNAPSHOT_BYTES);
+
+/** One save owns this proof set. It never survives a request or contains cached states. */
+function saveVerification() {
+  const executable = kernelIdentity();
+  const digests = new Set<string>();
+  return {
+    enabled: executable !== null,
+    checkIdentity() {
+      if (executable !== null && kernelIdentity() !== executable) {
+        digests.clear();
+        throw new StateKernelError('KERNEL_UNAVAILABLE', 'The local Rust kernel changed during verification. Retry the identical batch after rebuilding completes.', 503);
+      }
+    },
+    has(digest: string) { return executable !== null && digests.has(digest); },
+    remember(digest: string) {
+      if (executable !== null && digests.size < MAX_VERSIONS) digests.add(digest);
+    },
+  };
+}
 
 export function parseStateKernelRequest(input: unknown): StateKernelRequest {
   try {
@@ -39,7 +58,8 @@ function snapshot(loaded: Loaded, state = loaded.state): StateKernelSnapshot {
 
 /** Authored local notation workspace. No corpus/evidence imports or cross-workspace storage paths. */
 export function createNotationRepository(root: string) {
-  async function load(): Promise<Loaded> {
+  async function load(verified?: ReturnType<typeof saveVerification>): Promise<Loaded> {
+    verified?.checkIdentity();
     let entries: string[];
     try {
       const stat = lstatSync(root);
@@ -68,10 +88,18 @@ export function createNotationRepository(root: string) {
         const request = parseStateKernelRequest(record.request);
         if (request.baseVersion !== loaded.version) throw new Error();
         const commands = [...loaded.commands, ...request.commands];
-        const state = await evaluateKernel(commands);
-        if (localJson(state) !== localJson(record.state)) throw new Error();
+        // The freshly recomputed digest covers this snapshot, its request and
+        // previous digest. Contiguous chain validation above binds the complete
+        // prefix, so only identical already-replayed content can skip Rust.
+        let state = record.state as NotationState;
+        if (!verified?.has(digest)) {
+          state = await evaluateKernel(commands);
+          if (localJson(state) !== localJson(record.state)) throw new Error();
+          verified?.remember(digest);
+        }
         loaded = { version, digest, state, commands, lastRequest: request };
       }
+      verified?.checkIdentity();
       return loaded;
     } catch (error) {
       if (error instanceof StateKernelError && error.code === 'KERNEL_UNAVAILABLE') throw error;
@@ -96,11 +124,13 @@ export function createNotationRepository(root: string) {
     async save(input: unknown) {
       const request = parseStateKernelRequest(input);
       // Invalid commands and incompatible base versions must not create the directory/lock.
-      const first = await load();
+      const verification = saveVerification();
+      const first = await load(verification);
       if (first.lastRequest && localJson(first.lastRequest) === localJson(request)) return snapshot(first);
       checkBase(first, request);
       checkSaveCapacity(first);
-      await evaluateKernel([...first.commands, ...request.commands]);
+      const candidate = await evaluateKernel([...first.commands, ...request.commands]);
+      verification.checkIdentity();
       mkdirSync(root, { recursive: true });
       const lockPath = join(root, 'writer.lock');
       let lock: number;
@@ -110,16 +140,19 @@ export function createNotationRepository(root: string) {
         throw error;
       }
       try {
-        const loaded = await load();
+        const loaded = await load(verification);
         if (loaded.lastRequest && localJson(loaded.lastRequest) === localJson(request)) return snapshot(loaded);
         checkBase(loaded, request);
         checkSaveCapacity(loaded);
-        const state = await evaluateKernel([...loaded.commands, ...request.commands]);
+        const state = verification.enabled && loaded.digest === first.digest
+          ? candidate : await evaluateKernel([...loaded.commands, ...request.commands]);
+        verification.checkIdentity();
         const payload = { schema: 'payload.notation-saved-version.v1' as const, version: loaded.version + 1,
           previousDigest: loaded.digest, request, state };
         const record: SavedVersion = { ...payload, digest: hash(payload) };
         publishImmutableFile(root, [filename(record.version)], encodeLocalRecord(record, MAX_SNAPSHOT_BYTES), MAX_SNAPSHOT_BYTES);
-        const verified = await load();
+        verification.remember(record.digest);
+        const verified = await load(verification);
         if (verified.version !== record.version || verified.digest !== record.digest) throw new StateKernelError('SAVE_UNCONFIRMED', 'Save readback failed. Preserve history and retry the identical batch.', 503);
         return snapshot(verified);
       } finally { closeSync(lock); unlinkSync(lockPath); }

@@ -1,0 +1,70 @@
+{
+  "schema": "notation.commercial-request.v1",
+  "requestId": "synthetic-commercial-reasoning-example",
+  "policy": {
+    "version": "synthetic-policy-v1",
+    "allowedJurisdictions": ["CA"],
+    "minimumMarginBps": 4000,
+    "maximumDiscountBps": 1500,
+    "humanReviewAboveCents": 500000,
+    "maximumIntentAgeDays": 30,
+    "allowedTerms": ["internal-analysis-only"],
+    "suppressedBuyers": []
+  },
+  "offers": [
+    {
+      "id": "synthetic-caravan-offer",
+      "version": "synthetic-v1",
+      "domain": "CARAVAN",
+      "name": "Invented fleet observation package (synthetic)",
+      "status": "UNVERIFIED",
+      "synthetic": true,
+      "fields": ["invented fleet identifier", "invented capture provenance"],
+      "geographies": ["CA"],
+      "permittedUses": ["commercial-risk-analysis"],
+      "deliveryFormats": ["CSV"],
+      "terms": ["internal-analysis-only"],
+      "evidence": [
+        {
+          "claim": "field dictionary",
+          "reference": "synthetic-example:invented-field-dictionary",
+          "validUntil": "2026-10-01T00:00:00Z"
+        }
+      ],
+      "availableAt": "2026-09-12T00:00:00Z",
+      "capacity": 1,
+      "currency": "CAD",
+      "listPriceCents": 100000,
+      "floorPriceCents": 80000,
+      "costCents": 40000,
+      "sourceUseReviewRef": null,
+      "releaseRef": null
+    }
+  ],
+  "intents": [
+    {
+      "id": "synthetic-buyer-intent",
+      "buyer": "Invented Example Broker (synthetic)",
+      "segment": "BROKER",
+      "domain": "CARAVAN",
+      "sourceRef": "synthetic-example:invented-demand",
+      "observedAt": "2026-09-12T00:00:00Z",
+      "expiresAt": "2026-10-01T00:00:00Z",
+      "synthetic": true,
+      "jurisdiction": "CA",
+      "fields": ["invented fleet identifier", "invented capture provenance"],
+      "geographies": ["CA"],
+      "intendedUse": "commercial-risk-analysis",
+      "deliveryFormat": "CSV",
+      "requiredEvidence": ["source rights", "field dictionary", "quality report"],
+      "requiredTerms": ["internal-analysis-only"],
+      "deadline": "2026-10-01T00:00:00Z",
+      "currency": "CAD",
+      "budgetCents": 95000,
+      "contact": "UNKNOWN",
+      "contactPermissionRef": null,
+      "conversionProbability": null,
+      "probabilityBasis": null
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "notation.reasoning-request.v1",
+  "requestId": "sakana-synthetic-review-v1",
+  "task": "COMMERCIAL_REVIEW",
+  "question": "Explain the blockers and suggest the next internal qualification questions. Preserve the commercial evaluator's decision.",
+  "classification": "SYNTHETIC",
+  "externalProcessingBasis": "Operator-created synthetic qualification fixture only; no real buyer or source data.",
+  "sources": [
+    {
+      "id": "commercial-evaluation",
+      "reference": "synthetic:commercial-review-fixture",
+      "knownAt": "2026-09-08T00:00:00Z",
+      "standing": "SYNTHETIC",
+      "text": "Synthetic candidate: Example data package for Example Broker. The deterministic commercial evaluation is BLOCKED. Source-use permission for customer delivery is absent; budget and incremental cost are unknown; contact permission is missing. No proposal, contact, purchase, contract or delivery is authorized."
+    }
+  ]
+}

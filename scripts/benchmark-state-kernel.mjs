@@ -61,7 +61,9 @@ async function main() {
   assert.ok(existsSync(nativePath), 'Build the real Rust executable with npm run kernel:build before benchmarking.');
   const nativeDigest = hash(readFileSync(nativePath));
   const sourcePaths = ['src/state-kernel/store.ts', 'src/state-kernel/runtime.ts', 'src/state-kernel/types.ts',
-    'src/data-os/local-record.ts', 'src/data-os/local-files.ts', 'native/state-kernel/src/lib.rs', 'native/state-kernel/src/main.rs', 'native/state-kernel/Cargo.lock'];
+    'src/data-os/local-record.ts', 'src/data-os/local-json.ts', 'src/data-os/validation.ts', 'src/lib/sha256.ts',
+    'src/data-os/local-files.ts', 'src/runtime/policy.ts', 'src/runtime/boundedProcess.ts',
+    'native/state-kernel/src/lib.rs', 'native/state-kernel/src/main.rs', 'native/state-kernel/Cargo.lock'];
   const sourceDigests = Object.fromEntries(sourcePaths.map((path) => [path, hash(readFileSync(join(repositoryRoot, path)))]));
   const directory = mkdtempSync(join(temporaryBase, prefix));
   console.error(`Isolated benchmark artifacts: ${directory} (removed only after all checks pass).`);
@@ -127,7 +129,7 @@ async function main() {
       assert.equal(saved.state.revision, 255);
       assert.equal(saved.state.notations[0].title, 'Revision 255');
       assert.equal(saved.canonicalAdmission, false);
-      assert.equal(save.nativeInvocations, 192);
+      assert.equal(save.nativeInvocations, 64, 'One replay per old prefix plus one candidate evaluation; reuse is save-scoped.');
       const after = versionBytes(root);
       assert.equal(Object.keys(after).length, 64, 'Only the new immutable version may remain; no lock or temporary file.');
       for (const [name, digest] of Object.entries(originals)) assert.equal(after[name], digest, `Prior version changed: ${name}`);
@@ -150,7 +152,8 @@ async function main() {
         finalNativeInputBytes: Buffer.byteLength(JSON.stringify({ schema: 'notations.state-kernel-request.v1', commands: [...allCommands, ...nextCommands] })),
         savedVersionFilesBytes: Object.keys(originals).reduce((sum, name) => sum + readFileSync(join(baseline, name)).byteLength, 0) },
       samples, summary: { load: aggregate(samples, 'load'), save: aggregate(samples, 'save') },
-      guarantees: { realNativeEvaluation: true, everySavedPrefixReplayed: true, digestChainChecked: true,
+      guarantees: { realNativeEvaluation: true, everySavedPrefixReplayed: true, saveScopedVerifiedPrefixReuse: true,
+        executableContentIdentityBound: true, digestChainChecked: true,
         saveLockAndReadbackUnchanged: true, priorVersionBytesPreserved: true, productionLimitsChanged: false,
         operatorHistoryAccessed: false, isolatedArtifactsRemoved: false } };
     writeFileSync(join(directory, 'benchmark-result.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });

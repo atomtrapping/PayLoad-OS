@@ -1,0 +1,9 @@
+# Minimal TreeQuest runtime. No model SDKs, JAX/PyMC search extras, or plotting stack.
+# Resolved and exercised with CPython 3.12 on 2026-09-08.
+treequest==0.3.2
+joblib==1.6.0
+cloudpickle==3.1.2
+PyYAML==6.0.3
+scipy==1.18.1
+numpy==2.5.3
+ulid-py==1.1.0

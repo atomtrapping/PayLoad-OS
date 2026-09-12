@@ -1,13 +1,25 @@
-import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { basename, dirname, join } from 'node:path';
+import { readImmutableFile } from '../data-os/local-files';
 import { runBoundedProcess, type ProcessFailure } from '../runtime/boundedProcess';
 import { StateKernelError } from './errors';
 import type { KernelCommand, NotationState } from './types';
 
 export const MAX_KERNEL_INPUT_BYTES = 2 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
+const MAX_IDENTITY_BYTES = 32 * 1024 * 1024;
 
 const executablePath = () => join(process.cwd(), 'native', 'state-kernel', 'target', 'debug',
   process.platform === 'win32' ? 'notations-state-kernel.exe' : 'notations-state-kernel');
+
+/** Fresh bounded content identity, never a path/mtime cache. Failure disables reuse, not replay. */
+export function kernelIdentity(): string | null {
+  try {
+    const executable = executablePath();
+    const bytes = readImmutableFile(dirname(executable), [basename(executable)], MAX_IDENTITY_BYTES);
+    return bytes ? createHash('sha256').update(bytes).digest('hex') : null;
+  } catch { return null; }
+}
 
 function failure(reason: ProcessFailure): StateKernelError {
   // Saved-history reads must report operational pressure, not INVALID_SAVED_STATE.

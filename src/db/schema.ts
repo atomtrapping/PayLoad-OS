@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, integer, index } from 'drizzle-orm/pg-core';
 
 export const corpora = pgTable('corpora', {
   corpusId: text('corpus_id').primaryKey(),
@@ -14,7 +14,7 @@ export const releases = pgTable('releases', {
   status: text('status').notNull(), // 'CURRENT' | 'SUPERSEDED'
   knownAt: timestamp('known_at', { withTimezone: true, mode: 'string' }).notNull(),
   data: jsonb('data').notNull(),
-});
+}, table => [index('releases_corpus_known_idx').on(table.corpusId, table.knownAt)]);
 
 export const records = pgTable('records', {
   recordId: text('record_id').primaryKey(),
@@ -47,7 +47,10 @@ export const records = pgTable('records', {
   // The claim: value, unit, basis and the admission stamp. Not a summary of the
   // ruling — the thing the record asserts about the world.
   data: jsonb('data').notNull(),
-});
+}, table => [
+  index('records_corpus_known_idx').on(table.corpusId, table.knownAt, table.recordId),
+  index('records_subject_history_idx').on(table.corpusId, table.subjectId, table.predicate, table.knownAt, table.recordId),
+]);
 
 // Every ruling the admission gate makes, admitted or refused. A refusal is a
 // record too: what fails is not deleted or hidden, it stays here with the
@@ -93,7 +96,7 @@ export const retractions = pgTable('retractions', {
   corpusId: text('corpus_id').notNull().references(() => corpora.corpusId),
   issuedAt: timestamp('issued_at', { withTimezone: true, mode: 'string' }).notNull(),
   data: jsonb('data').notNull(),
-});
+}, table => [index('retractions_corpus_issued_idx').on(table.corpusId, table.issuedAt)]);
 
 // Workbench / Case tables
 export const cases = pgTable('cases', {

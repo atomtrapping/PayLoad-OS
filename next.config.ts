@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     '/*': [
       './.payload/**/*', './.stamp/**/*', './.git/**/*', './.env*',
+      './tools/**/*', './artifacts/**/*',
+      './Dockerfile', './.dockerignore', './deploy/**/*', './scripts/deployment*',
+      './scripts/access-smoke*', './src/db/fixtures/**/*',
       './native/state-kernel/target/**/*', './next.config.ts',
       './docs/**/*', './test-results/**/*', './playwright-report/**/*', './README.md',
       // Test and tooling source rode in all 17 route traces: 189 non-runtime files,

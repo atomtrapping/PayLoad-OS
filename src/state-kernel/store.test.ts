@@ -1,11 +1,13 @@
-import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { localRecordDigest } from '../data-os/local-record';
 import { StateKernelError } from './errors';
 import { createNotationRepository, disabledKernelSnapshot, parseStateKernelRequest, stateKernelEnabled } from './store';
 import { evaluateKernel } from './runtime';
+import * as runtime from './runtime';
+import * as localFiles from '../data-os/local-files';
 import { emptyNotationState, notationCapacity, type KernelCommand, type StateKernelRequest } from './types';
 
 let temporary: string;
@@ -32,6 +34,139 @@ function rehash(value: Record<string, unknown>) {
 }
 
 describe('local notation repository using the real Rust kernel', () => {
+  it('replays each prefix only once per save while fresh reads and retries never reuse a previous request', async () => {
+    const evaluate = vi.spyOn(runtime, 'evaluateKernel');
+    const root = join(temporary, 'workspace');
+    const store = createNotationRepository(root);
+    await store.save(request(0, [create()]));
+    expect(evaluate).toHaveBeenCalledTimes(1);
+    evaluate.mockClear();
+    const second = request(1, [update()]);
+    const saved = await store.save(second);
+    expect(evaluate).toHaveBeenCalledTimes(2);
+    for (const read of [() => store.read(), () => store.read(), () => store.save(second)]) {
+      evaluate.mockClear();
+      expect(await read()).toEqual(saved);
+      expect(evaluate).toHaveBeenCalledTimes(2);
+    }
+    evaluate.mockClear();
+    await store.save(request(2, [undo()]));
+    expect(evaluate).toHaveBeenCalledTimes(3);
+  });
+
+  it('falls back to complete replay when executable content cannot be fingerprinted', async () => {
+    vi.spyOn(runtime, 'kernelIdentity').mockReturnValue(null);
+    const evaluate = vi.spyOn(runtime, 'evaluateKernel');
+    const root = join(temporary, 'workspace');
+    await createNotationRepository(root).save(request(0, [create()]));
+    expect(evaluate).toHaveBeenCalledTimes(3);
+    evaluate.mockClear();
+    await createNotationRepository(root).save(request(1, [update()]));
+    expect(evaluate).toHaveBeenCalledTimes(6);
+  });
+
+  it.each(['STATE_TAMPER', 'VALID_DIFFERENT_HEAD', 'MISSING_PREFIX'] as const)(
+    'does not reuse preflight verification after %s before the locked reread', async (variant) => {
+      const root = join(temporary, 'workspace');
+      const store = createNotationRepository(root);
+      await store.save(request(0, [create()]));
+      // With two versions, deleting the first must be a gap, not an empty store.
+      await store.save(request(1, [update()]));
+      const originalEvaluate = runtime.evaluateKernel;
+      let evaluations = 0;
+      const evaluate = vi.spyOn(runtime, 'evaluateKernel').mockImplementation(async (commands) => {
+        const result = await originalEvaluate(commands);
+        evaluations += 1;
+        if (evaluations === 3) {
+          const firstPath = join(root, '000001.json');
+          if (variant === 'MISSING_PREFIX') rmSync(firstPath);
+          else {
+            const first = JSON.parse(readFileSync(firstPath, 'utf8'));
+            first.state.notations[0].title = 'Changed after preflight';
+            if (variant === 'VALID_DIFFERENT_HEAD') first.request.commands[0].notation.title = first.state.notations[0].title;
+            rehash(first);
+            writeFileSync(firstPath, JSON.stringify(first));
+            const secondPath = join(root, '000002.json');
+            const second = JSON.parse(readFileSync(secondPath, 'utf8'));
+            second.previousDigest = first.digest;
+            if (variant === 'VALID_DIFFERENT_HEAD') {
+              // A valid changed prefix alters undo semantics despite the same revision/head state.
+              second.request.commands[0].commandId = 'alternate-update';
+            }
+            rehash(second);
+            writeFileSync(secondPath, JSON.stringify(second));
+          }
+        }
+        return result;
+      });
+      const operation = store.save(request(2, [undo()]));
+      if (variant === 'VALID_DIFFERENT_HEAD') {
+        const saved = await operation;
+        expect(saved.state.notations[0].title).toBe('Changed after preflight');
+        expect(evaluate).toHaveBeenCalledTimes(6);
+      } else {
+        await expect(operation).rejects.toMatchObject({ code: 'INVALID_SAVED_STATE', status: 503 });
+        expect(existsSync(join(root, '000003.json'))).toBe(false);
+      }
+      expect(existsSync(join(root, 'writer.lock'))).toBe(false);
+    },
+  );
+
+  it.each(['STATE_TAMPER', 'MISSING_PREFIX'] as const)('fully rereads publication and refuses %s after the file is written', async (variant) => {
+    const root = join(temporary, 'workspace');
+    const store = createNotationRepository(root);
+    await store.save(request(0, [create()]));
+    const publish = localFiles.publishImmutableFile;
+    vi.spyOn(localFiles, 'publishImmutableFile').mockImplementation((...args) => {
+      const result = publish(...args);
+      if (variant === 'MISSING_PREFIX') rmSync(join(root, '000001.json'));
+      else {
+        const path = join(root, '000002.json');
+        const record = JSON.parse(readFileSync(path, 'utf8'));
+        record.state.notations[0].title = 'Rehashed unverified replacement';
+        rehash(record);
+        writeFileSync(path, JSON.stringify(record));
+      }
+      return result;
+    });
+    await expect(store.save(request(1, [update()]))).rejects.toMatchObject({ code: 'INVALID_SAVED_STATE', status: 503 });
+    expect(existsSync(join(root, '000002.json'))).toBe(true);
+    expect(existsSync(join(root, 'writer.lock'))).toBe(false);
+  });
+
+  it.each(['PREFLIGHT', 'PUBLICATION'] as const)('fails closed when the executable content changes at %s', async (phase) => {
+    const executableName = process.platform === 'win32' ? 'notations-state-kernel.exe' : 'notations-state-kernel';
+    const relative = join('native', 'state-kernel', 'target', 'debug', executableName);
+    const copiedExecutable = join(temporary, relative);
+    mkdirSync(dirname(copiedExecutable), { recursive: true });
+    copyFileSync(join(process.cwd(), relative), copiedExecutable);
+    vi.spyOn(process, 'cwd').mockReturnValue(temporary);
+    const root = join(temporary, 'workspace');
+    const store = createNotationRepository(root);
+    await store.save(request(0, [create()]));
+    const before = readFileSync(join(root, '000001.json'));
+    if (phase === 'PREFLIGHT') {
+      const evaluate = runtime.evaluateKernel;
+      let calls = 0;
+      vi.spyOn(runtime, 'evaluateKernel').mockImplementation(async (commands) => {
+        const result = await evaluate(commands);
+        if (++calls === 2) appendFileSync(copiedExecutable, Buffer.from('changed executable identity'));
+        return result;
+      });
+    } else {
+      const publish = localFiles.publishImmutableFile;
+      vi.spyOn(localFiles, 'publishImmutableFile').mockImplementation((...args) => {
+        const result = publish(...args);
+        appendFileSync(copiedExecutable, Buffer.from('changed executable identity'));
+        return result;
+      });
+    }
+    await expect(store.save(request(1, [update()]))).rejects.toMatchObject({ code: 'KERNEL_UNAVAILABLE', status: 503 });
+    expect(readFileSync(join(root, '000001.json'))).toEqual(before);
+    expect(existsSync(join(root, '000002.json'))).toBe(phase === 'PUBLICATION');
+    expect(existsSync(join(root, 'writer.lock'))).toBe(false);
+  });
+
   it('reads an empty workspace and previews create/update/undo without creating persistence', async () => {
     const root = join(temporary, 'workspace');
     const store = createNotationRepository(root);

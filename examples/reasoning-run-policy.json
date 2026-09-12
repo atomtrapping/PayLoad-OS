@@ -1,0 +1,12 @@
+{
+  "schema": "notation.reasoning-run-policy.v1",
+  "id": "synthetic-qualification-example-not-approved",
+  "model": "fugu",
+  "reviewRef": "example-only-not-an-approved-provider-review",
+  "timeoutMs": 120000,
+  "maxOutputTokens": 2048,
+  "expiresAt": "2026-10-01T00:00:00Z",
+  "allowedTasks": ["COMMERCIAL_REVIEW", "EVIDENCE_SUMMARY", "EXTRACTION_PLAN"],
+  "allowedClassifications": ["SYNTHETIC"],
+  "maxSourceAgeHours": 720
+}

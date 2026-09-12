@@ -1,0 +1,18 @@
+# Opt-in adapter configuration only. This does not migrate the POSIX stores,
+# start a publisher, or make the existing production rail use SOS.
+# It binds newly reviewed terminal results to this destination; a separately
+# started publisher still checks the exact live grant and source rights.
+services:
+  operator:
+    environment:
+      PAYLOAD_OBJECT_STORE: sos
+      PAYLOAD_TERMINAL_RETENTION: sos
+      PAYLOAD_SOS_PREFIX: internal/terminal-results/v1
+      PAYLOAD_SOS_SECRET_ACCESS_KEY_FILE: /run/secrets/sos-secret-access-key
+    volumes:
+      - type: bind
+        source: ${PAYLOAD_SOS_SECRET_PATH:?Set the absolute protected SOS secret file}
+        target: /run/secrets/sos-secret-access-key
+        read_only: true
+        bind:
+          create_host_path: false

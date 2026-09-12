@@ -1,0 +1,13 @@
+# Explicit capacity increase on the SAME single writer, not a second replica.
+# Apply only after measuring the workload and sizing the VM/DB pool.
+services:
+  operator:
+    cpus: "4.0"
+    mem_limit: 4g
+    memswap_limit: 4g
+    pids_limit: 256
+    environment:
+      PAYLOAD_EXECUTION_PROFILE: normal
+      PAYLOAD_MAX_CHILD_PROCESSES: "4"
+      PAYLOAD_DB_POOL_MAX: "10"
+      NODE_OPTIONS: --max-old-space-size=2048

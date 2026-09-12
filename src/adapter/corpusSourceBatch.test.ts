@@ -1,4 +1,5 @@
 /** Batch readback uses actual SQL and the existing admission-aware hydration. */
+import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { eq } from 'drizzle-orm';
@@ -175,5 +176,41 @@ describe('live corpus batch reads', () => {
     await expect(source.getCorpus(corpus.corpusId)).rejects.toThrow('CORPUS_READ_LIMIT_EXCEEDED');
     await expect(source.listCorpora()).rejects.toThrow('CORPUS_READ_LIMIT_EXCEEDED');
     expect((await source.catalog()).entries).toHaveLength(1);
+  });
+
+  it('applies the additive migration twice with exact ordered index columns and unchanged corpus rows', async () => {
+    await seed(FIXTURE_CORPORA[0]);
+    const inventory = async () => ({
+      corpora: await db.select().from(schema.corpora),
+      releases: await db.select().from(schema.releases),
+      records: await db.select().from(schema.records),
+      retractions: await db.select().from(schema.retractions),
+    });
+    const before = await inventory();
+    const migration = readFileSync('src/db/migrations/0001_corpus_query_indexes.sql', 'utf8');
+    await client.exec(migration);
+    await client.exec(migration);
+    const expected = [
+      { name: 'records_corpus_known_idx', table: 'records', columns: ['corpus_id', 'known_at', 'record_id'] },
+      { name: 'records_subject_history_idx', table: 'records', columns: ['corpus_id', 'subject_id', 'predicate', 'known_at', 'record_id'] },
+      { name: 'releases_corpus_known_idx', table: 'releases', columns: ['corpus_id', 'known_at'] },
+      { name: 'retractions_corpus_issued_idx', table: 'retractions', columns: ['corpus_id', 'issued_at'] },
+    ];
+    const actual = await client.query(`SELECT idx.relname AS name, relation.relname AS table,
+      method.amname AS method, definition.indisvalid AS valid, definition.indisready AS ready,
+      definition.indisunique AS unique, definition.indnatts AS total_columns, definition.indnkeyatts AS key_columns,
+      ARRAY(SELECT pg_get_indexdef(definition.indexrelid, column_number, true)
+        FROM generate_series(1, definition.indnatts) column_number) AS columns,
+      pg_get_expr(definition.indpred, definition.indrelid) AS predicate
+      FROM pg_index definition
+      JOIN pg_class idx ON idx.oid=definition.indexrelid
+      JOIN pg_class relation ON relation.oid=definition.indrelid
+      JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
+      JOIN pg_am method ON method.oid=idx.relam
+      WHERE namespace.nspname=current_schema() AND idx.relname=ANY($1::text[])
+      ORDER BY idx.relname`, [expected.map(index => index.name)]);
+    expect(actual.rows).toEqual(expected.map(index => ({ ...index, method: 'btree', valid: true, ready: true,
+      unique: false, total_columns: index.columns.length, key_columns: index.columns.length, predicate: null })));
+    expect(await inventory()).toEqual(before);
   });
 });

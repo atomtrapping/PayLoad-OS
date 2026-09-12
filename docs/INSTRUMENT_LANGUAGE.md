@@ -216,19 +216,30 @@ and what was not:
   from the moment it mounts, so the live region announces as before; and it
   takes no arrival wipe of its own, since the page that replaces it does.
 
-- **The light palette, rendered on the ground.** The three frontier
-  workbenches (`/frontier`, `/factoring`, `/dispatch-liability`) were written
-  against Tailwind's light palette and stood as white islands on the black
-  instrument. Rather than rewrite 1,600 lines of workbench, one scoped map in
-  the stylesheet renders that palette on the estate: white and neutral
-  grounds become ice tints over the surface colour, emerald, rose, amber and
-  blue tints become the admitted, refused, conditional and pending hues at
-  ten to fourteen percent, neutral text becomes the text role with the same
-  job (one step lighter than a literal reading, because muted measures
-  4.37:1 on a ten-percent ice tint and the workbench audits require 4.5:1
-  everywhere), and every edge is a hairline. Nothing outside the workbenches
-  uses those classes, and the map is scoped to the working surface. The
-  rewrite on the tokens remains the honest end state; the map is the bridge.
+- **The workbenches stand on the tokens, and the default palette is gone.**
+  The three frontier workbenches (`/frontier`, `/factoring`,
+  `/dispatch-liability`) were written against Tailwind's light palette and
+  stood as white islands on the black instrument. For one commit a scoped map
+  in the stylesheet rendered that palette on the estate; that map was a
+  bridge, and it is now removed. The workbenches are rewritten on named
+  utilities that resolve to the estate's tokens and nothing else: `surface`
+  and `surface-inset` for grounds, `text-ink`, `text-ink-2` and `text-heading`
+  for the text roles, `border-hair`, `border-hair-strong` and `border-bracket`
+  for edges, `ice` at six to sixteen percent for the raised and hovered
+  states, `ok`, `no`, `cond` and `pending` for the admitted, refused,
+  conditional and pending hues at ten to forty-five percent, and `scrim` for
+  the one modal ground. The muted text role is never placed on a tint (it
+  measures 4.37:1 on ten-percent ice and the workbench audits require
+  4.5:1 everywhere). The theme block clears Tailwind's default palette
+  (`--color-*: initial`) before declaring these names, so a `text-neutral-500`
+  or `bg-emerald-50` written anywhere in the tree now compiles to nothing
+  rather than to a light-palette colour, and `src/app/palette.test.ts` fails
+  on the first such utility, and on the first literal hex colour written
+  inline, naming the file and the class, so the next one is a test failure
+  and not a silently unstyled element. The four literal colours the
+  workbenches had left, a root `#171717` on each that the bridge used to
+  outrank, went with the bridge. No border radius remains on them; the one
+  drop shadow left is the tasking modal's lift off the scrim.
 
 Measured before the pass on the production build at 1440 px: TTFB under
 70 ms on every route but the console, largest contentful paint 80–520 ms,

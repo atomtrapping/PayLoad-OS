@@ -54,18 +54,18 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
   };
 
   return (
-    <div className="flex flex-col gap-4" style={{ color: '#171717' }}>
+    <div className="flex flex-col gap-4">
       {/* Stream Verification Banner */}
       <div
-        className="p-3 rounded surface flex flex-col sm:flex-row sm:items-center justify-between gap-2 border"
+        className="p-3 surface flex flex-col sm:flex-row sm:items-center justify-between gap-2 border"
         style={{ borderColor: streamAudit.intact ? 'rgba(76, 196, 138, 0.3)' : 'rgba(226, 107, 92, 0.3)' }}
       >
         <div className="flex items-center gap-2 text-[12.5px]">
           <span
-            className="w-2.5 h-2.5 rounded-full inline-block"
+            className="w-2.5 h-2.5 inline-block"
             style={{ background: streamAudit.intact ? 'var(--status-admitted)' : 'var(--status-refused)' }}
           />
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-ice">
             {streamAudit.intact ? 'Cryptographic Event Stream Intact' : 'Stream Chain Broken'}
           </span>
           <span style={{ color: 'var(--text-secondary)' }}>
@@ -90,7 +90,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
                 setSelectedId(event.decisionId);
                 setActiveReplay(null);
               }}
-              className="text-left p-3 rounded surface transition-colors cursor-pointer border relative"
+              className="text-left p-3 surface transition-colors cursor-pointer border relative"
               style={{
                 borderColor: active ? 'var(--accent)' : 'var(--border-default)',
                 background: active ? 'var(--bg-raised)' : 'var(--bg-secondary)',
@@ -101,13 +101,13 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
                   #{event.sequenceIndex} {event.decisionId}
                 </span>
                 <span
-                  className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                  className="px-1.5 py-0.5 text-[10px] font-bold"
                   style={{ color, border: `1px solid ${color}`, background: 'rgba(255,255,255,0.03)' }}
                 >
                   {event.qualificationVerdict.selectionAllowed ? 'APPROVED' : 'BLOCKED'}
                 </span>
               </div>
-              <div className="text-[13px] font-medium text-white truncate">
+              <div className="text-[13px] font-medium text-ice truncate">
                 {event.carrierSafetySnapshot.legalName}
               </div>
               <div className="mt-2 flex items-center justify-between text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
@@ -120,7 +120,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
       </div>
 
       {/* Decision Detail & Legal Defense Workspace */}
-      <div className="surface p-4 sm:p-5 rounded flex flex-col gap-5 border" style={{ borderColor: 'var(--border-default)' }}>
+      <div className="surface p-4 sm:p-5 flex flex-col gap-5 border" style={{ borderColor: 'var(--border-default)' }}>
         {/* Header Ribbon */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <div>
@@ -129,7 +129,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
                 {selected.decisionId}
               </h2>
               <span
-                className="text-[11px] font-mono font-bold px-2 py-0.5 rounded"
+                className="text-[11px] font-mono font-bold px-2 py-0.5"
                 style={{
                   color: statusColor(selected.qualificationVerdict.doctrineCompliance),
                   border: `1px solid ${statusColor(selected.qualificationVerdict.doctrineCompliance)}`,
@@ -147,7 +147,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
             <button
               type="button"
               onClick={handleRunReplay}
-              className="px-3 py-1.5 rounded text-[12px] font-medium transition cursor-pointer border flex items-center gap-1.5"
+              className="px-3 py-1.5 text-[12px] font-medium transition cursor-pointer border flex items-center gap-1.5"
               style={{
                 borderColor: 'var(--accent)',
                 color: 'var(--accent-strong)',
@@ -161,7 +161,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
 
         {/* Legal Summary Banner */}
         <div
-          className="p-3 rounded text-[12.5px] border"
+          className="p-3 text-[12.5px] border"
           style={{
             borderColor: statusColor(selected.qualificationVerdict.doctrineCompliance),
             background: 'rgba(255, 255, 255, 0.02)',
@@ -176,14 +176,14 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
         {/* Bitemporal Defense Reconstruction Box (if active) */}
         {activeReplay && (
           <div
-            className="p-4 rounded border flex flex-col gap-3"
+            className="p-4 border flex flex-col gap-3"
             style={{
               borderColor: 'var(--accent)',
               background: 'rgba(212, 175, 55, 0.05)',
             }}
           >
             <div className="flex items-center justify-between">
-              <h3 className="m-0 text-[14px] font-semibold text-white flex items-center gap-2">
+              <h3 className="m-0 text-[14px] font-semibold text-ice flex items-center gap-2">
                 <span>⚖️</span> Evidentiary Defense Reconstruction (Miller v. C.H. Robinson Safe Harbor)
               </h3>
               <span className="text-[11px] font-mono" style={{ color: 'var(--accent)' }}>
@@ -197,7 +197,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
               {/* State at Tk */}
-              <div className="p-3 rounded border surface" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="p-3 border surface" style={{ borderColor: 'var(--border-subtle)' }}>
                 <span className="block text-[11px] font-mono uppercase font-bold" style={{ color: 'var(--status-admitted)' }}>
                   State at Decision Cutoff Tk ({fmtUtc(activeReplay.knowledgeTimeTk)})
                 </span>
@@ -226,7 +226,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
               </div>
 
               {/* State at Tsubpoena */}
-              <div className="p-3 rounded border surface" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="p-3 border surface" style={{ borderColor: 'var(--border-subtle)' }}>
                 <span className="block text-[11px] font-mono uppercase font-bold" style={{ color: 'var(--status-conditional)' }}>
                   Subsequent Litigation Allegation State Tsub ({fmtUtc(activeReplay.subpoenaTimeTsub)})
                 </span>
@@ -235,8 +235,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
                     <span style={{ color: 'var(--text-muted)' }}>Subsequent Accident:</span>
                     <span style={{ color: 'var(--status-refused)' }}>
                       {activeReplay.stateAtTsub.subsequentAccidentCount > 0
-                        ? `${activeReplay.stateAtTsub.subsequentAccidentCount} collision occurred post-dispatch`
-                        : 'None on record'}
+                        ? `${activeReplay.stateAtTsub.subsequentAccidentCount} collision occurred post-dispatch` : 'None on record'}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -265,7 +264,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
               Carrier Safety Profile at Tk ({fmtUtc(selected.knowledgeCutoff)})
             </h3>
 
-            <div className="surface p-3 rounded flex flex-col gap-2.5 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="surface p-3 flex flex-col gap-2.5 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-muted)' }}>Entity Legal Name:</span>
                 <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -283,11 +282,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
                 <span
                   style={{
                     color:
-                      selected.carrierSafetySnapshot.safetyRating === 'SATISFACTORY'
-                        ? 'var(--status-admitted)'
-                        : selected.carrierSafetySnapshot.safetyRating === 'CONDITIONAL'
-                        ? 'var(--status-refused)'
-                        : 'var(--text-muted)',
+                      selected.carrierSafetySnapshot.safetyRating === 'SATISFACTORY' ? 'var(--status-admitted)' : selected.carrierSafetySnapshot.safetyRating === 'CONDITIONAL' ? 'var(--status-refused)' : 'var(--text-muted)',
                   }}
                 >
                   {selected.carrierSafetySnapshot.safetyRating}
@@ -321,8 +316,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
                 <span style={{ color: 'var(--text-muted)' }}>Chameleon Carrier Indicators:</span>
                 <span style={{ color: selected.carrierSafetySnapshot.chameleonCarrierIndicators.flagged ? 'var(--status-refused)' : 'var(--status-admitted)' }}>
                   {selected.carrierSafetySnapshot.chameleonCarrierIndicators.flagged
-                    ? '⚠️ FLAG: Address matches previously revoked motor carrier'
-                    : '✓ Clean address & incorporation history'}
+                    ? '⚠️ FLAG: Address matches previously revoked motor carrier' : '✓ Clean address & incorporation history'}
                 </span>
               </div>
             </div>
@@ -354,7 +348,7 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
               Cryptographic Stream Chain & Attestation
             </h3>
 
-            <div className="surface p-3 rounded flex flex-col gap-2 font-mono text-[11px] border" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="surface p-3 flex flex-col gap-2 font-mono text-[11px] border" style={{ borderColor: 'var(--border-subtle)' }}>
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Sequence Index: </span>
                 <span style={{ color: 'var(--text-primary)' }}>#{selected.sequenceIndex}</span>
@@ -394,8 +388,8 @@ export function DispatchLiabilityWorkbench({ stream }: DispatchLiabilityWorkbenc
             </div>
 
             {/* Notary Defense Principles */}
-            <div className="surface p-3 rounded flex flex-col gap-2 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
-              <div className="font-semibold text-white">The Notary Defense Architecture:</div>
+            <div className="surface p-3 flex flex-col gap-2 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="font-semibold text-ice">The Notary Defense Architecture:</div>
               <p className="m-0 text-[12px]" style={{ color: 'var(--text-secondary)' }}>
                 NotationsOS creates an indisputable audit trail for commercial transportation. By locking the exact carrier qualifications into a rolling cryptographic stream at decision time (Tk), 3PLs and underwriters can decisively refute allegations of negligent carrier selection during post-accident discovery.
               </p>

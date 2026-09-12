@@ -59,7 +59,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
               key={r.receiptId}
               type="button"
               onClick={() => setSelectedId(r.receiptId)}
-              className="text-left p-3 rounded surface transition-colors cursor-pointer border"
+              className="text-left p-3 surface transition-colors cursor-pointer border"
               style={{
                 borderColor: active ? 'var(--accent)' : 'var(--border-default)',
                 background: active ? 'var(--bg-raised)' : 'var(--bg-secondary)',
@@ -70,7 +70,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
                   {r.receiptId}
                 </span>
                 <span
-                  className="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase"
+                  className="px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
                   style={{
                     color,
                     background: 'rgba(255, 255, 255, 0.04)',
@@ -80,7 +80,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
                   {r.verdict.status.replace(/_/g, ' ')}
                 </span>
               </div>
-              <div className="text-[13px] font-medium text-white truncate">{r.carrier.legalName}</div>
+              <div className="text-[13px] font-medium text-ice truncate">{r.carrier.legalName}</div>
               <div className="flex items-center justify-between mt-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
                 <span>Invoice: ${(r.invoiceAmountCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                 <span className="font-mono">{r.origin.state} → {r.destination.state}</span>
@@ -91,7 +91,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
       </div>
 
       {/* Main Receipt Workspace */}
-      <div className="surface p-4 sm:p-5 rounded flex flex-col gap-5 border" style={{ borderColor: 'var(--border-default)' }}>
+      <div className="surface p-4 sm:p-5 flex flex-col gap-5 border" style={{ borderColor: 'var(--border-default)' }}>
         {/* Header Ribbon */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
           <div>
@@ -99,7 +99,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
               <h2 className="m-0 text-[18px] font-semibold" style={{ color: 'var(--text-heading)' }}>
                 {selected.shipmentId}
               </h2>
-              <span className="text-[12px] font-mono px-2 py-0.5 rounded" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>
+              <span className="text-[12px] font-mono px-2 py-0.5" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>
                 Invoice #{selected.invoiceId}
               </span>
             </div>
@@ -112,7 +112,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
             <button
               type="button"
               onClick={() => handleVerify(selected)}
-              className="px-3 py-1.5 rounded text-[12px] font-medium transition cursor-pointer border flex items-center gap-1.5"
+              className="px-3 py-1.5 text-[12px] font-medium transition cursor-pointer border flex items-center gap-1.5"
               style={{
                 borderColor: isVerified === true ? 'var(--status-admitted)' : 'var(--accent)',
                 color: isVerified === true ? 'var(--status-admitted)' : 'var(--accent-strong)',
@@ -134,7 +134,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
         </div>
 
         {/* Fact Valuation & Underwriting Recommendation */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded" style={{ background: 'var(--bg-secondary)' }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3" style={{ background: 'var(--bg-secondary)' }}>
           <div>
             <span className="block text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Invoice Total</span>
             <span className="text-[18px] font-mono font-bold" style={{ color: 'var(--text-heading)' }}>
@@ -163,7 +163,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
 
         {/* Risk Rationale Callout */}
         <div
-          className="p-3 rounded text-[12.5px] border"
+          className="p-3 text-[12.5px] border"
           style={{
             borderColor: statusColor(selected.verdict.status),
             background: 'rgba(255, 255, 255, 0.02)',
@@ -183,7 +183,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
               1. Physical Shipment Facts & Custody
             </h3>
 
-            <div className="surface p-3 rounded flex flex-col gap-2.5 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="surface p-3 flex flex-col gap-2.5 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-muted)' }}>Authorized Carrier:</span>
                 <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -232,7 +232,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
               2. Sensor Logs & Physical Integrity
             </h3>
 
-            <div className="surface p-3 rounded flex flex-col gap-2.5 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="surface p-3 flex flex-col gap-2.5 text-[12px] border" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-muted)' }}>Scale Weight:</span>
                 <span className="font-mono" style={{ color: 'var(--text-primary)' }}>
@@ -244,11 +244,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
                 <span
                   style={{
                     color:
-                      selected.physicalIntegrity.temperatureCompliance.status === 'COMPLIANT'
-                        ? 'var(--status-admitted)'
-                        : selected.physicalIntegrity.temperatureCompliance.status === 'EXCURSION_RECORDED'
-                        ? 'var(--status-conditional)'
-                        : 'var(--text-muted)',
+                      selected.physicalIntegrity.temperatureCompliance.status === 'COMPLIANT' ? 'var(--status-admitted)' : selected.physicalIntegrity.temperatureCompliance.status === 'EXCURSION_RECORDED' ? 'var(--status-conditional)' : 'var(--text-muted)',
                   }}
                 >
                   {selected.physicalIntegrity.temperatureCompliance.status}
@@ -260,8 +256,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
                 <span style={{ color: 'var(--text-muted)' }}>Seal Integrity:</span>
                 <span style={{ color: selected.physicalIntegrity.sealVerification.match ? 'var(--status-admitted)' : 'var(--status-refused)' }}>
                   {selected.physicalIntegrity.sealVerification.match
-                    ? `Intact (${selected.physicalIntegrity.sealVerification.arriveSeal})`
-                    : 'Discrepancy / Unsealed'}
+                    ? `Intact (${selected.physicalIntegrity.sealVerification.arriveSeal})` : 'Discrepancy / Unsealed'}
                 </span>
               </div>
             </div>
@@ -276,15 +271,11 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
             <div className="flex flex-col gap-2">
               {selected.invariants.map((inv) => {
                 const invColor =
-                  inv.status === 'PASSED'
-                    ? 'var(--status-admitted)'
-                    : inv.status === 'WARNING'
-                    ? 'var(--status-conditional)'
-                    : 'var(--status-refused)';
+                  inv.status === 'PASSED' ? 'var(--status-admitted)' : inv.status === 'WARNING' ? 'var(--status-conditional)' : 'var(--status-refused)';
                 return (
                   <div
                     key={inv.invariantId}
-                    className="p-3 rounded border surface"
+                    className="p-3 border surface"
                     style={{ borderColor: 'var(--border-subtle)' }}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -292,7 +283,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
                         {inv.invariantId}: {inv.title}
                       </span>
                       <span
-                        className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                        className="px-1.5 py-0.5 text-[10px] font-bold"
                         style={{ color: invColor, background: 'rgba(255,255,255,0.03)' }}
                       >
                         {inv.status}
@@ -310,7 +301,7 @@ export function FactoringDesk({ receipts }: FactoringDeskProps) {
               4. Notary Seal & Proof of Pre-Existence
             </h3>
 
-            <div className="surface p-3 rounded flex flex-col gap-2 font-mono text-[11px] border" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="surface p-3 flex flex-col gap-2 font-mono text-[11px] border" style={{ borderColor: 'var(--border-subtle)' }}>
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Corpus Release: </span>
                 <span style={{ color: 'var(--text-primary)' }}>{selected.notary.corpusReleaseId}</span>

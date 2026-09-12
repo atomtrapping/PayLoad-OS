@@ -91,20 +91,20 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
   };
 
   return (
-    <div className="space-y-6" style={{ color: '#171717' }}>
+    <div className="space-y-6 text-ink">
       {/* Top Banner & Scenario Switcher */}
-      <div className="border border-neutral-200 bg-white p-5 rounded-lg shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-neutral-100 gap-4">
+      <div className="border border-hair surface p-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-hair gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-neutral-900">
+              <h3 className="text-base font-bold text-ink">
                 N11 Value-of-Information (VOI) Tasking Optimizer
               </h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-100 text-amber-900 font-bold">
+              <span className="px-2 py-0.5 text-[10px] font-mono bg-cond/15 text-cond font-bold">
                 SESSION ONLY — NOT PERSISTED
               </span>
             </div>
-            <p className="text-xs text-neutral-500 font-mono mt-0.5">
+            <p className="text-xs text-ink-2 font-mono mt-0.5">
               Bayesian Decision Loss Optimization for Project Finance Milestone Draws • Model Priors: {paramSet.version}
             </p>
           </div>
@@ -114,12 +114,12 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               every pointer coordinate land somewhere else. It is bounded now,
               and the row wraps rather than compressing. */}
           <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <span className="text-xs text-neutral-500 font-medium">Megaproject Draw:</span>
+            <span className="text-xs text-ink-2 font-medium">Megaproject Draw:</span>
             <select
               aria-label="Megaproject draw"
               value={selectedContextId}
               onChange={(e) => setSelectedContextId(e.target.value)}
-              className="min-w-0 max-w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded px-2.5 py-1 text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+              className="min-w-0 max-w-full text-xs font-semibold surface-inset border border-hair-strong px-2.5 py-1 text-ink focus:outline-none focus:ring-1 focus:ring-ice"
             >
               {initialContexts.map((ctx) => (
                 <option key={ctx.projectId} value={ctx.projectId}>
@@ -133,7 +133,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
         {/* Dynamic Sliders for Credit Officers */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 text-xs">
           <div>
-            <div className="flex justify-between font-medium text-neutral-700 mb-1">
+            <div className="flex justify-between font-medium text-ink mb-1">
               <span>Requested Draw Size</span>
               <span className="font-mono font-bold">${(activeContext.requestedDrawAmountCents / 1e8).toFixed(1)}M USD</span>
             </div>
@@ -145,15 +145,15 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               step="0.1"
               value={drawAmountMultiplier}
               onChange={(e) => setDrawAmountMultiplier(parseFloat(e.target.value))}
-              className="w-full accent-neutral-900 h-1.5 bg-neutral-200 rounded-lg cursor-pointer"
+              className="w-full accent-ice h-1.5 bg-ice/10 cursor-pointer"
             />
-            <div className="text-[10px] text-neutral-600 mt-1">
+            <div className="text-[10px] text-ink-2 mt-1">
               Defect cost at risk: ${(activeContext.estimatedDefectCostAtRiskCents / 1e8).toFixed(2)}M
             </div>
           </div>
 
           <div>
-            <div className="flex justify-between font-medium text-neutral-700 mb-1">
+            <div className="flex justify-between font-medium text-ink mb-1">
               <span>Prior Defect Probability P(θ)</span>
               <span className="font-mono font-bold">{priorProbabilityPct}%</span>
             </div>
@@ -165,36 +165,36 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               step="1"
               value={priorProbabilityPct}
               onChange={(e) => setPriorProbabilityPct(parseInt(e.target.value, 10))}
-              className="w-full accent-neutral-900 h-1.5 bg-neutral-200 rounded-lg cursor-pointer"
+              className="w-full accent-ice h-1.5 bg-ice/10 cursor-pointer"
             />
-            <div className="text-[10px] text-neutral-600 mt-1">
+            <div className="text-[10px] text-ink-2 mt-1">
               Subcontractor baseline defect rate prior to metrology inspection
             </div>
           </div>
 
           <div>
-            <div className="flex justify-between font-medium text-neutral-700 mb-1">
+            <div className="flex justify-between font-medium text-ink mb-1">
               <span>Lender Draw Latency Window</span>
               <span className="font-mono font-bold">{activeContext.maxAllowedLatencyHours} Hours</span>
             </div>
-            <div className="text-xs text-neutral-600 bg-neutral-50 p-2.5 rounded border border-neutral-200">
+            <div className="text-xs text-ink-2 surface-inset p-2.5 border border-hair">
               Dispute Delay Penalty: <strong className="font-mono">${((activeContext.requestedDrawAmountCents * 0.015) / 1e5).toFixed(1)}k</strong>
-              <span className="block text-[10px] text-neutral-600 mt-0.5">CFMA Prior: 1.5% draw interest carry</span>
+              <span className="block text-[10px] text-ink-2 mt-0.5">CFMA Prior: 1.5% draw interest carry</span>
             </div>
           </div>
         </div>
 
         {/* Computation Receipt Strip */}
-        <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between text-[11px] text-neutral-600 gap-2 font-mono">
+        <div className="mt-4 pt-3 border-t border-hair flex flex-wrap items-center justify-between text-[11px] text-ink-2 gap-2 font-mono">
           <div className="flex items-center gap-2">
             {/* Not notarized. generateComputationReceipt hashes the inputs and
                 the output of this page's own computation; the digests below are
                 what a reader can recompute, and no third party has attested
                 anything. */}
-            <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-700 border border-neutral-300 rounded font-semibold">
+            <span className="px-1.5 py-0.5 bg-ice/6 text-ink border border-hair-strong font-semibold">
               Receipt digested
             </span>
-            <span>ID: <strong className="text-neutral-900">{schedule.computationReceipt.receiptId}</strong></span>
+            <span>ID: <strong className="text-ink">{schedule.computationReceipt.receiptId}</strong></span>
           </div>
           <div className="flex items-center gap-3">
             <span>Inputs: {shortHash(schedule.computationReceipt.inputsDigest)}</span>
@@ -205,31 +205,31 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
       </div>
 
       {/* Recommended Pareto Instrument Hero Card */}
-      <div className="border border-emerald-300 bg-emerald-50 p-6 rounded-lg shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-emerald-200 gap-4">
+      <div className="border border-ok/45 bg-ok/10 p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-ok/45 gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-800 text-white uppercase tracking-wider">
+              <span className="px-2 py-0.5 text-[10px] font-bold font-mono bg-ok/25 text-ice uppercase tracking-wider">
                 Optimal VOI Instrument
               </span>
-              <span className="text-xs text-emerald-800 font-mono font-semibold">
+              <span className="text-xs text-ok font-mono font-semibold">
                 Status: {recommended.calibrationStatus}
               </span>
             </div>
-            <h4 className="text-xl font-bold text-neutral-900 mt-1">
+            <h4 className="text-xl font-bold text-ink mt-1">
               {recommended.instrument.label}
             </h4>
-            <p className="text-xs text-neutral-600 mt-1 max-w-2xl">
+            <p className="text-xs text-ink-2 mt-1 max-w-2xl">
               {recommended.reasoning}
             </p>
           </div>
 
           <div className="flex flex-col items-end">
-            <div className="text-xs text-neutral-500 font-medium">Net Measurement Surplus</div>
-            <div className="text-3xl font-extrabold font-mono text-emerald-800">
+            <div className="text-xs text-ink-2 font-medium">Net Measurement Surplus</div>
+            <div className="text-3xl font-extrabold font-mono text-ok">
               +${(recommended.netMeasurementSurplusCents / 1e5).toFixed(1)}k
             </div>
-            <div className="text-[11px] font-mono text-emerald-800 font-bold">
+            <div className="text-[11px] font-mono text-ok font-bold">
               ROI: {recommended.returnOnMeasurementSpendRatio}x Information Return
             </div>
           </div>
@@ -237,54 +237,54 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
 
         {/* Bayesian Loss Delta Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-xs font-mono">
-          <div className="bg-white p-3 rounded border border-emerald-200">
-            <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Prior Expected Loss L₀</div>
-            <div className="text-base font-bold text-neutral-900 mt-0.5">
+          <div className="surface p-3 border border-ok/45">
+            <div className="text-[10px] text-ink-2 uppercase font-sans font-semibold">Prior Expected Loss L₀</div>
+            <div className="text-base font-bold text-ink mt-0.5">
               ${(recommended.priorExpectedLossCents / 1e5).toFixed(1)}k
             </div>
-            <div className="text-[10px] text-neutral-500">Unmitigated risk</div>
+            <div className="text-[10px] text-ink-2">Unmitigated risk</div>
           </div>
 
-          <div className="bg-white p-3 rounded border border-emerald-200">
-            <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Posterior Loss L₁</div>
-            <div className="text-base font-bold text-emerald-800 mt-0.5">
+          <div className="surface p-3 border border-ok/45">
+            <div className="text-[10px] text-ink-2 uppercase font-sans font-semibold">Posterior Loss L₁</div>
+            <div className="text-base font-bold text-ok mt-0.5">
               ${(recommended.posteriorExpectedLossCents / 1e5).toFixed(1)}k
             </div>
-            <div className="text-[10px] text-neutral-500">Post-sensor residual</div>
+            <div className="text-[10px] text-ink-2">Post-sensor residual</div>
           </div>
 
-          <div className="bg-white p-3 rounded border border-emerald-200">
-            <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Authorized Cost</div>
-            <div className="text-base font-bold text-neutral-800 mt-0.5">
+          <div className="surface p-3 border border-ok/45">
+            <div className="text-[10px] text-ink-2 uppercase font-sans font-semibold">Authorized Cost</div>
+            <div className="text-base font-bold text-ink mt-0.5">
               ${(recommended.instrument.unitCostCents / 1e5).toFixed(1)}k
             </div>
-            <div className="text-[10px] text-neutral-500">Vendor tasking fee</div>
+            <div className="text-[10px] text-ink-2">Vendor tasking fee</div>
           </div>
 
-          <div className="bg-white p-3 rounded border border-emerald-200">
-            <div className="text-[10px] text-neutral-500 uppercase font-sans font-semibold">Turnaround Window</div>
-            <div className="text-base font-bold text-neutral-800 mt-0.5">
+          <div className="surface p-3 border border-ok/45">
+            <div className="text-[10px] text-ink-2 uppercase font-sans font-semibold">Turnaround Window</div>
+            <div className="text-base font-bold text-ink mt-0.5">
               {recommended.instrument.latencyHours}h / {activeContext.maxAllowedLatencyHours}h
             </div>
-            <div className="text-[10px] text-emerald-800 font-bold">Within lender bound</div>
+            <div className="text-[10px] text-ok font-bold">Within lender bound</div>
           </div>
         </div>
       </div>
 
       {/* Full Candidate Instruments Matrix */}
-      <div className="border border-neutral-200 bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-neutral-200 bg-neutral-50 flex items-center justify-between">
+      <div className="border border-hair surface overflow-hidden">
+        <div className="p-4 border-b border-hair surface-inset flex items-center justify-between">
           <div>
-            <h4 className="font-bold text-neutral-900 text-sm">
+            <h4 className="font-bold text-ink text-sm">
               Candidate Instrument Portfolio & Metrology Specs
             </h4>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-ink-2">
               Ranking candidate inspection technologies by Net Expected Economic Surplus (EVSI − Cost)
             </p>
           </div>
           <button
             onClick={() => setShowLogModal(true)}
-            className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded text-xs font-semibold transition-colors"
+            className="px-3 py-1.5 bg-ice/10 ring-1 ring-hair-strong hover:bg-ice/16 text-ice text-xs font-semibold transition-colors"
           >
             + Add outcome to this session
           </button>
@@ -292,7 +292,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
 
         <div className="overflow-x-auto" tabIndex={0}>
           <table className="w-full text-left text-xs">
-            <thead className="bg-neutral-100 text-neutral-600 font-semibold border-b border-neutral-200">
+            <thead className="bg-ice/6 text-ink-2 font-semibold border-b border-hair">
               <tr>
                 <th className="p-3">Instrument</th>
                 <th className="p-3">Category</th>
@@ -304,56 +304,51 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
                 <th className="p-3">Calibration Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200">
+            <tbody className="divide-y divide-hair">
               {schedule.evaluations.map((evalItem, idx) => {
                 const isOptimal = evalItem.recommendationStatus === 'OPTIMAL_SELECTION';
                 return (
                   <tr
                     key={evalItem.instrument.id}
                     className={`transition-colors ${
-                      isOptimal ? 'bg-emerald-50 font-medium' : 'hover:bg-neutral-50'
-                    }`}
+                      isOptimal ? 'bg-ok/10 font-medium' : 'hover:bg-ice/5' }`}
                   >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-neutral-600 font-bold">#{idx + 1}</span>
+                        <span className="font-mono text-ink-2 font-bold">#{idx + 1}</span>
                         <div>
-                          <div className="font-semibold text-neutral-900">{evalItem.instrument.label}</div>
-                          <div className="text-[10px] text-neutral-500 font-mono">
+                          <div className="font-semibold text-ink">{evalItem.instrument.label}</div>
+                          <div className="text-[10px] text-ink-2 font-mono">
                             Sensitivity {(evalItem.instrument.defectDetectionSensitivity * 100).toFixed(1)}% · False Alarm {(evalItem.instrument.falseAlarmRate * 100).toFixed(1)}%
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="p-3 font-mono text-neutral-600 text-[11px]">
+                    <td className="p-3 font-mono text-ink-2 text-[11px]">
                       {evalItem.instrument.category}
                     </td>
-                    <td className="p-3 font-mono font-semibold text-neutral-900">
+                    <td className="p-3 font-mono font-semibold text-ink">
                       ${(evalItem.instrument.unitCostCents / 1e5).toFixed(1)}k
                     </td>
-                    <td className="p-3 font-mono text-neutral-600">
+                    <td className="p-3 font-mono text-ink-2">
                       {evalItem.instrument.latencyHours}h
                     </td>
-                    <td className="p-3 font-mono text-emerald-800 font-semibold">
+                    <td className="p-3 font-mono text-ok font-semibold">
                       ${(evalItem.expectedValueOfInformationCents / 1e5).toFixed(1)}k
                     </td>
                     <td className="p-3 font-mono">
                       <span className={`font-bold ${
-                        evalItem.netMeasurementSurplusCents > 0 ? 'text-emerald-800' : 'text-rose-700'
-                      }`}>
+                        evalItem.netMeasurementSurplusCents > 0 ? 'text-ok' : 'text-no' }`}>
                         {evalItem.netMeasurementSurplusCents > 0 ? '+' : ''}
                         ${(evalItem.netMeasurementSurplusCents / 1e5).toFixed(1)}k
                       </span>
                     </td>
-                    <td className="p-3 font-mono font-bold text-neutral-800">
+                    <td className="p-3 font-mono font-bold text-ink">
                       {evalItem.returnOnMeasurementSpendRatio > 100 ? '∞' : `${evalItem.returnOnMeasurementSpendRatio}x`}
                     </td>
                     <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
-                        evalItem.calibrationStatus === 'CALIBRATED_EMPIRICAL'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-neutral-100 text-neutral-600'
-                      }`}>
+                      <span className={`px-2 py-0.5  text-[10px] font-mono font-semibold ${
+                        evalItem.calibrationStatus === 'CALIBRATED_EMPIRICAL' ? 'bg-ok/15 text-ok' : 'bg-ice/6 text-ink-2' }`}>
                         {evalItem.calibrationStatus}
                       </span>
                     </td>
@@ -366,35 +361,35 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
       </div>
 
       {/* Closed Loop Calibration History Strip */}
-      <div className="border border-neutral-200 bg-white p-5 rounded-lg shadow-sm space-y-3">
-        <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+      <div className="border border-hair surface p-5 space-y-3">
+        <div className="flex items-center justify-between border-b border-hair pb-2">
           <div>
-            <h5 className="font-bold text-neutral-900 text-sm">
+            <h5 className="font-bold text-ink text-sm">
               Tasking history ({ordersHistory.length} completed {ordersHistory.length === 1 ? 'order' : 'orders'})
             </h5>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-ink-2">
               Each instrument&rsquo;s sensitivity and false-alarm rate is re-estimated from the outcomes below, where they
               support it. One completed order per instrument is not an empirical calibration, and the status column above
               says PROVISIONAL_FROM_HISTORY rather than CALIBRATED_EMPIRICAL for exactly that reason.
             </p>
           </div>
-          <span className="text-xs font-mono text-neutral-500">Committed fixture · {FIXTURE_TASKING_ORDERS.length} orders</span>
+          <span className="text-xs font-mono text-ink-2">Committed fixture · {FIXTURE_TASKING_ORDERS.length} orders</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
           {ordersHistory.slice(0, 3).map((ord) => (
-            <div key={ord.orderId} className="p-3 bg-neutral-50 rounded border border-neutral-200 space-y-1">
+            <div key={ord.orderId} className="p-3 surface-inset border border-hair space-y-1">
               <div className="flex justify-between font-mono text-[10px]">
-                <strong className="text-neutral-900">{ord.orderId}</strong>
-                <span className="text-emerald-800 font-bold">{ord.status}</span>
+                <strong className="text-ink">{ord.orderId}</strong>
+                <span className="text-ok font-bold">{ord.status}</span>
               </div>
-              <div className="text-neutral-700 font-medium truncate">{ord.targetMilestone}</div>
-              <div className="text-[10px] text-neutral-500 font-mono">
+              <div className="text-ink font-medium truncate">{ord.targetMilestone}</div>
+              <div className="text-[10px] text-ink-2 font-mono">
                 Instrument: {ord.instrumentId}
               </div>
               {ord.observationOutcome && (
-                <div className="text-[10px] text-neutral-600 pt-1 border-t border-neutral-200">
-                  Defect Existed: <strong className={ord.observationOutcome.defectActuallyExisted ? 'text-rose-800' : 'text-emerald-800'}>
+                <div className="text-[10px] text-ink-2 pt-1 border-t border-hair">
+                  Defect Existed: <strong className={ord.observationOutcome.defectActuallyExisted ? 'text-no' : 'text-ok'}>
                     {ord.observationOutcome.defectActuallyExisted ? 'YES' : 'NO'}
                   </strong> • Detected: <strong>{ord.observationOutcome.instrumentDetectedDefect ? 'YES' : 'NO'}</strong>
                 </div>
@@ -405,40 +400,40 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
       </div>
 
       {/* Generated Tasking Dispatch Order Draft */}
-      <div className="border border-neutral-200 bg-neutral-900 text-neutral-100 p-5 rounded-lg shadow-sm font-mono text-xs space-y-3">
-        <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
-          <span className="text-emerald-400 font-bold tracking-wider">
+      <div className="border border-hair bg-ice/10 ring-1 ring-hair-strong text-ice p-5 font-mono text-xs space-y-3">
+        <div className="flex justify-between items-center border-b border-ice pb-3">
+          <span className="text-ok font-bold tracking-wider">
             N11 MEASUREMENT TASKING ORDER DRAFT
           </span>
-          <span className="text-neutral-400 text-[11px]">
+          <span className="text-ink-2 text-[11px]">
             {schedule.measurementOrderDraft.orderId}
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
           <div>
-            <span className="text-neutral-400 block">TARGET MILESTONE</span>
-            <span className="text-neutral-200 font-semibold">{schedule.measurementOrderDraft.targetMilestone}</span>
+            <span className="text-ink-2 block">TARGET MILESTONE</span>
+            <span className="text-ice font-semibold">{schedule.measurementOrderDraft.targetMilestone}</span>
           </div>
           <div>
-            <span className="text-neutral-400 block">DISPATCHED INSTRUMENT</span>
-            <span className="text-emerald-300 font-semibold">{schedule.measurementOrderDraft.dispatchedInstrument}</span>
+            <span className="text-ink-2 block">DISPATCHED INSTRUMENT</span>
+            <span className="text-ok font-semibold">{schedule.measurementOrderDraft.dispatchedInstrument}</span>
           </div>
           <div>
-            <span className="text-neutral-400 block">AUTHORIZED BUDGET</span>
-            <span className="text-neutral-200 font-semibold">
+            <span className="text-ink-2 block">AUTHORIZED BUDGET</span>
+            <span className="text-ice font-semibold">
               ${(schedule.measurementOrderDraft.budgetAuthorizedCents / 1e5).toFixed(2)}k USD
             </span>
           </div>
           <div>
-            <span className="text-neutral-400 block">PROJECTED SURPLUS VALUE</span>
-            <span className="text-emerald-300 font-semibold">
+            <span className="text-ink-2 block">PROJECTED SURPLUS VALUE</span>
+            <span className="text-ok font-semibold">
               +${(schedule.measurementOrderDraft.expectedSurplusGeneratedCents / 1e5).toFixed(2)}k USD
             </span>
           </div>
         </div>
 
-        <div className="pt-2 border-t border-neutral-800 text-[10px] text-neutral-400 flex justify-between items-center">
+        <div className="pt-2 border-t border-ice text-[10px] text-ink-2 flex justify-between items-center">
           <span>{schedule.measurementOrderDraft.notaryNotice}</span>
           <span>{fmtUtc(schedule.measurementOrderDraft.generatedAt)}</span>
         </div>
@@ -453,10 +448,10 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
         It scrolls now, and the panel is bounded.
       */}
       {showLogModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-4 shadow-xl text-xs">
-            <h4 className="text-base font-bold text-neutral-900">Add a ground-truth inspection outcome</h4>
-            <p className="text-neutral-600">
+        <div className="fixed inset-0 bg-scrim z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+          <div className="surface p-6 max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] text-xs">
+            <h4 className="text-base font-bold text-ink">Add a ground-truth inspection outcome</h4>
+            <p className="text-ink-2">
               This recomputes the tasking optimizer against the committed history plus the outcome below. The entry lives in
               this page only: nothing is sent to a server, nothing is stored, and it is gone on reload. Closing the N11 loop
               would mean writing the outcome somewhere, and there is nowhere in this system a tasking order is written.
@@ -464,12 +459,12 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
 
             <div className="space-y-3">
               <div>
-                <label className="font-semibold text-neutral-700 block mb-1">Target Instrument</label>
-                <div className="p-2 bg-neutral-100 rounded font-mono font-medium">{recommended.instrument.label}</div>
+                <label className="font-semibold text-ink block mb-1">Target Instrument</label>
+                <div className="p-2 bg-ice/6 font-mono font-medium">{recommended.instrument.label}</div>
               </div>
 
               <div>
-                <label className="font-semibold text-neutral-700 block mb-1">Did a defect actually exist on ground truth physical teardown?</label>
+                <label className="font-semibold text-ink block mb-1">Did a defect actually exist on ground truth physical teardown?</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" checked={defectExisted} onChange={() => setDefectExisted(true)} />
@@ -483,7 +478,7 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
               </div>
 
               <div>
-                <label className="font-semibold text-neutral-700 block mb-1">Did the instrument trigger an alert?</label>
+                <label className="font-semibold text-ink block mb-1">Did the instrument trigger an alert?</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" checked={sensorAlerted} onChange={() => setSensorAlerted(true)} />
@@ -500,16 +495,16 @@ export function N11VoiTaskingWorkbench({ initialContexts }: N11VoiTaskingWorkben
             {/* Wraps and does not shrink: at a 412px viewport the unwrapped row
                 squeezed these two together until Cancel sat over the confirm
                 button and swallowed its clicks. */}
-            <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-neutral-200">
+            <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-hair">
               <button
                 onClick={() => setShowLogModal(false)}
-                className="shrink-0 px-3 py-1.5 border border-neutral-300 rounded font-medium text-neutral-700 hover:bg-neutral-50"
+                className="shrink-0 px-3 py-1.5 border border-hair-strong font-medium text-ink hover:bg-ice/5"
               >
                 Cancel
               </button>
               <button
                 onClick={handleRecordObservation}
-                className="shrink-0 px-3 py-1.5 bg-neutral-900 text-white rounded font-semibold hover:bg-neutral-800"
+                className="shrink-0 px-3 py-1.5 bg-ice/10 ring-1 ring-hair-strong text-ice font-semibold hover:bg-ice/16"
               >
                 Recompute for this session
               </button>

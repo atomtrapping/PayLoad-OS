@@ -7,7 +7,6 @@ import { NAV_DESTINATIONS } from './nav';
 const push = vi.fn();
 let pathname = '/releases';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => pathname }));
-vi.mock('@/components/notations/NotationWorkspace', () => ({ useNotationDraftStatus: () => null }));
 
 beforeEach(() => {
   push.mockClear();

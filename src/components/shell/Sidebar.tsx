@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef } from 'react';
 import { DOMAINS } from '@/domain/domains';
-import { useNotationDraftStatus } from '@/components/notations/NotationWorkspace';
+import { useNotationDraftStatus } from '@/components/notations/draftStatus';
 import { NAV_AREAS, step } from './nav';
 import { SHORTCUT_DESCRIPTION, usePlatformKeys } from './platformKeys';
 

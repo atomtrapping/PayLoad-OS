@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppShell } from '@/components/shell/AppShell';
-import { NotationDraftProvider } from '@/components/notations/NotationWorkspace';
+import { NotationDraftHost } from '@/components/notations/NotationDraftHost';
 
 export const viewport: Viewport = {
   themeColor: '#06060c',
@@ -25,7 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <NotationDraftProvider><AppShell>{children}</AppShell></NotationDraftProvider>
+        <AppShell>{children}</AppShell>
+        {/* The notation draft's seat: empty until the workspace asks, then the controller for the life of the document. */}
+        <NotationDraftHost />
       </body>
     </html>
   );

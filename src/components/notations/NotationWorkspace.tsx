@@ -1,19 +1,22 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { MAX_NOTATION_COMMANDS, MAX_NOTATION_SAVED_VERSIONS, notationCapacity, type KernelCommand, type NotationRelation, type StateKernelFailure, type StateKernelRequest, type StateKernelSnapshot } from '@/state-kernel/types';
 import { Inspector } from '@/components/primitives/Inspector';
+import { SurfaceLoading } from '@/components/primitives/SurfaceLoading';
 import { openedWith, useLinkedSelection } from '@/components/primitives/useLinkedSelection';
 import { CapacityMeter } from './CapacityMeter';
 import { ConflictPanel } from './ConflictPanel';
 import { capacityOf } from './capacity';
 import { clearDrafts, describeCommand, draftsHaveContent, emptyText, readDrafts, writeDrafts, type BrowserDrafts, type DraftText, type Edit } from './drafts';
+import { createStore, publishDraftStatus, requestDraftController, type InFlight } from './draftStatus';
+
+export { useNotationDraftStatus } from './draftStatus';
 
 const fieldClass = 'surface-inset px-2 py-1.5 text-[13px] w-full';
 const muted = { color: 'var(--text-secondary)' };
 const faint = { color: 'var(--text-muted)' };
 
-type InFlight = 'load' | 'preview' | 'save' | 'reload' | null;
 
 /** The snapshot is trusted only when it is exactly the contract, capacity included: the kernel's numbers are never guessed at. */
 async function readSnapshot(path: string, body?: StateKernelRequest): Promise<StateKernelSnapshot> {
@@ -77,10 +80,11 @@ function originOf(kind: 'notation' | 'relation', id: string, pending: KernelComm
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * The draft controller, owned by the root client provider so that client
- * navigation away from /notations and back neither discards the draft,
- * cancels a request in flight, nor rebases the draft onto a newer saved
- * version. It is a browser draft of Rust-validated commands, never a second
+ * The draft controller, hosted at the root of the document (NotationDraftHost
+ * mounts its provider there the first time the workspace asks, and keeps it)
+ * so that client navigation away from /notations and back neither discards
+ * the draft, cancels a request in flight, nor rebases the draft onto a newer
+ * saved version. It is a browser draft of Rust-validated commands, never a second
  * state authority. Three things are kept distinct and shown distinctly:
  * unapplied form text, kernel-validated commands that are not saved, and
  * the saved local version. A copy of the draft, pinned to the saved version
@@ -316,18 +320,30 @@ function useNotationController() {
 }
 
 type Controller = ReturnType<typeof useNotationController>;
-const NotationDraftContext = createContext<Controller | null>(null);
+/**
+ * The controller reaches the workspace through a module store rather than a
+ * React context, because the provider is no longer the workspace's ancestor:
+ * the root host mounts it as a sibling of the routes, and this module is
+ * one instance whichever chunk loaded it, so the provider and the workspace
+ * share the store.
+ */
+const controllerStore = createStore<Controller | null>(null);
+const noController = () => null;
 
-/** The draft's home for the life of the browser document: mounted once at the root, above every route. */
-export function NotationDraftProvider({ children }: { children: ReactNode }) {
+/**
+ * The draft's home for the life of the browser document. Mounted once by the
+ * root host (or directly, in tests) and never remounted; it publishes the
+ * controller after every render and withdraws it on unmount. Children are
+ * rendered as they are, for the tests that wrap a route in it.
+ */
+export function NotationDraftProvider({ children }: { children?: ReactNode }) {
   const controller = useNotationController();
-  return <NotationDraftContext.Provider value={controller}>{children}</NotationDraftContext.Provider>;
-}
-
-/** What the rest of the shell may know about the draft: whether unsaved work exists, and how much. */
-export function useNotationDraftStatus(): { unsaved: boolean; pendingCount: number; textCount: number; inFlight: InFlight } | null {
-  const controller = useContext(NotationDraftContext);
-  return controller ? { unsaved: controller.unsaved, pendingCount: controller.pending.length, textCount: controller.textCount, inFlight: controller.inFlight } : null;
+  useLayoutEffect(() => {
+    controllerStore.set(controller);
+    publishDraftStatus({ unsaved: controller.unsaved, pendingCount: controller.pending.length, textCount: controller.textCount, inFlight: controller.inFlight });
+  });
+  useLayoutEffect(() => () => { controllerStore.set(null); publishDraftStatus(null); }, []);
+  return <>{children}</>;
 }
 
 /**
@@ -338,8 +354,11 @@ export function useNotationDraftStatus(): { unsaved: boolean; pendingCount: numb
  * children so the inspector's column spans them too.
  */
 export function NotationWorkspace({ children }: { children?: ReactNode }) {
-  const controller = useContext(NotationDraftContext);
-  if (!controller) throw new Error('NotationWorkspace requires the root NotationDraftProvider.');
+  const controller = useSyncExternalStore(controllerStore.subscribe, controllerStore.get, noController);
+  // Ask the root host for the controller. On the page's first render the
+  // store is empty; the provider publishes in a layout effect, before paint.
+  useEffect(() => { requestDraftController(); }, []);
+  if (!controller) return <SurfaceLoading reading="Preparing this tab's notation draft." />;
   return <NotationWorkspaceView controller={controller}>{children}</NotationWorkspaceView>;
 }
 

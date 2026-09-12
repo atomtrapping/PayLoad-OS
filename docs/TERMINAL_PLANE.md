@@ -108,10 +108,9 @@ This used to be a second table of tool-to-served-kind beside the registry,
 which is one fact in two places and therefore a place they can differ. The
 plane now derives it.
 
-The estates are a kind no purpose lists. That is the two-part rule enforced
-rather than described: the corpus is served under a purpose, the estates are
-served to nobody, on any transport, and a test flips a tool to `ESTATE` and
-checks that every declarable purpose refuses it.
+No purpose lists `ESTATE` among the kinds it admits, and a test holds that as
+well as the capability-level rule above: the corpus is served under a purpose,
+the estates are served to nobody, on any transport.
 
 ## A session cannot widen itself
 
@@ -123,21 +122,35 @@ structural form of the standing rule that an agent may not alter its own limits.
 
 ## Every call is admitted or refused, and the order is the argument
 
-`admitCall` decides in one order over declared inputs:
+`admitCapability` decides in one order over declared inputs, and `admitCall`
+reaches it through a tool name:
 
 1. The session's own standing. One that could not be opened answers nothing.
 2. The window. A call after `expiresAt` is refused.
-3. The tool is on the surface, and has said what it serves.
-4. The estates, unconditionally, so no refusal reads as though some purpose
+3. The tool is on the surface, when the ask came through a tool name.
+4. The capability is described. What the registry does not describe is not
+   reachable.
+5. The estates, unconditionally, so no refusal reads as though some purpose
    might reach them.
-5. The purpose against what the tool serves.
-6. The corpus against the declared scope.
+6. The corpus against the declared scope. This binds every kind of ask and not
+   only reads: a terminal asking to re-assess a corpus it never named should be
+   told that, rather than handed a proposal for an act it had no standing to
+   ask about.
+7. The kind. An admission is refused outside the firm and proposed inside it;
+   an operate becomes a proposal; a read is measured against the purpose.
+
+There are three outcomes, not two. `PROPOSAL_REQUIRED` is not a refusal wearing
+a softer word: the terminal asked for something that changes the world, the ask
+was recorded, and a human decides. Calling that REFUSED would tell the caller to
+go away; calling it ADMITTED would say something ran.
 
 A refusal is a successful return carrying a code, a reason and a remedy — never
 an error and never silence, the same discipline the feed's refusals already
 keep. Malformed arguments stay tool errors, checked before admission, so a
 caller who mistyped an instant is told that rather than told its purpose does
-not admit the tool.
+not admit the tool. And a capability that is admitted but that nothing plumbs
+answers `unreachable` rather than a refusal, because "you may, and it is not
+wired" and "you may not" are different answers.
 
 ## What the scope check reaches
 
@@ -190,14 +203,20 @@ default.
 
 ## Verified
 
-`src/domain/terminalPlane.test.ts` (18): the declarable-purpose derivation
+`src/domain/terminalPlane.test.ts` (25): the declarable-purpose derivation
 against `sourceUseRequests`, so the two audiences cannot drift; every tool
-classified and nothing that is not on the surface; an unclassified tool refused;
-the estates unreachable from every declarable purpose; each refusal with a
-reason and a remedy; the order, including a session that could not be opened
-refusing before anything else; the receipt.
-`src/mcp/serve.test.ts` (10): the corpus resolved from a corpus argument, from a
+mapped onto a described capability and nothing that is not on the surface; every
+capability described once, a read with a served kind and an operate with its
+side effects; an undescribed capability refused; the estates refused outside the
+firm on every purpose, and refused inside it when the capability serves them;
+an operate turned into a proposal carrying the party, the purpose, the declared
+side effects and what it waits on; the side effects taken from the capability
+rather than the caller; an operate on an unscoped corpus refused rather than
+proposed; an admission refused outside the firm and proposed inside it; each
+refusal with a reason and a remedy; the receipt for both a read and a proposal.
+`src/mcp/serve.test.ts` (14): the corpus resolved from a corpus argument, from a
 release identifier, and undefined where the call names neither; the same tool
 answered for one session and refused for another; nothing served on a refusal;
-malformed arguments still a tool error.
+malformed arguments still a tool error; a capability asked for by name, an
+undescribed one refused, and an operate dispatching nothing.
 `src/architecture.test.ts`: nothing but the governed surface dispatches a tool.

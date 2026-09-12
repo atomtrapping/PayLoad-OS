@@ -224,6 +224,20 @@ effects are what the code was read to write; they are a reviewer's warning, so
 they are stated broadly rather than narrowly, and a capability that changes
 more than it says is a defect in that file.
 
+## The navigator reads the same list
+
+`/capabilities` in the built-in terminal draws the registry: the three kinds
+and what the plane does with each, what an operate waits on and the fact that
+no authority can be granted yet, then every capability grouped by area, with
+its module, what it changes, what reaches it today and what authority it needs.
+A capability reaching an estate is marked wherever it appears.
+
+The operator's map and the plug-in contract used to be two things that could
+disagree — a person read the pages, an integrator read the tool list, and
+neither said what the substrate could do. They are one list now, and
+`tests/e2e/capabilities.spec.ts` asserts the page against the registry rather
+than against literals, so a row the page drops or a count it rounds fails.
+
 `src/domain/capabilityRegistry.test.ts` holds the registry to the code: every
 entry names a module that exists on disk, under the repository, and a broken
 path fails the suite. Kinds, identifiers, served kinds and side effects are

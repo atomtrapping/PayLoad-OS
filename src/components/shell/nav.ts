@@ -16,6 +16,7 @@ export const NAV_AREAS: readonly NavArea[] = [
   { id: 'system', label: 'System', activity: 'What this terminal can see about itself: stores, the admission gate, and what is refused right now', items: [
     { href: '/', label: 'Console', match: /^\/$/ },
     { href: '/control', label: 'Control Plane', match: /^\/control/ },
+    { href: '/capabilities', label: 'Capabilities', match: /^\/capabilities/ },
     { href: '/scopes', label: 'Governed Scopes', match: /^\/scopes/ },
     { href: '/state', label: 'State & Coupling', match: /^\/state/ },
     { href: '/treasury', label: 'Treasury', match: /^\/treasury/ },

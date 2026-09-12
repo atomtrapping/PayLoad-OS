@@ -48,7 +48,9 @@ describe('the navigation names every page', () => {
     expect(NAV_AREAS[0].id).toBe('system');
     // The terminal still leads; the control plane sits behind it, because a
     // page about the architecture is not the thing an operator opens first.
-    expect(NAV_AREAS[0].items.map((i) => i.href)).toEqual(['/', '/control', '/scopes', '/state', '/treasury']);
+    // Capabilities sits with the control plane, because "what can this system
+    // be asked to do" is the other half of "what is this system".
+    expect(NAV_AREAS[0].items.map((i) => i.href)).toEqual(['/', '/control', '/capabilities', '/scopes', '/state', '/treasury']);
     expect(NAV_AREAS[1].id).toBe('products');
     expect(NAV_AREAS[1].items.map((i) => i.label)).toContain('Products');
   });

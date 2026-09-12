@@ -18,8 +18,9 @@ is that argument made executable.
 
 | Piece | Where | What it holds |
 | --- | --- | --- |
-| The vocabulary and the decision | `src/domain/terminalPlane.ts` | Terminal classes, declarable purposes, what each tool serves, what each purpose admits, the session, `admitCall`, the receipt |
-| The only door | `src/mcp/serve.ts` | `serveToolCall`: validate, resolve the corpus, admit or refuse, dispatch only on admission, receipt either way |
+| What the substrate can do | `src/domain/capabilityRegistry.ts` | Every capability: its kind, what it would change, what gates it, whether it reaches an estate, and how a caller reaches it today |
+| The vocabulary and the decision | `src/domain/terminalPlane.ts` | Terminal classes, declarable purposes, what each purpose admits, the session, `admitCapability`, `admitCall`, the receipt |
+| The only door | `src/mcp/serve.ts` | `serveToolCall` and `serveCapabilityCall`: validate, resolve the corpus, admit, refuse or propose, dispatch only on an admitted read, receipt every time |
 | The operator's own terminal | `src/mcp/server.ts` | Opens one declared `FIRM_INTERNAL` session and routes its own calls through the same door |
 | The standing | `src/domain/servingBoundary.ts` | `servingStanding()`, reporting the governed tool surface and the unauthenticated feed apart |
 
@@ -50,13 +51,62 @@ because it is not a use of an answer but a copy of the corpus into a form that
 no longer carries its receipts. **Trading** is prohibited outright by the rights
 matrix.
 
+## Read is governed by purpose; operate is governed by authorization
+
+A purpose is the right question for a read and the wrong one for everything
+else. Running a mining workload, assessing coverage, compiling a dossier,
+writing a notation: these change state, spend something, or produce a record
+that outlives the call. No declared purpose authorizes that. An authorization
+does, and the governance kernel already holds one
+(`src/db/executionLedger.ts`).
+
+So a capability declares which of three kinds it is, and the plane treats each
+differently.
+
+| Kind | What the plane does |
+| --- | --- |
+| `READ` | Answers it under the declared purpose, as before |
+| `OPERATE` | Never runs it. The ask becomes a proposal naming the terminal as counterparty and carrying the side effects the capability declared |
+| `ADMIT` | Refuses it to every terminal but the firm's own. Putting material into the corpus is the firm's act |
+
+The side effects come from the capability, not from the caller.
+`operation_proposal.declared_side_effects` exists so a reviewer is told what an
+act would change before it changes anything; a caller supplying that list would
+be a caller describing its own act. The plane copies the registry's list, so a
+terminal cannot understate what it asked for.
+
+An operate ask comes back saying what it now waits on, in the kernel's order: a
+decision packet naming the action by digest, a review of that digest by a
+registered human or policy principal (an agent cannot be the reviewer), and an
+execution authorization of the same digest. And it says the thing a caller
+would otherwise learn by waiting:
+
+> No execution authorization can be granted at all today: the row names a
+> corpus release by foreign key and no release has been admitted.
+
+Every operate ask is therefore recordable and unauthorizable. That is the
+honest state of the substrate, and the plane states it at the moment of asking
+rather than leaving a proposal to sit.
+
+## The estates are a property of the capability
+
+`servingBoundary.ts` names four estates that leave the wall on no transport.
+A capability that would expose any of them says so, and the plane refuses it to
+anyone outside the firm whatever its kind and whatever purpose is declared.
+Coverage assessment is the live example the survey turned up: deciding that one
+artifact conflicts with another is a disagreement-layer judgement.
+
 ## A tool is admitted by what it serves
 
-Each tool declares its kind — release metadata, records, an aggregate, a
-manifest, a ruling, a receipt — and each purpose admits kinds rather than tool
-names. A tool added to the surface without a kind is unreachable, refused as
-`TOOL_UNCLASSIFIED`, and a test refuses the omission: a new tool cannot be
-served without saying what leaves through it.
+Each tool reaches a capability, and the capability says what it hands back —
+release metadata, records, an aggregate, a manifest, a ruling, a receipt. A
+purpose admits kinds rather than tool names. A tool that reaches nothing in the
+registry is unreachable, refused as `CAPABILITY_UNKNOWN`, and a test refuses the
+omission: a new tool cannot be served without describing what it reaches.
+
+This used to be a second table of tool-to-served-kind beside the registry,
+which is one fact in two places and therefore a place they can differ. The
+plane now derives it.
 
 The estates are a kind no purpose lists. That is the two-part rule enforced
 rather than described: the corpus is served under a purpose, the estates are
@@ -127,6 +177,16 @@ party" stops being a shape and starts being a fact.
 declared viewer class rather than a party. `servingStanding()` reports the two
 surfaces separately for exactly that reason: one number over both would read as
 though the feed were governed too.
+
+## What is in the registry today
+
+The twelve corpus reads, which are the tools on the surface. The operate and
+admit capabilities of the substrate — the mining engine, the dossier
+lifecycle, the production rail, the notation kernel, the spatial comparison,
+the product desks — are being surveyed and added; the plane routes them
+already, and the registry is where each will say what it changes. Until a
+capability is described there, no terminal reaches it, which is the intended
+default.
 
 ## Verified
 

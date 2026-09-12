@@ -25,17 +25,26 @@
  * by scope, and that is the honest state of it.
  */
 import { z } from 'zod';
-import { admitCall, servedCallReceipt, type CallAdmission, type ServedCallReceipt, type TerminalSession } from '@/domain/terminalPlane';
+import { admitCall, admitCapability, servedCallReceipt, type CallAdmission, type ProposedOperation, type ServedCallReceipt, type TerminalSession } from '@/domain/terminalPlane';
+import { TOOL_CAPABILITY, capabilityById } from '@/domain/capabilityRegistry';
 import { getCorpusSource } from '@/adapter/corpusSource';
 import { MCP_TOOLS, runMcpTool } from './tools';
 
 export interface ServedCall {
   receipt: ServedCallReceipt;
   admission: CallAdmission;
-  /** The tool's answer, present only when the call was admitted. */
+  /** The tool's answer, present only when an admitted read was dispatched. */
   result?: unknown;
-  /** The refusal as a caller reads it, present only when it was not. */
+  /** The refusal as a caller reads it, present only when the ask was refused. */
   refusal?: { code: string; because: string; remedy: string };
+  /** The governed proposal an operate ask became, present only then. */
+  proposal?: ProposedOperation;
+  /**
+   * Present when the ask was admitted and nothing plumbs it: the caller may
+   * have this, and no transport reaches it yet. Saying so is more use to an
+   * integrator than a refusal that would imply they were not allowed.
+   */
+  unreachable?: { because: string; reachableToday: string };
 }
 
 /**
@@ -75,8 +84,60 @@ export async function serveToolCall(
   const corpus = tool === undefined ? undefined : await corpusOfCall(args);
   const admission = admitCall(session, toolName, at, corpus);
   const receipt = servedCallReceipt(session, toolName, at, admission, corpus);
-  if (!admission.admitted) {
+  return outcomeOf(receipt, admission, () => runMcpTool(toolName, args));
+}
+
+/**
+ * Ask the substrate for a capability by name, whether or not a tool reaches it.
+ *
+ * The tools are the corpus reads. Everything else the substrate does — running
+ * a workload, assessing coverage, compiling a dossier — has no tool and will
+ * not get one, because those are not reads and are not answered by returning
+ * something. This is how a terminal asks for them: it names the capability,
+ * the plane decides, and an operate comes back as the proposal it became.
+ *
+ * A capability that is admitted but that nothing plumbs answers `unreachable`
+ * rather than a refusal, because "you may, and it is not wired" and "you may
+ * not" are different answers and an integrator needs to tell them apart.
+ */
+export async function serveCapabilityCall(
+  session: TerminalSession,
+  capabilityId: string,
+  args: unknown,
+  at: string,
+): Promise<ServedCall> {
+  const capability = capabilityById(capabilityId);
+  const corpus = capability === undefined ? undefined : await corpusOfCall(args);
+  const admission = admitCapability(session, capability, at, corpus);
+  const toolName = Object.keys(TOOL_CAPABILITY).find((name) => TOOL_CAPABILITY[name] === capabilityId);
+  const receipt = { ...servedCallReceipt(session, toolName ?? capabilityId, at, admission, corpus), capability: capability?.id ?? null };
+  if (admission.outcome === 'ADMITTED' && toolName === undefined) {
+    return {
+      receipt,
+      admission,
+      unreachable: {
+        because: `${capabilityId} is admitted for this session and no transport reaches it.`,
+        reachableToday: capability?.reachableToday ?? 'not reachable',
+      },
+    };
+  }
+  if (toolName !== undefined && admission.outcome === 'ADMITTED') {
+    z.object(MCP_TOOLS.find((candidate) => candidate.name === toolName)!.shape).parse(args ?? {});
+  }
+  return outcomeOf(receipt, admission, toolName === undefined ? undefined : () => runMcpTool(toolName, args));
+}
+
+/** One place the three outcomes become one answer shape. */
+async function outcomeOf(
+  receipt: ServedCallReceipt,
+  admission: CallAdmission,
+  dispatch: (() => Promise<unknown>) | undefined,
+): Promise<ServedCall> {
+  if (admission.outcome === 'PROPOSAL_REQUIRED') {
+    return { receipt, admission, proposal: admission.proposal ?? undefined };
+  }
+  if (admission.outcome === 'REFUSED') {
     return { receipt, admission, refusal: { code: admission.refusal ?? 'REFUSED', because: admission.because, remedy: admission.remedy } };
   }
-  return { receipt, admission, result: await runMcpTool(toolName, args) };
+  return { receipt, admission, result: dispatch === undefined ? undefined : await dispatch() };
 }

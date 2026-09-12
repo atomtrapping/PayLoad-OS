@@ -6,8 +6,8 @@
  * resolved from what the call names, and both outcomes carry a receipt.
  */
 import { describe, expect, it } from 'vitest';
-import { corpusOfCall, serveToolCall } from './serve';
-import type { TerminalSession } from '@/domain/terminalPlane';
+import { corpusOfCall, serveCapabilityCall, serveToolCall } from './serve';
+import { admitCapability, type TerminalSession } from '@/domain/terminalPlane';
 
 const AT = '2026-09-12T10:00:00.000Z';
 
@@ -97,5 +97,50 @@ describe('the same tool answers one session and refuses another', () => {
     const refused = await serveToolCall(session({ expiresAt: '2026-09-12T09:30:00.000Z' }), 'list_releases', {}, AT);
     expect(refused.receipt).toMatchObject({ decision: 'REFUSED', refusal: 'SESSION_EXPIRED', tool: 'list_releases', servedAt: AT });
     expect(refused.receipt.terminalClass).toBe('CUSTOMER');
+  });
+});
+
+describe('a terminal asks for a capability, and an operate comes back as a proposal', () => {
+  it('answers a read capability through the tool that reaches it', async () => {
+    const served = await serveCapabilityCall(session(), 'corpus.list-records', { releaseId: 'REL-CAR-2026.09.01' }, AT);
+    expect(served.admission.outcome).toBe('ADMITTED');
+    expect(served.result).toBeDefined();
+    expect(served.receipt.capability).toBe('corpus.list-records');
+  });
+
+  it('refuses a capability nothing describes, rather than guessing at one', async () => {
+    const served = await serveCapabilityCall(session(), 'corpus.drop-everything', {}, AT);
+    expect(served.refusal?.code).toBe('CAPABILITY_UNKNOWN');
+    expect(served.result).toBeUndefined();
+  });
+
+  it('refuses a described capability the session is not scoped for', async () => {
+    const served = await serveCapabilityCall(session({ corpusScope: ['tradewind.freight'] }), 'corpus.list-records', { releaseId: 'REL-CAR-2026.09.01' }, AT);
+    expect(served.refusal?.code).toBe('CORPUS_OUTSIDE_SCOPE');
+  });
+
+  /*
+   * The registry describes only reads today, so this exercises the operate
+   * path with a capability of its own rather than one of the twelve. What it
+   * proves is that the plane routes by kind: nothing is dispatched, and the
+   * ask comes back as the proposal it became, saying what it waits on.
+   */
+  it('dispatches nothing for an operate, and hands back what the ask waits on', async () => {
+    const asked = admitCapability(session(), {
+      id: 'discovery.run-workload',
+      title: 'Run one mining workload over a set of corpus records',
+      kind: 'OPERATE',
+      subsystem: 'Discovery',
+      entryPoint: 'src/discovery/engine.ts',
+      reachableToday: 'not reachable',
+      gatedBy: 'nothing',
+      sideEffects: ['Writes a workload run and its derived artifacts with their lineage.'],
+      authorityNeeded: 'A digest-bound execution authorization.',
+      touchesEstates: false,
+    }, AT, 'caravan.specialty-cargo');
+    expect(asked.outcome).toBe('PROPOSAL_REQUIRED');
+    expect(asked.proposal?.counterparty).toBe('terminal:acme-risk');
+    expect(asked.proposal?.underPurpose).toBe('customer_delivery');
+    expect(asked.proposal?.blockedBy).toContain('no release has been admitted');
   });
 });
